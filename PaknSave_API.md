@@ -5,7 +5,7 @@ Island) domain name, this API covers **all Pak'nSave stores nationwide** includi
 both North Island (47 stores) and South Island (13 stores). It also works for
 New World with `banner: "MNW"`.
 
-[Confirmed working](scripts/paknsave/PaknSave_prototype.py): Dunedin, Invercargill,
+[Confirmed working]: Dunedin, Invercargill,
 Queenstown, Christchurch-area stores (Riccarton, Hornby, Moorhouse, Papanui,
 Rangiora, Rolleston, Wainoni), Timaru, Blenheim, and Richmond all return valid
 per-store pricing through the mobile API.
@@ -1159,10 +1159,6 @@ python scripts/paknsave/paknsave_optimizer_mobile.py "Botany Town Centre, Auckla
 
 **Pipeline:** Same as Edge but uses Mobile API (single-pass, guest token). No per-store price sort — returns first (most relevant) result. Same unit-price selection logic.
 
-### 10.3 Legacy Prototype (Deprecated)
-
-The original `scripts/paknsave/PaknSave_prototype.py` used the Mobile API directly. Replaced by the unified modules above.
-
 ---
 
 ## 11. Supported Dishes (21)
@@ -1191,7 +1187,7 @@ The original `scripts/paknsave/PaknSave_prototype.py` used the Mobile API direct
 | tomato pasta | pasta, canned tomatoes, garlic, olive oil, mixed herbs, cheese |
 | chicken katsu | chicken breast, flour, eggs, bread, rice, katsu sauce |
 
-Dishes are defined in `DISH_INGREDIENTS` in `scripts/paknsave/PaknSave_prototype.py`
+Dishes are defined in `DISH_INGREDIENTS` in `scripts/paknsave/paknsave_api.py`
 and the Pak'nSave notebook (cell 4). Unknown dish names fall through — the dish name
 itself becomes the single search query.
 
@@ -1199,16 +1195,23 @@ itself becomes the single search query.
 
 ## 12. CLI Usage
 
+**Edge API Optimizer (Production — two-pass, relevance + price sort):**
 ```powershell
-python scripts/paknsave/PaknSave_prototype.py "123 Queen Street, Auckland CBD, 1010" "spaghetti bolognese"
+python scripts/paknsave/paknsave_optimizer_edge.py "Botany Town Centre, Auckland" "spaghetti bolognese"
+```
+
+**Mobile API Optimizer (Fallback — single-pass):**
+```powershell
+python scripts/paknsave/paknsave_optimizer_mobile.py "Botany Town Centre, Auckland" "spaghetti bolognese"
 ```
 
 | Argument | Default | Description |
 |----------|---------|-------------|
-| `address` | `"123 Queen Street, Auckland CBD, 1010"` | NZ address to geocode |
+| `address` | `"Botany Town Centre, Auckland"` | NZ address to geocode |
 | `dish` | `"spaghetti bolognese"` | Dish name from the supported list |
 
 Output: per-store itemised prices, total cost comparison, and the cheapest store.
+Results saved to `data/paknsave_latest_results.csv` (Edge) or `data/paknsave_mobile_latest_results.csv` (Mobile).
 
 ---
 
