@@ -1017,46 +1017,68 @@ this comparison would be meaningless.
 
 ## 9. Store Data Sources
 
-### 9.1 Primary: Mobile API (`GET /mobile/store/physical`)
+### 9.1 Unified Store Setup Pipeline (`paknsave_setup.py`)
 
-60 stores with precise coordinates. This is the most accurate source.
+The **canonical store pipeline** is `scripts/paknsave/paknsave_setup.py` — a callable module with two data sources and a clean/merge step:
 
 ```python
-api = PaknSaveAPI()
-api_stores = api.get_stores()  # returns {id: store_dict}
+from scripts.paknsave.paknsave_setup import (
+    fetch_stores,        # Step 1: fetch from Edge API (default) or store-finder
+    clean_stores,        # Step 2: drop rows without coordinates (no-op for Pak'nSave)
+    run_full_setup       # Run full pipeline end-to-end
+)
+
+# Full pipeline (default: Edge API, 57 stores)
+run_full_setup()
+
+# Full pipeline (store-finder page, 60 stores)
+run_full_setup(source="store_finder")
+
+# Individual steps
+df = fetch_stores(source="edge")      # 57 stores from Edge API
+df = fetch_stores(source="store_finder")  # 60 stores from __NEXT_DATA__
+df = clean_stores(df, cleaned=True)   # Drop NaN coords (no-op for Pak'nSave)
 ```
 
-### 9.2 CSV Fallback (`data/paknsave_stores.csv`)
-
-Pre-built from the Pak'nSave `/store-finder` page's `__NEXT_DATA__` during the
-`fetch_stores.py` build step. Contains the same `store_id` UUIDs with name, address,
-city, region, lat, lon for all 60 stores.
-
-```csv
-store_id,name,address,city,region,latitude,longitude
-65defcf2-...,PAK'nSAVE Albany,33 Don McKinnon Drive...,Albany,NI,-36.738224,174.712257
+**CLI:**
+```bash
+python -m scripts.paknsave.paknsave_setup           # Edge API (default, 57 stores)
+python -m scripts.paknsave.paknsave_setup store_finder  # Store-finder page (60 stores)
 ```
 
-### 9.3 Store Slugs (`data/paknsave_store_slugs.csv`)
+### 9.2 Data Sources Compared
 
-Maps URL-friendly slugs to store UUIDs for 60 stores:
+| Source | Stores | Method | Auth | Notes |
+|--------|--------|--------|------|-------|
+| **Edge API** (default) | 57 | `GET /v1/edge/store` with website JWT | `fs-user-token` from `get-current-user` | 3 stores missing (not configured for Edge ordering: Wairau Road, Gisborne City, Levin) |
+| **Store-finder page** | 60 | `GET /store-finder` → parse `__NEXT_DATA__` | None (cloudscraper) | Complete set including the 3 missing stores; uses `contentstackStores` (GUIDs) + `regionStoreGroupings` (coords) |
 
-```csv
-slug,store_id,uid,url
-albany,65defcf2-...,bltf659232653b357e6,/upper-north-island/auckland/albany
+**No geocoding required** — both sources provide latitude/longitude directly.
+
+### 9.3 Pipeline Steps
+
+```
+paknsave_setup.py
+  → fetch_stores(source="edge"):
+      GET https://www.paknsave.co.nz → seed cookies
+      POST /api/user/get-current-user → fs-user-token (JWT)
+      GET /v1/edge/store (with JWT + Origin headers) → 57 stores with lat/lon
+  → fetch_stores(source="store_finder"):
+      GET /store-finder → parse __NEXT_DATA__
+      Extract contentstackStores: URL → store_id (GUID) map
+      Extract store_finder.regionStoreGroupings: title, address, lat/lon
+      Join on URL → 60 stores with lat/lon
+  → clean_stores(cleaned=True):
+      Drop rows where latitude/longitude are NaN (no-op — all stores have coords)
+  → DataFrame → data/paknsave_stores.csv / .json
 ```
 
-### 9.4 Build Pipeline (`scripts/paknsave/fetch_stores.py`)
+### 9.4 Output Files
 
-```
-fetch_stores.py
-  → GET /store-finder → parse __NEXT_DATA__
-  → Extract contentstackStores: url → store_id (GUID) map
-  → Extract store_finder.regionStoreGroupings: title, address, lat/lon per store
-  → Join on url field → DataFrame → data/paknsave_stores.csv
-```
-
-No geocoding required — coordinates are provided directly in the page source.
+| File | Rows | Description |
+|------|------|-------------|
+| `data/paknsave_stores.csv` | 57 / 60 | Store GUID, name, address, city, region (NI/SI), lat, lon |
+| `data/paknsave_stores.json` | 57 / 60 | Same data, JSON format |
 
 ---
 
@@ -1358,12 +1380,84 @@ Output: per-store itemised prices, total cost comparison, and the cheapest store
 
 ---
 
-## 16. Exploration Scripts
+## 16. Pak'nSave Store Setup Process (Unified Pipeline)
+
+### 16.1 Solution: Unified Pipeline (`paknsave_setup.py`)
+
+A single module `scripts/paknsave/paknsave_setup.py` with callable functions + CLI, supporting **two data sources**:
+
+```python
+from scripts.paknsave.paknsave_setup import fetch_stores, clean_stores, run_full_setup
+
+# Full pipeline (default: edge, 57 stores from Edge API)
+run_full_setup()
+
+# Full pipeline (store_finder, 60 stores from store-finder page)
+run_full_setup(source="store_finder")
+
+# Individual steps
+fetch_stores(source="edge")
+clean_stores(cleaned=True)  # drops rows without lat/lon (no-op for Pak'nSave)
+```
+
+### 16.2 Pipeline Details
+
+**Step 1: `fetch_stores(source="edge"|"store_finder")`**
+
+| Source | Stores | Method | Notes |
+|--------|--------|--------|-------|
+| `edge` (default) | 57 | `GET /v1/edge/store` with website JWT | Uses website JWT (`fs-user-token`) from `get-current-user`. Returns stores with coords. 3 stores missing (not on Edge API). |
+| `store_finder` | 60 | `GET /store-finder` → parse `__NEXT_DATA__` | Extracts `contentstackStores` (GUIDs) + `store_finder.regionStoreGroupings` (coords). Joins on URL. |
+
+**No geocoding needed** — both sources provide coordinates directly.
+
+**Output**: `data/paknsave_stores.csv`, `data/paknsave_stores.json`
+
+**Step 2: `clean_stores(cleaned=True)`**
+- Optional: drops rows where latitude/longitude are NaN
+- `cleaned=True` (default): drops missing coords
+- `cleaned=False`: keeps all rows
+- For Pak'nSave: **all stores have coordinates** — this is a no-op
+
+**Step 3: `run_full_setup(source="edge", cleaned=True)`**
+- Runs both steps, overwrites final CSV/JSON
+- CLI: `python -m scripts.paknsave.paknsave_setup [edge|store_finder]`
+
+### 16.3 Key Files
+
+| File | Rows | Description |
+|------|------|-------------|
+| `data/paknsave_stores.csv` | 57 / 60 | Store GUID, name, address, city, region (NI/SI), lat, lon |
+| `data/paknsave_stores.json` | 57 / 60 | Same data, JSON format |
+
+### 16.4 CLI Usage
+
+```powershell
+# Full pipeline (default: edge, 57 stores)
+python -m scripts.paknsave.paknsave_setup
+
+# Full pipeline (store_finder, 60 stores)
+python -m scripts.paknsave.paknsave_setup store_finder
+
+# Individual steps
+python -c "from scripts.paknsave.paknsave_setup import fetch_stores; fetch_stores(source='edge')"
+python -c "from scripts.paknsave.paknsave_setup import clean_stores; clean_stores(cleaned=False)"
+```
+
+### 16.5 Legacy Scripts
+
+| Script | Status | Replacement |
+|--------|--------|-------------|
+| `scripts/paknsave/fetch_stores.py` | **Deprecated** | `paknsave_setup.py` `fetch_stores()` |
+
+---
+
+## 17. Exploration Scripts
 
 | Script | Purpose |
 |--------|---------|
 | `scripts/paknsave/PaknSave_prototype.py` | CLI entry point: geocode, nearby stores, per-store search, cost comparison (Mobile API) |
-| `scripts/paknsave/fetch_stores.py` | One-shot data builder: extracts store data from `/store-finder` page `__NEXT_DATA__` |
+| `scripts/paknsave/paknsave_setup.py` | **Unified store pipeline**: fetch stores from store-finder or Edge API, clean/validate, save CSV/JSON |
 | `scripts/paknsave/Exploration/test_two_pass_optimizer.py` | **Edge API two-pass optimizer**: CLI with geocoding, store filtering, 21 dishes, pet food filtering |
 | `scripts/paknsave/Exploration/demo_two_pass_pipeline.py` | **Edge API two-pass demo**: Detailed Pass 1/2 internals, full pipeline walkthrough |
 | `scripts/paknsave/Exploration/Exploration.md` | **Edge API exploration documentation**: All phases, discoveries, and breakthroughs |
@@ -1371,18 +1465,17 @@ Output: per-store itemised prices, total cost comparison, and the cheapest store
 
 ---
 
-## 17. Files and Data Sources
+## 18. Files and Data Sources
 
 | File | Purpose |
 |------|---------|
 | `PaknSave_API.md` | This document |
 | `AGENTS.md` | Project overview, file structure, key gotchas |
 | `design.md` | Technical design (API, auth, pipeline for both chains) |
-| `data/paknsave_stores.csv` | 60 stores: store_id (UUID), name, address, city, region, lat, lon |
-| `data/paknsave_store_slugs.csv` | Slug → store_id mapping (albany → 65defcf2-...) |
+| `data/paknsave_stores.csv` | 60 / 57 stores: store_id (UUID), name, address, city, region, lat, lon |
 | `data/latest_results.csv` | Last optimizer output |
 | `scripts/paknsave/PaknSave_prototype.py` | CLI optimizer with `PaknSaveAPI` class, `DISH_INGREDIENTS`, geocoding, haversine (Mobile API) |
-| `scripts/paknsave/fetch_stores.py` | Store data builder from `/store-finder` page |
+| `scripts/paknsave/paknsave_setup.py` | **Unified store pipeline**: fetch stores, clean/validate, save CSV/JSON |
 | `scripts/paknsave/Exploration/demo_two_pass_pipeline.py` | **Edge API two-pass optimizer** — full pipeline with relevance matching + per-store pricing |
 | `scripts/paknsave/Exploration/test_two_pass_optimizer.py` | **Edge API two-pass CLI** — CLI wrapper for two-pass optimizer |
 | `scripts/paknsave/Exploration/Exploration.md` | **Edge API exploration documentation** — all phases and discoveries |
@@ -1394,7 +1487,7 @@ Output: per-store itemised prices, total cost comparison, and the cheapest store
 
 ---
 
-## 18. Credits
+## 19. Credits
 
 This documentation builds on the foundational reverse-engineering work of
 **[Arefu](https://github.com/Arefu)**, who first documented the Foodstuffs

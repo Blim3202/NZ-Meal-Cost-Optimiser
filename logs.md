@@ -440,3 +440,20 @@ Output: `woolworths_stores.csv` with 177 stores having coordinates (11 dropped).
 **Key files**: `scripts/woolworths/woolworths_setup.py` (functions + `__main__`), `data/woolworths_store_choices.json` (19 areas), `data/woolworths_stores.csv` (177 cleaned stores).
 
 ---
+
+## 36. Pak'nSave Store Setup — Unified Pipeline
+
+**Symptom**: The legacy `scripts/paknsave/fetch_stores.py` was a one-shot script that scraped the store-finder page `__NEXT_DATA__` to build `paknsave_stores.csv`. It wasn't callable as a module and had no options for cleaning/validating the output.
+
+**Resolution**: Created `scripts/paknsave/paknsave_setup.py` — a unified, callable pipeline module with two data sources:
+
+1. `fetch_stores(source="store_finder", verbose=True)`: Fetches from store-finder page, extracts 60 stores with GUIDs, names, addresses, cities, regions (NI/SI), and lat/lon from `__NEXT_DATA__`. No geocoding needed — coordinates provided by page source. Saves CSV + JSON.
+2. `fetch_stores(source="edge", verbose=True)`: Fetches 57 stores from Edge API using website JWT authentication. Same output format. 3 stores (Wairau Road, Gisborne City, Levin) not configured for Edge API ordering.
+3. `clean_stores(df, cleaned=True, verbose=True)`: Drops rows without coordinates (optional, no-op for Pak'nSave since all stores have coords).
+4. `run_full_setup(source="store_finder", cleaned=True, verbose=True)`: Runs complete pipeline. CLI entry point via `python -m scripts.paknsave.paknsave_setup [store_finder|edge]`.
+
+Output: `data/paknsave_stores.csv` (60 stores from store_finder, 57 from edge, all with coordinates) and `data/paknsave_stores.json`.
+
+**Key files**: `scripts/paknsave/paknsave_setup.py`, `data/paknsave_stores.csv`, `data/paknsave_stores.json`.
+
+---

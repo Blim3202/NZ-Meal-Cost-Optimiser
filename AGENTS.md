@@ -17,8 +17,8 @@ opencode/
 │   ├── Exploration/
 │   │   └── woolworths/                         # Exploration data files (part2_cookies.json). Full tree contents shortened.
 │   ├── newworld_stores.csv                     # 149 stores: store_id (UUID), name, url, address, lat, lon, banner, click_and_collect, delivery
-│   ├── paknsave_stores.csv                     # 60 stores: store_id (GUID), name, address, city, region, lat, lon
-│   ├── paknsave_store_slugs.csv                # slug → store_id mapping (albany → 65defcf2-...)
+│   ├── paknsave_stores.csv                     # 57 stores: store_id (GUID), name, address, city, region, lat, lon
+│   ├── paknsave_stores.json                    # Raw 57 store data: store_id (GUID), name, address, city, region, lat, lon
 │   ├── woolworths_stores.csv                   # Merged Woolworths store list with lat/lon
 │   ├── woolworths_store_choices.csv            # Woolworths pickup location IDs (from pickup-addresses API)
 │   ├── woolworths_store_choices.json           # Same data as CSV, JSON format
@@ -35,7 +35,7 @@ opencode/
 │   │   └── Exploration/                        # API exploration scripts for Edge endpoint, relevance ordering, and two-pass product search method. Full tree contents shortened. See Exploration.md for details.
 │   │       └── Exploration.md                  # Breakdown of exploration scripts in this subfolder.
 │   ├── paknsave/
-│   │   ├── fetch_stores.py                     # One-shot: builds paknsave_stores.csv from __NEXT_DATA__
+│   │   ├── paknsave_setup.py                   # Unified store pipeline: fetches all 60 stores from Edge API (default) or __NEXT_DATA__ (store GUID, name, address, city, region, lat/lon). Callable module + CLI.
 │   │   ├── PaknSave_prototype.py               # CLI: python scripts/paknsave/PaknSave_prototype.py "address" "dish"
 │   │   └── Exploration/                        # Edge API exploration: two-pass pipeline, relevance matching, per-store pricing. Full tree contents shortened.
 │   │       └── Exploration.md                  # Complete exploration documentation (all phases + discoveries)
@@ -68,7 +68,7 @@ opencode/
 | `scripts/newworld/NewWorld_prototype.py` | CLI entry point. Contains `NewWorldAPI` class, `DISH_INGREDIENTS` map (21 dishes), geocoding, haversine, store search, price comparison. Uses `banner: "MNW"` and `User-Agent: NewWorldApp/4.32.0`. |
 | `scripts/newworld/fetch_stores.py` | Data builder. Fetches 149 New World stores from mobile API (coordinates, store IDs, banner) and store-finder page (URL slugs). Saves to `data/newworld_stores.csv`. |
 | `scripts/paknsave/PaknSave_prototype.py` | CLI entry point. Contains `PaknSaveAPI` class, `DISH_INGREDIENTS` map (21 dishes), geocoding, haversine, store search, price comparison. |
-| `scripts/paknsave/fetch_stores.py` | Data builder. Scrapes `__NEXT_DATA__` for store GUIDs, store-finder HTML for names/addresses, geocodes via Nominatim. Run once or to refresh. |
+| `scripts/paknsave/paknsave_setup.py` | **Unified store builder pipeline**: fetches stores from store-finder (60 stores) or Edge API (57 stores). Callable module + CLI with `source` param. Replaces fetch_stores.py. |
 | `scripts/paknsave/Exploration/demo_two_pass_pipeline.py` | **Edge API two-pass optimizer**: Full pipeline with relevance matching (products-index), per-store pricing (paginated/products), pet food filtering (category1), promotional prices. |
 | `scripts/paknsave/Exploration/test_two_pass_optimizer.py` | **Edge API two-pass CLI**: CLI wrapper for two-pass optimizer with geocoding, store filtering, 21 dishes, cost comparison. |
 | `scripts/paknsave/Exploration/Exploration.md` | **Edge API exploration documentation**: All phases, discoveries, and breakthroughs for Pak'nSave Edge API two-pass pipeline. |

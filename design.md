@@ -75,6 +75,44 @@ fetch_stores.py
 
 No geocoding required — coordinates are provided directly by the page source.
 
+### Pak'nSave Store Setup Pipeline
+
+```
+paknsave_setup.py (unified)
+  → fetch_stores(source="store_finder"):  # 60 stores
+      GET www.paknsave.co.nz/store-finder → parse __NEXT_DATA__
+      → Extract contentstackStores: url → store_id (GUID) map
+      → Extract store_finder.regionStoreGroupings: title, address, lat/lon per store
+      → Join on url field → DataFrame → data/paknsave_stores.csv
+      → Returns 60 stores (all have coordinates, no cleaning needed)
+  → fetch_stores(source="edge"):         # 57 stores
+      GET website JWT via get-current-user → fs-user-token cookie
+      → GET /v1/edge/store with JWT + Origin headers
+      → Returns 57 stores with coords (3 stores not on Edge API)
+  → clean_stores(cleaned=True):
+      Drops rows without lat/lon (no-op for both sources — all have coords)
+      → Saves paknsave_stores.csv / paknsave_stores.json
+```
+
+CLI:
+```
+python -m scripts.paknsave.paknsave_setup [store_finder|edge]
+```
+
+Module:
+```python
+from scripts.paknsave.paknsave_setup import fetch_stores, run_full_setup
+
+# Store-finder (60 stores)
+run_full_setup(source="store_finder")
+
+# Edge API (default, 57 stores)
+run_full_setup(source="edge")
+
+# Or use fetch_stores directly
+df = fetch_stores(source="edge")
+```
+
 ## Pak'nSave Edge API Architecture (Recommended)
 
 ### How It Works
