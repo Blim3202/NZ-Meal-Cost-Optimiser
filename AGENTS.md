@@ -42,9 +42,7 @@ opencode/
 │   └── woolworths/
 │       ├── woolworths_api.py                   # Cookie-based API module: session, store context, product search
 │       ├── woolworths_optimizer.py             # API-based optimizer: geocode, stores, pricing, cost comparison
-│       ├── Get_woolworths_store_API_data.py    # Fetches store details from CDX API
-│       ├── Get_woolworths_store_choices.py     # Fetches pickup store list from API
-│       ├── Merge_woolworths_stores.py          # Merges store choices and location data
+│       ├── woolworths_setup.py                 # Unified store pipeline: fetch choices, fetch data, merge (dedupes all storeAreas, 188 stores)
 │       ├── Exploration/                        # API exploration scripts (black-box probing). Full tree contents shortened. See Exploration.md for details.
 │       │   └── Exploration.md                  # Breakdown of exploration scripts in this subfolder.
 │       └── Playwright/                         # Playwright-based scripts (legacy, not needed at runtime)
@@ -76,12 +74,10 @@ opencode/
 | `scripts/paknsave/Exploration/Exploration.md` | **Edge API exploration documentation**: All phases, discoveries, and breakthroughs for Pak'nSave Edge API two-pass pipeline. |
 | `scripts/woolworths/woolworths_api.py` | Cookie-based Woolworths API module. `create_session()`, `set_store_context()`, `search_products()`, `find_cheapest()`, `get_nearby_stores()`, `geocode()`. Constructs `cw-lrkswrdjp` cookie from `extra1` in store data — no Playwright needed at runtime. |
 | `scripts/woolworths/woolworths_optimizer.py` | API-based optimizer. Geocodes address, finds nearby stores, searches each ingredient at each store via API with per-store pricing, compares totals. 21 dishes supported. |
+| `scripts/woolworths/woolworths_setup.py` | **Unified store pipeline**: fetches pickup locations (188 stores via all storeAreas), fetches store location data (183 stores from CDX API), merges on common ID. Outputs `woolworths_stores.csv` (177 stores with coordinates). Replaces legacy scripts. |
 | `scripts/woolworths/woolworths_scrape.py` | Playwright headed scraper for search results (name, unit cost, actual price). Legacy — replaced by API-based approach. |
 | `scripts/woolworths/ChangeStore.py` | Playwright store selection via modal URL. Reference implementation for browser-based store switching. |
 | `scripts/woolworths/explore_woolworths_api_part{1-4}.py` | API exploration scripts. Phase 1: endpoint enumeration. Phase 2: cookie injection. Phase 3: cw-lrkswrdjp deep-dive. Phase 4: programmatic construction. |
-| `scripts/woolworths/Get_woolworths_store_API_data.py` | Fetches Woolworths store location data from CDX API (`api.cdx.nz`). |
-| `scripts/woolworths/Get_woolworths_store_choices.py` | Fetches Woolworths store dropdown choices from `pickup-addresses` API. |
-| `scripts/woolworths/Merge_woolworths_stores.py` | Joins Woolworths choices and data via common ID. |
 | `notebooks/PaknSave_meal_cost_optimizer.ipynb` | Pak'nSave prototype. |
 | `notebooks/Woolworths_meal_cost_optimizer.ipynb` | Woolworths pipeline, utilizes `woolworths_optimizer.py`. |
 | `data/woolworths_store_data.json` | Store details with `extra1` (=fulfilmentStoreId) and `extra2` (=pickupAddressId). Key data source for cookie construction. |

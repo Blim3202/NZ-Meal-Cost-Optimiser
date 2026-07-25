@@ -481,6 +481,25 @@ for store in stores:
 - **Search returns relevance, not cheapest**: Take first result for practical matches
 - **21 hand-curated dishes**: No NLP/LLM parsing yet
 
+### Woolworths Store Setup Pipeline
+
+```
+woolworths_setup.py (unified)
+  → fetch_store_choices():
+      GET /api/v1/addresses/pickup-addresses
+      → Iterate ALL 19 storeAreas, dedupe by id
+      → Returns 188 unique pickup locations (includes stores only in regional areas, e.g. Chartwell)
+      → Saves woolworths_store_choices.csv/json
+  → fetch_store_data():
+      GET https://api.cdx.nz/site-location/api/v1/sites
+      → 183 stores with lat/lon, extra1 (fulfilmentStoreId), extra2 (pickupAddressId)
+      → Saves woolworths_store_data.csv/json
+  → merge_stores(cleaned=True):
+      Left join choices.id = data.SiteDataID
+      → 188 merged stores (177 with lat/lon, 11 dropped)
+      → Saves woolworths_stores.csv
+```
+
 ## Notebook Usage
 
 | Cells | What to do |

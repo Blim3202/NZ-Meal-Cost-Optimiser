@@ -1270,7 +1270,74 @@ Strategy:
 
 ---
 
-## 14. Files and Data Sources
+## 14. Woolworths Store Setup Process (Unified Pipeline)
+
+### 14.1 The Problem: Incomplete Pickup Store Coverage
+
+The `GET /api/v1/addresses/pickup-addresses` endpoint returns 19 `storeAreas`. 
+Area `id=494` ("All Pick up locations") contains only **171 stores**. 
+Regional areas (e.g., area 302 "Waikato") contain additional pickup points that are **NOT** in area 494.
+
+**Missing stores** from area 494 include:
+- Woolworths Chartwell (area 302, Waikato)
+- Remote collection points: Paparoa Hall, Ruawai, Whangamomona Hall, Makahu Hall, EXPRESS PU Spotswood, etc. (17 total)
+
+### 14.2 Solution: Unified Pipeline (`woolworths_setup.py`)
+
+A single module `scripts/woolworths/woolworths_setup.py` with three callable functions + `run_full_setup()`:
+
+```python
+from scripts.woolworths.woolworths_setup import (
+    fetch_store_choices,    # Step 1: 188 unique pickup locations
+    fetch_store_data,       # Step 2: 183 stores with lat/lon + extra IDs
+    merge_stores,           # Step 3: 188 merged, 177 with coords (cleaned=True)
+    run_full_setup          # Runs all three
+)
+```
+
+### 14.3 Pipeline Details
+
+**Step 1: `fetch_store_choices()`**
+- Fetches `GET /api/v1/addresses/pickup-addresses`
+- Iterates ALL 19 `storeAreas` (not just area 494)
+- Dedupes by `id` (first occurrence wins)
+- Output: `data/woolworths_store_choices.csv` (188 rows: id, name, address)
+
+**Step 2: `fetch_store_data()`**
+- Fetches `GET https://api.cdx.nz/site-location/api/v1/sites`
+- Extracts: name, suburb, address, postcode, state, `extra1` (fulfilmentStoreId), `extra2` (pickupAddressId), lat, lon, facilities
+- Output: `data/woolworths_store_data.csv` (183 rows)
+
+**Step 3: `merge_stores(cleaned=True)`**
+- Left join: `choices.id` = `data.SiteDataID` (which is `extra2` = pickupAddressId)
+- Adds `latitude`, `longitude` to each pickup location
+- `cleaned=True` (default): drops rows where lat/lon are NaN → **177 stores**
+- `cleaned=False`: keeps all 188 rows (11 without coordinates)
+- Output: `data/woolworths_stores.csv`
+
+### 14.4 Key Files
+
+| File | Rows | Description |
+|------|------|-------------|
+| `data/woolworths_store_choices.csv` | 188 | All pickup locations (deduped across 19 areas) |
+| `data/woolworths_store_data.csv` | 183 | CDX store data with lat/lon + extra1/extra2 |
+| `data/woolworths_stores.csv` | 177 | Merged + cleaned (default) — used by optimizer |
+
+### 14.5 CLI Usage
+
+```powershell
+# Full pipeline
+python scripts/woolworths/woolworths_setup.py
+
+# Individual steps
+python -c "from scripts.woolworths.woolworths_setup import fetch_store_choices; fetch_store_choices()"
+python -c "from scripts.woolworths.woolworths_setup import fetch_store_data; fetch_store_data()"
+python -c "from scripts.woolworths.woolworths_setup import merge_stores; merge_stores(cleaned=False)"  # keep all
+```
+
+---
+
+## 15. Files and Data Sources
 
 | File | Purpose |
 |------|---------|
@@ -1280,16 +1347,14 @@ Strategy:
 | AGENTS.md | Project overview and file structure |
 | scripts/woolworths/woolworths_api.py | Cookie-based API module: session creation, store context injection, product search, nearby stores |
 | scripts/woolworths/woolworths_optimizer.py | API-based optimizer: geocode, nearby stores, per-store pricing, cost comparison |
-| scripts/woolworths/explore_woolworths_api_part1.py | Phase 1: black-box API probing, endpoint enumeration, dasFilter taxonomy |
-| scripts/woolworths/explore_woolworths_api_part2.py | Phase 2: URL-param seeding test, Playwright cookie capture/injection, cookie diff |
-| scripts/woolworths/explore_woolworths_api_part3.py | Phase 3: shell validation, cw-lrkswrdjp deep-dive (cookie-only injection, minimal cookie) |
-| scripts/woolworths/explore_woolworths_api_part4.py | Phase 4: programmatic cookie construction, mapping capture, price validation |
-| scripts/woolworths/Get_woolworths_store_choices.py | Fetches pickup store list from API |
-| scripts/woolworths/Get_woolworths_store_API_data.py | Fetches store details (extra1/extra2) from CDX API |
-| scripts/woolworths/Merge_woolworths_stores.py | Merges store choices and location data |
-| scripts/woolworths/ChangeStore.py | Playwright store selection via modal (reference implementation) |
+| scripts/woolworths/woolworths_setup.py | Unified store pipeline: fetch choices (all 19 areas, 188 stores), fetch data (CDX API, 183 stores), merge (177 cleaned) |
+| scripts/woolworths/exploration/explore_woolworths_api_part1.py | Phase 1: black-box API probing, endpoint enumeration, dasFilter taxonomy |
+| scripts/woolworths/exploration/explore_woolworths_api_part2.py | Phase 2: URL-param seeding test, Playwright cookie capture/injection, cookie diff |
+| scripts/woolworths/exploration/explore_woolworths_api_part3.py | Phase 3: shell validation, cw-lrkswrdjp deep-dive (cookie-only injection, minimal cookie) |
+| scripts/woolworths/exploration/explore_woolworths_api_part4.py | Phase 4: programmatic cookie construction, mapping capture, price validation |
+| scripts/woolworths/Playwright/ChangeStore.py | Playwright store selection via modal (reference implementation) |
 | data/woolworths_store_data.json | Store details with extra1 (fulfilmentStoreId) and extra2 (pickupAddressId) |
 | data/woolworths_store_choices.csv | Store IDs and names from pickup-addresses API |
 | data/woolworths_stores.csv | Store locations with lat/lon |
 | data/store_id_mapping.json | Playwright-captured fulfilmentStoreId/areaId mapping (3 stores) |
-| data/part2_cookies.json | Playwright-captured full cookie jars (Greymouth, Glenfield, baseline) |
+| data/Exploration/part2_cookies.json | Playwright-captured full cookie jars (Greymouth, Glenfield, baseline) |

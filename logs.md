@@ -420,4 +420,23 @@ All other indices (`price-asc`, `price-desc`, `relevance`, `name-asc`, `name-des
 
 **Resolution**: Use Edge API store listing as primary source (57 stores). Mobile API can be used as fallback if more stores are needed.
 
-(End of file)
+---
+
+## 35. Woolworths Store Setup — Unified Pipeline & Full Pickup Coverage
+
+**Symptom**: The `Get_woolworths_store_choices.py` script only fetched stores from area ID 494 ("All Pick up locations"), which contained only ~171 stores. Stores like **Woolworths Chartwell** only appeared in their regional area (area 302, Waikato) and were missing from the merged store list.
+
+**Discovery**: The pickup-addresses API returns 19 `storeAreas` — area 494 ("All Pick up locations") is NOT comprehensive. Regional areas contain additional pickup points (17 stores total missing from area 494, including Chartwell, remote collection points like Paparoa Hall, Ruawai, Whangamomona Hall, etc.).
+
+**Resolution**: Created `scripts/woolworths/woolworths_setup.py` — a unified pipeline that:
+1. `fetch_store_choices()`: Iterates ALL 19 storeAreas, dedupes by `id` → 188 unique pickup locations
+2. `fetch_store_data()`: Fetches 183 stores from CDX API with lat/lon + `extra1` (fulfilmentStoreId) / `extra2` (pickupAddressId)
+3. `merge_stores(cleaned=True)`: Left-joins on `id` = `SiteDataID`, optionally drops rows without coordinates (default True)
+
+Output: `woolworths_stores.csv` with 177 stores having coordinates (11 dropped).
+
+`woolworths_setup.py` is now the single entry point.
+
+**Key files**: `scripts/woolworths/woolworths_setup.py` (functions + `__main__`), `data/woolworths_store_choices.json` (19 areas), `data/woolworths_stores.csv` (177 cleaned stores).
+
+---
