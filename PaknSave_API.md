@@ -1072,7 +1072,6 @@ paknsave_setup.py
       Drop rows where latitude/longitude are NaN (no-op — all stores have coords)
   → DataFrame → data/paknsave_stores.csv / .json
 ```
-
 ### 9.4 Output Files
 
 | File | Rows | Description |
@@ -1084,159 +1083,85 @@ paknsave_setup.py
 
 ## 10. Production Architecture
 
-### 10.1 How to Search Products by Store
+### 10.1 Pak'nSave Unified API Module (`paknsave_api.py`)
+
+A unified, callable API client supporting **two backends**:
+
+| Backend | Auth | Pipeline | Use Case |
+|---------|------|----------|----------|
+| **Edge API** (default) | Website JWT (`fs-user-token`) | Two-pass (relevance + per-store pricing) | Production — explicit relevance, pet food filtering, PRICE_ASC sort |
+| **Mobile API** (fallback) | Guest token (30 min) | Single-pass (relevance only) | Fallback — simpler, no per-store price sort |
 
 ```python
-import cloudscraper
-import math
-import os
+from scripts.paknsave.paknsave_api import (
+    PaknSaveAPI,
+    PaknSaveEdgeAPI,
+    PaknSaveMobileAPI,
+    load_stores,
+    geocode,
+    find_nearby_stores,
+    get_ingredients,
+    haversine,
+)
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..', 'data'))
+# Default: Edge API (two-pass)
+api = PaknSaveAPI(backend="edge")
+api.client.authenticate()  # website JWT
 
-BASE = "https://api-prod.prod.fsniwaikato.kiwi/prod"
+# Fallback: Mobile API (single-pass)
+api = PaknSaveAPI(backend="mobile")
 
-class PaknSaveAPI:
-    def __init__(self):
-        self.scraper = cloudscraper.create_scraper()
-        self._token = None
+# Search ingredient at store
+products = api.search_ingredient(store_id, "beef mince")
 
-    def _ensure_token(self):
-        if self._token:
-            return
-        r = self.scraper.post(
-            f"{BASE}/mobile/user/login/guest",
-            json={"banner": "PNS"},
-            headers={"User-Agent": "PAKnSAVEApp/4.32.0", "Content-Type": "application/json"},
-        )
-        r.raise_for_status()
-        self._token = r.json()["access_token"]
-        self._auth = {
-            "Authorization": f"Bearer {self._token}",
-            "access_token": self._token,
-            "User-Agent": "PAKnSAVEApp/4.32.0",
-            "Content-Type": "application/json",
-        }
+# Low-level Edge API (two-pass manually)
+edge = PaknSaveEdgeAPI()
+edge.authenticate()
+product_ids = edge.pass1_relevance_search(store_id, "beef mince")
+products = edge.pass2_per_store_pricing(store_id, "beef mince", product_ids)
 
-    def search_products(self, store_id: str, query: str):
-        self._ensure_token()
-        r = self.scraper.post(
-            f"{BASE}/mobile/ecomm-products/PNS/{store_id}/search?q={query}",
-            headers=self._auth, json=[],
-        )
-        if r.status_code == 200:
-            return r.json()
-        return None
-
-    def get_stores(self):
-        self._ensure_token()
-        r = self.scraper.get(f"{BASE}/mobile/store/physical", headers=self._auth)
-        if r.status_code == 200:
-            return {s["id"]: s for s in r.json()["stores"]}
-        return {}
+# Utility functions
+stores = load_stores()                    # from data/paknsave_stores.csv
+lat, lon = geocode("Botany, Auckland")
+nearby = find_nearby_stores(lat, lon, 5)  # within 5km
+ingredients = get_ingredients("spaghetti bolognese")
 ```
 
-### 10.2 How to Find Nearby Stores and Compare Prices
+**Core Classes:**
+- `PaknSaveAPI` — Unified interface, selects backend
+- `PaknSaveEdgeAPI` — Full two-pass pipeline with pet food filtering
+- `PaknSaveMobileAPI` — Legacy single-pass mobile API
 
-```python
-import pandas as pd
-import requests
+### 10.2 Optimizers
 
-# Load store data
-stores_csv = pd.read_csv(os.path.join(DATA_DIR, "paknsave_stores.csv"))
+#### 10.2.1 Edge API Optimizer (`paknsave_optimizer_edge.py`)
 
-# Geocode user address via Nominatim
-def geocode(address):
-    r = requests.get(
-        "https://nominatim.openstreetmap.org/search",
-        headers={"User-Agent": "NZMealCostOptimizer/1.0"},
-        params={"q": address, "format": "json", "limit": 1},
-    )
-    if r.status_code == 200 and r.json():
-        loc = r.json()[0]
-        return float(loc["lat"]), float(loc["lon"])
-    return None, None
-
-# Haversine distance
-def haversine(lat1, lon1, lat2, lon2):
-    R = 6371
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = (math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1))
-         * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2)
-    return R * 2 * math.asin(math.sqrt(a))
-
-# Filter stores within radius
-def find_nearby(user_lat, user_lon, radius_km=5):
-    df = stores_csv.copy()
-    df["distance_km"] = df.apply(
-        lambda r: haversine(user_lat, user_lon, r["latitude"], r["longitude"]),
-        axis=1,
-    )
-    return df[df["distance_km"] <= radius_km].sort_values("distance_km")
-
-# Search a single ingredient
-def search_ingredient(api, store_id, ingredient):
-    results = api.search_products(store_id, ingredient)
-    if not results:
-        return None
-    products = results.get("products", [])
-    if not products:
-        return None
-    p = products[0]
-    price_cents = p.get("price")
-    if price_cents is None or price_cents <= 0:
-        return None
-    return {
-        "name": p["name"],
-        "brand": p.get("brand", ""),
-        "price": price_cents / 100,
-        "units": p.get("units", ""),
-    }
-
-# Full pipeline
-api = PaknSaveAPI()
-user_lat, user_lon = geocode("123 Queen Street, Auckland CBD, 1010")
-nearby = find_nearby(user_lat, user_lon, radius_km=5)
-
-for _, store in nearby.iterrows():
-    store_id = store["store_id"]
-    store_name = store["name"]
-    total = 0.0
-    print(f"--- {store_name} ---")
-    for ingredient in ["beef mince", "spaghetti pasta", "canned tomatoes"]:
-        result = search_ingredient(api, store_id, ingredient)
-        if result:
-            print(f"  {ingredient:25s} ${result['price']:.2f}  {result['name']}")
-            total += result["price"]
-        else:
-            print(f"  {ingredient:25s}  NOT FOUND")
-    print(f"  {'TOTAL':25s} ${total:.2f}\n")
+```bash
+python scripts/paknsave/paknsave_optimizer_edge.py "Botany Town Centre, Auckland" "spaghetti bolognese"
 ```
 
-### 10.3 Ingredient Search Strategy
+**Pipeline:**
+1. Geocode address → lat/lon
+2. Load stores from `paknsave_stores.csv` → filter by haversine distance (5km)
+3. Authenticate with Edge API (website JWT)
+4. For each nearby store, two-pass search per ingredient:
+   - PASS 1: Relevance via `products-index` + `_highlightResult.matchedWords`
+   - PASS 2: Per-store pricing via `paginated/products` + Algolia filters + `PRICE_ASC`
+   - Pet food filtering via `category1` exclusion (`Dog`, `Cat`, `Pet`)
+5. Pick cheapest by **unit price** (falls back to absolute price)
+6. Output: cost comparison table + itemized breakdown → saves to `data/paknsave_latest_results.csv`
 
-The optimizer takes the **first (most relevant)** result per query. This avoids
-irrelevant bulk items that might appear at lower prices (e.g., pet food for
-"beef mince"). 21 dishes are hand-curated in `DISH_INGREDIENTS` — no NLP/LLM
-parsing.
+#### 10.2.2 Mobile API Optimizer (`paknsave_optimizer_mobile.py`)
 
-### 10.4 Architecture Diagram
-
+```bash
+python scripts/paknsave/paknsave_optimizer_mobile.py "Botany Town Centre, Auckland" "spaghetti bolognese"
 ```
-paknsave_stores.csv  (60 stores with UUID, name, lat, lon)
-  |
-  +---> haversine filter (user address → lat/lon → nearby stores within 5 km)
-  |
-  v
-FOR EACH nearby store:
-  1. PaknSaveAPI().search_products(store_id, ingredient)
-  2. products[0]["price"] / 100  →  price in dollars
-  3. Sum across all ingredients
-  |
-  v
-Compare totals → cheapest store
-```
+
+**Pipeline:** Same as Edge but uses Mobile API (single-pass, guest token). No per-store price sort — returns first (most relevant) result. Same unit-price selection logic.
+
+### 10.3 Legacy Prototype (Deprecated)
+
+The original `scripts/paknsave/PaknSave_prototype.py` used the Mobile API directly. Replaced by the unified modules above.
 
 ---
 
@@ -1456,9 +1381,11 @@ python -c "from scripts.paknsave.paknsave_setup import clean_stores; clean_store
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/paknsave/PaknSave_prototype.py` | CLI entry point: geocode, nearby stores, per-store search, cost comparison (Mobile API) |
+| `scripts/paknsave/paknsave_api.py` | **Unified API module**: Edge API (two-pass) + Mobile API (single-pass) with shared utilities |
+| `scripts/paknsave/paknsave_optimizer_edge.py` | **Edge API optimizer**: CLI with geocoding, 5km radius, two-pass search, unit-price selection |
+| `scripts/paknsave/paknsave_optimizer_mobile.py` | **Mobile API optimizer**: CLI with geocoding, 5km radius, single-pass search, unit-price selection |
 | `scripts/paknsave/paknsave_setup.py` | **Unified store pipeline**: fetch stores from store-finder or Edge API, clean/validate, save CSV/JSON |
-| `scripts/paknsave/Exploration/test_two_pass_optimizer.py` | **Edge API two-pass optimizer**: CLI with geocoding, store filtering, 21 dishes, pet food filtering |
+| `scripts/paknsave/Exploration/test_two_pass_optimizer.py` | **Edge API two-pass optimizer (legacy)**: CLI with geocoding, store filtering, 21 dishes, pet food filtering |
 | `scripts/paknsave/Exploration/demo_two_pass_pipeline.py` | **Edge API two-pass demo**: Detailed Pass 1/2 internals, full pipeline walkthrough |
 | `scripts/paknsave/Exploration/Exploration.md` | **Edge API exploration documentation**: All phases, discoveries, and breakthroughs |
 | `notebooks/PaknSave_meal_cost_optimizer.ipynb` | Jupyter notebook: 8 cells with step-by-step optimizer |
@@ -1472,17 +1399,16 @@ python -c "from scripts.paknsave.paknsave_setup import clean_stores; clean_store
 | `PaknSave_API.md` | This document |
 | `AGENTS.md` | Project overview, file structure, key gotchas |
 | `design.md` | Technical design (API, auth, pipeline for both chains) |
-| `data/paknsave_stores.csv` | 60 / 57 stores: store_id (UUID), name, address, city, region, lat, lon |
-| `data/latest_results.csv` | Last optimizer output |
-| `scripts/paknsave/PaknSave_prototype.py` | CLI optimizer with `PaknSaveAPI` class, `DISH_INGREDIENTS`, geocoding, haversine (Mobile API) |
+| `data/paknsave_stores.csv` | 57 / 60 stores: store_id (UUID), name, address, city, region, lat, lon |
+| `data/paknsave_latest_results.csv` | Last Edge optimizer output |
+| `data/paknsave_mobile_latest_results.csv` | Last Mobile optimizer output |
+| `scripts/paknsave/paknsave_api.py` | **Unified API module**: Edge API (two-pass) + Mobile API (single-pass) |
+| `scripts/paknsave/paknsave_optimizer_edge.py` | **Edge API optimizer**: geocode → nearby stores → two-pass search → cost comparison |
+| `scripts/paknsave/paknsave_optimizer_mobile.py` | **Mobile API optimizer**: geocode → nearby stores → single-pass search → cost comparison |
 | `scripts/paknsave/paknsave_setup.py` | **Unified store pipeline**: fetch stores, clean/validate, save CSV/JSON |
 | `scripts/paknsave/Exploration/demo_two_pass_pipeline.py` | **Edge API two-pass optimizer** — full pipeline with relevance matching + per-store pricing |
 | `scripts/paknsave/Exploration/test_two_pass_optimizer.py` | **Edge API two-pass CLI** — CLI wrapper for two-pass optimizer |
 | `scripts/paknsave/Exploration/Exploration.md` | **Edge API exploration documentation** — all phases and discoveries |
-| F12 Network inspection | Phase 1: Website JWT capture |
-| F12 Network inspection | Phase 1: Store listing response |
-| `scripts/paknsave/Exploration/products-index-popularity-asc` | Phase 2: Index enumeration results |
-| `scripts/paknsave/Exploration/products` | Phase 2: Full products-index response |
 | `notebooks/PaknSave_meal_cost_optimizer.ipynb` | Jupyter notebook with full Pak'nSave optimizer (8 cells) |
 
 ---

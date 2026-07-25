@@ -1,0 +1,22 @@
+store,store_id,distance_km,ingredient,product_name,product_size,price,unit_price,is_promo
+Botany,60561e46-ece7-43a7-b142-9b14812586e4,0.21,beef mince,Craft Angus Beef Burgers,,11.99,4pk,False
+Botany,60561e46-ece7-43a7-b142-9b14812586e4,0.21,spaghetti pasta,Organic Gluten Free Quinoa Spaghetti,,5.69,250g,False
+Botany,60561e46-ece7-43a7-b142-9b14812586e4,0.21,canned tomatoes,Tasty Tomato Cup a Soup,,1.99,2 x 27g,False
+Botany,60561e46-ece7-43a7-b142-9b14812586e4,0.21,onion,Red Onions,,4.29,1kg,False
+Botany,60561e46-ece7-43a7-b142-9b14812586e4,0.21,carrot,Organic Carrots,,7.99,1kg,False
+Botany,60561e46-ece7-43a7-b142-9b14812586e4,0.21,garlic,Crushed Garlic,,10.99,1kg,False
+Botany,60561e46-ece7-43a7-b142-9b14812586e4,0.21,mixed herbs,Naturals Eco Mixed Herbs,,1.99,10g,False
+Ormiston,5f167936-79ae-4f6a-b9d2-74afe1bb096b,3.74,beef mince,Craft Angus Beef Burgers,,11.99,4pk,False
+Ormiston,5f167936-79ae-4f6a-b9d2-74afe1bb096b,3.74,spaghetti pasta,Organic Gluten Free Quinoa Spaghetti,,5.69,250g,False
+Ormiston,5f167936-79ae-4f6a-b9d2-74afe1bb096b,3.74,canned tomatoes,Tasty Tomato Cup a Soup,,1.99,2 x 27g,False
+Ormiston,5f167936-79ae-4f6a-b9d2-74afe1bb096b,3.74,onion,Red Onions,,4.49,1kg,False
+Ormiston,5f167936-79ae-4f6a-b9d2-74afe1bb096b,3.74,carrot,Radish,,3.99,1pk,False
+Ormiston,5f167936-79ae-4f6a-b9d2-74afe1bb096b,3.74,garlic,Crushed Garlic,,9.99,1kg,False
+Ormiston,5f167936-79ae-4f6a-b9d2-74afe1bb096b,3.74,mixed herbs,Naturals Eco Mixed Herbs,,1.99,10g,False
+Highland Park,2a1b331a-fc4a-496a-b072-e97cc8f70cae,3.83,beef mince,Beef Mince,,23.49,1kg,False
+Highland Park,2a1b331a-fc4a-496a-b072-e97cc8f70cae,3.83,spaghetti pasta,Organic Gluten Free Quinoa Spaghetti,,5.69,250g,False
+Highland Park,2a1b331a-fc4a-496a-b072-e97cc8f70cae,3.83,canned tomatoes,Sensations Vine Ripened Tomato & Ricotta With Basil Soup,,1.99,2 x 27g,False
+Highland Park,2a1b331a-fc4a-496a-b072-e97cc8f70cae,3.83,onion,Red Onions,,4.29,1kg,False
+Highland Park,2a1b331a-fc4a-496a-b072-e97cc8f70cae,3.83,carrot,Organic Carrots,,6.49,1kg,False
+Highland Park,2a1b331a-fc4a-496a-b072-e97cc8f70cae,3.83,garlic,Crushed Garlic,,11.75,1kg,False
+Highland Park,2a1b331a-fc4a-496a-b072-e97cc8f70cae,3.83,mixed herbs,Naturals Eco Mixed Herbs,,1.99,10g,False

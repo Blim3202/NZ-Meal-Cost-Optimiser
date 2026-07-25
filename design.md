@@ -7,11 +7,69 @@ User input (address + dish)
   → Geocode address to lat/lon
   → Haversine filter (stores within 5 km)
   → Dish name → ingredient list (DISH_INGREDIENTS map)
-  → Foodstuffs mobile API: search each ingredient at each nearby store
+  → Foodstuffs Edge API (default): two-pass search per ingredient at each nearby store
+    → PASS 1: Relevance via Algolia products-index (matchedWords + pet food filtering)
+    → PASS 2: Per-store pricing via paginated/products (Algolia filters + PRICE_ASC)
+  → (Fallback: Mobile API single-pass)
   → Aggregate prices, compare totals, display cheapest
 ```
 
-## Foodstuffs Mobile API
+## Pak'nSave API Modules
+
+### 1. `paknsave_api.py` — Unified API Client
+
+Supports two backends:
+
+| Backend | Class | Auth | Pipeline |
+|---------|-------|------|----------|
+| **Edge API** (default) | `PaknSaveEdgeAPI` | Website JWT (`fs-user-token`) | Two-pass: relevance + per-store pricing |
+| **Mobile API** (fallback) | `PaknSaveMobileAPI` | Guest token (30 min) | Single-pass |
+
+Unified interface via `PaknSaveAPI(backend="edge"|"mobile")`.
+
+**Core methods:**
+- `api.search_ingredient(store_id, ingredient)` — returns enriched product list
+- `api.get_stores()` — returns store list
+- `PknSaveEdgeAPI.pass1_relevance_search()` — PASS 1: productIDs with matchedWords
+- `PknSaveEdgeAPI.pass2_per_store_pricing()` — PASS 2: per-store prices sorted PRICE_ASC
+- `PknSaveEdgeAPI.extract_price()` — price in dollars (promo if available)
+- `PknSaveEdgeAPI.extract_unit_price()` — unit price string (e.g., "$19.99/kg")
+
+**Shared utilities:**
+- `geocode(address)` — Nominatim (rate limited)
+- `haversine(lat1, lon1, lat2, lon2)` — distance in km
+- `load_stores()` — from `data/paknsave_stores.csv`
+- `find_nearby_stores(lat, lon, radius_km=5)` — filtered & sorted
+- `get_ingredients(dish_name)` — 21-dish ingredient map
+
+### 2. `paknsave_optimizer_edge.py` — Edge API Optimizer (Production)
+
+```bash
+python scripts/paknsave/paknsave_optimizer_edge.py "Botany Town Centre, Auckland" "spaghetti bolognese"
+```
+
+**Pipeline:**
+1. Geocode address → lat/lon
+2. Load stores from CSV → haversine filter (5km)
+3. Authenticate Edge API (website JWT)
+4. For each nearby store:
+   - For each ingredient:
+     - PASS 1: `products-index` relevance search → filter pet food (`category1`)
+     - PASS 2: `paginated/products` with Algolia filters + `PRICE_ASC`
+   - Pick cheapest by **unit price** (fallback: absolute price)
+5. Output: cost comparison + itemized breakdown → `data/paknsave_latest_results.csv`
+
+### 3. `paknsave_optimizer_mobile.py` — Mobile API Optimizer (Fallback)
+
+```bash
+python scripts/paknsave/paknsave_optimizer_mobile.py "Botany Town Centre, Auckland" "spaghetti bolognese"
+```
+
+Same structure but uses Mobile API (single-pass, guest token). No per-store price sort — returns first result. Same unit-price selection logic.
+
+---
+
+## Foodstuffs Mobile API (Legacy / Fallback)
 
 Base URL: `https://api-prod.prod.fsniwaikato.kiwi/prod`
 
@@ -61,21 +119,11 @@ Base URL: `https://api-prod.prod.fsniwaikato.kiwi/prod`
 
 1. **Mobile API** (`/mobile/store/physical`): 60 stores, precise coords, accurate names. Returns `{"stores": [...]}`.
 2. **CSV fallback** (`data/paknsave_stores.csv`): pre-built from `/store-finder` page's `__NEXT_DATA__`. Same `store_id` UUIDs as API.
-3. **Build process** (`scripts/paknsave/fetch_stores.py`): single fetch of `/store-finder` extracts `contentstackStores` (GUIDs) and `store_finder.regionStoreGroupings` (names, addresses, coordinates) — joined on the shared `url` field.
+3. **Build process** (`scripts/paknsave/paknsave_setup.py`): unified callable module with two sources:
+   - `fetch_stores(source="store_finder")`: extracts `contentstackStores` (GUIDs) and `store_finder.regionStoreGroupings` (names, addresses, coordinates) — joined on the shared `url` field → 60 stores.
+   - `fetch_stores(source="edge")`: GET website JWT → `fs-user-token` cookie → GET `/v1/edge/store` → 57 stores with coords (3 stores not on Edge API).
 
 ## Store Building Pipeline
-
-```
-fetch_stores.py
-  → GET /store-finder → parse __NEXT_DATA__
-  → Extract contentstackStores: url → store_id (GUID) map
-  → Extract store_finder.regionStoreGroupings: title, address, lat/lon per store
-  → Join on url field → DataFrame → data/paknsave_stores.csv
-```
-
-No geocoding required — coordinates are provided directly by the page source.
-
-### Pak'nSave Store Setup Pipeline
 
 ```
 paknsave_setup.py (unified)
@@ -112,6 +160,84 @@ run_full_setup(source="edge")
 # Or use fetch_stores directly
 df = fetch_stores(source="edge")
 ```
+
+### Pak'nSave Unified API Module (`paknsave_api.py`)
+
+A unified, callable API client supporting two backends:
+
+| Backend | Auth | Pipeline | Use Case |
+|---------|------|----------|----------|
+| **Edge API** (default) | Website JWT (`fs-user-token`) | Two-pass (relevance + per-store pricing) | Production — explicit relevance, pet food filtering, PRICE_ASC sort |
+| **Mobile API** (fallback) | Guest token (30 min) | Single-pass (relevance only) | Fallback — simpler, no per-store price sort |
+
+```python
+from scripts.paknsave.paknsave_api import (
+    PaknSaveAPI,
+    PaknSaveEdgeAPI,
+    PaknSaveMobileAPI,
+    load_stores,
+    geocode,
+    find_nearby_stores,
+    get_ingredients,
+    haversine,
+)
+
+# Default: Edge API (two-pass)
+api = PaknSaveAPI(backend="edge")
+api.client.authenticate()  # website JWT
+
+# Fallback: Mobile API (single-pass)
+api = PaknSaveAPI(backend="mobile")
+
+# Search ingredient at store
+products = api.search_ingredient(store_id, "beef mince")
+
+# Low-level Edge API (two-pass manually)
+edge = PaknSaveEdgeAPI()
+edge.authenticate()
+product_ids = edge.pass1_relevance_search(store_id, "beef mince")
+products = edge.pass2_per_store_pricing(store_id, "beef mince", product_ids)
+
+# Utility functions
+stores = load_stores()                    # from data/paknsave_stores.csv
+lat, lon = geocode("Botany, Auckland")
+nearby = find_nearby_stores(lat, lon, 5)  # within 5km
+ingredients = get_ingredients("spaghetti bolognese")
+```
+
+**Core Classes:**
+- `PaknSaveAPI` — Unified interface, selects backend
+- `PaknSaveEdgeAPI` — Full two-pass pipeline with pet food filtering
+- `PaknSaveMobileAPI` — Legacy single-pass mobile API
+
+### Pak'nSave Optimizers
+
+#### Edge API Optimizer (`paknsave_optimizer_edge.py`)
+
+```bash
+python scripts/paknsave/paknsave_optimizer_edge.py "Botany Town Centre, Auckland" "spaghetti bolognese"
+```
+
+**Pipeline:**
+1. Geocode address → lat/lon
+2. Load stores from `paknsave_stores.csv` → filter by haversine distance (5km)
+3. Authenticate with Edge API (website JWT)
+4. For each nearby store, two-pass search per ingredient:
+   - PASS 1: Relevance via `products-index` + `_highlightResult.matchedWords`
+   - PASS 2: Per-store pricing via `paginated/products` + Algolia filters + `PRICE_ASC`
+   - Pet food filtering via `category1` exclusion (`Dog`, `Cat`, `Pet`)
+5. Pick cheapest by **unit price** (falls back to absolute price)
+6. Output: cost comparison table + itemized breakdown → saves `data/paknsave_latest_results.csv`
+
+#### Mobile API Optimizer (`paknsave_optimizer_mobile.py`)
+
+```bash
+python scripts/paknsave/paknsave_optimizer_mobile.py "Botany Town Centre, Auckland" "spaghetti bolognese"
+```
+
+**Pipeline:** Same as Edge but uses Mobile API (single-pass, guest token). No per-store price sort — returns first (most relevant) result. Same unit-price selection logic. Saves `data/paknsave_mobile_latest_results.csv`.
+
+---
 
 ## Pak'nSave Edge API Architecture (Recommended)
 
@@ -437,15 +563,27 @@ def newworld_two_pass_search(token, store_id, query, max_relevance=20):
 | tomato pasta | pasta, canned tomatoes, garlic, olive oil, mixed herbs, cheese |
 | chicken katsu | chicken breast, flour, eggs, bread, rice, katsu sauce |
 
-To add a dish: edit `DISH_INGREDIENTS` in `scripts/prototype.py` (or notebook cell 4).
+To add a dish: edit `DISH_INGREDIENTS` in `scripts/paknsave/paknsave_api.py` (or notebook cell 4).
 
 ## CLI Usage
 
+**Edge API Optimizer (Production — two-pass, relevance + price sort):**
 ```powershell
-python scripts/paknsave/PaknSave_prototype.py "Botany Town Centre, Auckland" "spaghetti bolognese"
+python scripts/paknsave/paknsave_optimizer_edge.py "Botany Town Centre, Auckland" "spaghetti bolognese"
 ```
 
-Args: `[address] [dish name]`. Defaults to "123 Queen Street, Auckland CBD" and "spaghetti bolognese".
+**Mobile API Optimizer (Fallback — single-pass):**
+```powershell
+python scripts/paknsave/paknsave_optimizer_mobile.py "Botany Town Centre, Auckland" "spaghetti bolognese"
+```
+
+Args: `[address] [dish name]`. Defaults to "Botany Town Centre, Auckland" and "spaghetti bolognese".
+
+**Store Setup Pipeline:**
+```powershell
+python -m scripts.paknsave.paknsave_setup              # Edge API (default, 57 stores)
+python -m scripts.paknsave.paknsave_setup store_finder  # Store-finder page (60 stores)
+```
 
 ## Woolworths API Architecture
 

@@ -457,3 +457,36 @@ Output: `data/paknsave_stores.csv` (60 stores from store_finder, 57 from edge, a
 **Key files**: `scripts/paknsave/paknsave_setup.py`, `data/paknsave_stores.csv`, `data/paknsave_stores.json`.
 
 ---
+
+## 37. Pak'nSave Edge API — Unified API Module & Optimizers
+
+**Symptom**: The two-pass pipeline worked in exploration scripts (`demo_two_pass_pipeline.py`, `test_two_pass_optimizer.py`) but wasn't packaged as reusable modules. The legacy `PaknSave_prototype.py` used the Mobile API directly without the two-pass relevance matching or unit-price selection.
+
+**Resolution**: Created three production-ready modules:
+
+1. **`scripts/paknsave/paknsave_api.py`** — Unified API client:
+   - `PaknSaveAPI(backend="edge"|"mobile")` — unified interface, defaults to Edge
+   - `PaknSaveEdgeAPI` — full two-pass pipeline: Pass 1 relevance (`products-index` with `_highlightResult.matchedWords`), pet food filtering via `category1`; Pass 2 per-store pricing (`paginated/products` with Algolia filters + `PRICE_ASC`)
+   - `PaknSaveMobileAPI` — legacy single-pass fallback (guest token)
+   - Shared utilities: `load_stores()`, `geocode()`, `find_nearby_stores()`, `get_ingredients()`, `haversine()`, `DISH_INGREDIENTS` (21 dishes)
+
+2. **`scripts/paknsave/paknsave_optimizer_edge.py`** — Edge API optimizer:
+   - Geocodes address → finds nearby stores (5km) → authenticates via website JWT
+   - Two-pass search per ingredient per store
+   - Picks cheapest by **unit price** (falls back to absolute price)
+   - Outputs cost comparison table + itemized breakdown → saves `data/paknsave_latest_results.csv`
+
+3. **`scripts/paknsave/paknsave_optimizer_mobile.py`** — Mobile API optimizer:
+   - Same structure but uses Mobile API (single-pass, guest token)
+   - Same unit-price selection logic
+   - Saves `data/paknsave_mobile_latest_results.csv`
+
+**Testing**: Both optimizers tested with "Botany Town Centre, Auckland" + "spaghetti bolognese":
+- Edge API: 3 stores found, 7/7 ingredients matched, Highland Park cheapest at $11.23
+- Mobile API: 3 stores found, 7/7 ingredients matched, Ormiston cheapest at $40.13
+
+**Legacy**: `scripts/paknsave/PaknSave_prototype.py` archived (replaced by unified modules).
+
+**Key files**: `scripts/paknsave/paknsave_api.py`, `paknsave_optimizer_edge.py`, `paknsave_optimizer_mobile.py`
+
+---
