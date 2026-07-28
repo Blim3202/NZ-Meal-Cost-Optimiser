@@ -26,7 +26,9 @@ opencode/
 │   ├── woolworths_store_data.json              # Store details with extra1 (fulfilmentStoreId), extra2 (pickupAddressId)
 │   ├── woolworths_latest_results.csv           # Last optimizer output for woolworths optimiser
 │   ├── paknsave_latest_results.csv             # Last Edge optimizer output
-│   └── paknsave_mobile_latest_results.csv      # Last Mobile optimizer output
+│   ├── paknsave_mobile_latest_results.csv      # Last Mobile optimizer output
+│   ├── observed_category1_newworld.json         # Category1 values from New World Algolia index (explore_categories.py output)
+│   └── observed_category1_paknsave.json         # Category1 values from Pak'nSave Algolia index (explore_categories.py output)
 ├── notebooks/
 │   ├── PaknSave_meal_cost_optimizer.ipynb      # 8-cell Jupyter prototype (run cell 6 with your inputs)
 │   └── Woolworths_meal_cost_optimizer.ipynb    # Woolworths Jupyter pipeline
@@ -35,6 +37,8 @@ opencode/
 │   │   ├── fetch_stores.py                     # One-shot: builds newworld_stores.csv from mobile API + store-finder page
 │   │   ├── NewWorld_prototype.py               # CLI: python scripts/newworld/NewWorld_prototype.py "address" "dish"
 │   │   └── Exploration/                        # API exploration scripts for Edge endpoint, relevance ordering, and two-pass product search method. Full tree contents shortened. See Exploration.md for details.
+│   │       ├── explore_categories.py             # Discovers all unique category1 values from the New World Algolia index. Saves to data/observed_category1_newworld.json.
+│   │       ├── filtering_example.py              # Three-pass variant comparison (no filter, pet food only, full blacklist) for the two-pass Edge API pipeline.
 │   │       └── Exploration.md                  # Breakdown of exploration scripts in this subfolder.
 │   ├── paknsave/
 │   │   ├── paknsave_api.py                     # **Unified API module**: Edge API (two-pass) + Mobile API (single-pass) with shared utilities
@@ -164,6 +168,7 @@ opencode/
   
 - **Store listing**: `GET /v1/edge/store` — 148 stores (HTTP 200)
 - **Categories**: `GET /v1/edge/store/{id}/categories` — works
+- **Category1 exposed in Algolia hits**: `category1` and `category2` arrays are returned in Pass 1 (products-index) responses, enabling category-based filtering (e.g., excluding pet food for "beef mince")
 - **Auth**: Website JWT (from `POST /api/user/get-current-user` → `fs-user-token` cookie) OR mobile API token
 - **Store context**: Cookies `eCom_STORE_ID`, `STORE_ID_V2`, `Region`
 - **Sort**: `PRICE_ASC`, `PRICE_DESC`
@@ -172,6 +177,8 @@ opencode/
 - **Full API documentation**: `NewWorld_API.md` covers all endpoints, auth flow, per-store pricing, two-pass pipeline, and production usage.
 - **`NewWorld_prototype.py` built and tested**: End-to-end pipeline working — geocode address, find nearby stores, search products, compare costs. 21 dishes supported.
 - **Two-pass pipeline implementation**: `scripts/newworld/Exploration/explore_edge_api9_relevance.py` (comprehensive), `test_milk_metro_relevance.py` (focused test), `demo_edge_optimizer.py` (full optimizer demo).
+- **Category1 discovery**: `scripts/newworld/Exploration/explore_categories.py` discovers all unique `category1` values from the New World Algolia index, mirroring the Pak'nSave exploration script. Saves results to `data/observed_category1_newworld.json`.
+- **Product relevance & category filtering**: `scripts/newworld/Exploration/filtering_example.py` demonstrates three filtering strategies (no filter, pet food only, full blacklist) for the two-pass Edge API pipeline, adapted from the Pak'nSave equivalent.
 
 ## Pak'nSave Research Status
 
@@ -216,4 +223,4 @@ All addresses, supermarkets, and data are New Zealand only. First target: Pak'nS
 
 ## File permission rules
 
-- **Never access an external directory unless invoking skills**. All files runs must be in the project directory.
+- **Never access an external directory unless invoking skills**. All files runs must be in the project directory. Always access files from the project root, and never read files from the user directory.
