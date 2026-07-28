@@ -223,6 +223,8 @@ def algolia_relevance_search(token, query, store_id, hits_per_page=20):
             "display_name": display_name,
             "brand": brand,
             "average_price": avg_price,
+            "category1": hit.get("category1", []),
+            "category2": hit.get("category2", []),
             "matched_fields": matched_fields,
             "has_relevance_match": len(matched_fields) > 0,
             "raw_hit": hit  # Keep for debugging
@@ -410,6 +412,8 @@ def two_pass_search(token, query, store_id, max_relevance_results=10, sort_order
             **p,
             "relevance_display_name": rel.get("display_name"),
             "relevance_brand": rel.get("brand"),
+            "relevance_category1": rel.get("category1"),
+            "relevance_category2": rel.get("category2"),
             "relevance_matches": rel.get("matched_fields"),
             "relevance_avg_price": rel.get("average_price"),
         })

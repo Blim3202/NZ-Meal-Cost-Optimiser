@@ -212,7 +212,9 @@ class PaknSaveEdgeAPI:
         r.raise_for_status()
         hits = r.json().get("hits", [])
 
-        pet_categories = {"Dog", "Cat", "Pet"}
+        # Only "Dog" and "Cat" exist as category1 values in the Algolia index.
+        # "Pet" was a guess — confirmed absent by explore_categories.py.
+        pet_categories = {"Dog", "Cat"}
         product_ids = []
         for h in hits:
             hr = h.get("_highlightResult", {})

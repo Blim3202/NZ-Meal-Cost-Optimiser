@@ -592,6 +592,8 @@ Response includes `_highlightResult` with `matchedWords`:
       "DisplayName": "NZ Premium Beef Mince",
       "brand": "None",
       "averagePrice": 18.99,
+      "category1": ["Beef", "Mince, Sausages & Meatballs"],
+      "category2": ["Beef Mince & Stir Fry", "Mince"],
       "_highlightResult": {
         "DisplayName": {"value": "NZ Premium <em>Beef</em> <em>Mince</em>", "matchedWords": ["beef", "mince"]},
         "category2AndBrand": {"value": "Beef <em>Mince</em> > Premium", "matchedWords": ["beef", "mince"]}
@@ -1345,6 +1347,8 @@ Output: per-store itemised prices, total cost comparison, and the cheapest store
 | `scripts/newworld/Exploration/edge_optimizer_demo.py` | Phase 10: Complete two-pass optimizer demo |
 | `scripts/newworld/Exploration/test_milk_metro_relevance.py` | Focused test: milk at Metro Auckland (relevance → price) |
 | `scripts/newworld/Exploration/edge_api_relevance_exploration.py` | Comprehensive documentation script (this file's companion) |
+| `scripts/newworld/Exploration/explore_categories.py` | Discover all unique `category1` values from the New World Algolia index |
+| `scripts/newworld/Exploration/filtering_example.py` | Three-variant comparison (no filter, pet food only, full blacklist) for Pass 1 category filtering |
 | `scripts/paknsave/fetch_stores.py` | Reference: Pak'nSave store data builder (same API pattern) |
 
 ---
