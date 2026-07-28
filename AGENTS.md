@@ -36,26 +36,21 @@ opencode/
 │   ├── newworld/
 │   │   ├── fetch_stores.py                     # One-shot: builds newworld_stores.csv from mobile API + store-finder page
 │   │   ├── NewWorld_prototype.py               # CLI: python scripts/newworld/NewWorld_prototype.py "address" "dish"
-│   │   └── Exploration/                        # API exploration scripts for Edge endpoint, relevance ordering, and two-pass product search method. Full tree contents shortened. See Exploration.md for details.
-│   │       ├── explore_categories.py             # Discovers all unique category1 values from the New World Algolia index. Saves to data/observed_category1_newworld.json.
-│   │       ├── filtering_example.py              # Three-pass variant comparison (no filter, pet food only, full blacklist) for the two-pass Edge API pipeline.
-│   │       └── Exploration.md                  # Breakdown of exploration scripts in this subfolder.
+│   │   └── Exploration/                        # API exploration scripts for Edge endpoint, relevance ordering, and two-pass product search method. See Exploration.md for details.
 │   ├── paknsave/
 │   │   ├── paknsave_api.py                     # **Unified API module**: Edge API (two-pass) + Mobile API (single-pass) with shared utilities
 │   │   ├── paknsave_optimizer_edge.py          # **Edge API optimizer**: CLI with geocoding, 5km radius, two-pass search, unit-price selection
 │   │   ├── paknsave_optimizer_mobile.py        # **Mobile API optimizer**: CLI with geocoding, 5km radius, single-pass search, unit-price selection
 │   │   ├── paknsave_setup.py                   # Unified store pipeline: fetches all 60 stores from store-finder (default) or 57 from Edge API. Callable module + CLI.
-│   │   └── Exploration/                        # Edge API exploration: two-pass pipeline, relevance matching, per-store pricing. Full tree contents shortened.
-│   │       └── Exploration.md                  # Complete exploration documentation (all phases + discoveries)
+│   │   └── Exploration/                        # Complete exploration documentation (all phases + discoveries)
 │   └── woolworths/
 │       ├── woolworths_api.py                   # Cookie-based API module: session, store context, product search
 │       ├── woolworths_optimizer.py             # API-based optimizer: geocode, stores, pricing, cost comparison
 │       ├── woolworths_setup.py                 # Unified store pipeline: fetch choices, fetch data, merge (dedupes all storeAreas, 188 stores)
-│       ├── Exploration/                        # API exploration scripts (black-box probing). Full tree contents shortened. See Exploration.md for details.
-│       │   └── Exploration.md                  # Breakdown of exploration scripts in this subfolder.
-│       └── Playwright/                         # Playwright-based scripts (legacy, not needed at runtime)
-│           ├── woolworths_scrape.py            # Headed scraper for search results
-│           └── ChangeStore.py                  # Store selection via modal URL
+│       ├── Exploration/                        # API exploration scripts (black-box probing). See Exploration.md for details.
+│       ├── Playwright/                         # Playwright-based scripts (legacy, not needed at runtime)
+│       │   ├── woolworths_scrape.py            # Headed scraper for search results
+│       │   └── ChangeStore.py                  # Store selection via modal URL
 ├── AGENTS.md                                   # This file
 ├── NewWorld_API.md                             # Foodstuffs mobile API documentation for New World (banner: MNW)
 ├── PaknSave_API.md                             # Foodstuffs mobile API documentation (full endpoints, auth, pricing)

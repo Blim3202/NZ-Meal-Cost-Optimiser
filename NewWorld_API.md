@@ -546,7 +546,7 @@ Region:        NI  (or SI for South Island)
 
 **Endpoint**: `GET https://api-prod.newworld.co.nz/v1/edge/store`
 
-**Status**: ✅ **Works (HTTP 200)** with valid JWT.
+**Status**: [OK] **Works (HTTP 200)** with valid JWT.
 
 **Returns**: 148 stores with full details (id, name, address, coordinates, opening hours, services).
 
@@ -562,9 +562,9 @@ Region:        NI  (or SI for South Island)
 
 | Endpoint | Relevance Matching | Per-Store Pricing |
 |----------|-------------------|-------------------|
-| `products-index` (Algolia) | ✅ Has `_highlightResult` with `matchedWords` | ❌ Only `averagePrice` (cross-store) |
-| `products-index-popularity-asc/desc` | ❌ NO `_highlightResult` | ❌ Only `averagePrice` |
-| `/search/paginated/products` | ❌ No `RELEVANCE` sort (400 enum mismatch) | ✅ Full per-store pricing |
+| `products-index` (Algolia) | [OK] Has `_highlightResult` with `matchedWords` | [NO] Only `averagePrice` (cross-store) |
+| `products-index-popularity-asc/desc` | [NO] NO `_highlightResult` | [NO] Only `averagePrice` |
+| `/search/paginated/products` | [NO] No `RELEVANCE` sort (400 enum mismatch) | [OK] Full per-store pricing |
 
 #### The Solution: Two-Pass Pipeline
 
@@ -654,17 +654,17 @@ We probed 14+ index names. Only THREE return HTTP 200:
 
 | Index Name | Status | Sort Order | `_highlightResult` | Use Case |
 |------------|--------|------------|-------------------|----------|
-| `products-index` | ✅ 200 | **Relevance (Algolia default)** | ✅ YES — has `matchedWords` | **PASS 1: Relevance matching** |
-| `products-index-popularity-asc` | ✅ 200 | Popularity ascending | ✅ Has field but NO matches | Browsing (least popular first) |
-| `products-index-popularity-desc` | ✅ 200 | Popularity descending | ✅ Has field but NO matches | Browsing (most popular first) |
-| `products-index-price-asc` | ❌ 404 | — | — | Does not exist |
-| `products-index-price-desc` | ❌ 404 | — | — | Does not exist |
-| `products-index-relevance` | ❌ 404 | — | — | Does not exist |
-| `products-index-name-asc` | ❌ 404 | — | — | Does not exist |
-| `products-index-name-desc` | ❌ 404 | — | — | Does not exist |
-| `products-index-newest` | ❌ 404 | — | — | Does not exist |
-| `products-index-bestselling` | ❌ 404 | — | — | Does not exist |
-| `products-index-trending` | ❌ 404 | — | — | Does not exist |
+| `products-index` | [OK] 200 | **Relevance (Algolia default)** | [OK] YES — has `matchedWords` | **PASS 1: Relevance matching** |
+| `products-index-popularity-asc` | [OK] 200 | Popularity ascending | [OK] Has field but NO matches | Browsing (least popular first) |
+| `products-index-popularity-desc` | [OK] 200 | Popularity descending | [OK] Has field but NO matches | Browsing (most popular first) |
+| `products-index-price-asc` | [NO] 404 | — | — | Does not exist |
+| `products-index-price-desc` | [NO] 404 | — | — | Does not exist |
+| `products-index-relevance` | [NO] 404 | — | — | Does not exist |
+| `products-index-name-asc` | [NO] 404 | — | — | Does not exist |
+| `products-index-name-desc` | [NO] 404 | — | — | Does not exist |
+| `products-index-newest` | [NO] 404 | — | — | Does not exist |
+| `products-index-bestselling` | [NO] 404 | — | — | Does not exist |
+| `products-index-trending` | [NO] 404 | — | — | Does not exist |
 
 **Critical Discovery**: Only `products-index` (the default index) provides relevance matching via `_highlightResult`. The popularity indices have the field but it's empty — they're for browsing, not search.
 
@@ -690,10 +690,10 @@ cookies = {
 - `PRICE_DESC` — Most expensive first
 
 **Invalid `sortOrder` values** (return HTTP 400 enum mismatch):
-- `RELEVANCE` ❌
-- `RELEVANCY` ❌
-- `DEFAULT` ❌
-- `BEST_MATCH` ❌
+- `RELEVANCE` [NO]
+- `RELEVANCY` [NO]
+- `DEFAULT` [NO]
+- `BEST_MATCH` [NO]
 
 **Algolia Filter Syntax** (confirmed working):
 ```json
@@ -737,7 +737,7 @@ Supports: `OR`, `AND`, field:value syntax. Full Algolia filter syntax works.
 
 **Endpoint**: `GET https://api-prod.newworld.co.nz/v1/edge/store/{store_id}/categories`
 
-**Status**: ✅ **Works (HTTP 200)** with valid JWT + store cookies.
+**Status**: [OK] **Works (HTTP 200)** with valid JWT + store cookies.
 
 **Returns**: Category tree for store navigation.
 
@@ -748,10 +748,10 @@ Supports: `OR`, `AND`, field:value syntax. Full Algolia filter syntax works.
 | Feature | Mobile API | Edge API (Two-Pass) |
 |---------|------------|---------------------|
 | Auth | Guest login POST | Website session OR mobile token |
-| Store listing | ✅ 149 stores | ✅ 148 stores |
-| Product search | ✅ Single call | ✅ Two-pass (relevance + pricing) |
-| Relevance matching | Implicit (first result) | ✅ Explicit `_highlightResult.matchedWords` |
-| Per-store pricing | ✅ Native (storeId in URL) | ✅ Via cookies + Algolia filters |
+| Store listing | [OK] 149 stores | [OK] 148 stores |
+| Product search | [OK] Single call | [OK] Two-pass (relevance + pricing) |
+| Relevance matching | Implicit (first result) | [OK] Explicit `_highlightResult.matchedWords` |
+| Per-store pricing | [OK] Native (storeId in URL) | [OK] Via cookies + Algolia filters |
 | Price format | Cents in response | Cents in `singlePrice.price` |
 | Promotions | Included | Included in `promotions[]` |
 | Sort | Relevance (default), PriceAsc | `PRICE_ASC`, `PRICE_DESC` only |
@@ -820,15 +820,15 @@ This method seems to be superior to the mobile API in terms of search relevancy 
 | Phase | What We Tried | Result | Breakthrough |
 |-------|---------------|--------|--------------|
 | 1 | Mobile API endpoints | All worked | Baseline established |
-| 2 | Edge API `/v1/edge/store/physical` | ✅ 200 with JWT | Store listing works |
-| 3 | Edge API `/v1/edge/products/search` | ❌ 404 | Wrong endpoint |
-| 4 | Edge API `/v1/edge/ecomm-products/*` | ❌ 404 | Legacy paths dead |
+| 2 | Edge API `/v1/edge/store/physical` | [OK] 200 with JWT | Store listing works |
+| 3 | Edge API `/v1/edge/products/search` | [NO] 404 | Wrong endpoint |
+| 4 | Edge API `/v1/edge/ecomm-products/*` | [NO] 404 | Legacy paths dead |
 | 5 | Browser DevTools capture | Found `products-index-popularity-asc` | **Algolia index pattern discovered** |
 | 6 | Tested 14+ index names | Only 3 work (200) | `products-index` = relevance |
-| 7 | Tested `/search/paginated/products` | ✅ 200 with cookies | Per-store pricing works |
-| 8 | Tried `sortOrder: RELEVANCE` | ❌ 400 enum mismatch | No relevance sort on pricing endpoint |
-| 9 | Tried Algolia `filters` parameter | ✅ Works! | **Bridge between relevance + pricing** |
-| 10 | Two-pass pipeline | ✅ End-to-end working | **Production-ready solution** |
+| 7 | Tested `/search/paginated/products` | [OK] 200 with cookies | Per-store pricing works |
+| 8 | Tried `sortOrder: RELEVANCE` | [NO] 400 enum mismatch | No relevance sort on pricing endpoint |
+| 9 | Tried Algolia `filters` parameter | [OK] Works! | **Bridge between relevance + pricing** |
+| 10 | Two-pass pipeline | [OK] End-to-end working | **Production-ready solution** |
 
 ---
 
@@ -836,13 +836,14 @@ This method seems to be superior to the mobile API in terms of search relevancy 
 
 **The Edge API CAN fully replace the mobile API** for the meal cost optimizer:
 
-1. ✅ Store listing works (148 stores)
-2. ✅ Product search works via two-pass pipeline
-3. ✅ Explicit relevance matching via `_highlightResult`
-4. ✅ Per-store pricing via cookies + Algolia filters
-5. ✅ Promotional pricing included
-6. ✅ Works with website JWT (no mobile API dependency)
-7. ✅ More future-proof (public website API)
+1. [OK] Store listing works (148 stores)
+2. [OK] Product search works via two-pass pipeline
+3. [OK] Explicit relevance matching via `_highlightResult`
+4. [OK] Per-store pricing via cookies + Algolia filters
+5. [OK] Promotional pricing included
+6. [OK] Works with website JWT (no mobile API dependency)
+7. [OK] More future-proof (public website API)
+8. [OK] Pet food filtering via `category1` in Pass 1 (exclude `{"Dog", "Cat", "Pet"}` categories)
 
 **Advantages of Edge API over Mobile API:**
 - No dependency on Foodstuffs mobile API endpoint
@@ -1304,7 +1305,14 @@ Output: per-store itemised prices, total cost comparison, and the cheapest store
 16. **Edge API relevance requires two-pass** — No single endpoint gives both
     relevance matching AND per-store pricing. Use the two-pass pipeline.
 17. **Algolia filter syntax works** — The paginated endpoint accepts full Algolia
-    filter syntax (`productID:xxx OR productID:yyy`) to bridge relevance + pricing.
+     filter syntax (`productID:xxx OR productID:yyy`) to bridge relevance + pricing.
+ 18. **Pet food filtering via `category1`** — The relevance search returns pet food
+     items (e.g., "Indulge Beef Mince In Gravy Dog Food" for "beef mince"). Filter
+     by `category1` to exclude `{"Dog", "Cat", "Pet"}` categories.
+ 19. **Popularity indices differ from Pak'nSave** — Unlike Pak'nSave where all three
+     working indices have `_highlightResult.matchedWords` populated, only New World's
+     default `products-index` has relevance matches. The popularity indices have the
+     field but it is empty — they are for browsing, not search.
 
 ---
 
@@ -1319,13 +1327,16 @@ Output: per-store itemised prices, total cost comparison, and the cheapest store
 | Product search | `POST` with JSON body | `POST` with JSON body | `GET` with query params |
 | Prices in | Cents (integer) | Cents (integer) | Dollars (float) |
 | Cloudflare | API: none, Website: Cloudflare | API: none, Website: Cloudflare | No Cloudflare on API |
-| Store count | 149 | 60 | 183 (Woolworths NZ) |
+| Store count | 149 (mobile) / 148 (Edge) | 60 (mobile) / 57 (Edge) | 183 (Woolworths NZ) |
 | Auth complexity | Low (2 POST calls) | Low (2 POST calls) | Medium (cookie construction) |
 | Banner value | `"MNW"` | `"PNS"` | N/A |
 | User-Agent | `NewWorldApp/4.32.0` | `PAKnSAVEApp/4.32.0` | N/A |
-| Relevance matching | Implicit (first result) | Implicit (first result) | First result (no highlight) |
-| Price sorting | PriceAsc (mobile), PRICE_ASC (Edge) | PriceAsc | Not available |
-| Edge API alternative | Two-pass pipeline (NEW) | Not explored | Not applicable |
+| Relevance matching (mobile) | Implicit (first result) | Implicit (first result) | First result (no highlight) |
+| Relevance matching (Edge) | Explicit `_highlightResult` | Explicit `_highlightResult` | N/A |
+| Price sorting (mobile) | PriceAsc | PriceAsc | Not available |
+| Price sorting (Edge) | PRICE_ASC, PRICE_DESC | PRICE_ASC, PRICE_DESC | Not applicable |
+| Edge API two-pass pipeline | [OK] Working | [OK] Working | Not applicable |
+| Pet food filtering | Via `category1` in Pass 1 | Via `category1` in Pass 1 | Not available |
 
 ---
 
