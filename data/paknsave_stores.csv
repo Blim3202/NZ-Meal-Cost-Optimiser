@@ -1,61 +1,58 @@
 store_id,name,address,city,region,latitude,longitude
-65defcf2-bc15-490e-a84f-1f13b769cd22,Albany,"Don McKinnon Drive, Albany, Auckland, 0632",Don McKinnon Drive,NI,-36.729808878994575,174.70680696588443
-6c73764e-b8e6-4e55-ad37-f6a9d207da1f,Alderman Drive Henderson,"Alderman Drive, Henderson, 0612, Auckland",Alderman Drive,NI,-36.877244241144666,174.63259650912323
-60561e46-ece7-43a7-b142-9b14812586e4,Botany,"Botany Town Centre,  501 Ti Rakau Drive, Northpark, Auckland, 2013",Botany Town Centre,NI,-36.9304221677906,174.91303057472987
-3e82142c-78dc-46f3-82ec-28e65fcf84c9,Clendon,"16 Robert Ross Pl, Clendon Park, Auckland 2103",16 Robert Ross Pl,NI,-37.0225949,174.86378490000004
-3404c253-577f-45ca-b301-c98312e46efb,Glen Innes,"182 Apirana Ave, Glen Innes, Auckland 1072",182 Apirana Ave,NI,-36.87579127734869,174.8549276736801
-2a1b331a-fc4a-496a-b072-e97cc8f70cae,Highland Park,"503-505 Pakuranga Road, Highland Park 2010",503-505 Pakuranga Road,NI,-36.898183833728524,174.90689968044774
-92086ded-a55d-4241-a364-7d7ea91531b4,Lincoln Road,"Lincoln Road, Shopping Centre, Henderson, Auckland 0610",Lincoln Road,NI,-36.85771522980529,174.62800493596797
-9cd8eb60-3222-4efc-bd7c-50e03e6a81a4,Manukau,"6 Cavendish Dr, Manukau, Auckland 2104",6 Cavendish Dr,NI,-36.98802575048856,174.88061620688472
-b2e98a14-c8ca-401e-99ed-edf74570c6f6,Mt Albert,"1167/1177 New North Rd, Mount Albert, Auckland 1025",1167/1177 New North Rd,NI,-36.89287512877003,174.70593630118867
-94ef1985-cab1-4b39-a2f3-230120f03c16,Māngere,"Corner of Bader Drive and Orly Avenue, Mangere, Auckland, 2022",Corner of Bader Drive and Orly Avenue,NI,-36.96848522089855,174.79689017990108
-5f167936-79ae-4f6a-b9d2-74afe1bb096b,Ormiston,"1 Bellingham Rd, Flat Bush, Auckland 2019",1 Bellingham Rd,NI,-36.9658713,174.9135973
-a7d09522-bee2-41e4-8fe0-0b82b7f342f5,Papakura,"331 Great South Rd, Takanini, Auckland 2112",331 Great South Rd,NI,-37.0531793356172,174.93109559814752
-c2204dae-579e-4b6b-9d42-2e13ceaa6031,Pukekohe,"Cnr Queen & Harris Streets, Pukekohe, 2120",Cnr Queen & Harris Streets,NI,-37.20514315782106,174.8997812347793
-e1925ea7-01bc-4358-ae7c-c6502da5ab12,Royal Oak,"691 Manukau Rd, Royal Oak, Auckland 1023",691 Manukau Rd,NI,-36.90998932351251,174.7744650484101
-64eab5b1-8d79-45f4-94f1-02b8cf8b6202,Silverdale,"20 Hibiscus Coast Hwy, Silverdale 0993",20 Hibiscus Coast Hwy,NI,-36.6202668532456,174.6733221534423
-c0f80e87-16be-4488-9553-da437e8c6c2a,Sylvia Park,"Sylvia Park, 286 Mount Wellington Hwy, 1060",Sylvia Park,NI,-36.91337657846075,174.84018272485355
-002b83de-b79d-4228-a787-bd0765b6cb56,Wairau Road,"30-60 Wairau Rd, Glenfield, Auckland 0627",30-60 Wairau Rd,NI,-36.77892452513722,174.74403526613162
-8f0d70be-5cb7-464b-99cb-8b0130671895,Warkworth,"Corner Hudson Road and SH1, Warkworth 0984",Corner Hudson Road and SH1,NI,-36.39165304184114,174.65097882813322
-33d8d6fc-861a-45ff-9937-5ccdb55eaede,Westgate,"17/19 Fred Taylor Dr, Massey, Auckland 0814",17/19 Fred Taylor Dr,NI,-36.8207564,174.60893469999996
-714431ab-6e39-4df6-ac77-cfc5c1e25bc8,Cameron Road,"476 Cameron Road, Tauranga, 3110",476 Cameron Road,NI,-37.6966817,176.16163640000002
-3bfe040b-f0c9-45e0-949b-b9ad5a591d55,Pāpāmoa,"42 Domain Road, Pāpāmoa, 3118",42 Domain Road,NI,-37.70207078315337,176.2844437595245
-7d48a781-4f68-4c91-a908-8659e1b22f95,Rotorua,"Cnr Fenton & Amohau Streets, Rotorua, 3010",Cnr Fenton & Amohau Streets,NI,-38.140670501023166,176.2546632338989
-b92cc33f-b5a8-4b57-9b82-412946800020,Taupō,"Ruapehu Street, Taupō",Ruapehu Street,NI,-38.68592429583583,176.0733622701141
-1c388d5e-29ac-4956-b476-cb3431353d2e,Tauriko,"2 Taurikura Drive, Tauriko, 3110",2 Taurikura Drive,NI,-37.73903551614102,176.10367663812872
-50b1216b-d066-4457-b88b-9bccf97bf6d3,Whakatāne,"King St, Kopeopeo, 3120",King St,NI,-37.96165088922797,176.98260466925046
-d6d39eea-889d-4e20-923c-55cab225cf7f,Clarence Street,"Clarence Street, Hamilton, 3204",Clarence Street,NI,-37.795552953924386,175.2828432873108
-076e8177-943b-41fc-a885-ba3d28297acf,Mill Street,"Mill Street, Hamilton, 3200",Mill Street,NI,-37.77993631539925,175.27278621191715
-3bb30799-82ce-4648-8c02-5113228963ed,Te Awamutu,"670 Cambridge Road, Te Awamutu, 3800",670 Cambridge Road,NI,-38.00682872923822,175.3390396767212
-6e6809dd-01bc-45c9-aab1-f01ccd8338b0,Thames,"100 Mary Street, Thames, 3500",100 Mary Street,NI,-37.13873016388177,175.5390519312134
-26c9c8bd-b7d8-4551-9fb0-350b829740a1,Gisborne City,"Childers Road, Gisborne, 4412",Childers Road,NI,-38.66422351203077,178.02097051468047
-b39562a4-2b72-43fe-b9ba-eda1d651ad0b,Hastings,"602 Heretaunga St W, St Leonards, Hastings 4120",602 Heretaunga St W,NI,-39.63672361789621,176.83679057053064
-49037947-e450-49bf-ba1f-a94551c79a72,Napier,"25 Munroe St, Napier 4110",25 Munroe St,NI,-39.49475617041702,176.9135099174439
-6cda96e1-7d29-44a6-956b-3fcfdecc8184,Tamatea,"Cnr Leicester Avenue &, Coventry Ave, Tamatea, Napier 4112",Cnr Leicester Avenue &,NI,-39.51044968544057,176.8700025592468
-15e6f441-5c1c-4d25-b4ec-1adf918c49c7,Hāwera,"54 Princes St, Hawera 4610",54 Princes St,NI,-39.590975393274846,174.28380106322936
-53989945-1a28-481d-a61c-d6f75f760ada,New Plymouth,"53 Leach St, New Plymouth 4310",53 Leach St,NI,-39.05713250666025,174.0810941166717
-01a114de-149c-4f5f-80a1-90cc63f69c6e,Whanganui,"167 Glasgow St, Whanganui, 4500",167 Glasgow St,NI,-39.927046760984425,175.03935746018828
-3c5e3145-0767-4066-9349-6c0a1313acc5,Kaitāia,"111 North Road, Kaitaia, 0482",111 North Road,NI,-35.099299164661204,173.2583690300247
-529d66cc-60e3-432e-b8d1-efc9f2ec4919,Whangārei,"Walton Street, Whangarei, 0110",Walton Street,NI,-35.72604947197216,174.3246049735718
-c180a72d-5dbe-4403-b7c7-91655e505492,Kapiti,"200 Rimu Rd, Paraparaumu 5032",200 Rimu Rd,NI,-40.91813743434153,175.00241606483462
-21ecaaed-0749-4492-985e-4bb7ba43d59c,Kilbirnie,"78 Rongotai Rd, Kilbirnie, Wellington 6022",78 Rongotai Rd,NI,-41.3191131401515,174.79664958465582
-b83029b6-5dd5-449e-8056-26f3943a4e18,Lower Hutt,"Brunswick Street, Lower Hutt",Brunswick Street,NI,-41.20545316450661,174.91345402698357
-98ec3885-ac93-4fcb-807b-59c9055c52c4,Petone,"114-124 Jackson Street, Petone, Wellington",114-124 Jackson Street,NI,-41.22470294976473,174.8724163403366
-af385423-d0f1-41f0-9482-ffd10b745143,Porirua,"12 Parumoana Street, Porirua",12 Parumoana Street,NI,-41.13140698038279,174.84214849391788
-4fcc1c8e-cc5e-4675-ba25-5e56b579cf69,Upper Hutt,"Gibbons Street, Upper Hutt",Gibbons Street,NI,-41.12401802104741,175.06666590265502
-90302a32-84f3-492a-8c9a-10f5242c0448,Levin,"508 Queen St, East, Levin 5510",508 Queen St,NI,-40.6226012,175.28767790000006
-d1cd1fdd-8767-46a6-a8d3-c3e0632c2dc8,Masterton,"Queen St, Kuripuni, Masterton 5810",Queen St,NI,-40.95685301326806,175.64953604683535
-48dd98cc-a757-4102-b15d-ea82b4b10571,Palmerston North,"327 Ferguson St, Palmerston North, 4410",327 Ferguson St,NI,-40.359165906606584,175.6117189764435
-c3f9e1a3-fc34-452d-af2e-95349e666ba4,Blenheim,"1 Westwood Avenue, Springlands, Blenheim 7271",1 Westwood Avenue,SI,-41.508641113181795,173.9234682364014
-90082979-fb9f-4305-9c72-83274fc438cc,Dunedin,"86 Hillside Rd, South Dunedin, Dunedin 9012",86 Hillside Rd,SI,-45.8925435,170.49902499999996
-d8032da3-c1b9-456e-b626-41ce21f8c67b,Invercargill,"95 Tay St, Invercargill, 9810",95 Tay St,SI,-46.41404731693401,168.35311259881132
-2ed73be8-936d-4f35-9398-75a707f40a7b,Queenstown,"302 Hawthorne Drive, Frankton, Queenstown 9300",302 Hawthorne Drive,SI,-45.010504273072165,168.7477875429688
-be4c4780-218e-425a-a90f-63e21773572b,Hornby,"The Hub 418 Main S Rd, Hornby, Christchurch 8042",The Hub 418 Main S Rd,SI,-43.542540854010916,172.52275767116396
-61dd754e-8525-4b9e-9e08-173389eea8a8,Moorhouse,"297 Moorhouse Ave, Sydenham, Christchurch 8011",297 Moorhouse Ave,SI,-43.53889986394847,172.63831266242676
-8cd700ae-d96f-4761-bd7a-805d6b93536d,Papanui,"171 Main North Road, Papanui, Christchurch, New Zealand",171 Main North Road,SI,-43.4853687809161,172.61498059995094
-715f0e22-95e0-45ce-af3a-07057209976e,Rangiora,"2 Southbrook Rd, Waimakariri, Rangiora 7400",2 Southbrook Rd,SI,-43.3250671,172.59902950000003
-4a279605-eaa8-470d-bcd4-0a9e3c9ab43b,Riccarton,"Westfield Riccarton, 129 Riccarton Rd, Riccarton, Christchurch 8041",Westfield Riccarton,SI,-43.53099691110821,172.59617139601744
-bdc5ef4a-c6a7-4f8a-b8cb-28109e6d61c3,Rolleston,"157 Levi Road, Rolleston 7614",157 Levi Road,SI,-43.59731231644035,172.39645748466043
-b29a98bd-749c-489c-9eef-6aa38e66a29b,Timaru,"98 Evans St, Waimataitai, Timaru 7910",98 Evans St,SI,-44.38326709923632,171.23646710237733
-dbca5e00-f7f9-43ae-91de-031ad16f8a92,Wainoni,"174 Wainoni Rd, Avondale, Christchurch 8061",174 Wainoni Rd,SI,-43.513245167402054,172.69400674498297
-5cf0392f-c187-4fc4-a463-eb269d2e8f45,Richmond,"Richmond Mall, Cnr Queen, Croucher and, Talbot St, Richmond 7020",Richmond Mall,SI,-41.33854755797297,173.1866178447052
+6c73764e-b8e6-4e55-ad37-f6a9d207da1f,PAK'nSAVE Alderman Dr Henderson,"8-18 Alderman Drive, Henderson, Auckland, 0612",Auckland,NI,-36.87743,174.63292
+50b1216b-d066-4457-b88b-9bccf97bf6d3,PAK'nSAVE Whakatane,"45 King Street, Whakatane, 3120",Whakatane,NI,-37.961198,176.98257
+b92cc33f-b5a8-4b57-9b82-412946800020,PAK'nSAVE Taupo,"105-131 Ruapehu Street, Taupo, 3330",Taupo,NI,-38.685532,176.073247
+3bb30799-82ce-4648-8c02-5113228963ed,PAK'nSAVE Te Awamutu,"670 Cambridge Road, Te Awamutu, 3800",Te Awamutu,NI,-38.008101,175.340102
+3c5e3145-0767-4066-9349-6c0a1313acc5,PAK'nSAVE Kaitaia,"111 North Road, Kaitaia, 0410",Kaitaia,NI,-35.09945,173.258322
+e1925ea7-01bc-4358-ae7c-c6502da5ab12,PAK'nSAVE Royal Oak,"691 Manukau Road, Royal Oak, Auckland, 1023",Auckland,NI,-36.91014,174.77342
+714431ab-6e39-4df6-ac77-cfc5c1e25bc8,PAK'nSAVE Cameron Road,"476 Cameron Road, Tauranga, 3110",Tauranga,NI,-37.696716,176.161533
+3bfe040b-f0c9-45e0-949b-b9ad5a591d55,PAK'nSAVE Papamoa,"42 Domain Road, Papamoa Beach, Papamoa, 3118",Papamoa,NI,-37.70191,176.283687
+9cd8eb60-3222-4efc-bd7c-50e03e6a81a4,PAK'nSAVE Manukau,"6 Cavendish Drive, Manukau City, Auckland, 2104",Auckland,NI,-36.987929,174.880604
+b39562a4-2b72-43fe-b9ba-eda1d651ad0b,PAK'nSAVE Hastings,"602 Heretaunga Street West, West End Shopping Centre, Hastings, 4120",Hastings,NI,-39.636804,176.836635
+21ecaaed-0749-4492-985e-4bb7ba43d59c,PAK'nSAVE Kilbirnie,"76 Rongotai Road, Kilbirnie, Wellington, 6003",Wellington,NI,-41.319324,174.79672
+529d66cc-60e3-432e-b8d1-efc9f2ec4919,PAK'nSAVE Whangarei,"104 Walton Street, Whangarei, 0110",Whangarei,NI,-35.725958,174.32475
+5f167936-79ae-4f6a-b9d2-74afe1bb096b,PAK'nSAVE Ormiston,"1 Bellingham Road, Flat Bush, Auckland, 2019",Auckland,NI,-36.965078,174.914819
+60561e46-ece7-43a7-b142-9b14812586e4,PAK'nSAVE Botany,"501 Ti Rakau Drive, Northpark, Auckland, 2013",Auckland,NI,-36.930652,174.913004
+6e6809dd-01bc-45c9-aab1-f01ccd8338b0,PAK'nSAVE Thames,"100 Mary Street, Thames, 3500",Thames,NI,-37.138597,175.538994
+64eab5b1-8d79-45f4-94f1-02b8cf8b6202,PAK'nSAVE Silverdale,"20 Hibiscus Coast Highway, Silverdale, Auckland, 0932",Auckland,NI,-36.620413,174.672975
+7d48a781-4f68-4c91-a908-8659e1b22f95,PAK'nSAVE Rotorua,"Cnr Fenton and Amohau Streets, Rotorua, 3010",Rotorua,NI,-38.140495,176.25459
+c2204dae-579e-4b6b-9d42-2e13ceaa6031,PAK'nSAVE Pukekohe,"99 Queen Street, Pukekohe, 2120",Pukekohe,NI,-37.205157,174.899612
+b2e98a14-c8ca-401e-99ed-edf74570c6f6,PAK'nSAVE Mt Albert,"1167-1177 New North Road, Auckland, 1025",Auckland,NI,-36.89305,174.70624
+3e82142c-78dc-46f3-82ec-28e65fcf84c9,PAK'nSAVE Clendon,"16 Robert Ross Place, Clendon Park, Auckland, 2103",Auckland,NI,-37.03242,174.867278
+a7d09522-bee2-41e4-8fe0-0b82b7f342f5,PAK'nSAVE Papakura,"331-345 Great South Road, Takanini, Auckland, 2110",Auckland,NI,-37.053393,174.93096
+3404c253-577f-45ca-b301-c98312e46efb,PAK'nSAVE Glen Innes,"182 Apirana Avenue, Glen Innes, Auckland, 1072",Auckland,NI,-36.875918,174.855148
+076e8177-943b-41fc-a885-ba3d28297acf,PAK'nSAVE Mill Street,"17 Mill Street, Whitiora, Hamilton, 3200",Hamilton,NI,-37.7799,175.27281
+65defcf2-bc15-490e-a84f-1f13b769cd22,PAK'nSAVE Albany,"Don McKinnon Drive, Albany, Auckland, 0632",Auckland,NI,-36.729975,174.706725
+d6d39eea-889d-4e20-923c-55cab225cf7f,PAK'nSAVE Clarence Street,"85 Clarence Street, Hamilton Lake, Hamilton, 3204",Hamilton,NI,-37.795653,175.282839
+33d8d6fc-861a-45ff-9937-5ccdb55eaede,PAK'nSAVE Westgate,"17-19 Fred Taylor Drive, Massey, Auckland, 0814",Auckland,NI,-36.820257,174.608696
+92086ded-a55d-4241-a364-7d7ea91531b4,PAK'nSAVE Lincoln Road,"202 Lincoln Road, Henderson, Auckland, 0610",Auckland,NI,-36.857794,174.627968
+c0f80e87-16be-4488-9553-da437e8c6c2a,PAK'nSAVE Sylvia Park,"286 Mt Wellington Highway, Mt Wellington, Auckland, 1060",Auckland,NI,-36.913347,174.84009
+49037947-e450-49bf-ba1f-a94551c79a72,PAK'nSAVE Napier City,"25 Munroe Street, Napier South, Napier South NAPIER, 4110",Napier South NAPIER,NI,-39.494788,176.913562
+af385423-d0f1-41f0-9482-ffd10b745143,PAK'nSAVE Porirua,"12 Parumoana Street, Porirua City Centre, Porirua, 5022",Porirua,NI,-41.131559,174.841818
+94ef1985-cab1-4b39-a2f3-230120f03c16,PAK'nSAVE Mangere,"44 Orly Avenue, Mangere, Auckland, 2022",Auckland,NI,-36.968516,174.796863
+15e6f441-5c1c-4d25-b4ec-1adf918c49c7,PAK'nSAVE Hawera,"54 Princes Street, Hawera, 4610",Hawera,NI,-39.590947,174.283801
+c180a72d-5dbe-4403-b7c7-91655e505492,PAK'nSAVE Kapiti,"76 Rimu Road, Paraparaumu, 5032",Paraparaumu,NI,-40.9180863,175.0017611
+b83029b6-5dd5-449e-8056-26f3943a4e18,PAK'nSAVE Lower Hutt,"20 Brunswick Street, Hutt Central, Lower Hutt, 5010",Lower Hutt,NI,-41.205578,174.913149
+48dd98cc-a757-4102-b15d-ea82b4b10571,PAK'nSAVE Palmerston North,"327 Ferguson Street, Palmerston North, 4410",Palmerston North,NI,-40.359198,175.611537
+98ec3885-ac93-4fcb-807b-59c9055c52c4,PAK'nSAVE Petone,"114-124 Jackson Street, Petone, Wellington, 5012",Wellington,NI,-41.224456,174.872537
+6cda96e1-7d29-44a6-956b-3fcfdecc8184,PAK'nSAVE Tamatea,"Leicester Avenue, Tamatea, Napier, 4112",Napier,NI,-39.509905,176.869414
+4fcc1c8e-cc5e-4675-ba25-5e56b579cf69,PAK'nSAVE Upper Hutt,"Gibbons Street, Upper Hutt, 5018",Upper Hutt,NI,-41.123787,175.066601
+01a114de-149c-4f5f-80a1-90cc63f69c6e,PAK'nSAVE Whanganui,"167 Glasgow Street, Whanganui, 4500",Whanganui,NI,-39.92638,175.038901
+90082979-fb9f-4305-9c72-83274fc438cc,PAK'nSAVE Dunedin,"86 Hillside Road, South Dunedin, Dunedin, 9012",Dunedin,SI,-45.8927,170.4992
+1c388d5e-29ac-4956-b476-cb3431353d2e,PAK'nSAVE Tauriko,"2 Taurikura Drive, Tauriko, Tauranga, 3110",Tauranga,NI,-37.738653,176.103745
+d1cd1fdd-8767-46a6-a8d3-c3e0632c2dc8,PAK'nSAVE Masterton,"424 Queen Street, Kuripuni, Masterton, 5810",Masterton,NI,-40.957214,175.649687
+53989945-1a28-481d-a61c-d6f75f760ada,PAK'nSAVE New Plymouth,"53 Leach Street, New Plymouth, 4310",New Plymouth,NI,-39.05712,174.08127
+8cd700ae-d96f-4761-bd7a-805d6b93536d,PAK'nSAVE Papanui,"171 Main North Road, Redwood, Christchurch, 8051",Christchurch,SI,-43.48557,172.61472
+5cf0392f-c187-4fc4-a463-eb269d2e8f45,PAK'nSAVE Richmond,"Croucher and Talbot Streeet, Richmond, Nelson, 7020",Nelson,SI,-41.3386,173.1866
+61dd754e-8525-4b9e-9e08-173389eea8a8,PAK'nSAVE Moorhouse,"297 Moorhouse Avenue, Sydenham, Christchurch, 8011",Christchurch,SI,-43.5392,172.6383
+715f0e22-95e0-45ce-af3a-07057209976e,PAK'nSAVE Rangiora,"2 Southbrook Road, Waimakariri, Rangiora, 7400",Rangiora,SI,-43.3248,172.5999
+dbca5e00-f7f9-43ae-91de-031ad16f8a92,PAK'nSAVE Wainoni,"174 Wainoni Road, Avondale, Christchurch, 8061",Christchurch,SI,-43.5125,172.6933
+d8032da3-c1b9-456e-b626-41ce21f8c67b,PAK'nSAVE Invercargill,"95 Tay Street, Invercargill, Invercargill, 9810",Invercargill,SI,-46.4143,168.353
+b29a98bd-749c-489c-9eef-6aa38e66a29b,PAK'nSAVE Timaru,"Evans Street, Waimataitai, Timaru, 7910",Timaru,SI,-44.383,171.2366
+2ed73be8-936d-4f35-9398-75a707f40a7b,PAK'nSAVE Queenstown,"302 Hawthorne Drive, Frankton, Queenstown, 9300",Queenstown,SI,-45.0108,168.7492
+c3f9e1a3-fc34-452d-af2e-95349e666ba4,PAK'nSAVE Blenheim,"1 Westwood Avenue, Springlands, Blenheim, 7271",Blenheim,SI,-41.5087,173.9234
+be4c4780-218e-425a-a90f-63e21773572b,PAK'nSAVE Hornby,"418 Main South Road, Hornby, Christchurch, 8042",Christchurch,SI,-43.543,172.5232
+4a279605-eaa8-470d-bcd4-0a9e3c9ab43b,PAK'nSAVE Riccarton,"129 Riccarton Road, Riccarton, Christchurch, 8041",Christchurch,SI,-43.5312,172.5963
+8f0d70be-5cb7-464b-99cb-8b0130671895,PAK'nSAVE Warkworth,"12 Hudson Road, Warkworth, 0910",Warkworth,NI,-36.392108,174.649519
+2a1b331a-fc4a-496a-b072-e97cc8f70cae,PAK'nSAVE Highland Park,"503 - 505 Pakuranga Road, Highland Park, 2010",Highland Park,NI,-36.8988953,174.9047405
+bdc5ef4a-c6a7-4f8a-b8cb-28109e6d61c3,PAK'nSAVE Rolleston,"157 Levi Road, Rolleston, Rolleston, 7614",Rolleston,SI,-43.59731231,172.39645748

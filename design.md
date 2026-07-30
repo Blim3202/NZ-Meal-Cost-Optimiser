@@ -119,9 +119,10 @@ Base URL: `https://api-prod.prod.fsniwaikato.kiwi/prod`
 
 1. **Mobile API** (`/mobile/store/physical`): 60 stores, precise coords, accurate names. Returns `{"stores": [...]}`.
 2. **CSV fallback** (`data/paknsave_stores.csv`): pre-built from `/store-finder` page's `__NEXT_DATA__`. Same `store_id` UUIDs as API.
-3. **Build process** (`scripts/paknsave/paknsave_setup.py`): unified callable module with two sources:
+3. **Build process** (`scripts/paknsave/paknsave_setup.py`): unified callable module with three sources:
    - `fetch_stores(source="store_finder")`: extracts `contentstackStores` (GUIDs) and `store_finder.regionStoreGroupings` (names, addresses, coordinates) — joined on the shared `url` field → 60 stores.
    - `fetch_stores(source="edge")`: GET website JWT → `fs-user-token` cookie → GET `/v1/edge/store` → 57 stores with coords (3 stores not on Edge API).
+   - `fetch_stores(source="mobile")`: GET Mobile API guest token → GET `/mobile/store/physical` → 60 stores with coords (legacy fallback).
 
 ## Store Building Pipeline
 
@@ -144,7 +145,7 @@ paknsave_setup.py (unified)
 
 CLI:
 ```
-python -m scripts.paknsave.paknsave_setup [store_finder|edge]
+python -m scripts.paknsave.paknsave_setup [store_finder|edge|mobile]
 ```
 
 Module:
@@ -583,6 +584,7 @@ Args: `[address] [dish name]`. Defaults to "Botany Town Centre, Auckland" and "s
 ```powershell
 python -m scripts.paknsave.paknsave_setup              # Edge API (default, 57 stores)
 python -m scripts.paknsave.paknsave_setup store_finder  # Store-finder page (60 stores)
+python -m scripts.paknsave.paknsave_setup mobile         # Mobile API (60 stores, legacy)
 ```
 
 ## Woolworths API Architecture

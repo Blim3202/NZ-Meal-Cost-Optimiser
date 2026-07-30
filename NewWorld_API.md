@@ -5,7 +5,8 @@ Island) domain name, this API covers **all New World stores nationwide** includi
 both North Island (101 stores) and South Island (48 stores). It also works for
 Pak'nSave with `banner: "PNS"`.
 
-[Confirmed working]: Auckland CBD stores (Metro Auckland, Newmarket, Devonport, Remuera, Mt Albert, Point Chevalier,
+[Confirmed working](scripts/newworld/NewWorld_prototype.py): Auckland CBD stores
+(Metro Auckland, Newmarket, Devonport, Remuera, Mt Albert, Point Chevalier,
 Eastridge, Mt Roskill, Birkenhead, Stonefields, Shore City, Milford, New Lynn),
 plus stores nationwide (Christchurch, Dunedin, Wellington, Nelson, etc.) all return
 valid per-store pricing through the mobile API.
@@ -14,7 +15,7 @@ valid per-store pricing through the mobile API.
 
 ## 1. Overview
 
-The New World mobile API at `api-prod.prod.fsniwaikato.kiwi` is effectively identical in structure to the Pak'nSave API — the only differences are the `banner` value (`"MNW"` vs `"PNS"`) and the `User-Agent` header (`NewWorldApp/4.32.0` vs `PAKnSAVEApp/4.32.0`). See [PaknSave_API.md](PaknSave_API.md) for the full shared API documentation (auth flow, mobile endpoints, Edge API, two-pass pipeline). This document covers New World-specific differences only.
+The New World mobile API at `api-prod.prod.fsniwaikato.kiwi` shares the same structure as the Pak'nSave API — the only differences are the `banner` value (`"MNW"` vs `"PNS"`) and the `User-Agent` header (`NewWorldApp/4.32.0` vs `PAKnSAVEApp/4.32.0`). See [PaknSave_API.md](PaknSave_API.md) for the full shared API documentation (auth flow, mobile endpoints, Edge API, two-pass pipeline). This document covers New World-specific differences only.
 
 **Credits:** Authored by [Arefu](https://github.com/Arefu) through reverse engineering the Foodstuffs Android app. Full OpenAPI spec in their [PaknSave repo](https://github.com/Arefu/PaknSave).
 
@@ -263,9 +264,9 @@ api = NewWorldAPI()
 stores = api.get_stores()  # returns {id: store_dict}
 ```
 
-The CSV at `data/newworld_stores.csv` is produced by `newworld_setup.py`,
-containing `store_id` UUIDs with name, address, lat, lon, banner, and service
-flags for all stores (148 via Edge API or 149 via Mobile API).
+The CSV at `data/newworld_stores.csv` is pre-built from the mobile API + store-finder
+page, containing the same `store_id` UUIDs with name, address, lat, lon, url, and
+service flags for all 149 stores.
 
 ### 5.2 `POST /mobile/ecomm-products/{banner}/{storeId}/search?q={query}`
 
@@ -523,7 +524,7 @@ Region:        NI  (or SI for South Island)
 
 ---
 
-### 6.2 Edge Store Listing
+### 6.2 Store Listing
 
 **Endpoint**: `GET https://api-prod.newworld.co.nz/v1/edge/store`
 
@@ -887,66 +888,50 @@ this comparison would be meaningless.
 
 ## 8. Store Data Sources
 
-### 8.1 Unified Store Setup Pipeline (`newworld_setup.py`)
+### 8.1 Primary: Mobile API (`GET /mobile/store/physical`)
 
-The **canonical store pipeline** is `scripts/newworld/newworld_setup.py` — a callable module with two data sources and a clean/merge step:
+149 stores with precise coordinates. This is the most accurate source and provides
+all data needed for the optimizer (store_id, name, address, lat/lon, banner,
+clickAndCollect, delivery).
 
 ```python
-from scripts.newworld.newworld_setup import (
-    fetch_stores,        # Step 1: fetch from Edge API (default) or Mobile API
-    clean_stores,        # Step 2: drop rows without coordinates (no-op for New World)
-    run_full_setup       # Run full pipeline end-to-end
-)
-
-# Full pipeline (default: Edge API, 148 stores)
-run_full_setup()
-
-# Full pipeline (Mobile API, legacy, 149 stores)
-run_full_setup(source="mobile")
-
-# Individual steps
-df = fetch_stores(source="edge")      # 148 stores from Edge API
-df = fetch_stores(source="mobile")     # 149 stores from Mobile API
-df = clean_stores(df, cleaned=True)   # Drop NaN coords (no-op for New World)
+api = NewWorldAPI()
+api_stores = api.get_stores()  # returns {id: store_dict}
 ```
 
-**CLI:**
-```bash
-python -m scripts.newworld.newworld_setup           # Edge API (default, 148 stores)
-python -m scripts.newworld.newworld_setup mobile        # Mobile API (legacy, 149 stores)
+### 8.2 CSV (`data/newworld_stores.csv`)
+
+Pre-built from the mobile API + store-finder page, containing the same `store_id`
+UUIDs with name, address, lat, lon, url, and service flags for all 149 stores.
+
+```csv
+store_id,name,url,address,latitude,longitude,banner,click_and_collect,delivery
+773ad0a0-...,New World Albany,/upper-north-island/auckland/albany,"219 Don McKinnon Drive...",-36.728207,174.710519,MNW,True,True
 ```
 
-### 8.2 Data Sources Compared
+### 8.3 Store URLs from Store-Finder Page
 
-| Source | Stores | Method | Auth | Notes |
-|--------|--------|--------|------|-------|
-| **Edge API** (default) | 148 | `GET /v1/edge/store` with website JWT | `fs-user-token` from `get-current-user` | 7 stores missing URLs due to name mismatches (URLs only for website linking) |
-| **Mobile API** (legacy) | 149 | `POST /mobile/user/login/guest` + `GET /mobile/store/physical` | Guest token + `NewWorldApp/4.32.0` UA | Complete set with coordinates; no geocoding needed |
-
-**No geocoding required** — both sources provide latitude/longitude directly.
-
-### 8.3 Pipeline Steps
+The store-finder page at `https://www.newworld.co.nz/store-finder` provides URL
+slugs for 150 stores (142 match the API). The `__NEXT_DATA__` JSON path is:
 
 ```
-newworld_setup.py
-  → fetch_stores(source="edge"):
-      GET https://www.newworld.co.nz → seed cookies
-      POST /api/user/get-current-user → fs-user-token (JWT)
-      GET /v1/edge/store (with JWT + Origin headers) → 148 stores with lat/lon
-  → fetch_stores(source="mobile"):
-      POST /mobile/user/login/guest (banner: "MNW")
-      GET /mobile/store/physical → 149 stores with UUID, name, address, lat/lon, banner
-  → clean_stores(cleaned=True):
-      Drop rows where latitude/longitude are NaN (no-op — all stores have coords)
-  → DataFrame → data/newworld_stores.csv / .json
+data.props.pageProps.page.page_content.content_blocks[1].store_finder.regionStoreGroupings
 ```
 
-### 8.4 Output Files
+→ `northIsland`/`southIsland` → `groups` → `stores` → each with `title`, `url`, `address`
 
-| File | Rows | Description |
-|------|------|-------------|
-| `data/newworld_stores.csv` | 148 / 149 | Store UUID, name, address, city, region (NI/SI), lat, lon, banner, flags |
-| `data/newworld_stores.json` | 148 / 149 | Same data, JSON format |
+### 8.4 Build Pipeline (`scripts/newworld/fetch_stores.py`)
+
+```
+fetch_stores.py
+  → POST /mobile/user/login/guest (banner: "MNW")
+  → GET /mobile/store/physical → 149 stores with UUID, name, address, lat/lon, banner
+  → GET https://www.newworld.co.nz/store-finder → parse __NEXT_DATA__
+  → Extract store_finder.regionStoreGroupings: title, url, address per store
+  → Join on name (strip "New World " prefix) → DataFrame → data/newworld_stores.csv
+```
+
+No geocoding required — coordinates are provided directly by the mobile API.
 
 ---
 
@@ -1159,7 +1144,7 @@ parsing.
 
 **Mobile API Pipeline:**
 ```
-newworld_stores.csv  (n stores: 148 via Edge or 149 via Mobile)
+newworld_stores.csv  (149 stores with UUID, name, lat, lon)
    |
    +---> haversine filter (user address → lat/lon → nearby stores within 5 km)
    |
@@ -1175,7 +1160,7 @@ Compare totals → cheapest store
 
 **Edge API Two-Pass Pipeline:**
 ```
-newworld_stores.csv  (n stores: 148 via Edge or 149 via Mobile)
+newworld_stores.csv  (149 stores with UUID, name, lat, lon)
    |
    +---> haversine filter (user address → lat/lon → nearby stores within 5 km)
    |
@@ -1241,8 +1226,7 @@ Output: per-store itemised prices, total cost comparison, and the cheapest store
 ---
 
 ## 12. Appendix: Full Edge API Endpoint Reference
-
-### 13.1 Base Configuration
+### 12.1 Base Configuration
 ```
 Base URL: https://api-prod.newworld.co.nz/v1/edge
 Auth:     JWT (mobile token OR website fs-user-token cookie)
@@ -1252,7 +1236,7 @@ Headers:  Authorization: Bearer {jwt}, access_token: {jwt}
 Cookies:  eCom_STORE_ID, STORE_ID_V2, Region (for per-store pricing)
 ```
 
-### 13.2 Endpoints
+### 12.2 Endpoints
 
 | Method | Endpoint | Auth | Cookies | Purpose |
 |--------|----------|------|---------|---------|
@@ -1263,7 +1247,7 @@ Cookies:  eCom_STORE_ID, STORE_ID_V2, Region (for per-store pricing)
 | POST | `/search/products/query/index/products-index-popularity-desc` | JWT | Required | Popularity browse (DESC) |
 | POST | `/search/paginated/products` | JWT | Required | **Per-store pricing + sort** |
 
-### 13.3 Algolia Index Payload (all index endpoints)
+### 12.3 Algolia Index Payload (all index endpoints)
 ```json
 {
   "algoliaQuery": {"query": "search term"},
@@ -1273,7 +1257,7 @@ Cookies:  eCom_STORE_ID, STORE_ID_V2, Region (for per-store pricing)
 }
 ```
 
-### 13.4 Paginated Search Payload
+### 12.4 Paginated Search Payload
 ```json
 {
   "algoliaQuery": {
@@ -1287,13 +1271,13 @@ Cookies:  eCom_STORE_ID, STORE_ID_V2, Region (for per-store pricing)
 }
 ```
 
-### 13.5 Valid sortOrder Values
+### 12.5 Valid sortOrder Values
 | Value | Description |
 |-------|-------------|
 | `PRICE_ASC` | Cheapest first at this store |
 | `PRICE_DESC` | Most expensive first |
 
-### 13.6 Response Price Extraction
+### 12.6 Response Price Extraction
 ```python
 # Regular price (dollars)
 price = product["singlePrice"]["price"] / 100

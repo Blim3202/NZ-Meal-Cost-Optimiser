@@ -1,0 +1,1334 @@
+[
+  {
+    "store_id":"f95243ac-bfc9-483a-b10a-b681f4fc4ba2",
+    "name":"New World Te Puke",
+    "address":"12 Jocelyn Street, Te Puke, 3119",
+    "city":"Te Puke",
+    "region":"NI",
+    "latitude":-37.783124,
+    "longitude":176.328028
+  },
+  {
+    "store_id":"07828d6b-4c90-430e-8ea9-37c671d375e9",
+    "name":"New World Rototuna",
+    "address":"Cnr Thomas & Horsham Downs Rds, Hamilton, 3210",
+    "city":"Hamilton",
+    "region":"NI",
+    "latitude":-37.728271,
+    "longitude":175.273985
+  },
+  {
+    "store_id":"3e66e1a7-bf5c-4f39-9638-c3f57e5c3889",
+    "name":"New World Gate Pa",
+    "address":"948 Cameron Road, Gate Pa, Tauranga, 3112",
+    "city":"Tauranga",
+    "region":"NI",
+    "latitude":-37.713787,
+    "longitude":176.142697
+  },
+  {
+    "store_id":"de5595ab-1d28-46c6-9e9a-b1c3db1af827",
+    "name":"New World Mount Maunganui",
+    "address":"Cnr Tweed St & Maunganui Rd, Mount Maunganui, 3116",
+    "city":"Mount Maunganui",
+    "region":"NI",
+    "latitude":-37.653862,
+    "longitude":176.198938
+  },
+  {
+    "store_id":"64c24e04-516d-40b3-958c-96b15797684a",
+    "name":"New World Glenview",
+    "address":"Unit 1\/220 Ohaupo Road, Glenview, Hamilton, 3206",
+    "city":"Hamilton",
+    "region":"NI",
+    "latitude":-37.822527,
+    "longitude":175.287416
+  },
+  {
+    "store_id":"edc986dd-a28c-4fbe-899d-5680d51f584d",
+    "name":"New World Brookfield",
+    "address":"89 Bellevue Road, Otumoetai, Tauranga, 3110",
+    "city":"Tauranga",
+    "region":"NI",
+    "latitude":-37.688946,
+    "longitude":176.1347
+  },
+  {
+    "store_id":"bc0ebd13-e131-4efd-a226-415c40ce8c4e",
+    "name":"New World Ormiston",
+    "address":"240 Ormiston Road, Ormiston, Auckland, 2019",
+    "city":"Auckland",
+    "region":"NI",
+    "latitude":-36.9647262,
+    "longitude":174.912703
+  },
+  {
+    "store_id":"36fb31df-6b41-4a10-ac9a-db831f4f5f47",
+    "name":"New World Te Rapa",
+    "address":"751 Te Rapa Road, Te Rapa, Hamilton, 3200",
+    "city":"Hamilton",
+    "region":"NI",
+    "latitude":-37.753024,
+    "longitude":175.239998
+  },
+  {
+    "store_id":"b6d36090-c7f4-4ff3-9343-5b48159f8f6d",
+    "name":"New World Green Bay",
+    "address":"64 Godley Road, Green Bay, Auckland, 0604",
+    "city":"Auckland",
+    "region":"NI",
+    "latitude":-36.93074,
+    "longitude":174.679184
+  },
+  {
+    "store_id":"ef977d89-f3d8-4e8b-8a48-b895ded38646",
+    "name":"New World Papakura",
+    "address":"29-31 East Street, Auckland, 2110",
+    "city":"Auckland",
+    "region":"NI",
+    "latitude":-37.064268,
+    "longitude":174.941101
+  },
+  {
+    "store_id":"1fa53d02-1ed5-4dd5-b0ac-fd280425c19a",
+    "name":"New World Masterton",
+    "address":"11 Bruce Street, Masterton, 5810",
+    "city":"Masterton",
+    "region":"NI",
+    "latitude":-40.948688,
+    "longitude":175.665517
+  },
+  {
+    "store_id":"0870db3b-2e91-43b7-89aa-ce3c031b3856",
+    "name":"New World Greenmeadows",
+    "address":"9 Gloucester Street, Greenmeadows, Napier, 4112",
+    "city":"Napier",
+    "region":"NI",
+    "latitude":-39.525324,
+    "longitude":176.862409
+  },
+  {
+    "store_id":"ff680fec-3a34-4666-99ed-ab1a9d1c6ba0",
+    "name":"New World Newtown",
+    "address":"195 Riddiford Street, Wellington, 6021",
+    "city":"Wellington",
+    "region":"NI",
+    "latitude":-41.314466,
+    "longitude":174.780574
+  },
+  {
+    "store_id":"79b03f4b-5e2b-437c-83f8-54d9dace4999",
+    "name":"New World Turangi",
+    "address":"19 Ohuanga Street, Turangi, 3334",
+    "city":"Turangi",
+    "region":"NI",
+    "latitude":-38.991014,
+    "longitude":175.809118
+  },
+  {
+    "store_id":"24be83cd-b9f2-47f0-8895-82867e3d4f08",
+    "name":"New World Whanganui",
+    "address":"374 Victoria Avenue, Whanganui, 4500",
+    "city":"Whanganui",
+    "region":"NI",
+    "latitude":-39.926194,
+    "longitude":175.041161
+  },
+  {
+    "store_id":"f5da324f-f415-4c8d-a360-ea8d2c74d49b",
+    "name":"New World Whitby",
+    "address":"Discovery Drive, Whitby Village Centre, Porirua, 5024",
+    "city":"Porirua",
+    "region":"NI",
+    "latitude":-41.117024,
+    "longitude":174.893023
+  },
+  {
+    "store_id":"7508cf88-9fd0-4e71-b2f2-d564b1decf8d",
+    "name":"New World Whangaparaoa",
+    "address":"580 Whangaparaoa Road, Stanmore Bay, Whangaparaoa, 0932",
+    "city":"Whangaparaoa",
+    "region":"NI",
+    "latitude":-36.628789,
+    "longitude":174.732596
+  },
+  {
+    "store_id":"4664daab-1897-4e69-9117-067b4afd41bb",
+    "name":"New World Onerahi",
+    "address":"128 Onerahi Road, Whangarei, 0110",
+    "city":"Whangarei",
+    "region":"NI",
+    "latitude":-35.755737,
+    "longitude":174.367937
+  },
+  {
+    "store_id":"d48eba45-0c1c-4f5d-b836-0ed54b45c99c",
+    "name":"New World Kerikeri",
+    "address":"99 Kerikeri Road, Kerikeri, 0230",
+    "city":"Kerikeri",
+    "region":"NI",
+    "latitude":-35.2267,
+    "longitude":173.951368
+  },
+  {
+    "store_id":"6b9af900-3f25-4fdb-8418-b43a596aee48",
+    "name":"New World Kaikohe",
+    "address":"14 Marino Place, Kaikohe, 0405",
+    "city":"Kaikohe",
+    "region":"NI",
+    "latitude":-35.408951,
+    "longitude":173.801012
+  },
+  {
+    "store_id":"dbdfdd2a-55f7-4870-9b51-979286323647",
+    "name":"New World Browns Bay",
+    "address":"2 Inverness Road, Browns Bay, Auckland, 0630",
+    "city":"Auckland",
+    "region":"NI",
+    "latitude":-36.715961,
+    "longitude":174.747287
+  },
+  {
+    "store_id":"403b1c6f-121c-4945-8aa8-fa53a7e59133",
+    "name":"New World Hobsonville",
+    "address":"120 Hobsonville Road, Hobsonville, Auckland, 0618",
+    "city":"Auckland",
+    "region":"NI",
+    "latitude":-36.79915,
+    "longitude":174.64505
+  },
+  {
+    "store_id":"b012c209-9dfe-48c2-940c-acf73afebed4",
+    "name":"New World Warkworth",
+    "address":"6 Percy Street, Warkworth, 0910",
+    "city":"Warkworth",
+    "region":"NI",
+    "latitude":-36.398709,
+    "longitude":174.666795
+  },
+  {
+    "store_id":"60928d93-06fa-4d8f-92a6-8c359e7e846d",
+    "name":"New World Metro Queen St",
+    "address":"125 Queen Street, Auckland Central, Auckland, 1010",
+    "city":"Auckland",
+    "region":"NI",
+    "latitude":-36.846405,
+    "longitude":174.765935
+  },
+  {
+    "store_id":"c570bb70-c783-4692-aee1-6a1b235f9476",
+    "name":"New World Papatoetoe",
+    "address":"65 St Georges Street, Papatoetoe, Auckland, 2025",
+    "city":"Auckland",
+    "region":"NI",
+    "latitude":-36.9802,
+    "longitude":174.853287
+  },
+  {
+    "store_id":"4ff026b8-a60d-4383-8f0c-6c85f5623afa",
+    "name":"New World Milford",
+    "address":"141 Kitchener Road, Milford, Auckland, 0620",
+    "city":"Auckland",
+    "region":"NI",
+    "latitude":-36.772298,
+    "longitude":174.764805
+  },
+  {
+    "store_id":"adcd3dee-0ead-4b84-944a-809b95e0e36b",
+    "name":"New World Southmall",
+    "address":"187 Great South Road, Manurewa, Auckland, 2102",
+    "city":"Auckland",
+    "region":"NI",
+    "latitude":-37.02246,
+    "longitude":174.89719
+  },
+  {
+    "store_id":"0f82d3fe-acd0-4e98-b3e7-fbabbf8b8ef5",
+    "name":"New World Orewa",
+    "address":"11 Moana Avenue, Orewa, 0931",
+    "city":"Orewa",
+    "region":"NI",
+    "latitude":-36.586612,
+    "longitude":174.69366
+  },
+  {
+    "store_id":"91b26327-b240-4778-a3d8-190dfc8c16f3",
+    "name":"New World Nelson City",
+    "address":"Cnr Vanguard and Gloucester Street, Nelson South, Nelson, 7010",
+    "city":"Nelson",
+    "region":"SI",
+    "latitude":-41.2757,
+    "longitude":173.2781
+  },
+  {
+    "store_id":"c032987b-0387-4fc0-bb44-ce7510e35335",
+    "name":"New World Pukekohe",
+    "address":"17 Paerata Road, Pukekohe, Auckland, 2120",
+    "city":"Auckland",
+    "region":"NI",
+    "latitude":-37.18988,
+    "longitude":174.90306
+  },
+  {
+    "store_id":"d83b5f5e-db6e-4696-823e-5940493ef41c",
+    "name":"New World Temuka",
+    "address":"185 King Street, Temuka, Temuka, 7920",
+    "city":"Temuka",
+    "region":"SI",
+    "latitude":-44.2413,
+    "longitude":171.2763
+  },
+  {
+    "store_id":"51ee2a79-4693-410c-9287-66940847736d",
+    "name":"New World Newmarket",
+    "address":"42 Nuffield Street, Newmarket, Auckland, 1023",
+    "city":"Auckland",
+    "region":"NI",
+    "latitude":-36.8709201,
+    "longitude":174.778261
+  },
+  {
+    "store_id":"3ca6692b-e2a3-4d51-95b6-d061b9541e6c",
+    "name":"New World Mt Roskill",
+    "address":"53 May Road, Mt Roskill, Auckland, 1041",
+    "city":"Auckland",
+    "region":"NI",
+    "latitude":-36.908622,
+    "longitude":174.734362
+  },
+  {
+    "store_id":"513fc849-3dbe-4333-a148-4edee5baef67",
+    "name":"New World Devonport",
+    "address":"35 Bartley Terrace, Devonport, Auckland, 0624",
+    "city":"Auckland",
+    "region":"NI",
+    "latitude":-36.82951,
+    "longitude":174.796193
+  },
+  {
+    "store_id":"91e4dddd-aed7-4ccc-ad0b-dfe25805a495",
+    "name":"New World Remuera",
+    "address":"10 Clonbern Road, Remuera, Auckland, 1050",
+    "city":"Auckland",
+    "region":"NI",
+    "latitude":-36.88171,
+    "longitude":174.79751
+  },
+  {
+    "store_id":"b42476bd-bded-4c80-827e-e1d587096f54",
+    "name":"New World Ngaruawahia",
+    "address":"7 Galileo Street, Ngaruawahia, 3720",
+    "city":"Ngaruawahia",
+    "region":"NI",
+    "latitude":-37.667256,
+    "longitude":175.150107
+  },
+  {
+    "store_id":"f54433e6-5c6c-41b9-a5e2-d7502f454da8",
+    "name":"New World Kapiti",
+    "address":"159 Kapiti Road, Paraparaumu, 5032",
+    "city":"Paraparaumu",
+    "region":"NI",
+    "latitude":-40.905625,
+    "longitude":174.994131
+  },
+  {
+    "store_id":"2fe74bf7-5123-4faa-8fcb-97db954a714d",
+    "name":"New World Waihi",
+    "address":"35 Kenny Street, Waihi, 3610",
+    "city":"Waihi",
+    "region":"NI",
+    "latitude":-37.393116,
+    "longitude":175.839644
+  },
+  {
+    "store_id":"63190876-2bd4-4562-ae34-bb5caebab4f9",
+    "name":"New World Birkenhead",
+    "address":"180 Mokoia Road, Chatswood, Auckland, 0626",
+    "city":"Auckland",
+    "region":"NI",
+    "latitude":-36.811428,
+    "longitude":174.711486
+  },
+  {
+    "store_id":"01076456-6c8a-42c3-a647-2e70a94c4e6c",
+    "name":"New World Morrinsville",
+    "address":"89 Thames Street, Morrinsville, 3300",
+    "city":"Morrinsville",
+    "region":"NI",
+    "latitude":-37.659507,
+    "longitude":175.522299
+  },
+  {
+    "store_id":"04de234b-9f3e-4388-9662-7a4c8d7180c8",
+    "name":"New World Merrilands",
+    "address":"200 Mangorei Road, Merrilands, New Plymouth, 4312",
+    "city":"New Plymouth",
+    "region":"NI",
+    "latitude":-39.06659,
+    "longitude":174.102988
+  },
+  {
+    "store_id":"517424bd-8840-49e7-8206-58f4da24b1d7",
+    "name":"New World Taumarunui",
+    "address":"10 Hakiaha Street, Taumarunui, 3920",
+    "city":"Taumarunui",
+    "region":"NI",
+    "latitude":-38.8829294,
+    "longitude":175.2579086
+  },
+  {
+    "store_id":"a799b706-07b8-4825-9524-95b03c9e0b14",
+    "name":"New World Westend",
+    "address":"247 Old Taupo Road, Hillcrest, Rotorua, 3015",
+    "city":"Rotorua",
+    "region":"NI",
+    "latitude":-38.146066,
+    "longitude":176.237248
+  },
+  {
+    "store_id":"4db31fed-1e21-4884-82a5-cfaa178af8ac",
+    "name":"New World Cambridge",
+    "address":"14 Anzac Street, Cambridge, 3434",
+    "city":"Cambridge",
+    "region":"NI",
+    "latitude":-37.893425,
+    "longitude":175.472202
+  },
+  {
+    "store_id":"e42fdd7c-6a4e-48d5-964c-5654fd36992b",
+    "name":"New World Opotiki",
+    "address":"19 Bridge Street, Opotiki, 3122",
+    "city":"Opotiki",
+    "region":"NI",
+    "latitude":-38.011812,
+    "longitude":177.275962
+  },
+  {
+    "store_id":"8d2ceac4-9520-4b8e-82bb-7867873580da",
+    "name":"New World Broadway",
+    "address":"Broadway Avenue, Palmerston North, 4414",
+    "city":"Palmerston North",
+    "region":"NI",
+    "latitude":-40.348551,
+    "longitude":175.623806
+  },
+  {
+    "store_id":"c8998066-d39b-401c-aa6b-d6d18f8d122f",
+    "name":"New World New Lynn",
+    "address":"2-6 Crown Lynn Place, New Lynn, Auckland, 0600",
+    "city":"Auckland",
+    "region":"NI",
+    "latitude":-36.910865,
+    "longitude":174.685569
+  },
+  {
+    "store_id":"c3a42e9d-ac58-4abf-be43-17920c720540",
+    "name":"New World Stonefields",
+    "address":"100 Lunn Avenue, Mt Wellington, Auckland, 1072",
+    "city":"Auckland",
+    "region":"NI",
+    "latitude":-36.890274,
+    "longitude":174.831971
+  },
+  {
+    "store_id":"b525d98f-8df5-415f-837e-abb793821e1e",
+    "name":"New World Stokes Valley",
+    "address":"14 Oates Street, Stokes Valley, Lower Hutt, 5019",
+    "city":"Lower Hutt",
+    "region":"NI",
+    "latitude":-41.174103,
+    "longitude":174.980844
+  },
+  {
+    "store_id":"bbe5aa58-69dd-4b29-abe6-58670234b3b7",
+    "name":"New World Tawa",
+    "address":"37 Oxford Street, Tawa, Wellington, 5028",
+    "city":"Wellington",
+    "region":"NI",
+    "latitude":-41.169962,
+    "longitude":174.82611
+  },
+  {
+    "store_id":"491d26a4-78fd-4c6e-85e9-5b67fd97e2cc",
+    "name":"New World Eastridge",
+    "address":"209 Kepa Road, Mission Bay, Auckland, 1071",
+    "city":"Auckland",
+    "region":"NI",
+    "latitude":-36.861179,
+    "longitude":174.82901
+  },
+  {
+    "store_id":"773ad0a0-024e-46c5-a94b-df1cf86d25cc",
+    "name":"New World Albany",
+    "address":"219 Don McKinnon Drive, Albany, Auckland, 0632",
+    "city":"Auckland",
+    "region":"NI",
+    "latitude":-36.728207,
+    "longitude":174.710519
+  },
+  {
+    "store_id":"177c82e0-7343-434c-8b98-9c20e72561c2",
+    "name":"New World Hillcrest",
+    "address":"280 Cambridge Road, Hillcrest, Hamilton, 3216",
+    "city":"Hamilton",
+    "region":"NI",
+    "latitude":-37.801952,
+    "longitude":175.322549
+  },
+  {
+    "store_id":"471d0657-713c-430a-816f-2ca8448e6b35",
+    "name":"New World Aokautere",
+    "address":"194-200 Ruapehu Drive, Summerhill, Palmerston North, 4410",
+    "city":"Palmerston North",
+    "region":"NI",
+    "latitude":-40.387171,
+    "longitude":175.639157
+  },
+  {
+    "store_id":"d4408e0f-5268-42c2-ba76-2bc9732d4316",
+    "name":"New World Island Bay",
+    "address":"6 Medway Street, Island Bay, Wellington, 6023",
+    "city":"Wellington",
+    "region":"NI",
+    "latitude":-41.334534,
+    "longitude":174.772497
+  },
+  {
+    "store_id":"c387ac97-5e0a-43ed-9c93-f1edccda298d",
+    "name":"New World Botany",
+    "address":"588 Chapel Road, East Tamaki, Auckland, 2013",
+    "city":"Auckland",
+    "region":"NI",
+    "latitude":-36.933874,
+    "longitude":174.911485
+  },
+  {
+    "store_id":"1926eed9-3d44-4339-9f6e-23c96becab07",
+    "name":"New World Porirua",
+    "address":"2 Walton Leigh Avenue, Porirua City Centre, Porirua, 5022",
+    "city":"Porirua",
+    "region":"NI",
+    "latitude":-41.136386,
+    "longitude":174.841919
+  },
+  {
+    "store_id":"412c5dcf-142c-4133-b766-7bd21c30ae01",
+    "name":"New World Whitianga",
+    "address":"1 Joan Gaskell Drive, Whitianga, 3510",
+    "city":"Whitianga",
+    "region":"NI",
+    "latitude":-36.834308,
+    "longitude":175.699435
+  },
+  {
+    "store_id":"c4d78c33-1f9c-4039-8cd5-82ddb43fbe16",
+    "name":"New World Whangamata",
+    "address":"308 Aickin Road, Whangamata, 3620",
+    "city":"Whangamata",
+    "region":"NI",
+    "latitude":-37.201793,
+    "longitude":175.867411
+  },
+  {
+    "store_id":"3a5fd4b8-6ea0-4a6c-aeec-5af83e093322",
+    "name":"New World Thorndon",
+    "address":"150 Molesworth Street, Thorndon, Wellington, 6011",
+    "city":"Wellington",
+    "region":"NI",
+    "latitude":-41.274006,
+    "longitude":174.778067
+  },
+  {
+    "store_id":"686c8e35-aa87-40e9-b46e-8ffbad4713aa",
+    "name":"New World Kumeu",
+    "address":"108-110 Main Road, Kumeu, Auckland, 0810",
+    "city":"Auckland",
+    "region":"NI",
+    "latitude":-36.774933,
+    "longitude":174.553672
+  },
+  {
+    "store_id":"0d045690-bd75-42d8-a7bc-ee44aa57fc61",
+    "name":"New World Waiuku",
+    "address":"25-49 Bowen Street, Waiuku, 2123",
+    "city":"Waiuku",
+    "region":"NI",
+    "latitude":-37.249975,
+    "longitude":174.727925
+  },
+  {
+    "store_id":"d4f24174-f962-4db1-9024-75495bb2dfbb",
+    "name":"New World Churton Park",
+    "address":"69 Lakewood Avenue, Churton Park, Wellington, 6037",
+    "city":"Wellington",
+    "region":"NI",
+    "latitude":-41.203041,
+    "longitude":174.807839
+  },
+  {
+    "store_id":"aed206ae-c0ba-4c81-b7e9-7b420bc3616c",
+    "name":"New World Dannevirke",
+    "address":"Denmark Street, Dannevirke, 4930",
+    "city":"Dannevirke",
+    "region":"NI",
+    "latitude":-40.210911,
+    "longitude":176.096788
+  },
+  {
+    "store_id":"11b389ec-b197-4476-9b7f-2eaeffa2c1c9",
+    "name":"New World Ohakune",
+    "address":"12 Goldfinch Street, Ohakune, 4625",
+    "city":"Ohakune",
+    "region":"NI",
+    "latitude":-39.41772,
+    "longitude":175.39904
+  },
+  {
+    "store_id":"ebcc2edb-73bd-4d8e-b6f3-528849677b62",
+    "name":"New World Foxton",
+    "address":"Cnr Main and Whyte Streets, FOXTON, 4814",
+    "city":"FOXTON",
+    "region":"NI",
+    "latitude":-40.472517,
+    "longitude":175.281707
+  },
+  {
+    "store_id":"be37802e-1355-466e-9a1b-1ede5a099705",
+    "name":"New World Hastings",
+    "address":"400 Heretaunga Street East, Hastings, 4122",
+    "city":"Hastings",
+    "region":"NI",
+    "latitude":-39.644715,
+    "longitude":176.847154
+  },
+  {
+    "store_id":"745d0bda-4b4f-4e4c-ab1f-6d77512f92f4",
+    "name":"New World Hutt City",
+    "address":"Bloomfield Terrace, Lower Hutt, 5010",
+    "city":"Lower Hutt",
+    "region":"NI",
+    "latitude":-41.209025,
+    "longitude":174.90804
+  },
+  {
+    "store_id":"7daec5c2-789a-4577-ba1f-39e730acdd27",
+    "name":"New World Karori",
+    "address":"236 Karori Road, Karori, Wellington, 6012",
+    "city":"Wellington",
+    "region":"NI",
+    "latitude":-41.284257,
+    "longitude":174.738052
+  },
+  {
+    "store_id":"c78b7034-7f10-480a-b502-2e5c4066a790",
+    "name":"New World Levin",
+    "address":"21 Bath Street, Levin, 5510",
+    "city":"Levin",
+    "region":"NI",
+    "latitude":-40.623065,
+    "longitude":175.282791
+  },
+  {
+    "store_id":"1ee51b21-c2c8-42c4-b01e-8ef081738e23",
+    "name":"New World Newlands",
+    "address":"Cnr Bracken and Newlands Road, Newlands, Wellington, 6037",
+    "city":"Wellington",
+    "region":"NI",
+    "latitude":-41.223472,
+    "longitude":174.823202
+  },
+  {
+    "store_id":"1fc7bc09-1d0c-4a88-a9f4-5f1536d797dd",
+    "name":"New World Regent",
+    "address":"167 Bank Street, Regent, Whangarei, 0112",
+    "city":"Whangarei",
+    "region":"NI",
+    "latitude":-35.716277,
+    "longitude":174.321962
+  },
+  {
+    "store_id":"cb3f240a-a157-490c-9e80-f537d202ef49",
+    "name":"New World Howick",
+    "address":"77 Union Road, Howick, Auckland, 2014",
+    "city":"Auckland",
+    "region":"NI",
+    "latitude":-36.903857,
+    "longitude":174.925067
+  },
+  {
+    "store_id":"997b5318-0d47-4eac-b4ec-bbbd9feb8ae3",
+    "name":"New World Onekawa",
+    "address":"34 Maadi Road, Onekawa, Napier, 4110",
+    "city":"Napier",
+    "region":"NI",
+    "latitude":-39.508662,
+    "longitude":176.887458
+  },
+  {
+    "store_id":"1257ed9a-1790-4ad0-beae-383397043e35",
+    "name":"New World Carterton",
+    "address":"60 High Street South, -, Carterton, 5713",
+    "city":"Carterton",
+    "region":"NI",
+    "latitude":-41.026035,
+    "longitude":175.526349
+  },
+  {
+    "store_id":"02874261-edfe-4daa-886c-09429e2d06d7",
+    "name":"New World Stratford",
+    "address":"124 Regan Street, Stratford, 4332",
+    "city":"Stratford",
+    "region":"NI",
+    "latitude":-39.337111,
+    "longitude":174.286329
+  },
+  {
+    "store_id":"89ba1656-0ad7-4af0-8694-08bf335e99b9",
+    "name":"New World Wellington City",
+    "address":"279 Wakefield Street, Wellington, 6011",
+    "city":"Wellington",
+    "region":"NI",
+    "latitude":-41.292409,
+    "longitude":174.784342
+  },
+  {
+    "store_id":"420eff4b-5266-4667-8943-a21caf4b1b03",
+    "name":"New World Khandallah",
+    "address":"26 Ganges Road, Khandallah, Wellington, 6035",
+    "city":"Wellington",
+    "region":"NI",
+    "latitude":-41.247527,
+    "longitude":174.791469
+  },
+  {
+    "store_id":"e2852742-1bb5-42a5-8635-4c4e7c7cb758",
+    "name":"New World Marton",
+    "address":"427 Wellington Road, Marton, 4710",
+    "city":"Marton",
+    "region":"NI",
+    "latitude":-40.07666,
+    "longitude":175.379646
+  },
+  {
+    "store_id":"5c3070dd-312f-4755-a92c-7607b2a694e4",
+    "name":"New World Winton",
+    "address":"293 Great North Road, Winton, Winton, 9720",
+    "city":"Winton",
+    "region":"SI",
+    "latitude":-46.1417,
+    "longitude":168.3256
+  },
+  {
+    "store_id":"38b074c4-0e5a-4bd5-b743-d30f28d94982",
+    "name":"New World Metro Willis St",
+    "address":"68- 70 Willis Street, Wellington Central, Wellington, 6011",
+    "city":"Wellington",
+    "region":"NI",
+    "latitude":-41.287948,
+    "longitude":174.775268
+  },
+  {
+    "store_id":"5255b27a-b224-4f58-a424-144e81ecf244",
+    "name":"New World Miramar",
+    "address":"48 Miramar Avenue, Miramar, WELLINGTON, 6022",
+    "city":"WELLINGTON",
+    "region":"NI",
+    "latitude":-41.315835,
+    "longitude":174.814635
+  },
+  {
+    "store_id":"514b1db1-fe88-4e79-a6dd-f1e0d4d4c01f",
+    "name":"New World Te Kuiti",
+    "address":"39-51 Rora Street, Te Kuiti, 3910",
+    "city":"Te Kuiti",
+    "region":"NI",
+    "latitude":-38.331839,
+    "longitude":175.16319
+  },
+  {
+    "store_id":"55d4fe03-e82e-44a8-8324-57f3afcf16ba",
+    "name":"New World New Plymouth",
+    "address":"78 Courtenay Street, New Plymouth, 4310",
+    "city":"New Plymouth",
+    "region":"NI",
+    "latitude":-39.05782,
+    "longitude":174.07774
+  },
+  {
+    "store_id":"5dde0d09-05ca-4b78-ab83-00e47233cf55",
+    "name":"New World Otaki",
+    "address":"155-163 Main Highway, Otaki, 5512",
+    "city":"Otaki",
+    "region":"NI",
+    "latitude":-40.763486,
+    "longitude":175.153556
+  },
+  {
+    "store_id":"b01a01ac-d6ef-45ef-b9fe-d66036d55b56",
+    "name":"New World Pahiatua",
+    "address":"101 Main Street, Pahiatua, 4910",
+    "city":"Pahiatua",
+    "region":"NI",
+    "latitude":-40.452412,
+    "longitude":175.841836
+  },
+  {
+    "store_id":"6defcd27-e944-45ad-982f-768ab3b4c2ac",
+    "name":"New World Paremata",
+    "address":"93-97 Mana Esplanade, Paremata, Porirua, 5026",
+    "city":"Porirua",
+    "region":"NI",
+    "latitude":-41.0944,
+    "longitude":174.868615
+  },
+  {
+    "store_id":"59b56cc6-645c-4fa8-836b-c667662d7ec4",
+    "name":"New World Pioneer",
+    "address":"179-197 Main Street, Palmerston North, 4412",
+    "city":"Palmerston North",
+    "region":"NI",
+    "latitude":-40.359638,
+    "longitude":175.600741
+  },
+  {
+    "store_id":"692b45a2-2ab9-49de-adc3-e4a0ddd661a5",
+    "name":"New World Silverstream",
+    "address":"28 Whitemans Road, Silverstream, Upper Hutt, 5019",
+    "city":"Upper Hutt",
+    "region":"NI",
+    "latitude":-41.148436,
+    "longitude":175.012536
+  },
+  {
+    "store_id":"65201d94-8805-4be8-b1ba-f547d6bf7ecd",
+    "name":"New World Taihape",
+    "address":"112 Hautapu Street, Taihape, 4720",
+    "city":"Taihape",
+    "region":"NI",
+    "latitude":-39.67708,
+    "longitude":175.798534
+  },
+  {
+    "store_id":"55231137-b7be-48f2-b8a0-6aaed59f4540",
+    "name":"New World Waikanae",
+    "address":"5 Parata Street, Waikanae, 5036",
+    "city":"Waikanae",
+    "region":"NI",
+    "latitude":-40.874943,
+    "longitude":175.066744
+  },
+  {
+    "store_id":"c15270b3-4ced-4b8e-be01-16b9fc31c4c7",
+    "name":"New World Tokoroa",
+    "address":"84 Bridge Street, Tokoroa, 3420",
+    "city":"Tokoroa",
+    "region":"NI",
+    "latitude":-38.218917,
+    "longitude":175.867537
+  },
+  {
+    "store_id":"b2f012df-3c55-4bca-98ba-e30c3cd3aa70",
+    "name":"New World Waipukurau",
+    "address":"27 Russell Street, Waipukurau, 4200",
+    "city":"Waipukurau",
+    "region":"NI",
+    "latitude":-39.99467,
+    "longitude":176.55584
+  },
+  {
+    "store_id":"83f2d5fc-132b-4603-aaaf-323e4a426fa0",
+    "name":"New World Wairoa",
+    "address":"51 Queen Street, Wairoa, 4108",
+    "city":"Wairoa",
+    "region":"NI",
+    "latitude":-39.033806,
+    "longitude":177.418651
+  },
+  {
+    "store_id":"99798e55-18bb-4f16-9f3e-425c555111a7",
+    "name":"New World Waitara",
+    "address":"42 Queen Street, Waitara, 4320",
+    "city":"Waitara",
+    "region":"NI",
+    "latitude":-39.000167,
+    "longitude":174.236804
+  },
+  {
+    "store_id":"524d7a29-550c-4d14-8f89-ec334a60cd6d",
+    "name":"New World Matamata",
+    "address":"45 Waharoa East Road, Matamata, 3400",
+    "city":"Matamata",
+    "region":"NI",
+    "latitude":-37.803437,
+    "longitude":175.769835
+  },
+  {
+    "store_id":"5b8f8e3b-e1a0-4a11-b16b-9cfe782c124e",
+    "name":"New World Prestons",
+    "address":"420 Marshland Road, Marshland, Christchurch, 8083",
+    "city":"Christchurch",
+    "region":"SI",
+    "latitude":-43.4749,
+    "longitude":172.6621
+  },
+  {
+    "store_id":"ad3ea12c-d9c1-4640-908c-feb9d3c79c11",
+    "name":"New World Inglewood",
+    "address":"46 Matai Street, Inglewood, 4330",
+    "city":"Inglewood",
+    "region":"NI",
+    "latitude":-39.158214,
+    "longitude":174.20708
+  },
+  {
+    "store_id":"8e5b742c-0957-4b97-b9e2-290d75c02046",
+    "name":"New World Kaikoura",
+    "address":"124 Beach Road, Kaikoura, Kaikoura, 7300",
+    "city":"Kaikoura",
+    "region":"SI",
+    "latitude":-42.3877,
+    "longitude":173.6804
+  },
+  {
+    "store_id":"756356f9-9985-40c9-a368-bf1ea8072b0e",
+    "name":"New World Blenheim",
+    "address":"4 Freswick Street, Blenheim, Blenheim, 7201",
+    "city":"Blenheim",
+    "region":"SI",
+    "latitude":-41.5141,
+    "longitude":173.9613
+  },
+  {
+    "store_id":"0637c08c-ac36-4940-8582-38e44a4812fa",
+    "name":"New World Northwood",
+    "address":"2 Mounter Avenue, Northwood, Christchurch, 8051",
+    "city":"Christchurch",
+    "region":"SI",
+    "latitude":-43.4596,
+    "longitude":172.6225
+  },
+  {
+    "store_id":"fc91d59f-6ab5-4447-8737-125e09e8e50e",
+    "name":"New World Ferry Road",
+    "address":"7\/11 St Johns Street, Woolston, Christchurch, 8062",
+    "city":"Christchurch",
+    "region":"SI",
+    "latitude":-43.5492,
+    "longitude":172.6842
+  },
+  {
+    "store_id":"341f876f-9a83-4882-aa79-5e5c9dc8fb2e",
+    "name":"New World Wanaka",
+    "address":"20 Dunmore Street, W\u0101naka, W\u0101naka, 9305",
+    "city":"W\u0101naka",
+    "region":"SI",
+    "latitude":-44.6963,
+    "longitude":169.135
+  },
+  {
+    "store_id":"b7fe0c9e-24e9-46f2-a59a-95dce1725b06",
+    "name":"New World Motueka",
+    "address":"271 High Street, Motueka, Motueka, 7120",
+    "city":"Motueka",
+    "region":"SI",
+    "latitude":-41.1146,
+    "longitude":173.0124
+  },
+  {
+    "store_id":"3ee7214b-6df4-4fdb-9dd6-3b2fc252ba6b",
+    "name":"New World Wigram",
+    "address":"51 Skyhawk Road, Wigram, Christchurch, 8042",
+    "city":"Christchurch",
+    "region":"SI",
+    "latitude":-43.5532267333,
+    "longitude":172.5580681167
+  },
+  {
+    "store_id":"80bebcaf-d5a3-4ca6-a999-beab902aef55",
+    "name":"New World Balclutha",
+    "address":"9 Lanark Street, Balclutha, 9230",
+    "city":"Balclutha",
+    "region":"SI",
+    "latitude":-46.2381,
+    "longitude":169.7437
+  },
+  {
+    "store_id":"ff528de5-233a-4cf6-a3a9-bc140565367e",
+    "name":"New World Three Parks",
+    "address":"83 Sir Tim Wallis Drive, Wanaka, Wanaka, 9305",
+    "city":"Wanaka",
+    "region":"SI",
+    "latitude":-44.6993,
+    "longitude":169.1553
+  },
+  {
+    "store_id":"bfe3a4ae-2f6d-46ed-ba60-28451a4807bf",
+    "name":"New World Lincoln",
+    "address":"77 Gerald Street, Lincoln, Lincoln, 7608",
+    "city":"Lincoln",
+    "region":"SI",
+    "latitude":-43.642,
+    "longitude":172.4739
+  },
+  {
+    "store_id":"12c83069-9220-466b-9145-6ac5706d841c",
+    "name":"New World Timaru",
+    "address":"145 Wai-Iti Road, Highfield, Timaru, 7910",
+    "city":"Timaru",
+    "region":"SI",
+    "latitude":-44.3898949779,
+    "longitude":171.226184705
+  },
+  {
+    "store_id":"50a98f3b-ffbd-4229-84bc-bfd3c956119f",
+    "name":"New World Centre City",
+    "address":"133 Great King Street, Dunedin Central, Dunedin, 9016",
+    "city":"Dunedin",
+    "region":"SI",
+    "latitude":-45.8713,
+    "longitude":170.5083
+  },
+  {
+    "store_id":"bae1da58-ac6b-4ef2-816d-4932691218d1",
+    "name":"New World St Martins",
+    "address":"92 Wilsons Road, Saint Martins, Christchurch, 8023",
+    "city":"Christchurch",
+    "region":"SI",
+    "latitude":-43.5578,
+    "longitude":172.6548
+  },
+  {
+    "store_id":"a0d86b5f-fdf4-44d1-b7a2-f418bdb37f4e",
+    "name":"New World Stanmore",
+    "address":"288 Stanmore Road, Richmond, Christchurch, 8013",
+    "city":"Christchurch",
+    "region":"SI",
+    "latitude":-43.5203,
+    "longitude":172.6568
+  },
+  {
+    "store_id":"401accb9-6430-45a1-888d-29337ab34f12",
+    "name":"New World Westport",
+    "address":"244 Palmerston St, Nelson, Westport, 7825",
+    "city":"Westport",
+    "region":"SI",
+    "latitude":-41.7575,
+    "longitude":171.5989
+  },
+  {
+    "store_id":"afbe3446-1f57-4dca-9a58-0c7d5a4a6020",
+    "name":"New World Greymouth",
+    "address":"Cnr High & Marlborough Streets, Greymouth, Greymouth, 7805",
+    "city":"Greymouth",
+    "region":"SI",
+    "latitude":-42.4617,
+    "longitude":171.1961
+  },
+  {
+    "store_id":"b007db90-0a16-47d8-9a89-407be8496d9a",
+    "name":"New World Mosgiel",
+    "address":"10 Hartstonge Avenue, Mosgiel, Mosgiel, 9024",
+    "city":"Mosgiel",
+    "region":"SI",
+    "latitude":-45.8725,
+    "longitude":170.3493
+  },
+  {
+    "store_id":"b3158cd8-72b9-40e5-8c4e-abd43c1be305",
+    "name":"New World Bishopdale",
+    "address":"41 Bishopdale Court, Bishopdale, Christchurch, 8053",
+    "city":"Christchurch",
+    "region":"SI",
+    "latitude":-43.4885,
+    "longitude":172.5872
+  },
+  {
+    "store_id":"f7f6ce3e-c7f6-459a-8466-e29d868257d1",
+    "name":"New World Ravenswood",
+    "address":"10 Bob Robertson Drive, Woodend, 7691",
+    "city":"Woodend",
+    "region":"SI",
+    "latitude":-43.308,
+    "longitude":172.6713
+  },
+  {
+    "store_id":"81f807e9-1879-484c-b27e-ded56245c6a4",
+    "name":"New World Fendalton",
+    "address":"19-23 Memorial Avenue, Fendalton, Christchurch, 8053",
+    "city":"Christchurch",
+    "region":"SI",
+    "latitude":-43.5179,
+    "longitude":172.5883
+  },
+  {
+    "store_id":"4f76214d-40a5-4c71-a94f-81d45f3f0a59",
+    "name":"New World Gardens",
+    "address":"6 North Road, North East Valley, Dunedin, 9010",
+    "city":"Dunedin",
+    "region":"SI",
+    "latitude":-45.8549,
+    "longitude":170.5197
+  },
+  {
+    "store_id":"04ba529d-3dee-4f86-adb6-62b0111114d7",
+    "name":"New World Waimate",
+    "address":"95 Queen Street, Waimate, Waimate, 7924",
+    "city":"Waimate",
+    "region":"SI",
+    "latitude":-44.7337,
+    "longitude":171.0472
+  },
+  {
+    "store_id":"95d161ea-9a31-4fca-acbe-96f271d627df",
+    "name":"New World Halswell",
+    "address":"346 Halswell Road, Halswell, Christchurch, 8025",
+    "city":"Christchurch",
+    "region":"SI",
+    "latitude":-43.5806,
+    "longitude":172.566
+  },
+  {
+    "store_id":"421d563e-ce40-4d5c-a79c-4afb521fc5b0",
+    "name":"New World Oamaru",
+    "address":"72 Wansbeck Street, Oamaru, Oamaru, 9400",
+    "city":"Oamaru",
+    "region":"SI",
+    "latitude":-45.102,
+    "longitude":170.9548
+  },
+  {
+    "store_id":"30a90cf9-3547-46d1-b8b1-cc9ff4af5f88",
+    "name":"New World Ashburton",
+    "address":"75 Moore Street, Ashburton, 7700",
+    "city":"Ashburton",
+    "region":"SI",
+    "latitude":-43.9039,
+    "longitude":171.7439
+  },
+  {
+    "store_id":"810832cb-2748-4e87-bc17-929eab5a5a61",
+    "name":"New World Feilding",
+    "address":"42 Aorangi Street, Feilding, 4702",
+    "city":"Feilding",
+    "region":"NI",
+    "latitude":-40.228015,
+    "longitude":175.569532
+  },
+  {
+    "store_id":"e3a57a0b-156f-4994-a06a-921df65c20cc",
+    "name":"New World Stoke",
+    "address":"107 Neale Avenue, Stoke, Nelson, 7011",
+    "city":"Nelson",
+    "region":"SI",
+    "latitude":-41.3127,
+    "longitude":173.2327
+  },
+  {
+    "store_id":"6ea5a1cf-56b8-44eb-856c-fd916560e92e",
+    "name":"New World Queenstown",
+    "address":"1\/12 Hawthorne Dr, Remarkables Park, Queenstown, 9300",
+    "city":"Queenstown",
+    "region":"SI",
+    "latitude":-45.0258,
+    "longitude":168.7419
+  },
+  {
+    "store_id":"5eb8d7a2-c5e4-4046-a17e-be2806626fd7",
+    "name":"New World Te Kauwhata",
+    "address":"6-8 Main Road, Te Kauwhata, 3710",
+    "city":"Te Kauwhata",
+    "region":"NI",
+    "latitude":-37.404219,
+    "longitude":175.143247
+  },
+  {
+    "store_id":"1898a189-acf3-4320-8704-7a9cc6b3924d",
+    "name":"New World Metro Shore City",
+    "address":"52-56 Anzac Street, Takapuna, Auckland, 0622",
+    "city":"Auckland",
+    "region":"NI",
+    "latitude":-36.78756,
+    "longitude":174.77005
+  },
+  {
+    "store_id":"f0c21eab-1919-4cba-ac00-5b795947cdcb",
+    "name":"New World Long Bay",
+    "address":"55B Glenvar Ridge Road, Long Bay, Auckland, 0630",
+    "city":"Auckland",
+    "region":"NI",
+    "latitude":-36.684964,
+    "longitude":174.73973
+  },
+  {
+    "store_id":"ca27a97f-03d4-4969-9400-e3af61c99816",
+    "name":"New World Gore",
+    "address":"2 Irk Street, Gore, Gore, 9710",
+    "city":"Gore",
+    "region":"SI",
+    "latitude":-46.0993,
+    "longitude":168.9427
+  },
+  {
+    "store_id":"c6abac35-b75f-4a02-9b43-7ad5a7c7aa37",
+    "name":"New World Ilam",
+    "address":"47C\/57C Peer Street, Upper Riccarton, Christchurch, 8041",
+    "city":"Christchurch",
+    "region":"SI",
+    "latitude":-43.5260484333,
+    "longitude":172.5699320333
+  },
+  {
+    "store_id":"a7c2a0cc-d39d-4b26-93ba-09adaa3a8bf6",
+    "name":"New World Elles Road",
+    "address":"244 Elles Road, Strathern, Invercargill, 9812",
+    "city":"Invercargill",
+    "region":"SI",
+    "latitude":-46.4269544,
+    "longitude":168.3616716667
+  },
+  {
+    "store_id":"e197b67e-2cf9-4bae-bae5-5b8ffdccfa87",
+    "name":"New World Kaiapoi",
+    "address":"52 Charles Street, Kaiapoi, Kaiapoi, 7630",
+    "city":"Kaiapoi",
+    "region":"SI",
+    "latitude":-43.3823,
+    "longitude":172.6596
+  },
+  {
+    "store_id":"10de9574-cf98-4bc8-973d-3d3e36cb0c4d",
+    "name":"New World Waitaki",
+    "address":"402 Thames Highway, Oamaru North, Oamaru, 9400",
+    "city":"Oamaru",
+    "region":"SI",
+    "latitude":-45.0766,
+    "longitude":170.9849
+  },
+  {
+    "store_id":"84c3115a-fe09-4bc3-b373-f43cc9e9627c",
+    "name":"New World Rolleston",
+    "address":"92 Rolleston Drive, Rolleston, Rolleston, 7614",
+    "city":"Rolleston",
+    "region":"SI",
+    "latitude":-43.5968,
+    "longitude":172.3825
+  },
+  {
+    "store_id":"d0914aa0-ab30-4354-a223-6ba9ef6069c1",
+    "name":"New World Windsor",
+    "address":"51 Windsor Street, Windsor, Invercargill, 9810",
+    "city":"Invercargill",
+    "region":"SI",
+    "latitude":-46.3954,
+    "longitude":168.3661
+  },
+  {
+    "store_id":"5080816d-825d-4a6e-9835-a93d986b1ee0",
+    "name":"New World Rangiora",
+    "address":"10 Good Street, Rangiora, Rangiora, 7400",
+    "city":"Rangiora",
+    "region":"SI",
+    "latitude":-43.3025542809,
+    "longitude":172.5944879559
+  },
+  {
+    "store_id":"9829c627-42c8-4ad7-b550-f9dba9fcd44a",
+    "name":"New World Cromwell",
+    "address":"2 Murray Terrace, Cromwell, Cromwell, 9310",
+    "city":"Cromwell",
+    "region":"SI",
+    "latitude":-45.0375,
+    "longitude":169.1943
+  },
+  {
+    "store_id":"c1aaac72-38c0-4cc0-ad05-f241047d88c5",
+    "name":"New World Durham Street",
+    "address":"175 Durham Street South, Christchurch Central, Christchurch, 8011",
+    "city":"Christchurch",
+    "region":"SI",
+    "latitude":-43.5388269667,
+    "longitude":172.6332807333
+  },
+  {
+    "store_id":"6739e54f-ffab-47b9-9fe1-899d91a7ad78",
+    "name":"New World Mangawhai",
+    "address":"83 Molesworth Drive, Mangawhai, 0505",
+    "city":"Mangawhai",
+    "region":"NI",
+    "latitude":-36.1124401,
+    "longitude":174.572448
+  },
+  {
+    "store_id":"2de22d8e-54d4-4575-be10-0d783324ec75",
+    "name":"New World Hokitika",
+    "address":"116 Revell Street, Hokitika, Hokitika, 7810",
+    "city":"Hokitika",
+    "region":"SI",
+    "latitude":-42.7161,
+    "longitude":170.9638
+  },
+  {
+    "store_id":"8d098344-5474-4626-ae1c-90ed0f57306f",
+    "name":"New World Alexandra",
+    "address":"89 Centennial Avenue, Alexandra, Alexandra, 9320",
+    "city":"Alexandra",
+    "region":"SI",
+    "latitude":-45.2499,
+    "longitude":169.387
+  },
+  {
+    "store_id":"c3f80f70-0ad3-409a-b60a-9eac6ad38681",
+    "name":"New World The Sands",
+    "address":"255 The Boulevard, Papamoa East, Tauranga, 3118",
+    "city":"Tauranga",
+    "region":"NI",
+    "latitude":-37.7273,
+    "longitude":176.3464
+  },
+  {
+    "store_id":"871ff39f-99b5-4030-b035-b2dab7225082",
+    "name":"New World Point Chevalier",
+    "address":"1132 Great North Road, Point Chevalier, Auckland, 1022",
+    "city":"Auckland",
+    "region":"NI",
+    "latitude":-36.8699276,
+    "longitude":174.7126578
+  },
+  {
+    "store_id":"d999418f-c2ca-4748-b56b-15ee82c6e85e",
+    "name":"New World Havelock North",
+    "address":"34 Havelock Road, Havelock North, 4130",
+    "city":"Havelock North",
+    "region":"NI",
+    "latitude":-39.668128,
+    "longitude":176.875873
+  },
+  {
+    "store_id":"dae2d4e3-9b97-41f4-a969-4eded0bd3554",
+    "name":"New World Mt Albert",
+    "address":"1 Alberton Avenue, Mt Albert, Auckland, 1025",
+    "city":"Auckland",
+    "region":"NI",
+    "latitude":-36.880146,
+    "longitude":174.72622
+  },
+  {
+    "store_id":"f145f120-ba19-4524-9fc5-e8caf516e209",
+    "name":"New World Kawerau",
+    "address":"Tarawera Court, Kawerau, 3127",
+    "city":"Kawerau",
+    "region":"NI",
+    "latitude":-38.085853,
+    "longitude":176.700944
+  },
+  {
+    "store_id":"96c43bec-8c0d-4752-b417-266546fddda1",
+    "name":"New World Whakatane",
+    "address":"51 Kakahoroa Drive, Whakatane, 3120",
+    "city":"Whakatane",
+    "region":"NI",
+    "latitude":-37.950929,
+    "longitude":176.993759
+  }
+]

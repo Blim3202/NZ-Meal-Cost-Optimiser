@@ -1,7 +1,5 @@
 id,name,address,latitude,longitude
 1225718, Woolworths Northlands,"cnr Main North & Sawyers Arms Roads,Northlands Click and Collect,8051,Northlands Click and Collect",-43.4917,172.6116
-4251868,Whangaruru,"Whangarei Retail Centre Okara Drive,Whangarei,Whangaruru,110,Whangaruru",,
-4472132,Whangaruru – Ngaiotonga Marae,"Okara Drive, Retail Centre, Whangarei,Whangaruru – Ngaiotonga Marae,0110,Whangaruru – Ngaiotonga Marae",,
 3496448,Woolworths Alexandra,"106 Centennial Avenue,Alexandra,Alexandra Pickup,Alexandra Pickup ",-45.2491,169.3853
 861615,Woolworths Amberley,"Cnr Carters and Amberley Beach Roads,Amberley Click and Collect ,7410,Amberley Click and Collect",-43.1569,172.7301
 2810973,Woolworths Andersons Bay,"560 Andersons Bay Road, South Dunedin,Andy Bay Click and Collect,9012,Andy Bay Click and Collect",-45.8967,170.5092
@@ -38,7 +36,6 @@ id,name,address,latitude,longitude
 904436,Woolworths Fairy Springs,"54 Fairy Springs Road,FairySprings Click and Collect,FairySprings Click and Collect",-38.1201,176.228
 1155534,Woolworths Feilding,"Cnr Kimbolton and Weld Streets,Feilding,Feilding Click and Collect,Feilding Click and Collect",-40.2252,175.5686
 2176651,Woolworths Ferrymead,"999 Ferry Road,Christchurch,Ferrymead Click and Collect,Ferrymead Click and Collect",-43.5569,172.7023
-4466375,Woolworths Flaxmere,"4 Swansea Road,Flaxmere Pick Up,4120,Flaxmere Pick Up",,
 1225707,Woolworths Fraser Cove,"Fraser Cove Shopping Centre,229-233 Fraser Street,Fraser Cove Click and Collect,3112,Fraser Cove Click and Collect",-37.7141,176.1513
 2768257,Woolworths Gisborne,"Carnarvon Street, Gladstone Road,Gisborne Click and Collect,4010,Gisborne Click and Collect",-38.6619,178.0182
 1190273,Woolworths Glenfield,"Cnr Bentley Ave & Glenfield Rd,Glenfield,Glenfield Click and Collect,0629,Glenfield Click and Collect",-36.7818,174.7229
@@ -170,20 +167,12 @@ id,name,address,latitude,longitude
 1248095,Woolworths Whangaparaoa,"Cnr Whangaparaoa Rd & Wade Dr,Whangaparaoa Click and Collect,0943,Whangaparaoa Click and Collect",-36.6365,174.7466
 2686464,Woolworths Whangarei,"Whangarei Retail Centre, Okara DriveCountdown Whangarei,Whangarei Click and Collect,0110,Whangarei Click and Collect",-35.7308,174.3273
 2791350,Woolworths Whitianga,"24 Joan Gaskell Drive,Whitianga Click and Collect,3510,Whitianga Click and Collect",-36.8337,175.6944
-2315277,Paparoa Hall,"2056 Paparoa Valley Road,Paparoa Hall Click and Collect,Paparoa Hall Click and Collect",,
-2325409,Ruawai outside The Well Cafe,"Freyberg Street,Ruawai outside The Well Cafe,Ruawai outside The Well Cafe",,
-733204,Woolworths Paihia Central,"6 Williams Road,Paihia,Paihia Central Click-Collect,Paihia Central",,
 620844,Woolworths Lincoln Road,"185 - 187 Universal Drive,Lincoln Road Click and Collect,0610,Auckland LN",-36.8569,174.6314
 882226,Woolworths Auckland Victoria Street West,"19-25 Victoria Street West,Vic St West Click & Collect,Auckland VSW",-36.8486,174.7647
-2479711,Kaiaua Rays Rest Camp Reserve,"562 East Coast Rd,Kaiaua,Kaiaua Rays Rest Camp Reserve,Kaiaua Rays Rest Camp Reserve",,
 1906072,Woolworths Manukau Mall,"Shop 99,Manukau City Centre,Manukau Mall Click and Collect,Auckland MK",-36.9929,174.8822
 264573,Woolworths Chartwell,"Chartwell Mall,CW Click & Collect,3210,Hamilton CW",-37.7505,175.278
-3873690,EXPRESS PU Spotswood,"Cnr Manadon St & South Rd,Cnr Manadon St & South Rd,EXPRESS PU Spotswood,EXPRESS PU Spotswood",,
-2119357,Makahu Hall	,"835 Mangaehu Road,Makahu,Makahu Hall Click and Collect,4392,Makahu Hall Click and Collect",,
-1346623,Whangamomona Hall,"6013 Ohura Road,Whangamomona,Whangamomona Hall ClickCollect,Whangamomona Hall ClickCollect",,
 953090,Woolworths Cable Car Lane,"280-284 Lambton Quay,Wellington,Cable Car Lane Click & Collect,Wellington CCL",-41.2843,174.7743
 630366,Woolworths Crofton Downs,"Churchill Drive,Crofton Downs Click and Collct,Wellington CD",-41.2572,174.7659
 311319,Woolworths Johnsonville Mall,"Moorefield Road,Johnsonville,Moorefield Mall,6037,Wellington JV",-41.223,174.8051
-943327,Woolworths Otaki,"Cnr Mill Road & Aotaki Street,Otaki Click and Collect,5512,Otaki Click and Collect",,
 350711,Woolworths Porirua,"Cnr Parumoana St & Lyttleton Ave,Porirua Click and Collect,5022,Wellington PR",-41.1339,174.8413
 767216,Woolworths Motueka,"High Street,Motueka,Motueka Click and Collect,Motueka",-41.1097,173.011

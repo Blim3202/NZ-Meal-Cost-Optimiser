@@ -490,3 +490,45 @@ Output: `data/paknsave_stores.csv` (60 stores from store_finder, 57 from edge, a
 **Key files**: `scripts/paknsave/paknsave_api.py`, `paknsave_optimizer_edge.py`, `paknsave_optimizer_mobile.py`
 
 ---
+
+## 38. Unified Foodstuffs API Module Created
+
+**Summary**: Created `scripts/foodstuffs/` as a combined module for both Pak'nSave and New World, consolidating the brand-specific API, optimizer, and setup logic into a single unified package. The shared `Foodstuffs_api.py` handles brand-specific credentials (banner, User-Agent) and stores the two-pass pipeline logic in `Foodstuffs_optimizer_edge.py`.
+
+**Files created**:
+- `scripts/foodstuffs/Foodstuffs_api.py` — Unified API client for both brands. `FoodstuffsEdgeAPI(brand)`, `FoodstuffsMobileAPI(brand)` with brand-specific credentials. Includes shared utilities (`load_stores()`, `geocode()`, `find_nearby_stores()`, `get_ingredients()`, `haversine()`, `BRANDS` dict).
+- `scripts/foodstuffs/Foodstuffs_optimizer_edge.py` — Edge API two-pass optimizer CLI. Accepts `brand` argument (`paknsave` or `newworld`). Supports both source types.
+- `scripts/foodstuffs/Foodstuffs_optimizer_mobile.py` — Mobile API fallback optimizer. Same CLI structure, single-pass search.
+- `scripts/foodstuffs/Foodstuffs_setup.py` — Unified store builder pipeline. Supports `source=edge` (default) or `source=mobile` for both brands. store_finder only available for paknsave.
+
+---
+
+## 39. Store-Finder Method Limited to Pak'nSave Only
+
+**Summary**: Removed store_finder as a valid source for New World. Only Pak'nSave's `__NEXT_DATA__` contains `contentstackStores` with store GUID mappings (`uid` → `store_id`). New World's `__NEXT_DATA__` has no `contentstackStores` — only `title`, `url`, `address` per store. Therefore, store_finder source only produces full store data (with IDs, coordinates) for Pak'nSave.
+
+**Changes**:
+- `Foodstuffs_setup.py`: `BRANDS["newworld"]["sources"]` = `["edge", "mobile"]` only (no `store_finder`)
+- `BRANDS["paknsave"]["sources"]` = `["edge", "mobile", "store_finder"]`
+- `fetch_stores()` validates source against `BRANDS[brand]["sources"]` — raises `ValueError` for invalid combinations
+- `newworld_setup.py` updated to only support `edge` and `mobile` sources
+- `PaknSave_API.md` section 9 and `NewWorld_API.md` section 8 updated to reflect this
+
+---
+
+## 40. Legacy Scripts Marked
+
+The following scripts are now legacy and should not be used for new development:
+
+| Legacy File | Replaced By |
+|---|---|
+| `scripts/paknsave/fetch_stores.py` | `scripts/paknsave/paknsave_setup.py` |
+| `scripts/paknsave/PaknSave_prototype.py` | `scripts/paknsave/paknsave_api.py`, `paknsave_optimizer_edge.py`, `paknsave_optimizer_mobile.py` |
+| `scripts/newworld/fetch_stores.py` | `scripts/newworld/newworld_setup.py` |
+| `scripts/newworld/NewWorld_prototype.py` | `scripts/newworld/newworld_api.py`, new optimizers |
+| `scripts/paknsave/PaknSave_prototype.py` | `scripts/paknsave/paknsave_api.py` |
+| All `scripts/woolworths/Playwright/` scripts | `scripts/woolworths/woolworths_api.py` (cookie-based, no Playwright needed) |
+| `scripts/woolworths/woolworths_scrape.py` | `scripts/woolworths/woolworths_api.py` |
+| All `scripts/*/Exploration/` scripts | Archived — only `scripts/paknsave/Exploration/` retains the two-pass pipeline documentation |
+
+**Key principle**: Only the unified `foodstuffs/` package and brand-specific `paknsave/` and `newworld/` packages should be used for production code.
