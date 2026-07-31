@@ -1,3 +1,38 @@
+"""
+Woolworths NZ Meal Cost Optimizer
+==================================
+Compares the total cost of cooking a dish across nearby Woolworths stores.
+
+For a given NZ address and dish name, this script:
+    1. Geocodes the address via Nominatim
+    2. Finds all Woolworths stores within 5 km (haversine)
+    3. For each store, creates a fresh session and injects per-store pricing
+    4. Searches for each ingredient and selects the cheapest product
+    5. Outputs a per-ingredient and total cost comparison table
+
+The 21 hand-curated dishes and their ingredients are defined in DISH_INGREDIENTS
+and DISH_QUANTITIES below. No NLP/LLM parsing yet.
+
+Usage:
+    python woolworths_optimizer.py "<address>" "<dish>" [output.csv]
+
+Examples:
+    python woolworths_optimizer.py "123 Queen Street, Auckland CBD" "spaghetti bolognese"
+    python woolworths_optimizer.py "50 Parnell Road, Auckland" "chicken curry" results.csv
+
+Defaults (no args):
+    Address: 123 Queen Street, Auckland CBD, 1010
+    Dish:    spaghetti bolognese
+
+Output:
+    - Terminal: summary table (total cost per store) + per-ingredient breakdown
+    - CSV:      data/woolworths_latest_results.csv
+
+Dependencies: woolworths_api.py (imported as module), pandas
+
+Reference: Woolworths_API.md, Woolworths_API.md section 10 (production architecture)
+"""
+
 import sys
 import pandas as pd
 from woolworths_api import (
@@ -273,12 +308,12 @@ def main():
         print(f"Error: Could not geocode address '{USER_ADDRESS}'")
         sys.exit(1)
 
-    nearby = get_nearby_stores(user_lat, user_lon, max_dist_km=5)
+    nearby = get_nearby_stores(user_lat, user_lon, max_dist_km=2)
     if not nearby:
-        print("Error: No Woolworths stores found within 5 km")
+        print("Error: No Woolworths stores found within 2 km")
         sys.exit(1)
 
-    print(f"Found {len(nearby)} stores within 5 km:")
+    print(f"Found {len(nearby)} stores within 2 km:")
     for s in nearby:
         print(f"  {s['name']} ({s['distance_km']} km)")
 
@@ -304,7 +339,7 @@ def main():
 
         for ing in ingredients:
             print(f"  Searching: {ing}")
-            cheapest = find_cheapest(session, ing)
+            cheapest = find_cheapest(session, ing, food_only=True)
             if cheapest:
                 all_data.append({
                     "store": store_name,
@@ -312,10 +347,13 @@ def main():
                     "name": cheapest["name"],
                     "price": cheapest["salePrice"],
                     "unitPrice": cheapest["unitPrice"],
+                    "volumeSize": cheapest["volumeSize"],
                     "sku": cheapest["sku"],
                 })
+                vol = f" [{cheapest['volumeSize']}]" if cheapest["volumeSize"] else ""
                 print(
-                    f"    ${cheapest['salePrice']:.2f} — {cheapest['name'][:50]} ({cheapest['unitPrice']})"
+                    # f"    ${cheapest['salePrice']:.2f} — {cheapest['name'][:50]} {vol} ({cheapest['unitPrice']})"
+                    f"    ${cheapest['salePrice']:.2f} — {cheapest['name'][:50]} {vol}"
                 )
             else:
                 print("    Not found")

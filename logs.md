@@ -532,3 +532,36 @@ The following scripts are now legacy and should not be used for new development:
 | All `scripts/*/Exploration/` scripts | Archived — only `scripts/paknsave/Exploration/` retains the two-pass pipeline documentation |
 
 **Key principle**: Only the unified `foodstuffs/` package and brand-specific `paknsave/` and `newworld/` packages should be used for production code.
+
+---
+
+## 41. Woolworths — Non-Food Department Filtering (Client-Side)
+
+**Symptom**: The meal cost optimizer was returning non-food items (pet food, toiletries, cleaning products) in search results for ingredient queries like "beef mince" or "milk". The `target=search` endpoint ignores `dasFilter` (server-side department filtering is only available on `target=browse`), so there is no API parameter to exclude non-food departments.
+
+**Discovery**: Each product returned by `GET /api/v1/products?target=search` includes a `departments` array with `id` and `name` fields. The 14 Woolworths departments map to these IDs:
+
+| Dept ID | Name | Food? |
+|---------|------|-------|
+| 1 | Fruit & Veg | Yes |
+| 2 | Meat & Poultry | Yes |
+| 3 | Fish & Seafood | Yes |
+| 4 | Fridge & Deli | Yes |
+| 5 | Bakery | Yes |
+| 6 | Frozen | Yes |
+| 7 | Pantry | Yes |
+| 8 | Beer & Wine | Yes |
+| 9 | Drinks | Yes |
+| 10 | Health & Body | **No** |
+| 11 | Household | **No** |
+| 12 | Baby & Child | **No** |
+| 13 | Pet | **No** |
+| 14 | Back to School | **No** |
+
+**Resolution**: Added `NON_FOOD_DEPARTMENT_IDS = {10, 11, 12, 13, 14}` and `is_food_department(product)` function to `woolworths_api.py`. The `search_products()` and `find_cheapest()` functions accept a `food_only=False` parameter. When `True`, products whose `departments[].id` intersects with the non-food set are excluded. Products with no department info are included (assumed food).
+
+The optimizer (`woolworths_optimizer.py`) now calls `find_cheapest(session, ing, food_only=True)` for all ingredient searches.
+
+**Note**: This is client-side filtering — the API itself does not support department filtering on `target=search`. The `dasFilter` parameter only works with `target=browse`.
+
+**Files changed**: `scripts/woolworths/woolworths_api.py` (added constant, function, params), `scripts/woolworths/woolworths_optimizer.py` (pass `food_only=True`)

@@ -218,7 +218,7 @@ print("=" * 70)
 r = session.get(f"{API}/shell", timeout=10)
 text = r.text
 
-unique_ids = sorted(set(int(x) for x in ids))
+unique_ids = sorted(set(int(x) for x in all_ids))
 print(f"  Unique numeric IDs in shell response ({len(unique_ids)}):")
 for uid in unique_ids[:30]:
     # find surrounding context

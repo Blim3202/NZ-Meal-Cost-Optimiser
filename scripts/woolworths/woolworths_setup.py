@@ -1,3 +1,40 @@
+"""
+Woolworths NZ Store Setup Pipeline
+===================================
+Builds the unified store listing used by the optimizer and API module.
+
+Three-step pipeline:
+    Step 1 - fetch_store_choices()
+        GET /api/v1/addresses/pickup-addresses
+        Returns ~188 unique pickup locations across all storeAreas.
+        Area 494 ("All Pick up locations") only has ~171 stores; regional areas
+        contain additional pickup points (e.g., Woolworths Chartwell).
+        Outputs: data/woolworths_store_choices.json, .csv
+
+    Step 2 - fetch_store_data()
+        GET https://api.cdx.nz/site-location/api/v1/sites
+        Returns store details including lat/lon, extra1 (fulfilmentStoreId),
+        and extra2 (pickupAddressId).
+        Outputs: data/woolworths_store_data.json, .csv
+
+    Step 3 - merge_stores()
+        Joins choices (pickupAddressId) with data (lat/lon) on SiteDataID.
+        With cleaned=True (default), drops stores without coordinates.
+        Outputs: data/woolworths_stores.csv (177 stores with coords)
+
+Usage:
+    # Run full pipeline
+    python woolworths_setup.py
+
+    # Import individual steps
+    from woolworths_setup import fetch_store_choices, fetch_store_data, merge_stores
+    fetch_store_choices()
+    fetch_store_data()
+    merge_stores(cleaned=True)
+
+Reference: Woolworths_API.md section 15 (store setup process)
+"""
+
 import requests
 import json
 import csv

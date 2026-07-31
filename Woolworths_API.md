@@ -1256,10 +1256,95 @@ Strategy:
 11. **Fresh session required per store** — reusing a `requests.Session` causes the
     server's `Set-Cookie` response to overwrite the injected `cw-lrkswrdjp` cookie.
     Create a new session (with `GET /`) for each store.
+12. **`target=search` ignores `dasFilter`** — department/aisle filtering only works
+    with `target=browse`. For search, filter client-side using the `departments[].id`
+    field on each product (see section 13).
 
 ---
 
-## 13. Exploration Scripts
+## 13. Client-Side Department Filtering
+
+### 13.1 The Problem
+
+The `target=search` endpoint **ignores `dasFilter`** (section 5.2). There is no
+API parameter to restrict search results to food departments only. Non-food items
+(Health & Body, Household, Baby & Child, Pet, Back to School) can appear in
+ingredient search results (e.g., pet food matching "beef mince").
+
+### 13.2 Solution: Filter by `departments[].id`
+
+Each product returned by `GET /api/v1/products?target=search` includes a
+`departments` array:
+
+```json
+"departments": [{"id": 4, "name": "Fridge & Deli"}]
+```
+
+The 14 Woolworths department IDs (from `/api/v1/shell` → `mainNavs[1]`):
+
+| Dept ID | Name | Food? |
+|---------|------|-------|
+| 1 | Fruit & Veg | Yes |
+| 2 | Meat & Poultry | Yes |
+| 3 | Fish & Seafood | Yes |
+| 4 | Fridge & Deli | Yes |
+| 5 | Bakery | Yes |
+| 6 | Frozen | Yes |
+| 7 | Pantry | Yes |
+| 8 | Beer & Wine | Yes |
+| 9 | Drinks | Yes |
+| 10 | Health & Body | **No** |
+| 11 | Household | **No** |
+| 12 | Baby & Child | **No** |
+| 13 | Pet | **No** |
+| 14 | Back to School | **No** |
+
+**Non-food IDs**: `{10, 11, 12, 13, 14}`
+
+### 13.3 Implementation in `woolworths_api.py`
+
+```python
+NON_FOOD_DEPARTMENT_IDS = {10, 11, 12, 13, 14}
+
+def is_food_department(product):
+    """Check if a product is in a food department.
+
+    Products with no department info are included (assumed food).
+    """
+    depts = product.get("departments", [])
+    if not depts:
+        return True
+    dept_ids = {d.get("id") for d in depts if "id" in d}
+    return not dept_ids.intersection(NON_FOOD_DEPARTMENT_IDS)
+```
+
+`search_products()` and `find_cheapest()` accept `food_only=False`. When `True`,
+products failing `is_food_department()` are excluded from results.
+
+### 13.4 Usage
+
+```python
+# Food-only search (excludes Health & Body, Household, Baby & Child, Pet, Back to School)
+items = search_products(session, "beef mince", size=10, food_only=True)
+cheapest = find_cheapest(session, "milk", food_only=True)
+
+# Unfiltered (includes all departments — default)
+items = search_products(session, "milk", size=10)
+```
+
+### 13.5 Limitations
+
+- **Client-side only**: The API does not support department filtering on
+  `target=search`. Filtering happens after results are returned.
+- **Extra API calls**: To guarantee N food-only results, the caller may need to
+  request more than N items from the API and filter down.
+- **`target=browse` supports `dasFilter`**: If department-level filtering is
+  needed without keyword search, use `target=browse&dasFilter=Department;;<slug>;false`
+  instead (but this does not support free-text search).
+
+---
+
+## 14. Exploration Scripts
 
 | Script | Phase | Purpose |
 |--------|-------|---------|
@@ -1270,7 +1355,7 @@ Strategy:
 
 ---
 
-## 14. Woolworths Store Setup Process (Unified Pipeline)
+## 15. Woolworths Store Setup Process (Unified Pipeline)
 
 ### 14.1 The Problem: Incomplete Pickup Store Coverage
 
@@ -1337,7 +1422,7 @@ python -c "from scripts.woolworths.woolworths_setup import merge_stores; merge_s
 
 ---
 
-## 15. Files and Data Sources
+## 16. Files and Data Sources
 
 | File | Purpose |
 |------|---------|
