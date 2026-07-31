@@ -172,6 +172,7 @@ POST /v1/edge/search/products/query/index/products-index
 Body: {"algoliaQuery": {"query": "beef mince"}, "page": 0, "hitsPerPage": 20, "storeId": "..."}
 Returns: hits WITH _highlightResult.matchedWords showing which fields matched
 Filter: Keep only hits where _highlightResult has non-empty matchedWords
+Filter: Exclude non-food category1 values (NON_FOOD_CATEGORIES: 53 categories)
 Extract: productID from matched hits
 ```
 
@@ -254,6 +255,8 @@ Returns: per-store singlePrice.price + promotions for ONLY the relevant products
 | 2 | explore_edge_api6_auth | **Website JWT works!** Product search = `/search/paginated/products` (Algolia) |
 | 3 | explore_edge_api7-9 | **Only `products-index` has relevance matching** via `_highlightResult.matchedWords` |
 | 4 | test_*, demo_* | Two-pass pipeline validated; full optimizer demo working |
+| 5 | explore_categories.py | **116 unique category1 values discovered** via 637 broad queries |
+| 5 | paknsave_api.py, newworld_api.py, Foodstuffs_api.py | **NON_FOOD_CATEGORIES** blacklist (53 categories) applied in Pass 1 |
 
 ---
 
@@ -272,6 +275,7 @@ FOR EACH INGREDIENT AT EACH STORE:
     POST /v1/edge/search/products/query/index/products-index
     Body: {"algoliaQuery": {"query": "beef mince"}, "storeId": "..."}
     → Extract productIDs where _highlightResult.matchedWords not empty
+    → Filter out non-food category1 values (NON_FOOD_CATEGORIES: 53 categories)
 
   PASS 2 — PER-STORE PRICING (Paginated with filters)
     POST /v1/edge/search/paginated/products
@@ -296,6 +300,7 @@ COMPARE TOTALS → CHEAPEST STORE
 | Relevance | Implicit (first result) | **Explicit `_highlightResult.matchedWords`** |
 | Price sorting | PriceAsc only | `PRICE_ASC`, `PRICE_DESC` |
 | Promotions | Included | Included (`rewardValue`) |
+| Non-food filtering | Not available | **Available via `category1` in Pass 1 (53 categories)** |
 | API stability | Unknown (internal) | Higher (public website backend) |
 
 ---
@@ -323,8 +328,9 @@ scripts/newworld/Exploration/
 
 ## Current Status
 
-- **Mobile API prototype**: `scripts/newworld/NewWorld_prototype.py` — WORKING, production-ready
-- **Edge API two-pass pipeline**: Fully implemented in `explore_edge_api9_relevance.py` and demo scripts
-- **Not yet integrated**: The two-pass pipeline has NOT been merged into `NewWorld_prototype.py` (see `decision.md` #32)
+- **Edge API two-pass pipeline**: Fully implemented in `newworld_api.py` (production-ready)
+- **Non-food category1 filtering**: `NON_FOOD_CATEGORIES` (53 categories) applied in Pass 1 across all Foodstuffs API modules
+- **Category1 discovery**: `explore_categories.py` discovered 116 unique values via 637 broad queries
+- **Demo scripts**: `newworld_search_demo.py` — standalone two-pass demo for New World Albany
 
-The exploration is complete. The next step is updating `NewWorld_prototype.py` to use the Edge API two-pass pipeline as the primary path, with mobile API as fallback.
+The exploration is complete. The two-pass pipeline with category1 filtering is production-ready.
