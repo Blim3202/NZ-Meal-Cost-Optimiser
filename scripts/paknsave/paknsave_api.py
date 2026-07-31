@@ -25,6 +25,66 @@ DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 STORES_CSV = DATA_DIR / "paknsave_stores.csv"
 STORES_JSON = DATA_DIR / "paknsave_stores.json"
 
+# Non-food category1 blacklist — values to exclude from ingredient search results.
+# Sourced from observed_category1_paknsave.json (all 116 unique category1 values).
+NON_FOOD_CATEGORIES = {
+    # Pet / Animal
+    "Dog",
+    "Cat",
+    "Pet Health & Accessories",
+    "Birds, Fish & Small Animals",
+    # Baby / Toddler
+    "Baby & Toddler Food",
+    "Baby & Toddler Toiletries",
+    "Baby Formula",
+    "Baby Wipes",
+    "Nappies & Changing",
+    "Nursing & Feeding",
+    # Household / Cleaning
+    "Cleaning & Accessories",
+    "Dishwashing",
+    "Bathroom & Toilet Cleaners",
+    "Kitchen Cleaners",
+    "Laundry",
+    "Food Wrap, Storage & Bags",
+    "Pest & Insect Control",
+    "Homewares",
+    # Health / Personal Care
+    "Bath, Shower & Soap",
+    "Dental & Oral Care",
+    "Deodorant & Body Sprays",
+    "Hair Care",
+    "Make Up & Nail Care",
+    "Medical & First Aid",
+    "Period & Continence Care",
+    "Shaving & Hair Removal",
+    "Skin Care & Sun Care",
+    "Tissues & Cotton Wool",
+    "Toilet Paper, Tissues & Paper Towels",
+    "Vitamins & Supplements",
+    # Other non-food
+    "Stationery & Entertainment",
+    "Clothing & Accessories",
+    "Garage & Outdoor",
+    "Batteries & Electrical",
+    # # Alcoholic drinks (beverages, not cooking ingredients) Note: Allowed for now
+    # "Red Wine",
+    # "White Wine",
+    # "Rose Wine",
+    # "Champagne & Sparkling Wine",
+    # "Cask Wine",
+    # "Moscato & Sweet Wine",
+    # "Craft Beer",
+    # "Beer",
+    # "Cider",
+    # "Seltzers & Other Alcoholic Drinks",
+    # "Lower Alcohol Drinks",
+    # # Non-food ready-to-drink beverages
+    # "Sports & Energy Drinks",
+    # "Soft Drinks & Mixers",
+    # "Alcohol Free Drinks",
+}
+
 # Dish ingredients (21 dishes) — matches PaknSave_prototype.py and woolworths_optimizer.py
 DISH_INGREDIENTS = {
     "spaghetti bolognese": ["beef mince", "spaghetti pasta", "canned tomatoes", "onion", "carrot", "garlic", "mixed herbs"],
@@ -192,7 +252,7 @@ class PaknSaveEdgeAPI:
         """
         Search products-index for relevance matches.
         Returns productIDs where _highlightResult has non-empty matchedWords.
-        Filters out pet food (category1: Dog, Cat, Pet).
+        Filters out non-food category1 values via NON_FOOD_CATEGORIES.
         """
         headers = self._auth_headers()
         cookies = self._store_cookies(store_id, region)
@@ -212,9 +272,6 @@ class PaknSaveEdgeAPI:
         r.raise_for_status()
         hits = r.json().get("hits", [])
 
-        # Only "Dog" and "Cat" exist as category1 values in the Algolia index.
-        # "Pet" was a guess — confirmed absent by explore_categories.py.
-        pet_categories = {"Dog", "Cat"}
         product_ids = []
         for h in hits:
             hr = h.get("_highlightResult", {})
@@ -223,7 +280,7 @@ class PaknSaveEdgeAPI:
                 for v in hr.values()
             )
             cat1 = h.get("category1", [])
-            if matched and not any(c in pet_categories for c in cat1):
+            if matched and not any(c in NON_FOOD_CATEGORIES for c in cat1):
                 product_ids.append(h["productID"])
         return product_ids
 

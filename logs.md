@@ -565,3 +565,35 @@ The optimizer (`woolworths_optimizer.py`) now calls `find_cheapest(session, ing,
 **Note**: This is client-side filtering — the API itself does not support department filtering on `target=search`. The `dasFilter` parameter only works with `target=browse`.
 
 **Files changed**: `scripts/woolworths/woolworths_api.py` (added constant, function, params), `scripts/woolworths/woolworths_optimizer.py` (pass `food_only=True`)
+
+---
+
+## 42. Foodstuffs — Category1 Non-Food Filtering (Client-Side, Edge API)
+
+**Symptom**: The Pak'nSave and New World Edge API two-pass optimizers were returning non-food items in search results — pet food ("Dog", "Cat"), baby products ("Baby Formula", "Nappies & Changing"), household items ("Cleaning & Accessories", "Laundry"), personal care ("Bath, Shower & Soap", "Hair Care"), and more. These appeared in Pass 1 relevance matches because Algolia returns them for broad queries like "beef mince" or "milk".
+
+**Discovery**: Ran `explore_categories.py` (637 broad search queries) against the Pak'nSave Edge API to discover all 116 unique `category1` values present in the Algolia products-index. Each value was logged with frequency counts and example products. The full list was saved to `data/observed_category1_paknsave.json`. New World shares the same Foodstuffs category taxonomy (same parent company), so the same blacklist applies to both brands.
+
+**Resolution**: Created `NON_FOOD_CATEGORIES` — a set of 53 `category1` values to exclude from Pass 1 results. Covers:
+- **Pet/Animal**: Dog, Cat, Pet Health & Accessories, Birds/Fish/Small Animals
+- **Baby/Toddler**: Baby & Toddler Food, Baby Formula, Baby Wipes, Nappies & Changing, Nursing & Feeding
+- **Household/Cleaning**: Cleaning & Accessories, Dishwashing, Bathroom & Toilet Cleaners, Kitchen Cleaners, Laundry, Food Wrap/Storage/Bags, Pest & Insect Control, Homewares
+- **Health/Personal Care**: Bath/Shower/Soap, Dental & Oral Care, Deodorant, Hair Care, Make Up & Nail Care, Medical & First Aid, Period & Continence Care, Shaving, Skin Care, Tissues, Toilet Paper, Vitamins & Supplements
+- **Other non-food**: Stationery & Entertainment, Clothing & Accessories, Garage & Outdoor, Batteries & Electrical
+
+Alcoholic drinks (Red Wine, Beer, Cider, etc.) are currently **excluded from the blacklist** (commented out) — they are beverages, not cooking ingredients, but may be useful for recipe lookups in the future.
+
+**Implementation**: The `pass1_relevance_search()` method in all three API modules now checks each hit's `category1` array against `NON_FOOD_CATEGORIES` and excludes matches before passing productIDs to Pass 2.
+
+**Files changed**:
+- `scripts/paknsave/paknsave_api.py` — added `NON_FOOD_CATEGORIES`, updated `pass1_relevance_search()`
+- `scripts/newworld/newworld_api.py` — same changes
+- `scripts/foodstuffs/Foodstuffs_api.py` — same changes (shared across both brands)
+
+**Demo scripts created**:
+- `scripts/paknsave/paknsave_search_demo.py` — standalone two-pass demo for PAK'nSAVE Albany
+- `scripts/newworld/newworld_search_demo.py` — standalone two-pass demo for New World Albany
+
+**Note on category1 vs categoryTrees**: Pass 2 (`paginated/products`) returns `categoryTrees` (nested navigation hierarchy with `level0`/`level1`/`level2`) instead of the flat `category1` array returned by Pass 1 (`products-index`). This means category1-based filtering only happens in Pass 1 — by the time products reach Pass 2, the `category1` field is empty. In the future, a second phase of filtering could be applied in Pass 2 using `categoryTrees` for more granular control (e.g., excluding specific sub-aisles like "Flavoured Milk" while keeping "Standard Milk"). This is an area for future exploration and has not been implemented.
+
+---

@@ -13,6 +13,7 @@ Usage:
     python scripts/paknsave/Exploration/explore_categories.py
 """
 
+
 import sys
 import json
 import time
@@ -36,14 +37,163 @@ BROAD_QUERIES = [
     # single letters — each matches thousands of products across all depts
     "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
     "n", "o", "p", "r", "s", "t", "v", "w",
-    # common food words — covers major ingredient types
-    "beef", "chicken", "lamb", "pork", "fish", "milk", "bread", "rice",
-    "pasta", "cheese", "egg", "butter", "flour", "sugar", "oil", "salt",
-    "pepper", "garlic", "onion", "tomato", "potato", "carrot", "apple",
-    "banana", "orange", "water", "juice", "beer", "wine", "coffee", "tea",
-    # non-food — to capture pet, baby, household, etc.
-    "dog", "cat", "baby", "nappy", "shampoo", "soap", "detergent",
-    "vitamin", "toy", "battery",
+    # proteins
+    "beef", "chicken", "lamb", "pork", "fish", "salmon", "tuna", "prawn",
+    "shrimp", "mussels", "oyster", "crab", "duck", "turkey", "venison",
+    "bacon", "ham", "salami", "prosciutto", "pepperoni", "mince", "steak",
+    "sausage", "meatballs", "roast", "chops", "ribs", "wagyu", "kangaroo",
+    # dairy & eggs
+    "milk", "cheese", "egg", "butter", "yoghurt", "yogurt", "cream",
+    "sour cream", "cream cheese", "parmesan", "cheddar", "mozzarella",
+    "feta", "ricotta", "cottage cheese", "margarine", "ghee",
+    # bakery & grains
+    "bread", "rice", "pasta", "noodles", "flour", "tortilla", "wrap",
+    "bagel", "muffin", "croissant", "baguette", "sourdough", "naan",
+    "pita", "flatbread", "croutons", "breadcrumbs", "oats", "cereal",
+    "granola", "muesli", "weetbix", "cornflakes",
+    # fruits
+    "apple", "banana", "orange", "lemon", "lime", "grape", "strawberry",
+    "blueberry", "raspberry", "blackberry", "mango", "pineapple", "kiwi",
+    "peach", "pear", "plum", "cherry", "watermelon", "melon", "coconut",
+    "avocado", "tomato", "olive",
+    # vegetables
+    "onion", "potato", "carrot", "broccoli", "cauliflower", "spinach",
+    "lettuce", "cabbage", "capsicum", "pepper", "cucumber", "zucchini",
+    "mushroom", "pumpkin", "corn", "peas", "beans", "broccolini",
+    "beetroot", "courgette", "kumara", "leek", "celery", "asparagus",
+    "eggplant", "brussels sprouts", " kale", "silverbeet",
+    # spices, herbs & seasonings
+    "salt", "pepper", "garlic", "ginger", "cumin", "paprika", "turmeric",
+    "cinnamon", "oregano", "basil", "thyme", "rosemary", "parsley",
+    "coriander", "chilli", "cayenne", "nutmeg", "saffron", "mixed herbs",
+    "herbs", "spice", "seasoning", "stock powder",
+    # sauces & condiments
+    "sauce", "ketchup", "mustard", "mayonnaise", "mayo", "relish",
+    "chutney", "pickle", "vinegar", "soy sauce", "worcestershire",
+    "hot sauce", "tabasco", "sriracha", "oyster sauce", "fish sauce",
+    "teriyaki", "bbq sauce", "tomato sauce", "pesto", "tahini",
+    "horseradish", "mint sauce", "gravy", "marinade", "dressing",
+    "dip", "salsa", "harissa", "miso", "wasabi",
+    # cooking essentials
+    "oil", "olive oil", "vegetable oil", "coconut oil", "sesame oil",
+    "baking soda", "baking powder", "yeast", "sugar", "honey", "maple syrup",
+    "cornflour", "cornstarch", "gelatine", "food colouring", "vanilla",
+    "chocolate", "cocoa", "icing",
+    # drinks
+    "water", "juice", "beer", "wine", "coffee", "tea", "soft drink",
+    "energy drink", "kombucha", "cordial", "milkshake", "smoothie",
+    "sparkling water", "tonic", "soda", "lemonade",
+    # frozen
+    "frozen", "ice cream", "icecream", "ice block", "sorbet", "gelato",
+    "frozen vegetables", "frozen fruit", "frozen pizza", "frozen meal",
+    "frozen chips", "frozen nuggets", "frozen fish", "frozen peas",
+    "frozen corn", "frozen berries", "frozen spinach",
+    # prepared & packaged
+    "soup", "stew", "curry", "ready meal", "microwave", "instant",
+    "pizza", "pie", "sushi", "sandwich", "salad", "snack",
+    "cracker", "chip", "crisp", "popcorn", "pretzel", "nut", "almond",
+    "cashew", "peanut", "walnut", "pecan", "muesli bar", "granola bar",
+    # canned & jarred
+    "canned", "tinned", "diced tomatoes", "baked beans", "chickpeas",
+    "lentils", "kidney beans", "coconut milk", "tuna", "sardines",
+    "corned beef", "condensed milk", "jam", "marmalade", "vegemite",
+    "peanut butter", "almond butter", "tahini",
+    # baby & toddler
+    "baby", "baby food", "baby formula", "infant", "toddler", "nappy",
+    "nappies", "diaper", "baby wipes", "baby bath", "baby lotion",
+    "baby shampoo", "dummy", "pacifier", "teething", "baby bottle",
+    "baby rice", "puree", "baby cereal",
+    # pet
+    "dog", "cat", "pet", "dog food", "cat food", "pet food", "treats",
+    "dog treat", "cat treat", "kibble", "bird", "fish food",
+    # household & cleaning
+    "detergent", "laundry", "fabric softener", "bleach", "cleaner",
+    "disinfectant", "antibacterial", "surface spray", "floor cleaner",
+    "toilet cleaner", "bathroom cleaner", "glass cleaner", "mould",
+    "dishwashing", "dishwasher", "sponge", "cloth", "bin bag",
+    "garbage bag", " cling wrap", "al foil", "baking paper",
+    "zip lock", "food wrap", "paper towel", "toilet paper", "tissue",
+    "facial tissue", "napkin", "serviette",
+    # personal care — hair
+    "shampoo", "conditioner", "hair treatment", "hair oil", "hair gel",
+    "hair spray", "hair colour", "hair dye", "dry shampoo", "mousse",
+    "leave in conditioner", "serum",
+    # personal care — skin & body
+    "soap", "body wash", "moisturiser", "lotion", "cream",
+    "deodorant", "antiperspirant", "sunscreen", "sunblock",
+    "lip balm", "hand cream", "body cream", "exfoliant", "scrub",
+    "tanning", "self tan",
+    # personal care — oral
+    "toothpaste", "toothbrush", "mouthwash", "dental floss",
+    "interdental", "denture",
+    # personal care — other
+    "razor", "shaving", "aftershave", "perfume", "cologne",
+    "cotton buds", "cotton pads", "makeup", "cosmetic",
+    "nail polish", "nail remover",
+    # feminine & continence care
+    "tampon", "pad", "sanitary", "menstrual", "period",
+    "incontinence", "continence", "panty liner",
+    # health & pharmacy
+    "vitamin", "supplement", "mineral", "probiotic", "fish oil",
+    "protein powder", "magnesium", "iron", "calcium", "zinc",
+    "pharmacy", "medicine", "paracetamol", "ibuprofen", "aspirin",
+    "antihistamine", "cold flu", "cough", "throat", "sinus",
+    "allergy", "antacid", "indigestion", "laxative", "diarrhoea",
+    "first aid", "bandage", "plaster", "antiseptic", "cream",
+    "ointment", "thermometer", "blood pressure", "glucose",
+    "diabetes", "insulin", "asthma", "inhaler",
+    # baby & child health
+    "nappy rash", "teething gel", "infant pain",
+    # entertainment & stationery
+    "toy", "game", "puzzle", "board game", "card game", "lego",
+    "doll", "action figure", "stuffed animal", "plush",
+    "colouring", "crayon", "pencil", "pen", "marker", "highlighter",
+    "notebook", "exercise book", "scissors", "glue", "tape",
+    "ruler", "eraser", "sharpener", "stapler", "staples",
+    "paper", "printing paper", "copy paper", "card",
+    "gift wrap", "ribbon", "bow", "balloon", "party",
+    "magazine", "book", "comic", "colouring book",
+    # household & kitchenware
+    "kitchen", "cookware", "frying pan", "saucepan", "baking tray",
+    "roasting dish", "casserole", "utensil", "spatula", "tongs",
+    "ladle", "whisk", "colander", "mixing bowl", "measuring cup",
+    "chopping board", "knife", "can opener", "corkscrew",
+    "storage", "container", "lid", "jug", "cup", "mug",
+    "glass", "plate", "bowl", "dish", "tray",
+    # laundry & home
+    "hanger", "peg", "clothesline", "iron", "ironing board",
+    "vacuum", "broom", "mop", "bucket", "dustpan",
+    "bin", "recycling", "compost",
+    # outdoor & garden
+    "garden", "plant", "pot", "soil", "fertiliser", "mulch",
+    "seed", "seedling", "flower", "tree", "shrub",
+    "lawn", "mower", "hose", "sprinkler", "nozzle",
+    "outdoor", "furniture", "umbrella", "shade", "tent",
+    "camping", "lantern", "torch", "battery",
+    # clothing & accessories
+    "clothing", "shirt", "pants", "shorts", "skirt", "dress",
+    "jacket", "hoodie", "sweater", "jumper", "vest",
+    "underwear", "socks", "tights", "leggings",
+    "hat", "cap", "beanie", "scarf", "gloves",
+    "shoe", "sandal", "slipper", "boot",
+    "bag", "backpack", "handbag", "wallet", "purse",
+    "belt", "tie", "sunglasses", "watch", "jewellery",
+    "umbrella",
+    # automotive
+    "car", "vehicle", "motor oil", "coolant", "windscreen",
+    "wiper", "tyre", "air freshener", "seat cover",
+    # electronics & accessories
+    "battery", "charger", "cable", "earphone", "headphone",
+    "speaker", "phone case", "screen protector", "power bank",
+    # tobacco & vaping
+    "tobacco", "cigarette", "vape", "vaping", "e-cigarette",
+    "rolling papers", "lighter", "ashtray",
+    # miscellaneous
+    "gum", "chewing gum", "mint", "lolly", "candy", "chocolate",
+    "sweet", "treat", "snack", "confectionery",
+    "pet", "gum", "stationery", "entertainment", "clothing",
+    "outdoors", "laundry", "paper", "accessories", "formula",
+    "medical", "first aid", "oral hygiene", "soaps",
 ]
 
 
@@ -70,7 +220,7 @@ def auth_headers(token):
         "Content-Type": "application/json",
         "Origin": WEB_BASE,
         "Referer": f"{WEB_BASE}/shop",
-        "User-Agent": "Mozilla/5.0",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     }
 
 
@@ -90,7 +240,7 @@ def get_first_store(token):
     stores = r.json().get("stores", [])
     if not stores:
         raise RuntimeError("No stores returned")
-    # Prefer a NI store (wider product range)
+    # Prefer a NI store (testing purposes)
     for s in stores:
         if s.get("region") == "NI":
             return s["id"], s.get("name", "Unknown")
@@ -213,9 +363,8 @@ def main():
     print()
 
     # Track unique category1 values and frequency
-    cat1_counter = Counter()      # counts how many times each cat1 VALUE appears
-    cat1_full_combos = Counter()  # counts full category1 arrays (the combo)
-    cat1_examples = {}            # cat1 value -> example product name
+    cat1_counter = Counter()  # counts how many times each cat1 VALUE appears
+    cat1_examples = {}        # cat1 value -> example product name
 
     for i, query in enumerate(BROAD_QUERIES, 1):
         try:
@@ -223,9 +372,6 @@ def main():
             for h in hits:
                 cat1 = h.get("category1", [])
                 display_name = h.get("DisplayName", "")
-                # Record the full combination
-                combo_key = tuple(sorted(cat1)) if cat1 else ("(none)",)
-                cat1_full_combos[combo_key] += 1
                 # Record individual values
                 for c in cat1:
                     cat1_counter[c] += 1
@@ -269,18 +415,10 @@ def main():
     print(f"{'Combination':<70} {'Count':>6}")
     print(f"{'─' * 70} {'─' * 6}")
 
-    for combo, count in cat1_full_combos.most_common():
-        combo_str = " | ".join(combo)
-        print(f"{combo_str:<70} {count:>6}")
-
-    print(f"\n  Total unique combinations: {len(cat1_full_combos)}")
 
     # ── Save step 6 results to file ─────────────────────────
     observed_data = {
         "cat1_counter": dict(cat1_counter),
-        "cat1_full_combos": {
-            " | ".join(combo): count for combo, count in cat1_full_combos.items()
-        },
     }
     output_path = (
         Path(__file__).resolve().parent.parent.parent.parent
@@ -290,69 +428,6 @@ def main():
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(observed_data, f, indent=2, ensure_ascii=False)
     print(f"  Saved to {output_path}")
-    print()
-
-    # ── Step 7: Summary — pet food values specifically ────────────────────
-    print("=" * 80)
-    print("STEP 7: Pet Food & Non-Ingredient category1 Values")
-    print("=" * 80)
-    print()
-
-    pet_values = {v for v in cat1_counter if v.lower() in {
-        "dog", "cat", "pet", "pet food", "dog food", "cat food", "treats"
-    }}
-    print(f"Pet-related values found: {pet_values or '(none)'}")
-    print()
-
-    # Identify non-ingredient categories heuristically
-    non_food_keywords = {
-        "pet", "dog", "cat", "treat", "baby", "nappy", "formula",
-        "household", "cleaning", "detergent", "paper", "plastic",
-        "shampoo", "soap", "toothpaste", "deodorant", "lotion",
-        "vitamin", "supplement", "pharmacy", "health",
-        "tobacco", "vape", "smoking",
-        "kitchen", "cookware", "utensil", "storage",
-        "toy", "entertainment", "gift", "magazine", "stationery",
-        "garden", "garage", "hardware", "electrical",
-        "clothing", "accessory", "bag",
-        "battery",
-    }
-    likely_non_food = {
-        v for v in cat1_counter
-        if any(kw in v.lower() for kw in non_food_keywords)
-    }
-    print(f"Likely non-food values (heuristic):")
-    for v in sorted(likely_non_food):
-        print(f"  {v:<40} (count: {cat1_counter[v]}, example: {cat1_examples.get(v, '')[:35]})")
-    print()
-
-    # ── Step 8: Suggested NON_INGREDIENT_CATEGORIES set ───────────────────
-    print("=" * 80)
-    print("STEP 8: Suggested NON_INGREDIENT_CATEGORIES (copy-paste ready)")
-    print("=" * 80)
-    print()
-    print("Based on the discovered values, here is a suggested filter set")
-    print("for the filtering_example.py script.  Review and adjust as needed.")
-    print()
-
-    # Build the suggested set from all discovered non-food values
-    # plus any values that are clearly not raw ingredients
-    # We'll present ALL values and let the user decide
-    print("# All discovered category1 values — pick what to exclude:")
-    print("ALL_DISCOVERED_CATEGORY1 = {")
-    for value in sorted(cat1_counter.keys()):
-        count = cat1_counter[value]
-        flag = "  # <-- likely non-ingredient" if value in likely_non_food else ""
-        print(f'    "{value}",{flag}')
-    print("}")
-    print()
-
-    print("# Suggested NON_INGREDIENT_CATEGORIES (conservative):")
-    print("# Excludes: pet, baby, household, health, tobacco, kitchenware")
-    print("NON_INGREDIENT_CATEGORIES = {")
-    for value in sorted(likely_non_food):
-        print(f'    "{value}",')
-    print("}")
     print()
 
     print("Done.")

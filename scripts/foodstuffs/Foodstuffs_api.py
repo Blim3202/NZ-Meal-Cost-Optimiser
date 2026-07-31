@@ -70,6 +70,66 @@ OUTPUT_MOBILE_CSV = {
     "newworld": os.path.join(DATA_DIR, "newworld_mobile_latest_results.csv"),
 }
 
+# Non-food category1 blacklist — values to exclude from ingredient search results.
+# Shared across Pak'nSave and New World (same Foodstuffs parent company, same category1 taxonomy).
+NON_FOOD_CATEGORIES = {
+    # Pet / Animal
+    "Dog",
+    "Cat",
+    "Pet Health & Accessories",
+    "Birds, Fish & Small Animals",
+    # Baby / Toddler
+    "Baby & Toddler Food",
+    "Baby & Toddler Toiletries",
+    "Baby Formula",
+    "Baby Wipes",
+    "Nappies & Changing",
+    "Nursing & Feeding",
+    # Household / Cleaning
+    "Cleaning & Accessories",
+    "Dishwashing",
+    "Bathroom & Toilet Cleaners",
+    "Kitchen Cleaners",
+    "Laundry",
+    "Food Wrap, Storage & Bags",
+    "Pest & Insect Control",
+    "Homewares",
+    # Health / Personal Care
+    "Bath, Shower & Soap",
+    "Dental & Oral Care",
+    "Deodorant & Body Sprays",
+    "Hair Care",
+    "Make Up & Nail Care",
+    "Medical & First Aid",
+    "Period & Continence Care",
+    "Shaving & Hair Removal",
+    "Skin Care & Sun Care",
+    "Tissues & Cotton Wool",
+    "Toilet Paper, Tissues & Paper Towels",
+    "Vitamins & Supplements",
+    # Other non-food
+    "Stationery & Entertainment",
+    "Clothing & Accessories",
+    "Garage & Outdoor",
+    "Batteries & Electrical",
+    # # Alcoholic drinks (beverages, not cooking ingredients) Note: Allowed for now
+    # "Red Wine",
+    # "White Wine",
+    # "Rose Wine",
+    # "Champagne & Sparkling Wine",
+    # "Cask Wine",
+    # "Moscato & Sweet Wine",
+    # "Craft Beer",
+    # "Beer",
+    # "Cider",
+    # "Seltzers & Other Alcoholic Drinks",
+    # "Lower Alcohol Drinks",
+    # # Non-food ready-to-drink beverages
+    # "Sports & Energy Drinks",
+    # "Soft Drinks & Mixers",
+    # "Alcohol Free Drinks",
+}
+
 DISH_INGREDIENTS = {
     "spaghetti bolognese": ["beef mince", "spaghetti pasta", "canned tomatoes", "onion", "carrot", "garlic", "mixed herbs"],
     "chicken stir fry": ["chicken breast", "stir fry vegetables", "soy sauce", "rice noodles"],
@@ -246,7 +306,6 @@ class FoodstuffsEdgeAPI:
         r.raise_for_status()
         hits = r.json().get("hits", [])
 
-        pet_categories = {"Dog", "Cat"}
         product_ids = []
         for h in hits:
             hr = h.get("_highlightResult", {})
@@ -255,7 +314,7 @@ class FoodstuffsEdgeAPI:
                 for v in hr.values()
             )
             cat1 = h.get("category1", [])
-            if matched and not any(c in pet_categories for c in cat1):
+            if matched and not any(c in NON_FOOD_CATEGORIES for c in cat1):
                 product_ids.append(h["productID"])
         return product_ids
 
