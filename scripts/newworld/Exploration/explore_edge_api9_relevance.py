@@ -35,9 +35,9 @@ PHASE 3: Breakthrough - Algolia Index Endpoints (products-index-popularity-asc.t
 PHASE 4: Testing Algolia Indices (explore_algolia_indices.py, explore_indices_detailed.py)
 ------------------------------------------------------------------------------------------
 - Tested multiple index endpoints:
-  - products-index-popularity-asc → 200 (returns hits, NO _highlightResult, sorted by popularity ASC)
-  - products-index-popularity-desc → 200 (returns hits, NO _highlightResult, sorted by popularity DESC)
-  - products-index → 200 (returns hits, HAS _highlightResult with matchedWords!)
+  - products-index-popularity-asc → 200 (returns hits, HAS _highlightResult, sorted by popularity ASC)
+  - products-index-popularity-desc → 200 (returns hits, HAS _highlightResult, sorted by popularity DESC)
+  - products-index → 200 (returns hits, HAS _highlightResult, sorted by relevance (Algolia default))
   - products-index-price-asc → 404
   - products-index-price-desc → 404
   - products-index-relevance → 404
@@ -52,7 +52,11 @@ PHASE 4: Testing Algolia Indices (explore_algolia_indices.py, explore_indices_de
 KEY FINDING: Only THREE indices exist and return 200:
   1. products-index-popularity-asc (popularity ascending)
   2. products-index-popularity-desc (popularity descending)
-  3. products-index (DEFAULT - relevance sorted, HAS _highlightResult!)
+  3. products-index (DEFAULT - relevance sorted)
+
+ALL THREE indices return identical _highlightResult structures with matchedWords.
+The only difference is the sort order of results. For relevance matching, any index
+works — products-index (relevance sort) is preferred since top hits are most relevant.
 
 PHASE 5: Per-Store Pricing Discovery (edge_full_test.py, edge_optimizer_demo.py)
 ---------------------------------------------------------------------------------
@@ -172,9 +176,10 @@ def algolia_relevance_search(token, query, store_id, hits_per_page=20):
     
     WHY products-index?
     - Tested 14+ index names, only 3 returned 200
-    - products-index-popularity-asc: NO _highlightResult, sorted by popularity
-    - products-index-popularity-desc: NO _highlightResult, sorted by popularity  
-    - products-index: HAS _highlightResult with matchedWords, appears relevance-sorted
+    - All 3 indices (products-index, popularity-asc, popularity-desc) return
+      identical _highlightResult structures with matchedWords
+    - products-index is preferred because it sorts by Algolia relevance (default),
+      so top hits are most likely to match the query
     
     The _highlightResult field is the KEY to relevance matching:
     - Contains matchedWords array showing which query terms matched which fields
@@ -237,7 +242,8 @@ def algolia_popularity_search(token, query, store_id, hits_per_page=20, asc=True
     """
     Search popularity-sorted index for comparison.
     
-    NOTE: These indices DO NOT have _highlightResult!
+    NOTE: These indices DO have _highlightResult (identical to products-index).
+    The only difference from products-index is the sort order (popularity vs relevance).
     They only have averagePrice across all stores, not per-store pricing.
     """
     suffix = "asc" if asc else "desc"
@@ -261,7 +267,7 @@ def algolia_popularity_search(token, query, store_id, hits_per_page=20, asc=True
     results = []
     
     for hit in hits:
-        # Check if _highlightResult exists (it shouldn't)
+        # Check if _highlightResult exists (all 3 indices have it)
         has_highlight = "_highlightResult" in hit and hit["_highlightResult"]
         
         results.append({
@@ -569,8 +575,9 @@ def main():
               f"Avg: ${r['average_price']} - {match_info}")
     
     print("\n" + "="*70)
-    print("KEY INSIGHT: Only 'products-index' (default) has _highlightResult!")
-    print("Popularity indices are for browsing, NOT for relevance matching.")
+    print("KEY INSIGHT: All 3 indices have identical _highlightResult with matchedWords!")
+    print("The only difference is sort order. 'products-index' (relevance) is preferred")
+    print("for the two-pass pipeline since top hits match the query best.")
     print("="*70)
 
 

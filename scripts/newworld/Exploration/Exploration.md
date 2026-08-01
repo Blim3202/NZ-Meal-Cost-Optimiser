@@ -144,10 +144,10 @@ This folder contains **14 exploration scripts** documenting the multi phase jour
 
 **Purpose**: Deep-dive into the 3 working indices to understand their structure.
 
-**Key Finding**: **Only `products-index` (default) has `_highlightResult` with `matchedWords`** — explicit relevance matching!
-- `products-index-popularity-asc`: Has `_highlightResult` field but **NO matchedWords** (empty)
-- `products-index-popularity-desc`: Same — field exists but empty matches
-- `products-index`: **HAS `_highlightResult` with `matchedWords`** — relevance sorted!
+**Key Finding**: **All 3 indices return identical `_highlightResult` structures with `matchedWords`** — the only difference is sort order.
+- `products-index-popularity-asc`: HAS `_highlightResult` with `matchedWords`, sorted by popularity ASC
+- `products-index-popularity-desc`: HAS `_highlightResult` with `matchedWords`, sorted by popularity DESC
+- `products-index`: HAS `_highlightResult` with `matchedWords`, sorted by Algolia relevance (default)
 
 ---
 
@@ -253,7 +253,7 @@ Returns: per-store singlePrice.price + promotions for ONLY the relevant products
 |-------|-----------|-----------|
 | 1 | explore_edge_api1-5 | Edge API has store listing, NO standard product search endpoints |
 | 2 | explore_edge_api6_auth | **Website JWT works!** Product search = `/search/paginated/products` (Algolia) |
-| 3 | explore_edge_api7-9 | **Only `products-index` has relevance matching** via `_highlightResult.matchedWords` |
+| 3 | explore_edge_api7-9 | **All 3 indices have `_highlightResult.matchedWords`**; `products-index` preferred (relevance sort) |
 | 4 | test_*, demo_* | Two-pass pipeline validated; full optimizer demo working |
 | 5 | explore_categories.py | **116 unique category1 values discovered** via 637 broad queries |
 | 5 | paknsave_api.py, newworld_api.py, Foodstuffs_api.py | **NON_FOOD_CATEGORIES** blacklist (53 categories) applied in Pass 1 |

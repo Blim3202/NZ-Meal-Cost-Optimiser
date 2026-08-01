@@ -284,8 +284,8 @@ See `scripts/newworld/Exploration/explore_edge_auth.py`, `edge_full_test.py`, `e
 - Tested 14+ Algolia index names via `/search/products/query/index/{index_name}`
 - Only 3 indices exist and return 200:
   - `products-index` (default) — **HAS `_highlightResult` with `matchedWords`** — relevance sorted
-  - `products-index-popularity-asc` — NO relevance matches, popularity sorted ASC
-  - `products-index-popularity-desc` — NO relevance matches, popularity sorted DESC
+  - `products-index-popularity-asc` — HAS `_highlightResult` with `matchedWords`, popularity sorted ASC
+  - `products-index-popularity-desc` — HAS `_highlightResult` with `matchedWords`, popularity sorted DESC
 - All other indices (`price-asc`, `price-desc`, `relevance`, `name-asc`, `name-desc`, `newest`, `bestselling`, `trending`) return 404
 
 **Breakthrough**: The paginated endpoint accepts Algolia `filters` parameter! Using `filters: "productID:xxx OR productID:yyy"` allows querying per-store pricing for SPECIFIC product IDs discovered in Pass 1.
@@ -344,7 +344,7 @@ See `scripts/newworld/Exploration/edge_api_relevance_exploration.py` (comprehens
 
 **Symptom**: Needed to confirm that `_highlightResult.matchedWords` exists in Pak'nSave Algolia indices for the two-pass pipeline.
 
-**Discovery**: Unlike New World (where only `products-index` has relevance), **ALL THREE working Pak'nSave indices have `_highlightResult.matchedWords` populated**:
+**Discovery**: All three working Pak'nSave indices have `_highlightResult.matchedWords` populated (same as New World):
 - `products-index` [OK] — Relevance sorted, HAS `matchedWords`
 - `products-index-popularity-asc` [OK] — Popularity sorted, HAS `matchedWords`
 - `products-index-popularity-desc` [OK] — Popularity sorted, HAS `matchedWords`

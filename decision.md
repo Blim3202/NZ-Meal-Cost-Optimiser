@@ -194,7 +194,7 @@ Response includes `_highlightResult`:
 }
 ```
 
-Only `products-index` (default) has relevance matching. The other two working indices (`products-index-popularity-asc`, `products-index-popularity-desc`) have empty `_highlightResult.matchedWords` — they are for browsing, not search.
+All three indices (`products-index`, `products-index-popularity-asc`, `products-index-popularity-desc`) have identical `_highlightResult.matchedWords` — the only difference is sort order. `products-index` (relevance-sorted) is preferred for the two-pass pipeline since top hits match the query best.
 
 ### Two-Pass Pipeline
 

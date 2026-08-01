@@ -188,6 +188,7 @@ def main():
         name = prod.get("name") or prod.get("displayName") or ""
         size = prod.get("displayName") or prod.get("size") or ""
         cat1 = prod.get("category1", [])
+        cattree = prod.get("categoryTrees", [])
         price = extract_price(prod)
         sp = prod.get("singlePrice", {})
         unit_price = sp.get("unitPrice") or sp.get("pricePerUnit") or ""
@@ -201,6 +202,7 @@ def main():
         print(f"{i:>2}. {name}")
         print(f"    Size: {size}")
         print(f"    Category1: {', '.join(cat1) if cat1 else '(none)'}")
+        print(f"    CategoryTree: {cattree if cattree else '(none)'}")
         print(f"    Price: {price_str}  |  Unit: {unit_price}")
         print()
 

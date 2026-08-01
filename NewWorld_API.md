@@ -545,7 +545,7 @@ Region:        NI  (or SI for South Island)
 | Endpoint | Relevance Matching | Per-Store Pricing |
 |----------|-------------------|-------------------|
 | `products-index` (Algolia) | [OK] Has `_highlightResult` with `matchedWords` | [NO] Only `averagePrice` (cross-store) |
-| `products-index-popularity-asc/desc` | [NO] NO `_highlightResult` | [NO] Only `averagePrice` |
+| `products-index-popularity-asc/desc` | [OK] Has `_highlightResult` with `matchedWords` | [NO] Only `averagePrice` |
 | `/search/paginated/products` | [NO] No `RELEVANCE` sort (400 enum mismatch) | [OK] Full per-store pricing |
 
 #### The Solution: Two-Pass Pipeline
@@ -565,7 +565,7 @@ Payload:
 }
 ```
 
-Response includes `_highlightResult` with `matchedWords`:
+Full response truncated. Response includes `_highlightResult` with `matchedWords`:
 ```json
 {
   "hits": [
@@ -637,8 +637,8 @@ We probed 14+ index names. Only THREE return HTTP 200:
 | Index Name | Status | Sort Order | `_highlightResult` | Use Case |
 |------------|--------|------------|-------------------|----------|
 | `products-index` | [OK] 200 | **Relevance (Algolia default)** | [OK] YES — has `matchedWords` | **PASS 1: Relevance matching** |
-| `products-index-popularity-asc` | [OK] 200 | Popularity ascending | [OK] Has field but NO matches | Browsing (least popular first) |
-| `products-index-popularity-desc` | [OK] 200 | Popularity descending | [OK] Has field but NO matches | Browsing (most popular first) |
+| `products-index-popularity-asc` | [OK] 200 | Popularity ascending | [OK] YES — has `matchedWords` | Browsing (least popular first) |
+| `products-index-popularity-desc` | [OK] 200 | Popularity descending | [OK] YES — has `matchedWords` | Browsing (most popular first) |
 | `products-index-price-asc` | [NO] 404 | — | — | Does not exist |
 | `products-index-price-desc` | [NO] 404 | — | — | Does not exist |
 | `products-index-relevance` | [NO] 404 | — | — | Does not exist |
@@ -648,7 +648,7 @@ We probed 14+ index names. Only THREE return HTTP 200:
 | `products-index-bestselling` | [NO] 404 | — | — | Does not exist |
 | `products-index-trending` | [NO] 404 | — | — | Does not exist |
 
-**Critical Discovery**: Only `products-index` (the default index) provides relevance matching via `_highlightResult`. The popularity indices have the field but it's empty — they're for browsing, not search.
+**Key Discovery**: All three indices return identical `_highlightResult` with `matchedWords` — the only difference is sort order. `products-index` (relevance-sorted) is preferred for the two-pass pipeline since top hits match the query best.
 
 ---
 

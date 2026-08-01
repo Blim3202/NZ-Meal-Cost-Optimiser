@@ -664,7 +664,7 @@ Payload:
 }
 ```
 
-Response includes `_highlightResult` with `matchedWords`:
+Full response truncated. Response includes `_highlightResult` with `matchedWords`:
 ```json
 {
   "hits": [
@@ -747,7 +747,7 @@ We tested multiple index names based on New World patterns. Only THREE return HT
 | `products-index-bestselling` | [NO] 404 | — | — | Does not exist |
 | `products-index-trending` | [NO] 404 | — | — | Does not exist |
 
-**Key Discovery**: Unlike New World, **all three working Pak'nSave indices have `_highlightResult.matchedWords` populated**. The default `products-index` is relevance-sorted and has the best relevance matching.
+**Key Discovery**: All three working Pak'nSave indices have `_highlightResult.matchedWords` populated (same as New World). The default `products-index` is relevance-sorted and has the best relevance matching.
 
 **Recommended index**: `products-index` (default, relevance-sorted)
 
