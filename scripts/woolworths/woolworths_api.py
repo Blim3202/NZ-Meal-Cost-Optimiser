@@ -223,7 +223,7 @@ def find_cheapest(session, query, size=20, food_only=False):
     return cheapest
 
 
-def get_nearby_stores(user_lat, user_lon, max_dist_km=5):
+def get_nearby_stores(user_lat, user_lon, max_dist_km: float = 5):
     """Return stores within max_dist_km, sorted by distance.
 
     Returns list of dicts: {pickupAddressId, name, fulfilmentStoreId, lat, lon, distance_km}

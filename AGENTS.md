@@ -54,7 +54,7 @@ opencode/
 │       ├── woolworths_api.py                    # Cookie-based API module: session, store context, product search
 │       ├── woolworths_optimizer.py              # Two-phase optimizer: query API → save to full_results.csv → optimise from CSV. Supports --requery, --distance flags.
 │       ├── woolworths_setup.py                  # Unified store pipeline: fetch choices, fetch data, merge (188 stores → 177 with coords)
-│       ├── Exploration/                         # API exploration scripts (legacy). See Exploration.md for details.
+│       ├── Exploration/                         # API exploration scripts. See Exploration.md for details.
 │       ├── Playwright/                          # Playwright-based scripts (legacy, not needed at runtime)
 │       │   ├── woolworths_scrape.py             # Headed scraper for search results
 │       │   └── ChangeStore.py                   # Store selection via modal URL

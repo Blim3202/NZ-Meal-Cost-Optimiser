@@ -145,7 +145,7 @@ Top-level keys and their types:
 
 ```
 context: {
-  shoeper: { ... },            # see 5.1.2
+  shopper: { ... },            # see 5.1.2
   fulfilment: { ... },         # see 5.1.3
   enabledFeatures: list[106],  # scalar strings, feature-flag IDs
   shoppingListItems: list[0],  # empty for unauthenticated sessions
