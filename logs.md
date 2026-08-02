@@ -597,3 +597,28 @@ Alcoholic drinks (Red Wine, Beer, Cider, etc.) are currently **excluded from the
 **Note on category1 vs categoryTrees**: Pass 2 (`paginated/products`) returns `categoryTrees` (nested navigation hierarchy with `level0`/`level1`/`level2`) instead of the flat `category1` array returned by Pass 1 (`products-index`). This means category1-based filtering only happens in Pass 1 — by the time products reach Pass 2, the `category1` field is empty. In the future, a second phase of filtering could be applied in Pass 2 using `categoryTrees` for more granular control (e.g., excluding specific sub-aisles like "Flavoured Milk" while keeping "Standard Milk"). This is an area for future exploration and has not been implemented.
 
 ---
+
+## 43. Woolworths Optimizer — Shared CSV with Hash-Based Deduplication
+
+**Symptom**: Each optimizer run saved results to a per-run CSV (`woolworths_results.csv`), requiring re-querying the API every time. No way to accumulate results across runs or compare prices across different query sessions.
+
+**Resolution**: Restructured `woolworths_optimizer.py` into a two-phase pipeline (query → optimise) writing to a shared `data/full_results.csv`:
+
+**Phase 1 (query)**: Geocode address → find nearby stores → search ingredients at each store → append all results to CSV (not just cheapest). Deduplication via `pk_hash` — a SHA-256 hash of `store_id|sku|date_created` (truncated to 16 hex chars). Duplicate PKs are skipped on insert.
+
+**Phase 2 (optimise)**: Read today's results from CSV → group by (store, ingredient, date) → pick cheapest per ingredient → print comparison table.
+
+**CLI flags**:
+- `--requery false` — skip API, optimise from existing CSV data only
+- `--distance 5` — set store search radius in km (default 2)
+
+**Key design decisions**:
+- Append-only CSV: new rows are added, never overwritten. PK hash enables dedup without loading all rows into memory (O(n) set lookup).
+- `date_created` normalised to `yyyy-mm-dd` format. Old `dd/mm/yyyy` rows from legacy scripts cause hash mismatches — avoid editing CSV in Excel (blank rows corrupt the file).
+- `parse_volume_size(volume_size, cup_measure="")` falls back to `cupMeasure` from API when `volumeSize` is missing/null. Returns `(quantity, measurement_unit)`.
+- `search_products()` now returns all results (not just cheapest) with `cupMeasure`, `cupListPrice`, and `department` fields.
+- Geocode results printed before store list: `Geocoding: <address>` / `lat: xxx  lon: xxx`.
+
+**Files changed**: `scripts/woolworths/woolworths_optimizer.py`, `scripts/woolworths/woolworths_api.py`, `scripts/combined/initialize_full_results.py`
+
+---

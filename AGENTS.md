@@ -52,7 +52,7 @@ opencode/
 │   │   ├── Exploration/                         # Complete exploration documentation (all phases + discoveries)
 │   └── woolworths/
 │       ├── woolworths_api.py                    # Cookie-based API module: session, store context, product search
-│       ├── woolworths_optimizer.py              # API-based optimizer: geocode, stores, pricing, cost comparison
+│       ├── woolworths_optimizer.py              # Two-phase optimizer: query API → save to full_results.csv → optimise from CSV. Supports --requery, --distance flags.
 │       ├── woolworths_setup.py                  # Unified store pipeline: fetch choices, fetch data, merge (188 stores → 177 with coords)
 │       ├── Exploration/                         # API exploration scripts (legacy). See Exploration.md for details.
 │       ├── Playwright/                          # Playwright-based scripts (legacy, not needed at runtime)
@@ -89,6 +89,7 @@ opencode/
 | `scripts/paknsave/paknsave_optimizer_mobile.py` | **Mobile API optimizer**: CLI with geocoding, 5km radius, single-pass search, unit-price selection |
 | `scripts/woolworths/woolworths_setup.py` | **Unified store pipeline**: fetch choices, fetch data, merge (188 stores → 177 with coords). Replaces legacy scripts. |
 | `scripts/woolworths/woolworths_api.py` | Cookie-based Woolworths API module. Session, store context, product search. Constructs `cw-lrkswrdjp` cookie from `extra1` in store data. No Playwright needed at runtime. |
+| `scripts/combined/initialize_full_results.py` | Creates `data/full_results.csv` with 17-column structure including `pk_hash` for deduplication. |
 | `notebooks/PaknSave_meal_cost_optimizer.ipynb` | Pak'nSave prototype |
 | `notebooks/Woolworths_meal_cost_optimizer.ipynb` | Woolworths pipeline, utilizes `woolworths_optimizer.py` |
 | `data/woolworths_store_data.json` | Store details with `extra1` (=fulfilmentStoreId) and `extra2` (=pickupAddressId) |
@@ -124,6 +125,8 @@ opencode/
 - **Playwright headless=False required**: If you do use Playwright, the site blocks headless Chromium.
 - Search returns first/most-relevant result per query, not cheapest (avoids pet food for "beef mince").
 - 21 dishes are hand-curated in `DISH_INGREDIENTS` — no NLP/LLM parsing yet.
+- **`full_results.csv` is append-only**: New rows are added per run; duplicates detected via `pk_hash` (SHA-256 of `store_id|sku|date_created`). Avoid editing in Excel — blank rows corrupt the file.
+- **`--distance` flag**: `--distance 5` sets search radius in km (default 2).
 
 ## Woolworths Research Status
 
@@ -134,6 +137,7 @@ opencode/
 - **All 67 cookies unnecessary**: Only `cw-lrkswrdjp` carries store context. The other 66 cookies (session_state, RT, Akamai, analytics, ads) are not needed for API calls.
 - **`areaId` not in any data source**: The `a-field` in the cookie is optional and would require Playwright to capture per-store. Not needed for per-store pricing.
 - **Full API documentation**: `Woolworths_API.md` (1290+ lines) covers all endpoints, cookie architecture, and production usage.
+- **`full_results.csv` pipeline working**: Two-phase query→optimise with append-only CSV, `pk_hash` dedup, `--requery`/`--distance` flags. See `scripts/woolworths/woolworths_optimizer.py`.
 
 ## New World Research Status
 
