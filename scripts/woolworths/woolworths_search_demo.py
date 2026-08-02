@@ -19,7 +19,7 @@ Store info (from data/woolworths_store_data.json):
     fulfilmentStoreId:  9171 (extra1)
 
 Usage:
-    python woolworths_milk_search.py
+    python woolworths_search_demo.py
 
 Reference: Woolworths_API.md sections 3, 4, 5.2, 8
 """
@@ -35,7 +35,7 @@ SITE_URL = "https://www.woolworths.co.nz/"
 
 HEADERS = {
     "x-requested-with": "??",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36 Edg/129.0.0.0",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) OnionWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36 Edg/129.0.0.0",
     "Accept": "application/json, text/plain, */*",
     "Accept-Language": "en-NZ,en;q=0.9",
     "Referer": "https://www.woolworths.co.nz/",
@@ -118,7 +118,7 @@ def search_products(session, query, size=10):
 
 
 def main():
-    print(f"=== Woolworths Apple Search ===")
+    print(f"=== Woolworths Onion Search ===")
     print(f"Store: {STORE_NAME} (pickupAddressId={PICKUP_ADDRESS_ID})")
     print()
 
@@ -127,8 +127,8 @@ def main():
     set_store_context(session, PICKUP_ADDRESS_ID)
     print()
 
-    # Search for Apple
-    query = "Apple"
+    # Search for Onion
+    query = "Onion"
     print(f"Searching for: '{query}' (top 10 results)")
     print("=" * 80)
 

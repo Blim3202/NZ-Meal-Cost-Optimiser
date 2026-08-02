@@ -166,7 +166,7 @@ def search_products(session, query, size=20, food_only=False):
                    (Health & Body, Household, Baby & Child, Pet, Back to School)
 
     Returns list of product dicts with keys: sku, name, salePrice, originalPrice,
-    isSpecial, unitPrice, volumeSize, url, imageUrl.
+    isSpecial, unitPrice, volumeSize, cupMeasure, url, imageUrl, departments.
     """
     resp = session.get(
         f"{BASE_URL}/products",
@@ -181,6 +181,8 @@ def search_products(session, query, size=20, food_only=False):
             continue
         price_info = item.get("price", {})
         size_info = item.get("size", {})
+        departments = item.get("departments", [])
+        dept_name = departments[0].get("name", "") if departments else ""
         results.append({
             "sku": item.get("sku"),
             "name": item.get("name", ""),
@@ -189,8 +191,11 @@ def search_products(session, query, size=20, food_only=False):
             "isSpecial": price_info.get("isSpecial", False),
             "unitPrice": size_info.get("cupPrice", ""),
             "volumeSize": size_info.get("volumeSize", ""),
+            "cupMeasure": size_info.get("cupMeasure", ""),
+            "cupListPrice": size_info.get("cupListPrice", ""),
             "url": item.get("url", ""),
             "imageUrl": item.get("imageUrl", ""),
+            "department": dept_name,
         })
     return results
 
