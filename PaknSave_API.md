@@ -121,35 +121,9 @@ If the body is omitted entirely, a New World token is returned by default.
 
 #### Token auto-refresh
 
-The `PaknSaveAPI` class in this project automatically refreshes expired tokens:
-
-```python
-class PaknSaveAPI:
-    def __init__(self):
-        self.scraper = cloudscraper.create_scraper()
-        self._token = None
-
-    def _ensure_token(self):
-        if self._token:
-            return
-        r = self.scraper.post(
-            f"{BASE}/mobile/user/login/guest",
-            json={"banner": "PNS"},
-            headers={"User-Agent": "PAKnSAVEApp/4.32.0", "Content-Type": "application/json"},
-        )
-        r.raise_for_status()
-        data = r.json()
-        self._token = data["access_token"]
-        self._auth = {
-            "Authorization": f"Bearer {self._token}",
-            "access_token": self._token,
-            "User-Agent": "PAKnSAVEApp/4.32.0",
-            "Content-Type": "application/json",
-        }
-```
-
-The token expiry is 30 minutes. `_ensure_token()` is called on every API call —
-if the token is already set, the call is a no-op. For long-running sessions, the
+The `PaknSaveMobileAPI` class auto-authenticates on first use (`_ensure_token`) and
+caches the token in memory. Token expiry is 30 minutes; `_ensure_token()` is called on
+every API call and is a no-op once a token is set. For long-running sessions, the
 `refresh_token` endpoint (section 4.2) can be used.
 
 ### 4.2 Token Refresh
@@ -271,27 +245,11 @@ Returns an object with a single `"stores"` key containing an array:
 
 #### Usage in this project
 
-The unified `Foodstuffs_api.py` module provides brand-agnostic access for both Pak'nSave and New World. For Pak'nSave specifically, the dedicated `paknsave_api.py` module is also available.
+Two API modules are available:
+- **Unified** `scripts/foodstuffs/Foodstuffs_api.py` — brand-agnostic (Pak'nSave + New World).
+- **Pak'nSave-specific** `scripts/paknsave/paknsave_api.py` — `PaknSaveAPI(backend="edge"|"mobile")`.
 
-Using the unified Foodstuffs API (recommended):
-
-```python
-from scripts.foodstuffs.Foodstuffs_api import FoodstuffsEdgeAPI, FoodstuffsMobileAPI
-
-# Edge API (two-pass relevance + per-store pricing)
-api = FoodstuffsEdgeAPI("paknsave")
-stores = api.get_stores()  # returns {id: store_dict}
-products = api.search_products(store_id, "beef mince")  # uses two-pass pipeline
-```
-
-Using the Pak'nSave-specific API:
-
-```python
-from scripts.paknsave.paknsave_api import PaknSaveAPI
-
-api = PaknSaveAPI(backend="edge")  # or "mobile" for fallback
-stores = api.get_stores()  # returns {id: store_dict}
-```
+See **section 10** for the full production module/optimizer usage.
 
 ### 5.2 `POST /mobile/ecomm-products/{banner}/{storeId}/search?q={query}`
 
@@ -312,9 +270,11 @@ specific store, **with per-store pricing**.
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `q` | `string` | (required) | Search query, e.g. `"beef mince"` |
-| `sortOrder` | `string` | (relevance) | Sort by relevance or price |
-| `searchingTobacco` | `bool` | `false` | If the search is for tobacco products |
-| `disableAdsOverride` | `bool` | `false` | Disable ad insertion in results |
+| `hitsPerPage` | `int` | `100` | Max products per page. **Honored** — confirmed: `5`→5 products, `20`→20 products returned (see Pagination). |
+
+The `sortOrder`, `searchingTobacco`, and `disableAdsOverride` params are *not used* by
+this project (the optimizer always relies on the default relevance ordering and only
+sends `q` + `hitsPerPage`).
 
 #### Request body
 
@@ -332,40 +292,41 @@ The body is required but can be empty — it's used internally for filter state
 ```json
 {
   "tobaccoFiltered": false,
-  "totalHits": 10,
+  "totalHits": 25,
   "hitsPerPage": 20,
-  "numberOfPages": 1,
+  "numberOfPages": 2,
   "page": 1,
   "products": [
     {
-      "productId": "c9b5f8e2-...",
-      "brand": "Pams",
-      "name": "NZ Beef Mince",
+      "productId": "5101189-KGM-000",
+      "brand": "Pak'nSave",
+      "name": "NZ Premium Beef Mince",
       "units": "kg",
-      "categories": ["Meat & Poultry", "Beef", "Mince"],
-      "price": 1899,
-      "unitPrice": "$18.99/kg",
+      "categories": ["Beef", "Beef Mince & Stir Fry"],
+      "price": 2699,
+      "unitPrice": "$26.99/1kg",
       "productImageUrls": {
         "100": "https://...",
         "200": "https://...",
         "400": "https://...",
         "500": "https://..."
       },
-      "decalCode": "club",
-      "decalImageUrl": "https://...",
       "availableInStore": true,
       "availableInOnline": true,
       "tobaccoFlag": false,
       "liquorFlag": false,
-      "saleType": "standard",
+      "saleType": "WEIGHT",
       "algoliaAnalytics": {
         "searchQueryID": "abc123",
         "searchPosition": 1
       },
       "boughtBefore": false,
-      "badgeSmallUrl": null,
-      "badgeMediumUrl": null,
-      "badgeLargeUrl": null
+      "variableWeight": {
+        "averageWeight": 0,
+        "minOrderQuantity": 300,
+        "stepSize": 100,
+        "stepUnitOfMeasure": "g"
+      }
     },
     ...
   ],
@@ -373,34 +334,40 @@ The body is required but can be empty — it's used internally for filter state
     "Deals": {},
     "Dietary & lifestyle": {},
     "Categories": {
-      "Meat & Poultry": 175,
-      "Beef": 42,
+      "Beef Mince & Stir Fry": 7,
+      "Beef Patties & Meatballs": 13,
       ...
     },
     "Brands": {
-      "Pams": 5,
+      "Pak'nSave": 5,
       ...
     }
   }
 }
 ```
 
+> **Confirmed live:** the response is a **wrapped dict** (not a bare array). The container
+> keys are `tobaccoFiltered`, `totalHits`, `hitsPerPage`, `numberOfPages`, `page`,
+> `products`, and `filters`. The production code defensively accepts either shape, but the
+> wrapped form is what the API actually returns.
+
 #### Product fields
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `productId` | `string` (UUID) | Unique product identifier across all stores |
+| `productId` | `string` | Unique product identifier (SKU, e.g. `"5101189-KGM-000"`) |
 | `name` | `string` | Product display name |
 | `brand` | `string` | Brand name (e.g. `"Pams"`, `"Value"`) |
 | `price` | `integer` | **Price in cents** — divide by 100 for dollars |
-| `units` | `string` | Unit of sale: `"kg"`, `"L"`, `"400g"`, `"12pk"`, `"each"` |
-| `unitPrice` | `string` | Formatted unit price string, e.g. `"$18.99/kg"` |
-| `categories` | `array[string]` | Hierarchical category path, e.g. `["Meat & Poultry", "Beef", "Mince"]` |
+| `units` | `string` | Pack count + measure combined, e.g. `"500g"`, `"2l"`, `"12pk"`, `"3 x 80g"`, `"8 x 12g"`, bare `"ea"` — see section on parsing |
+| `unitPrice` | `string` | Formatted unit price string, e.g. `"$26.99/1kg"`, `"$0.65/10g"`, `"$0.34/100g"`. **May be `null`** for bare-`"ea"` items |
+| `categories` | `array[2]` | Exactly 2 elements: `[0]` = category1 (sub_department), `[1]` = category2 — **not** a hierarchical path |
+| `saleType` | `string` | `"WEIGHT"` (scaled, sold by weight) or `"UNITS"` (fixed pack) |
 | `availableInOnline` | `bool` | Can be ordered online |
 | `availableInStore` | `bool` | In stock at this store |
-| `saleType` | `string` | `"standard"`, `"special"`, `"club"` |
 | `tobaccoFlag` | `bool` | Is a tobacco product |
 | `liquorFlag` | `bool` | Is an alcohol product |
+| `variableWeight` | `object` | Present for `saleType: "WEIGHT"` items (min order qty, step size) |
 
 #### Price handling
 
@@ -416,27 +383,54 @@ Each `{storeId}` returns independent prices for the same product. For example,
 searching "standard milk" at Botany vs Ormiston may return different `price`
 values for the same `productId`. This is the foundation of the meal cost optimizer.
 
+#### `categories` mapping & non-food filtering
+
+The mobile `categories` array has exactly 2 elements and is **not** the 3-level
+hierarchical path. Mapping to the CSV columns:
+
+| Index | Meaning | CSV column |
+|-------|---------|------------|
+| `categories[0]` | category1 | `sub_department` |
+| `categories[1]` | category2 | (not stored) |
+
+There is **no department (category0)** field in the mobile product — `department`
+is left blank for mobile rows. Non-food filtering checks **only** `categories[0]`
+(category1) against the shared `NON_FOOD_CATEGORIES` set — e.g. `["Dog", "Wet Dog
+Food"]` is filtered out because `categories[0]` is `"Dog"`. A product with an empty
+`categories` array is treated as food.
+
+#### Mobile parsing (`units` + `unitPrice` → 4-tuple)
+
+The optimizer splits the mobile product into
+`(quantity, measurement_unit, per_unit_quantity, per_unit_price)` in one call via
+`parse_paknsave_mobile_unit(units, unitPrice, price_cents)`:
+
+- `units` packs count + measure together, e.g. `"3 x 80g"` → `quantity=3`,
+  `measurement_unit="x 80g"`; `"500g"` → `(500, "g")`; `"ea"` → `(1, "ea")`.
+- `unitPrice` splits on `/`: `"$26.99/1kg"` → `per_unit_quantity="1kg"`,
+  `per_unit_price=26.99` (dollar sign stripped, cents→dollars).
+- **Bare-`"ea"` fallback**: when `units="ea"` and `unitPrice` is `null`, set
+  `per_unit_quantity="ea"` and mirror the item's own `price` into
+  `per_unit_price` — avoids blank per-unit columns.
+
 #### Pagination
 
 | Field | Description |
 |-------|-------------|
 | `page` | Current page (1-indexed) |
-| `hitsPerPage` | Items per page (default 20) |
+| `hitsPerPage` | Items per page — **default 100** unless a `hitsPerPage` query param is sent |
 | `numberOfPages` | Total page count |
-| `totalHits` | Total matching products |
+| `totalHits` | Total matching products (across all pages) |
 
-All results are returned in a single page for typical ingredient searches
-(which usually return 1-20 results).
+`hitsPerPage` is honored: sending it caps the returned `products` length without
+affecting `totalHits`. Default is `100` (larger than the typical result count, so most
+ingredient searches return in a single page).
 
 #### Specifying sort order
 
-Add `sortOrder` to the query string:
-
-```
-POST .../search?q=beef+mince&sortOrder=PriceAsc
-```
-
-`sortOrder` values are not fully documented but known to accept `"PriceAsc"`.
+The mobile endpoint's sort parameter is not used by this project. The optimizer relies
+on the default relevance ordering (returns the most-relevant results first) and only
+sends `q` + `hitsPerPage`.
 
 ### 5.3 `POST /mobile/ecomm-products/{banner}/{storeId}/specials`
 
@@ -714,8 +708,8 @@ Response with per-store pricing:
       "name": "NZ Beef Mince",
       "displayName": "kg",
       "brand": "None",
-      "singlePrice": {"price": 1899, "comparativePrice": {"pricePerUnit": 1899, "unitQuantityUom": "kg"}},
-      "promotions": [],
+      "singlePrice": {"price": 1899, "comparativePrice": {"pricePerUnit": 1899, "unitQuantity": 1, "unitQuantityUom": "kg", "measureDescription": "1kg"}},
+      "promotions": null,
       "availability": ["IN_STORE", "ONLINE"]
     }
   ]
@@ -725,7 +719,9 @@ Response with per-store pricing:
 **Price extraction:**
 - Regular price (cents): `singlePrice.price`
 - Promotional price (cents): `promotions[].rewardValue` where `bestPromotion: true`
-- Unit price: `singlePrice.comparativePrice.pricePerUnit` (cents per unit)
+- Unit price: `singlePrice.comparativePrice.pricePerUnit` (cents per unit, against the
+  `measureDescription` base — e.g. `"1kg"`, `"100g"`)
+- `promotions` is **`null`** when a product has no promo (not always `[]`)
 
 ---
 
@@ -804,15 +800,22 @@ Supports: `OR`, `AND`, field:value syntax. Full Algolia filter syntax works.
 **Product Fields:**
 | Field | Type | Notes |
 |-------|------|-------|
-| `productId` | string | Matches `productID` from Algolia index |
+| `productId` | string | SKU, matches `productID` from Algolia index (e.g. `"5101189-KGM-000"`) |
 | `name` | string | Product name |
-| `displayName` | string | Size/variant (e.g., "2l", "340g") |
+| `displayName` | string | Size/variant (e.g. `"2l"`, `"340g"`, `"120g"`) — used for quantity/measurement parsing |
 | `brand` | string | Brand name |
 | `singlePrice.price` | int | Regular price in cents |
-| `singlePrice.comparativePrice` | object | Unit pricing info |
-| `promotions[]` | array | Promo objects with `rewardValue` (cents) |
+| `singlePrice.comparativePrice` | object | Unit pricing info: `pricePerUnit` (cents), `unitQuantityUom`, `measureDescription` (e.g. `"100g"`, `"1L"`) |
+| `promotions` | array **or `null`** | Promo objects with `rewardValue` (cents), `threshold`, `bestPromotion`, `comparativePrice`. **Often `null`** when no promo |
 | `availability` | array | `["IN_STORE", "ONLINE"]` etc. |
+| `categoryTrees` | array | Category info for the product |
 | `algoliaAnalytics.searchPosition` | int | Position in sorted results |
+
+**Price extraction:**
+- Regular price (cents): `singlePrice.price`
+- Promotional price (cents): `promotions[].rewardValue` where `bestPromotion: true`
+- Unit price (cents per unit): `singlePrice.comparativePrice.pricePerUnit` — note the
+  base quantity can be 100g/10g/1L (see `measureDescription`), so convert with that.
 
 ---
 
@@ -833,76 +836,30 @@ Supports: `OR`, `AND`, field:value syntax. Full Algolia filter syntax works.
 | Auth | Guest login POST | Website session OR mobile token |
 | Store listing | [OK] 60 stores | [OK] 57 stores |
 | Product search | [OK] Single call | [OK] Two-pass (relevance + pricing) |
-| Relevance matching | Implicit (first result) | [OK] Explicit `_highlightResult.matchedWords` |
+| Relevance matching | Implicit (relevance ordering) | [OK] Explicit `_highlightResult.matchedWords` |
 | Per-store pricing | [OK] Native (storeId in URL) | [OK] Via cookies + Algolia filters |
 | Price format | Cents in response | Cents in `singlePrice.price` |
 | Promotions | Included | Included in `promotions[]` |
-| Sort | Relevance (default), PriceAsc | `PRICE_ASC`, `PRICE_DESC` only |
-| Pagination | Offset/limit | Algolia page/hitsPerPage |
+| Sort | Relevance (default) | `PRICE_ASC`, `PRICE_DESC` only |
+| Pagination | `hitsPerPage` query param (default 100) | Algolia page/hitsPerPage |
 | Token source | Mobile API only | Mobile API OR website |
 | Dependency | Internal mobile API | Public website API (more stable) |
-| Pet food filtering | Not available | [OK] Via `category1` in Pass 1 |
+| Pet food filtering | [OK] Via `categories[0]` (category1) | [OK] Via `category1` in Pass 1 |
 
 ---
 
-### 6.8 Two-Pass Pipeline Implementation
+### 6.8 Two-Pass Pipeline Summary
 
-```python
-def two_pass_search(token, query, store_id, max_relevance=20, sort_order="PRICE_ASC"):
-    """
-    Complete two-pass pipeline: Relevance -> Per-Store Pricing
-    """
-    EDGE_BASE = "https://api-prod.paknsave.co.nz/v1/edge"
-    WEB_BASE = "https://www.paknsave.co.nz"
-    
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "access_token": token,
-        "Content-Type": "application/json",
-        "Origin": WEB_BASE,
-        "Referer": f"{WEB_BASE}/shop",
-        "User-Agent": "Mozilla/5.0",
-    }
-    cookies = {
-        "eCom_STORE_ID": store_id,
-        "STORE_ID_V2": f"{store_id}|False",
-        "Region": "NI",
-    }
-    
-    # PASS 1: Relevance matching
-    url1 = f"{EDGE_BASE}/search/products/query/index/products-index"
-    payload1 = {
-        "algoliaQuery": {"query": query},
-        "page": 0,
-        "hitsPerPage": max_relevance,
-        "storeId": store_id
-    }
-    r1 = requests.post(url1, headers=headers, json=payload1, cookies=cookies)
-    hits = r1.json().get("hits", [])
-    
-    # Extract productIDs with relevance matches (exclude pet food)
-    pet_categories = {"Dog", "Cat", "Pet"}
-    product_ids = []
-    for hit in hits:
-        hr = hit.get("_highlightResult", {})
-        matched = [f for f, v in hr.items() if isinstance(v, dict) and v.get("matchedWords")]
-        cat1 = hit.get("category1", [])
-        if matched and not any(c in pet_categories for c in cat1):
-            product_ids.append(hit["productID"])
-    
-    # PASS 2: Per-store pricing with Algolia filters
-    url2 = f"{EDGE_BASE}/search/paginated/products"
-    filter_str = " OR ".join([f"productID:{pid}" for pid in product_ids])
-    payload2 = {
-        "algoliaQuery": {"query": query, "filters": filter_str},
-        "page": 0,
-        "hitsPerPage": 50,
-        "storeId": store_id,
-        "sortOrder": sort_order
-    }
-    r2 = requests.post(url2, headers=headers, json=payload2, cookies=cookies)
-    return r2.json().get("products", [])
 ```
+PASS 1  products-index (relevance)  → filter hits by matchedWords AND category1 ∉ NON_FOOD
+        → collect productIDs
+PASS 2  paginated/products (filters="productID:a OR productID:b ...", PRICE_ASC)
+        → per-store priced products
+```
+
+Full flow (including parsing into CSV rows) is in **section 8 (Data Query & Parsing
+Pipeline)**. Reference implementation: `scripts/paknsave/paknsave_api.py`
+(`PaknSaveEdgeAPI.pass1_relevance_search_hits` / `pass2_per_store_pricing`).
 
 ---
 
@@ -915,7 +872,10 @@ def two_pass_search(token, query, store_id, max_relevance=20, sort_order="PRICE_
 2. Paginated endpoint gets EXACT per-store prices for those relevant products
 3. Sort by `PRICE_ASC` to find cheapest at that store
 
-**Advantage over Mobile API**: Explicit relevance matching via `_highlightResult.matchedWords` — the mobile API returns the first result but provides no visibility into WHY it matched. This is critical for avoiding pet food matching "beef mince".
+**Advantage over Mobile API**: Explicit relevance matching via `_highlightResult.matchedWords`.
+The mobile API also supports food filtering via `categories[0]` and relevance ordering, but
+the Edge API exposes *why* a match occurred (matched words), which is more robust for
+ambiguous ingredient queries like "beef mince".
 
 ---
 
@@ -949,7 +909,7 @@ def two_pass_search(token, query, store_id, max_relevance=20, sort_order="PRICE_
 
 **Advantages of Edge API over Mobile API:**
 - No dependency on Foodstuffs mobile API endpoint
-- Explicit relevance matching (not just "first result")
+- Explicit relevance matching (matched words, not just ordering) — mobile relies on ordering
 - Algolia-powered search with proper price sorting
 - Works with standard browser JWT (same IdP: `online-customer`)
 - Categories endpoint available for navigation
@@ -962,23 +922,19 @@ def two_pass_search(token, query, store_id, max_relevance=20, sort_order="PRICE_
 
 ## 7. Per-Store Pricing
 
-### 8.1 How It Works
+### 7.1 How It Works
 
-The Pak'nSave mobile API provides **true per-store pricing**. Each store has its own
-price list for every product identified by its unique `productId`. When you search
-for "beef mince" at store A vs store B, the prices returned are that store's current
-prices.
+The Pak'nSave API provides **true per-store pricing**. Each store has its own price
+list for every product identified by its unique `productId` (SKU). When you search
+"beef mince" at store A vs store B, the prices returned are that store's current prices.
 
-This is in contrast to the Woolworths API, which requires cookie injection for
-per-store pricing — Pak'nSave encodes the store context directly in the URL path:
+Per-store context is carried differently by each backend:
+- **Mobile API** — store context is in the URL path: `POST /mobile/ecomm-products/PNS/{storeId}/search?q=...`. No extra cookies needed.
+- **Edge API** — store context is in cookies (`eCom_STORE_ID`, `STORE_ID_V2`, `Region`) plus an Algolia `filters` for targeted pricing.
 
-```
-POST /mobile/ecomm-products/PNS/{storeId}/search?q=beef+mince
-```
+This is in contrast to Woolworths, which needs `cw-lrkswrdjp` cookie injection per store.
 
-No special headers, cookies, or session setup beyond the bearer token is needed.
-
-### 8.2 Observed Price Variation
+### 7.2 Observed Price Variation
 
 Price differences between nearby stores are common. For example, a search for
 "standard milk" across Botany, Ormiston, and Highland Park Pak'nSave stores showed:
@@ -992,7 +948,7 @@ Price differences between nearby stores are common. For example, a search for
 Differences of $0.10-$0.50 per item between nearby stores are typical. Distant
 stores (e.g., Auckland vs Christchurch) can show larger differences.
 
-### 8.3 Why This Matters
+### 7.3 Why This Matters
 
 The meal cost optimizer finds the cheapest total for an entire recipe by searching
 each ingredient at each nearby store and comparing totals. Without per-store pricing,
@@ -1000,91 +956,104 @@ this comparison would be meaningless.
 
 ---
 
-## 8. Store Data Sources
+## 8. Data Query & Parsing Pipeline
 
-### 8.1 Unified Store Setup Pipeline (`paknsave_setup.py`)
+This section shows how the production code queries the two backends and parses the
+responses into CSV rows. Both backends follow the same skeleton:
 
-The **canonical store pipeline** is `scripts/paknsave/paknsave_setup.py` — a callable module with three data sources and a clean/merge step:
-
-```python
-from scripts.paknsave.paknsave_setup import (
-    fetch_stores,        # Step 1: fetch from Edge API (default), Mobile API, or store-finder
-    clean_stores,        # Step 2: drop rows without coordinates (no-op for Pak'nSave)
-    run_full_setup       # Run full pipeline end-to-end
-)
-
-# Full pipeline (default: Edge API, 57 stores)
-run_full_setup()
-
-# Full pipeline (store-finder page, 60 stores)
-run_full_setup(source="store_finder")
-
-# Full pipeline (legacy Mobile API, 60 stores)
-run_full_setup(source="mobile")
-
-# Individual steps
-df = fetch_stores(source="edge")      # 57 stores from Edge API
-df = fetch_stores(source="store_finder")  # 60 stores from __NEXT_DATA__
-df = fetch_stores(source="mobile")     # 60 stores from Mobile API
-df = clean_stores(df, cleaned=True)   # Drop NaN coords (no-op for Pak'nSave)
+```
+geocode(address) → find_nearby_stores(lat, lon, 5km)
+→ for each store, for each ingredient:  search_ingredient (edge) / search_products (mobile)
+→ build_row(product[, pass1_hit]) → append_rows() → data/full_results.csv
+→ Phase 2: optimise() reads today's rows → per-store totals + per-ingredient breakdown
 ```
 
-**CLI:**
-```bash
-python -m scripts.paknsave.paknsave_setup           # Edge API (default, 57 stores)
-python -m scripts.paknsave.paknsave_setup store_finder  # Store-finder page (60 stores)
-python -m scripts.paknsave.paknsave_setup mobile        # Mobile API (legacy, 60 stores)
+### 8.1 Edge API (two-pass) — `PaknSaveEdgeAPI`
+
+Two separate calls per ingredient per store, bridged by Algolia `filters`:
+
+```
+Pass 1  POST /v1/edge/search/products/query/index/products-index
+        payload: {"algoliaQuery":{"query":ingredient}, "page":0, "hitsPerPage":20, "storeId":id}
+        → hits with _highlightResult.matchedWords; keep productID where matched
+          AND category1 not in NON_FOOD_CATEGORIES  (pet/baby/household excluded)
+
+Pass 2  POST /v1/edge/search/paginated/products
+        payload: {"algoliaQuery":{"query":ingredient,"filters":"productID:a OR productID:b ..."},
+                  "page":0, "hitsPerPage":50, "storeId":id, "sortOrder":"PRICE_ASC"}
+        → products with per-store singlePrice + promotions
 ```
 
-### 9.2 Data Sources Compared
+Then `build_row` calls `parse_paknsave_volume_size(displayName, singlePrice, promotions)`
+to get `(quantity, measurement_unit, per_unit_quantity, per_unit_price)` from the
+`comparativePrice.measureDescription` (e.g. `"1kg"`, `"100g"`). Department/sub_department
+come from the Pass 1 hit's `category0` / `category1`.
 
-| Source | Stores | Method | Auth | Notes |
-|--------|--------|--------|------|-------|
-| **Edge API** (default) | 57 | `GET /v1/edge/store` with website JWT | `fs-user-token` from `get-current-user` | 3 stores missing (not configured for Edge ordering: Wairau Road, Gisborne City, Levin) |
-| **Mobile API** (legacy) | 60 | `POST /mobile/user/login/guest` + `GET /mobile/store/physical` | Guest token + `PAKnSAVEApp/4.32.0` UA | Complete set; same data as store-finder but via API |
-| **Store-finder page** | 60 | `GET /store-finder` → parse `__NEXT_DATA__` | None (cloudscraper) | Complete set; uses `contentstackStores` (GUIDs) + `regionStoreGroupings` (coords) |
+### 8.2 Mobile API (single-pass) — `PaknSaveMobileAPI`
 
-**No geocoding required** — all sources provide latitude/longitude directly.
+One call per ingredient per store:
 
-### 9.3 Pipeline Steps
-
-The canonical store pipeline is `scripts/foodstuffs/Foodstuffs_setup.py` — a callable module supporting both brands with `source` parameter validation:
-
-```python
-from scripts.foodstuffs.Foodstuffs_setup import fetch_stores, clean_stores, run_full_setup
-
-# Full pipeline for Pak'nSave (default: Edge API, 57 stores)
-run_full_setup(brand="paknsave")
-
-# Full pipeline for Pak'nSave (store-finder, 60 stores)
-run_full_setup(brand="paknsave", source="store_finder")
-
-# Full pipeline for Pak'nSave (legacy Mobile API, 60 stores)
-run_full_setup(brand="paknsave", source="mobile")
-
-# Individual steps
-df = fetch_stores(brand="paknsave", source="edge")      # 57 stores from Edge API
-df = fetch_stores(brand="paknsave", source="store_finder")  # 60 stores from __NEXT_DATA__
-df = fetch_stores(brand="paknsave", source="mobile")     # 60 stores from Mobile API
-df = clean_stores(df, cleaned=True)   # Drop NaN coords (no-op for Pak'nSave)
+```
+POST /mobile/ecomm-products/PNS/{storeId}/search?q={ingredient}&hitsPerPage=20
+→ bare-or-wrapped products; _is_food_product() keeps rows where categories[0]
+  (category1) not in NON_FOOD_CATEGORIES
 ```
 
-`Foodstuffs_setup.py` validates the `source` against `BRANDS[brand]["sources"]` — raises `ValueError` for invalid combinations (e.g., `store_finder` for `"newworld"`).
+Then `build_row` calls `parse_paknsave_mobile_unit(units, unitPrice, price_cents)` to get
+`(quantity, measurement_unit, per_unit_quantity, per_unit_price)`. `units` packs
+count + measure (`"3 x 80g"`, `"500g"`, `"ea"`); `unitPrice` splits on `/`
+(`"$26.99/1kg"` → qty `1kg`, price `26.99`). Bare `"ea"` with no `unitPrice` falls back
+to `per_unit_quantity="ea"` and mirrors the item `price`.
 
-The legacy `paknsave_setup.py` (`python -m scripts.paknsave.paknsave_setup [edge|mobile|store_finder]`) is still functional and mirrors this structure.
+### 8.3 Shared CSV schema (`data/full_results.csv`)
 
-| File | Rows | Description |
-|------|------|-------------|
-| `data/paknsave_stores.csv` | 57 / 60 | Store GUID, name, address, city, region (NI/SI), lat, lon |
-| `data/paknsave_stores.json` | 57 / 60 | Same data, JSON format |
+Both backends write to the same `full_results.csv` with 17 columns. `pk_hash`
+(SHA-256 of `store_id|sku|date_created`) deduplicates appended rows.
+
+| Column | Edge source | Mobile source |
+|--------|-------------|---------------|
+| `quantity` / `measurement_unit` | `displayName` via `parse_paknsave_volume_size` | `units` via `parse_paknsave_mobile_unit` |
+| `per_unit_quantity` / `per_unit_price` | `comparativePrice.measureDescription` / `pricePerUnit` | `unitPrice` split (or price for bare-`ea`) |
+| `department` | Pass 1 `category0` | *(empty — mobile has no category0)* |
+| `sub_department` | Pass 1 `category1` | `categories[0]` |
+| `price` | promo `rewardValue` else `singlePrice.price` (cents) | `price` (cents) |
 
 ---
 
-## 9. Production Architecture
+## 9. Store Data Sources
 
-### 9.1 Pak'nSave Unified API Module (`paknsave_api.py`)
+The canonical store pipeline is the **unified** `scripts/foodstuffs/Foodstuffs_setup.py`
+(a cross-brand module with `brand="paknsave"`). The legacy Pak'nSave-only
+`scripts/paknsave/paknsave_setup.py` mirrors it and is still functional. Both support
+three sources via a `source` parameter (validated per brand — `store_finder` raises
+`ValueError` for New World).
 
-A unified, callable API client supporting **two backends**:
+```python
+from scripts.foodstuffs.Foodstuffs_setup import fetch_stores, clean_stores, run_full_setup
+run_full_setup(brand="paknsave")                     # default: Edge API, 57 stores
+run_full_setup(brand="paknsave", source="store_finder")  # 60 stores
+run_full_setup(brand="paknsave", source="mobile")        # legacy, 60 stores
+df = fetch_stores(brand="paknsave", source="edge")       # 57 stores
+df = clean_stores(df, cleaned=True)                      # drop NaN coords (no-op for Pak'nSave)
+```
+
+| Source | Stores | Method | Auth | Notes |
+|--------|--------|--------|------|-------|
+| **Edge API** (default) | 57 | `GET /v1/edge/store` | `fs-user-token` from `get-current-user` | 3 stores missing (Wairau Road, Gisborne City, Levin) |
+| **Mobile API** (legacy) | 60 | guest login + `GET /mobile/store/physical` | guest token + `PAKnSAVEApp/4.32.0` UA | Complete set |
+| **Store-finder page** | 60 | `GET /store-finder` → `__NEXT_DATA__` | none (cloudscraper) | `contentstackStores` GUIDs + `regionStoreGroupings` coords |
+
+**No geocoding required** — all sources provide lat/lon directly.
+
+Outputs: `data/paknsave_stores.csv` and `data/paknsave_stores.json` (57 / 60 rows each).
+
+CLI: `python -m scripts.paknsave.paknsave_setup [edge|mobile|store_finder]`.
+
+---
+
+## 10. Production Architecture & Optimizers
+
+### 10.1 Unified API Module (`paknsave_api.py`)
 
 | Backend | Auth | Pipeline | Use Case |
 |---------|------|----------|----------|
@@ -1092,75 +1061,40 @@ A unified, callable API client supporting **two backends**:
 | **Mobile API** (fallback) | Guest token (30 min) | Single-pass (relevance only) | Fallback — simpler, no per-store price sort |
 
 ```python
-from scripts.paknsave.paknsave_api import (
-    PaknSaveAPI,
-    PaknSaveEdgeAPI,
-    PaknSaveMobileAPI,
-    load_stores,
-    geocode,
-    find_nearby_stores,
-    get_ingredients,
-    haversine,
-)
-
-# Default: Edge API (two-pass)
-api = PaknSaveAPI(backend="edge")
-api.client.authenticate()  # website JWT
-
-# Fallback: Mobile API (single-pass)
-api = PaknSaveAPI(backend="mobile")
-
-# Search ingredient at store
-products = api.search_ingredient(store_id, "beef mince")
-
-# Low-level Edge API (two-pass manually)
-edge = PaknSaveEdgeAPI()
-edge.authenticate()
-product_ids = edge.pass1_relevance_search(store_id, "beef mince")
-products = edge.pass2_per_store_pricing(store_id, "beef mince", product_ids)
-
-# Utility functions
-stores = load_stores()                    # from data/paknsave_stores.csv
-lat, lon = geocode("Botany, Auckland")
-nearby = find_nearby_stores(lat, lon, 5)  # within 5km
-ingredients = get_ingredients("spaghetti bolognese")
+from scripts.paknsave.paknsave_api import PaknSaveAPI, PaknSaveEdgeAPI, PaknSaveMobileAPI
+api = PaknSaveAPI(backend="edge")             # or "mobile"
+products, hits = api.search_ingredient(store_id, "beef mince")
+edge = PaknSaveEdgeAPI(); edge.authenticate()
+pids = edge.pass1_relevance_search(store_id, "beef mince")
+products = edge.pass2_per_store_pricing(store_id, "beef mince", pids)
 ```
 
-**Core Classes:**
-- `PaknSaveAPI` — Unified interface, selects backend
-- `PaknSaveEdgeAPI` — Full two-pass pipeline with pet food filtering
-- `PaknSaveMobileAPI` — Legacy single-pass mobile API
+### 10.2 Optimizers
 
-### 9.2 Optimizers
+Both optimizers are **two-phase**: Phase 1 queries the API and appends to
+`full_results.csv`; Phase 2 reads today's rows and prints a comparison.
 
-#### 10.2.1 Edge API Optimizer (`paknsave_optimizer_edge.py`)
-
-```bash
-python scripts/paknsave/paknsave_optimizer_edge.py "Botany Town Centre, Auckland" "spaghetti bolognese"
-```
-
-**Pipeline:**
+**Edge** (`scripts/paknsave/paknsave_optimizer_edge.py`):
 1. Geocode address → lat/lon
-2. Load stores from `paknsave_stores.csv` → filter by haversine distance (5km)
+2. Load stores → filter by haversine distance (`--distance N`, default 5km)
 3. Authenticate with Edge API (website JWT)
-4. For each nearby store, two-pass search per ingredient:
-   - PASS 1: Relevance via `products-index` + `_highlightResult.matchedWords`
-   - PASS 2: Per-store pricing via `paginated/products` + Algolia filters + `PRICE_ASC`
-   - Pet food filtering via `category1` exclusion (`Dog`, `Cat`, `Pet`)
-5. Pick cheapest by **unit price** (falls back to absolute price)
-6. Output: cost comparison table + itemized breakdown → saves to `data/paknsave_latest_results.csv`
+4. Per nearby store, per ingredient: two-pass search (Pass 1 relevance + category1
+   non-food filter; Pass 2 per-store pricing + `PRICE_ASC`)
+5. `build_row` → `parse_paknsave_volume_size` → append to CSV
+6. Phase 2: cheapest per ingredient per store → totals + breakdown
+   → saves `data/paknsave_latest_results.csv`
 
-#### 10.2.2 Mobile API Optimizer (`paknsave_optimizer_mobile.py`)
+**Mobile** (`scripts/paknsave/paknsave_optimizer_mobile.py`):
+Same skeleton, single-pass (guest token), `_is_food_product()` filter on
+`categories[0]`, `parse_paknsave_mobile_unit` for parsing
+→ saves `data/paknsave_mobile_latest_results.csv`.
 
-```bash
-python scripts/paknsave/paknsave_optimizer_mobile.py "Botany Town Centre, Auckland" "spaghetti bolognese"
-```
-
-**Pipeline:** Same as Edge but uses Mobile API (single-pass, guest token). No per-store price sort — returns first (most relevant) result. Same unit-price selection logic.
+Shared flags for both: `--requery true|false` (default true) and `--distance N`.
+Both use `data/full_results.csv` as the append-only, deduped result store.
 
 ---
 
-## 10. Supported Dishes (21)
+## 11. Supported Dishes (21)
 
 | Dish | Ingredients |
 |------|------------|
@@ -1186,15 +1120,14 @@ python scripts/paknsave/paknsave_optimizer_mobile.py "Botany Town Centre, Auckla
 | tomato pasta | pasta, canned tomatoes, garlic, olive oil, mixed herbs, cheese |
 | chicken katsu | chicken breast, flour, eggs, bread, rice, katsu sauce |
 
-Dishes are defined in `DISH_INGREDIENTS` in `scripts/paknsave/paknsave_api.py`
-and the Pak'nSave notebook (cell 4). Unknown dish names fall through — the dish name
-itself becomes the single search query.
+Dishes are defined in `DISH_INGREDIENTS` in `scripts/paknsave/paknsave_api.py`.
+Unknown dish names fall through — the dish name itself becomes the single search query.
 
 ---
 
-## 11. CLI Usage
+## 12. CLI Usage
 
-**Edge API Optimizer (Production — two-pass, relevance + price sort):**
+**Edge API Optimizer (Production — two-pass):**
 ```powershell
 python scripts/paknsave/paknsave_optimizer_edge.py "Botany Town Centre, Auckland" "spaghetti bolognese"
 ```
@@ -1208,94 +1141,23 @@ python scripts/paknsave/paknsave_optimizer_mobile.py "Botany Town Centre, Auckla
 |----------|---------|-------------|
 | `address` | `"Botany Town Centre, Auckland"` | NZ address to geocode |
 | `dish` | `"spaghetti bolognese"` | Dish name from the supported list |
+| `--requery` | `true` | `false` to skip API and optimise from existing CSV |
+| `--distance` | `5` | Store search radius in km |
 
 Output: per-store itemised prices, total cost comparison, and the cheapest store.
-Results saved to `data/paknsave_latest_results.csv` (Edge) or `data/paknsave_mobile_latest_results.csv` (Mobile).
+Raw rows are appended to `data/full_results.csv`; per-run results saved to
+`data/paknsave_latest_results.csv` (Edge) or `data/paknsave_mobile_latest_results.csv` (Mobile).
 
 ---
 
-## 12. Pak'nSave Store Setup
+## 13. Store Setup
 
-### Unified Pipeline (`paknsave_setup.py`)
+See **section 9 (Store Data Sources)** — the canonical pipeline
+(`foodstuffs/Foodstuffs_setup.py` with `brand="paknsave"`, or the legacy
+`paknsave_setup.py`) produces `data/paknsave_stores.csv` / `.json`.
 
-A single module `scripts/paknsave/paknsave_setup.py` with callable functions + CLI, supporting **three data sources**:
-
-```python
-from scripts.paknsave.paknsave_setup import fetch_stores, clean_stores, run_full_setup
-
-# Full pipeline (default: edge, 57 stores from Edge API)
-run_full_setup()
-
-# Full pipeline (store_finder, 60 stores from store-finder page)
-run_full_setup(source="store_finder")
-
-# Full pipeline (legacy Mobile API, 60 stores)
-run_full_setup(source="mobile")
-
-# Individual steps
-fetch_stores(source="edge")
-fetch_stores(source="mobile")
-fetch_stores(source="store_finder")
-clean_stores(cleaned=True)  # drops rows without lat/lon (no-op for Pak'nSave)
-```
-
-### Pipeline Details
-
-**Step 1: `fetch_stores(source="edge"|"store_finder")`**
-
-| Source | Stores | Method | Notes |
-|--------|--------|--------|-------|
-| `edge` (default) | 57 | `GET /v1/edge/store` with website JWT | Uses website JWT (`fs-user-token`) from `get-current-user`. Returns stores with coords. 3 stores missing (not on Edge API). |
-| `store_finder` | 60 | `GET /store-finder` → parse `__NEXT_DATA__` | Extracts `contentstackStores` (GUIDs) + `store_finder.regionStoreGroupings` (coords). Joins on URL. |
-
-**No geocoding needed** — both sources provide coordinates directly.
-
-**Output**: `data/paknsave_stores.csv`, `data/paknsave_stores.json`
-
-**Step 2: `clean_stores(cleaned=True)`**
-- Optional: drops rows where latitude/longitude are NaN
-- `cleaned=True` (default): drops missing coords
-- `cleaned=False`: keeps all rows
-- For Pak'nSave: **all stores have coordinates** — this is a no-op
-
-**Step 3: `run_full_setup(source="edge", cleaned=True)`**
-- Runs both steps, overwrites final CSV/JSON
-- CLI: `python -m scripts.paknsave.paknsave_setup [edge|mobile|store_finder]`
-
-### Key Files
-
-| File | Rows | Description |
-|------|------|-------------|
-| `data/paknsave_stores.csv` | 57 / 60 | Store GUID, name, address, city, region (NI/SI), lat, lon |
-| `data/paknsave_stores.json` | 57 / 60 | Same data, JSON format |
-
-### CLI Usage
-
-```powershell
-# Full pipeline (default: edge, 57 stores)
-python -m scripts.paknsave.paknsave_setup
-
-# Full pipeline (store_finder, 60 stores)
-python -m scripts.paknsave.paknsave_setup store_finder
-
-# Full pipeline (legacy Mobile API, 60 stores)
-python -m scripts.paknsave.paknsave_setup mobile
-
-# Individual steps
-python -c "from scripts.paknsave.paknsave_setup import fetch_stores; fetch_stores(source='edge')"
-python -c "from scripts.paknsave.paknsave_setup import fetch_stores; fetch_stores(source='mobile')"
-python -c "from scripts.paknsave.paknsave_setup import clean_stores; clean_stores(cleaned=False)"
-```
-
-### Legacy Scripts
-
-| Script | Status | Replacement |
-|--------|--------|-------------|
-| `scripts/paknsave/fetch_stores.py` | **Deprecated** | `paknsave_setup.py` `fetch_stores()` |
-
-
-
-
+**Legacy scripts:** `scripts/paknsave/fetch_stores.py` is **deprecated** — use
+`paknsave_setup.py` `fetch_stores()` instead.
 
 ---
 
