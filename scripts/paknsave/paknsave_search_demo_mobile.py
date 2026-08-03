@@ -100,8 +100,8 @@ def main():
     parser.add_argument(
         "ingredient",
         nargs="?",
-        default="gravy dog food",
-        help="Ingredient to search for (default: 'gravy dog food')",
+        default="Celery Half",
+        help="Ingredient to search for (default: 'Celery Half')",
     )
     args = parser.parse_args()
     query = args.ingredient
@@ -153,7 +153,7 @@ def main():
     if products:
         print("=" * 80)
         print("RAW JSON for first product:")
-        print(json.dumps(products[1], indent=2))
+        print(json.dumps(products[0], indent=2))
 
 
 if __name__ == "__main__":

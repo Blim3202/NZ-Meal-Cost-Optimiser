@@ -332,99 +332,104 @@ def parse_paknsave_volume_size(display_name, single_price, promotions):
     return quantity, measurement_unit, per_unit_qty, per_unit_price
 
 
-def parse_paknsave_mobile_unit(unit_price):
-    """Parse a Mobile API unitPrice string into (per_unit_quantity, per_unit_price).
+def parse_paknsave_mobile_unit(units, unit_price, price_cents=None):
+    """Parse Pak'nSave Mobile API `units` and `unitPrice` strings.
 
-    Splits on '/': per_unit_price is the value before the slash (dollar sign
-    stripped), per_unit_quantity is the value after the slash.
+    Combines the two splitting jobs for a mobile product into one helper so the
+    caller gets (quantity, measurement_unit, per_unit_quantity, per_unit_price)
+    in a single call — matching the edge pipeline's parse_paknsave_volume_size
+    tuple.
 
-    Examples:
-        ("$26.99/1kg") -> ("1kg", 26.99)
-        ("$18.99/kg")  -> ("kg", 18.99)
-        ("$3.49/ea")   -> ("ea", 3.49)
-        ("", )         -> ("", 0)
-    """
-    if not unit_price or not isinstance(unit_price, str):
-        return "", 0
+    1) Units split (quantity + measurement_unit):
+       The mobile `units` string packs the item count and the measure together,
+       e.g. "3 x 31g", "500g", "2 pack", "ea". The leading numeric count becomes
+       `quantity`; the remainder becomes `measurement_unit`.
 
-    if "/" in unit_price:
-        price_part, qty_part = unit_price.split("/", 1)
-    else:
-        price_part, qty_part = unit_price, ""
+       Edge case — sachet/pack like "3 x 31g":
+           The integer before the 'x' is the pack/sachet count (→ quantity).
+           The text including and after the 'x' becomes the measurement, with the
+           space that sat between the count and the 'x' stripped ("x 31g").
 
-    price_part = price_part.replace("$", "").strip()
-    try:
-        per_unit_price = float(price_part)
-    except ValueError:
-        per_unit_price = 0
+    2) `unitPrice` (per_unit_quantity + per_unit_price):
+       Splits on '/': per_unit_price is the value before the slash (dollar sign
+       stripped), per_unit_quantity is the value after the slash.
 
-    return qty_part.strip(), per_unit_price
-
-
-def parse_paknsave_mobile_units(units):
-    """Parse a Mobile API `units` string into (quantity, measurement_unit).
-
-    The mobile API packs the item count and the measure into a single `units`
-    string (e.g. "3 x 31g", "500g", "2 pack", "ea"). This splits off the leading
-    numeric count into `quantity` and leaves the measure in `measurement_unit`,
-    mirroring the edge pipeline's number/unit split of displayName.
-
-    Edge case — sachet/pack products like "3 x 31g":
-        The integer before the 'x' is the pack/sachet count (→ quantity). The
-        text including and after the 'x' becomes the measurement unit, with the
-        space that sat between the count and the 'x' stripped (e.g. "x 31g").
+       Fallback — bare "ea" with no `unitPrice`:
+           Some single-each items expose only `units` of "ea" and no unitPrice
+           string, which would otherwise leave per_unit_quantity/per_unit_price
+           blank. Treat the item as being sold per each: per_unit_quantity
+           becomes "ea" and per_unit_price mirrors the item's own price (from
+           `price_cents`), so the per-unit columns never go empty.
 
     Examples:
-        ("3 x 31g") -> (3, "x 31g")   # sachet pack edge case
-        ("500g")    -> (500, "g")     # number directly adjacent to unit
-        ("1kg")     -> (1, "kg")
-        ("2 pack")  -> (2, "pack")    # number followed by space + unit
-        ("ea")      -> (1, "ea")      # unit only, no count
-        ("")        -> ("", "")       # missing/unrecognised
+        ("3 x 31g", "$26.99/1kg") -> (3, "x 31g", "1kg", 26.99)
+        ("500g", "$18.99/kg")     -> (500, "g", "kg", 18.99)
+        ("2 pack", "$3.49/ea")    -> (2, "pack", "ea", 3.49)
+        ("ea", "", 250)           -> (1, "ea", "ea", 2.5)   # fallback
+        ("ea", "")                -> (1, "ea", "", 0)        # fallback, no price known
+        ("", "")                  -> ("", "", "", 0)
 
     Args:
-        units: Mobile API `units` field (e.g. "3 x 31g", "500g").
+        units: Mobile API `units` field (e.g. "3 x 31g", "500g", "ea").
+        unit_price: Mobile API `unitPrice` formatted string (e.g. "$26.99/1kg").
+        price_cents: Item price in cents (from `product["price"]`), used only for
+            the bare-"ea" fallback so per_unit_price can mirror the item price.
 
     Returns:
-        (quantity, measurement_unit). quantity is int/float when a count is
-        found, else "" (empty string to keep the CSV column blank, mirroring
-        the edge rows). measurement_unit is "" when unrecognised.
+        (quantity, measurement_unit, per_unit_quantity, per_unit_price).
+        quantity is int/float when a count is found, else "" (keeps the CSV
+        column blank, matching edge rows). per_unit_price is in dollars.
     """
-    if not units or not isinstance(units, str):
-        return "", ""
+    # Map a numeric count to int when whole, else keep float. Mirrors edge.
+    def _clean(qty):
+        return int(qty) if qty == int(qty) else qty
 
-    raw = units.strip()
-    if not raw or raw.lower() == "null":
-        return "", ""
+    # --- 1) Split `units` into quantity + measurement_unit ---
+    quantity, measurement_unit = "", ""
+    if units and isinstance(units, str):
+        raw = units.strip()
+        if raw and raw.lower() != "null":
+            # Edge case: sachet/pack like "3 x 31g". Quantity = leading count;
+            # measurement keeps the 'x' but strips the space before it.
+            match = re.match(r"^(\d+(?:\.\d+)?)\s*[xX]\s*(\S.*)$", raw)
+            if match:
+                quantity = _clean(float(match.group(1)))
+                measurement_unit = "x " + match.group(2).strip()
+            # Pattern 1: "500g", "1L", "250ml" — number directly adjacent to unit
+            elif (match := re.match(r"^(\d+(?:\.\d+)?)\s*([a-zA-Z]+)$", raw)):
+                quantity = _clean(float(match.group(1)))
+                measurement_unit = match.group(2).lower()
+            # Pattern 2: "2 pack", "6 eggs" — number followed by space + unit
+            elif (match := re.match(r"^(\d+(?:\.\d+)?)\s+(.+)$", raw)):
+                quantity = _clean(float(match.group(1)))
+                measurement_unit = match.group(2).lower().strip()
+            # Pattern 3: "ea", "kg", "L" — unit only, no count → default to 1
+            elif re.match(r"^[a-zA-Z]+$", raw):
+                quantity, measurement_unit = 1, raw.lower()
 
-    # Edge case: sachet/pack like "3 x 31g".
-    # Quantity is the leading count ("3"); the measurement is the "x 31g" part,
-    # keeping the 'x' but stripping the space that separated it from the count.
-    match = re.match(r"^(\d+(?:\.\d+)?)\s*[xX]\s*(\S.*)$", raw)
-    if match:
-        qty = float(match.group(1))
-        qty = int(qty) if qty == int(qty) else qty
-        return qty, "x " + match.group(2).strip()
+    # --- 2) Split `unit_price` into per_unit_quantity + per_unit_price ---
+    per_unit_qty, per_unit_price = "", 0
+    if unit_price and isinstance(unit_price, str):
+        if "/" in unit_price:
+            price_part, qty_part = unit_price.split("/", 1)
+        else:
+            price_part, qty_part = unit_price, ""
 
-    # Pattern 1: "500g", "1L", "250ml" — number directly adjacent to unit
-    match = re.match(r"^(\d+(?:\.\d+)?)\s*([a-zA-Z]+)$", raw)
-    if match:
-        qty = float(match.group(1))
-        unit = match.group(2).lower()
-        return (int(qty) if qty == int(qty) else qty), unit
+        price_part = price_part.replace("$", "").strip()
+        try:
+            per_unit_price = float(price_part)
+        except ValueError:
+            per_unit_price = 0
+        per_unit_qty = qty_part.strip()
 
-    # Pattern 2: "2 pack", "6 eggs" — number followed by space + unit
-    match = re.match(r"^(\d+(?:\.\d+)?)\s+(.+)$", raw)
-    if match:
-        qty = float(match.group(1))
-        unit = match.group(2).lower().strip()
-        return (int(qty) if qty == int(qty) else qty), unit
+    # Fallback: bare "ea" with no unitPrice → per-each at the item's own price.
+    # Avoids blank per_unit columns (per_unit_price mirrors `price`).
+    if not per_unit_qty and units and isinstance(units, str) and units.strip().lower() == "ea":
+        per_unit_qty = "ea"
+        if price_cents is not None:
+            per_unit_price = price_cents / 100.0
 
-    # Pattern 3: "ea", "kg", "L" — unit only, no count → default to 1
-    if re.match(r"^[a-zA-Z]+$", raw):
-        return 1, raw.lower()
-
-    return "", ""
+    return quantity, measurement_unit, per_unit_qty, per_unit_price
 
 
 def _parse_display_name(display_name):

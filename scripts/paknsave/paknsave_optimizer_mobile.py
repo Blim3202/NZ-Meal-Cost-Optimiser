@@ -42,7 +42,6 @@ from optimizer_utils import (
     get_ingredients,
     get_quantities,
     parse_paknsave_mobile_unit,
-    parse_paknsave_mobile_units,
     _compute_pk_hash,
     load_existing_hashes,
     append_rows,
@@ -66,16 +65,18 @@ def build_row(company, store, store_id, search_ingredient, product, now):
     price_cents = product.get("price")
     price_dollars = round(price_cents / 100.0, 2) if price_cents is not None else ""
 
-    # Mobile API: unitPrice is formatted string (e.g. "$18.99/kg").
-    # Split on '/' → per_unit_quantity = after slash ("kg"), per_unit_price = before slash ($ stripped)
-    unit_price_str = product.get("unitPrice", "")
-    per_unit_qty, per_unit_price = parse_paknsave_mobile_unit(unit_price_str)
-
-    # Mobile API: `units` is a single string carrying both the item count and the
-    # measure (e.g. "3 x 31g"). Split it so the count goes into `quantity` and the
-    # measure into `measurement_unit` — mirroring the edge pipeline. Handles the
-    # sachet/pack edge case "3 x 31g" → quantity=3, measurement_unit="x 31g".
-    quantity, measurement_unit = parse_paknsave_mobile_units(product.get("units", ""))
+    # Mobile API: `units` packs the "count + measure" together (e.g. "3 x 31g"),
+    # and `unitPrice` is a formatted string (e.g. "$18.99/kg").
+    # parse_paknsave_mobile_unit splits both in one call → quantity, measurement_unit,
+    # per_unit_quantity, per_unit_price. It handles the sachet/pack edge case
+    # "3 x 31g" → quantity=3, measurement_unit="x 31g", and the bare-"ea" fallback
+    # (no unitPrice) where per_unit_qty="ea" and per_unit_price mirrors the item's
+    # own price (passed as `price_cents`) so the per-unit columns aren't blank.
+    quantity, measurement_unit, per_unit_qty, per_unit_price = parse_paknsave_mobile_unit(
+        product.get("units", ""),
+        product.get("unitPrice", ""),
+        price_cents,
+    )
 
     # Mobile API categories: [0] = category1 (sub_department), [1] = category2 (subsub_department).
     # There is no department (category0) in the mobile response.
