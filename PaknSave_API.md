@@ -403,7 +403,7 @@ Food"]` is filtered out because `categories[0]` is `"Dog"`. A product with an em
 
 The optimizer splits the mobile product into
 `(quantity, measurement_unit, per_unit_quantity, per_unit_price)` in one call via
-`parse_paknsave_mobile_unit(units, unitPrice, price_cents)`:
+`parse_foodstuffs_mobile_unit(units, unitPrice, price_cents)`:
 
 - `units` packs count + measure together, e.g. `"3 x 80g"` → `quantity=3`,
   `measurement_unit="x 80g"`; `"500g"` → `(500, "g")`; `"ea"` → `(1, "ea")`.
@@ -984,7 +984,7 @@ Pass 2  POST /v1/edge/search/paginated/products
         → products with per-store singlePrice + promotions
 ```
 
-Then `build_row` calls `parse_paknsave_volume_size(displayName, singlePrice, promotions)`
+Then `build_row` calls `parse_foodstuffs_volume_size(displayName, singlePrice, promotions)`
 to get `(quantity, measurement_unit, per_unit_quantity, per_unit_price)` from the
 `comparativePrice.measureDescription` (e.g. `"1kg"`, `"100g"`). Department/sub_department
 come from the Pass 1 hit's `category0` / `category1`.
@@ -999,7 +999,7 @@ POST /mobile/ecomm-products/PNS/{storeId}/search?q={ingredient}&hitsPerPage=20
   (category1) not in NON_FOOD_CATEGORIES
 ```
 
-Then `build_row` calls `parse_paknsave_mobile_unit(units, unitPrice, price_cents)` to get
+Then `build_row` calls `parse_foodstuffs_mobile_unit(units, unitPrice, price_cents)` to get
 `(quantity, measurement_unit, per_unit_quantity, per_unit_price)`. `units` packs
 count + measure (`"3 x 80g"`, `"500g"`, `"ea"`); `unitPrice` splits on `/`
 (`"$26.99/1kg"` → qty `1kg`, price `26.99`). Bare `"ea"` with no `unitPrice` falls back
@@ -1012,7 +1012,7 @@ Both backends write to the same `full_results.csv` with 17 columns. `pk_hash`
 
 | Column | Edge source | Mobile source |
 |--------|-------------|---------------|
-| `quantity` / `measurement_unit` | `displayName` via `parse_paknsave_volume_size` | `units` via `parse_paknsave_mobile_unit` |
+| `quantity` / `measurement_unit` | `displayName` via `parse_foodstuffs_volume_size` | `units` via `parse_foodstuffs_mobile_unit` |
 | `per_unit_quantity` / `per_unit_price` | `comparativePrice.measureDescription` / `pricePerUnit` | `unitPrice` split (or price for bare-`ea`) |
 | `department` | Pass 1 `category0` | *(empty — mobile has no category0)* |
 | `sub_department` | Pass 1 `category1` | `categories[0]` |
@@ -1080,13 +1080,13 @@ Both optimizers are **two-phase**: Phase 1 queries the API and appends to
 3. Authenticate with Edge API (website JWT)
 4. Per nearby store, per ingredient: two-pass search (Pass 1 relevance + category1
    non-food filter; Pass 2 per-store pricing + `PRICE_ASC`)
-5. `build_row` → `parse_paknsave_volume_size` → append to CSV
+5. `build_row` → `parse_foodstuffs_volume_size` → append to CSV
 6. Phase 2: cheapest per ingredient per store → totals + breakdown
    → saves `data/paknsave_latest_results.csv`
 
 **Mobile** (`scripts/paknsave/paknsave_optimizer_mobile.py`):
 Same skeleton, single-pass (guest token), `_is_food_product()` filter on
-`categories[0]`, `parse_paknsave_mobile_unit` for parsing
+`categories[0]`, `parse_foodstuffs_mobile_unit` for parsing
 → saves `data/paknsave_mobile_latest_results.csv`.
 
 Shared flags for both: `--requery true|false` (default true) and `--distance N`.

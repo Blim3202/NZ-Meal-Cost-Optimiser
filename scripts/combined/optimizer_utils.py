@@ -10,8 +10,10 @@ import hashlib
 import math
 import re
 import time
+from datetime import date, datetime
 from pathlib import Path
 
+import pandas as pd
 import requests
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
@@ -275,8 +277,8 @@ def parse_woolworths_volume_size(volume_size, cup_measure=""):
     return None, ""
 
 
-def parse_paknsave_volume_size(display_name, single_price, promotions):
-    """Parse a Pak'nSave product into (quantity, measurement_unit, per_unit_quantity, per_unit_price).
+def parse_foodstuffs_volume_size(display_name, single_price, promotions):
+    """Parse a Foodstuffs product into (quantity, measurement_unit, per_unit_quantity, per_unit_price).
 
     Uses measureDescription for per_unit_quantity when available (e.g. "100g", "1kg", "ea")
     instead of just the unit abbreviation.
@@ -332,12 +334,12 @@ def parse_paknsave_volume_size(display_name, single_price, promotions):
     return quantity, measurement_unit, per_unit_qty, per_unit_price
 
 
-def parse_paknsave_mobile_unit(units, unit_price, price_cents=None):
-    """Parse Pak'nSave Mobile API `units` and `unitPrice` strings.
+def parse_foodstuffs_mobile_unit(units, unit_price, price_cents=None):
+    """Parse Foodstuffs Mobile API `units` and `unitPrice` strings.
 
     Combines the two splitting jobs for a mobile product into one helper so the
     caller gets (quantity, measurement_unit, per_unit_quantity, per_unit_price)
-    in a single call — matching the edge pipeline's parse_paknsave_volume_size
+    in a single call — matching the edge pipeline's parse_foodstuffs_volume_size
     tuple.
 
     1) Units split (quantity + measurement_unit):
@@ -562,3 +564,127 @@ def geocode(address):
     except Exception:
         pass
     return None, None
+
+
+def analyze_results(df, ingredients, dish_name, company=None):
+    """Build per-store cost summary and per-ingredient comparison table.
+
+    Args:
+        df: DataFrame with columns matching CSV_COLUMNS
+        ingredients: list of ingredient search terms for the dish
+        dish_name: dish name used to look up quantities
+        company: optional retailer name to filter rows (e.g. "PaknSave", "NewWorld", "Woolworths")
+
+    Returns:
+        (summary, table) where:
+        - summary: DataFrame indexed by store with total_cost column, sorted cheapest first
+        - table: DataFrame indexed by ingredient with per-store prices, best price/store, and TOTAL row
+    """
+    df = df.copy()
+    if company:
+        df = df[df["company"] == company]
+    df["price"] = df["price"].astype(float)
+
+    cheapest_per_ing_per_store = (
+        df.groupby(["store", "search_ingredient"])["price"].min().reset_index()
+    )
+    summary = (
+        cheapest_per_ing_per_store.groupby("store")["price"]
+        .sum()
+        .reset_index()
+    )
+    summary.columns = ["store", "total_cost"]
+    summary = summary.set_index("store").sort_values("total_cost")
+
+    store_names = sorted(df["store"].unique())
+    quantities = get_quantities(dish_name)
+
+    rows = []
+    for ing in ingredients:
+        row = {"Ingredient": ing, "Qty": quantities.get(ing, "-")}
+        for sn in store_names:
+            match = df[(df["search_ingredient"] == ing) & (df["store"] == sn)]
+            if not match.empty:
+                best_prod = match.loc[match["price"].idxmin()]
+                row[sn] = f"${best_prod['price']:.2f}"
+            else:
+                row[sn] = "NOT FOUND"
+
+        prices = []
+        for sn in store_names:
+            match = df[(df["search_ingredient"] == ing) & (df["store"] == sn)]
+            if not match.empty:
+                prices.append(
+                    (sn, match.loc[match["price"].idxmin()]["price"])
+                )
+        if prices:
+            best_sn, best_px = min(prices, key=lambda x: x[1])
+            row["Best Price"] = f"${best_px:.2f}"
+            row["Best Store"] = best_sn
+        else:
+            row["Best Price"] = "-"
+            row["Best Store"] = "-"
+        rows.append(row)
+
+    table = pd.DataFrame(rows).set_index("Ingredient")
+
+    totals = {"Qty": ""}
+    for sn in store_names:
+        store_total = (
+            df[df["store"] == sn].groupby("search_ingredient")["price"].min().sum()
+        )
+        totals[sn] = f"${store_total:.2f}"
+
+    best_total_mix = 0
+    for ing in ingredients:
+        ing_prices = df[df["search_ingredient"] == ing]["price"]
+        if not ing_prices.empty:
+            best_total_mix += ing_prices.min()
+
+    totals["Best Price"] = f"${best_total_mix:.2f}"
+    totals["Best Store"] = "(mix)"
+    table.loc["TOTAL"] = totals
+
+    return summary, table
+
+
+def optimise(dish_name, company=None):
+    """Phase 2: Read today's results from CSV and print comparison table.
+
+    Args:
+        dish_name: dish name to optimise for
+        company: optional retailer name to filter rows (e.g. "PaknSave", "NewWorld", "Woolworths")
+    """
+    if not RESULTS_FILE.exists():
+        print(f"No results file found: {RESULTS_FILE}")
+        return
+
+    df = pd.read_csv(RESULTS_FILE, encoding="utf-8")
+    today_str = date.today().strftime("%Y-%m-%d")
+    df_today = df[df["date_created"] == today_str]
+    if company:
+        df_today = df_today[df_today["company"] == company]
+
+    if df_today.empty:
+        print(f"No results found for today ({today_str})")
+        return
+
+    ingredients = get_ingredients(dish_name)
+    dish_ings = [i for i in ingredients if i in df_today["search_ingredient"].values]
+
+    if not dish_ings:
+        print(f"No results for dish '{dish_name}' ingredients in today's data")
+        return
+
+    df_dish = df_today[df_today["search_ingredient"].isin(dish_ings)]
+
+    summary, table = analyze_results(df_dish, dish_ings, dish_name, company=company)
+
+    print("\n" + "=" * 70)
+    print(f"TOTAL COST COMPARISON -- {dish_name.upper()}")
+    print("=" * 70)
+    print(summary.to_string())
+    print("\n" + "=" * 70)
+    print("PER-INGREDIENT BREAKDOWN")
+    print("=" * 70)
+    print(table.to_string())

@@ -10,11 +10,12 @@ Both backends use the same store data (from newworld_setup.py output) and dish i
 
 import requests
 import cloudscraper
-import json
-import time
-import math
+import sys
 from pathlib import Path
-from typing import Optional, Literal
+from typing import Optional, Literal, cast
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "combined"))
+from optimizer_utils import haversine, geocode
 
 # ─── Constants ──────────────────────────────────────────────────────────────
 WEB_BASE = "https://www.newworld.co.nz"
@@ -26,7 +27,7 @@ STORES_CSV = DATA_DIR / "newworld_stores.csv"
 STORES_JSON = DATA_DIR / "newworld_stores.json"
 
 # Non-food category1 blacklist — values to exclude from ingredient search results.
-# Shared with Pak'nSave (same Foodstuffs parent company, same category1 taxonomy).
+# Sourced from observed_category1_newworld.json (all 116 unique category1 values).
 NON_FOOD_CATEGORIES = {
     # Pet / Animal
     "Dog",
@@ -129,35 +130,6 @@ def load_stores() -> list[dict]:
     return stores
 
 
-def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    """Great-circle distance in km."""
-    R = 6371.0
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = (math.sin(dlat / 2) ** 2 +
-         math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
-         math.sin(dlon / 2) ** 2)
-    return R * 2 * math.asin(math.sqrt(a))
-
-
-def geocode(address: str) -> tuple[Optional[float], Optional[float]]:
-    """Geocode a NZ address via Nominatim (rate-limited: 1 req/sec)."""
-    time.sleep(1.1)  # respect Nominatim rate limit
-    try:
-        r = requests.get(
-            "https://nominatim.openstreetmap.org/search",
-            headers={"User-Agent": "NZMealCostOptimizer/1.0"},
-            params={"q": address, "format": "json", "limit": 1},
-            timeout=15,
-        )
-        if r.status_code == 200 and r.json():
-            loc = r.json()[0]
-            return float(loc["lat"]), float(loc["lon"])
-    except Exception:
-        pass
-    return None, None
-
-
 def find_nearby_stores(
     user_lat: float, user_lon: float, radius_km: float = 5.0
 ) -> list[dict]:
@@ -242,16 +214,16 @@ class NewWorldEdgeAPI:
         return r.json().get("stores", [])
 
     # ── PASS 1: Relevance Search ────────────────────────────────────────────
-    def pass1_relevance_search(
+    def pass1_relevance_search_hits(
         self,
         store_id: str,
         query: str,
         max_hits: int = 20,
         region: str = "NI",
-    ) -> list[str]:
+    ) -> list[dict]:
         """
         Search products-index for relevance matches.
-        Returns productIDs where _highlightResult has non-empty matchedWords.
+        Returns full hit objects (with productID, category1, _highlightResult, etc.).
         Filters out non-food category1 values via NON_FOOD_CATEGORIES.
         """
         headers = self._auth_headers()
@@ -272,7 +244,7 @@ class NewWorldEdgeAPI:
         r.raise_for_status()
         hits = r.json().get("hits", [])
 
-        product_ids = []
+        filtered = []
         for h in hits:
             hr = h.get("_highlightResult", {})
             matched = any(
@@ -281,10 +253,25 @@ class NewWorldEdgeAPI:
             )
             cat1 = h.get("category1", [])
             if matched and not any(c in NON_FOOD_CATEGORIES for c in cat1):
-                product_ids.append(h["productID"])
-        return product_ids
+                filtered.append(h)
+        return filtered
 
-    # ── PASS 2: Per-Store Pricing ───────────────────────────────────────────
+    def pass1_relevance_search(
+        self,
+        store_id: str,
+        query: str,
+        max_hits: int = 20,
+        region: str = "NI",
+    ) -> list[str]:
+        """
+        Search products-index for relevance matches.
+        Returns productIDs where _highlightResult has non-empty matchedWords.
+        Filters out non-food category1 values via NON_FOOD_CATEGORIES.
+        """
+        hits = self.pass1_relevance_search_hits(store_id, query, max_hits, region)
+        return [h["productID"] for h in hits]
+
+    # ── PASS 2: Per-Store Pricing ───────────────────────────────────
     def pass2_per_store_pricing(
         self,
         store_id: str,
@@ -322,17 +309,25 @@ class NewWorldEdgeAPI:
         r.raise_for_status()
         return r.json().get("products", [])
 
-    # ── Combined Two-Pass Search ────────────────────────────────────────────
+    # ── Combined Two-Pass Search ────────────────────────────────────
     def search_ingredient(
         self,
         store_id: str,
         ingredient: str,
         max_relevance: int = 20,
         region: str = "NI",
-    ) -> list[dict]:
-        """Full two-pass search for one ingredient at one store."""
-        product_ids = self.pass1_relevance_search(store_id, ingredient, max_relevance, region)
-        return self.pass2_per_store_pricing(store_id, ingredient, product_ids, region=region)
+    ) -> tuple[list[dict], list[dict]]:
+        """Full two-pass search for one ingredient at one store.
+
+        Returns:
+            (products, pass1_hits) where:
+            - products: list of product dicts from Pass 2 (with pricing)
+            - pass1_hits: list of Pass 1 hit dicts (with category1, _highlightResult)
+        """
+        pass1_hits = self.pass1_relevance_search_hits(store_id, ingredient, max_relevance, region)
+        product_ids = [h["productID"] for h in pass1_hits]
+        products = self.pass2_per_store_pricing(store_id, ingredient, product_ids, region=region)
+        return products, pass1_hits
 
     # ── Price Extraction ────────────────────────────────────────────────────
     @staticmethod
@@ -394,18 +389,46 @@ class NewWorldMobileAPI:
             "Content-Type": "application/json",
         }
 
-    def search_products(self, store_id: str, query: str) -> Optional[list[dict]]:
-        """Search products at a store via mobile API. Returns raw product list."""
+    def _is_food_product(self, product: dict) -> bool:
+        """
+        Check if a product is a food item (not pet/baby/household etc.).
+
+        Mirrors edge Pass 1 filtering against the category1 (sub_department) value.
+        In the mobile response, categories[0] = category1 (sub_department) and
+        categories[1] = category2 (subsub_department). Non-food markers such as
+        "Dog"/"Cat" appear at categories[0], so only the first entry is checked.
+        """
+        categories = product.get("categories", []) or []
+        cat1 = categories[0] if categories else ""
+        if not cat1:
+            return True  # no category1 to check — treat as food
+        return cat1 not in NON_FOOD_CATEGORIES
+
+    def search_products(
+        self,
+        store_id: str,
+        query: str,
+        hits_per_page: int = 20,
+        food_only: bool = True,
+    ) -> Optional[list[dict]]:
+        """Search products at a store via mobile API. Returns raw product list.
+
+        Limits results with hitsPerPage (default 20) to control response size.
+        When food_only=True (default), excludes non-food products by category1/`categories`.
+        """
         self._ensure_token()
         r = self.scraper.post(
-            f"{MOBILE_BASE}/mobile/ecomm-products/MNW/{store_id}/search?q={query}",
+            f"{MOBILE_BASE}/mobile/ecomm-products/MNW/{store_id}/search?q={query}&hitsPerPage={hits_per_page}",
             headers=self._auth_headers(),
             json=[],
         )
         if r.status_code == 200:
             data = r.json()
-            # Mobile API returns list directly, not wrapped in "products" key
-            return data if isinstance(data, list) else data.get("products", [])
+            # Mobile API returns a wrapped dict (not a bare list)
+            products = data.get("products", []) if isinstance(data, dict) else data
+            if food_only:
+                products = [p for p in products if self._is_food_product(p)]
+            return products
         return None
 
     def get_stores(self) -> dict:
@@ -445,56 +468,63 @@ class NewWorldAPI:
 
     def __init__(self, backend: Literal["edge", "mobile"] = "edge"):
         self.backend = backend
+        self.client: NewWorldEdgeAPI | NewWorldMobileAPI
+
         if backend == "edge":
             self.client = NewWorldEdgeAPI()
         else:
             self.client = NewWorldMobileAPI()
 
-    def search_ingredient(self, store_id: str, ingredient: str, **kwargs) -> list[dict]:
-        """Search for an ingredient at a store. Returns list of product dicts."""
-        if self.backend == "edge":
+    def search_ingredient(self, store_id: str, ingredient: str, **kwargs) -> tuple[list[dict], list[dict]]:
+        """Search for an ingredient at a store.
+
+        Returns:
+            (products, pass1_hits) for edge backend.
+            ([], products) for mobile backend (no Pass 1 metadata).
+        """
+        if isinstance(self.client, NewWorldEdgeAPI):
             return self.client.search_ingredient(store_id, ingredient, **kwargs)
-        else:
-            results = self.client.search_products(store_id, ingredient)
-            return results or []
+
+        results = self.client.search_products(store_id, ingredient)
+        return [], results or []
 
     def get_stores(self) -> list[dict]:
         """Get store list (format varies by backend)."""
-        if self.backend == "edge":
+        if isinstance(self.client, NewWorldEdgeAPI):
             return self.client.get_stores()
-        else:
-            return list(self.client.get_stores().values())
 
-    @staticmethod
-    def extract_price(product: dict, backend: str) -> Optional[float]:
-        if backend == "edge":
-            return NewWorldEdgeAPI.extract_price(product)
-        else:
-            return NewWorldMobileAPI.extract_price(product)
+        stores = self.client.get_stores()
+        return list(cast(dict, stores).values())
 
     @staticmethod
     def extract_unit_price(product: dict, backend: str) -> str:
         if backend == "edge":
-            return NewWorldEdgeAPI.extract_unit_price(product)
+            unit_price = NewWorldEdgeAPI.extract_unit_price(product)
         else:
-            return NewWorldMobileAPI.extract_unit_price(product)
+            unit_price = NewWorldMobileAPI.extract_unit_price(product)
+
+        return unit_price or ""
 
     @staticmethod
     def get_product_name(product: dict, backend: str) -> str:
         if backend == "edge":
-            return NewWorldEdgeAPI.get_product_name(product)
+            name = NewWorldEdgeAPI.get_product_name(product)
         else:
-            return NewWorldMobileAPI.get_product_name(product)
+            name = NewWorldMobileAPI.get_product_name(product)
+
+        return name or ""
 
     @staticmethod
     def get_product_size(product: dict, backend: str) -> str:
         if backend == "edge":
-            return NewWorldEdgeAPI.get_product_size(product)
+            size = NewWorldEdgeAPI.get_product_size(product)
         else:
-            return NewWorldMobileAPI.get_product_size(product)
+            size = NewWorldMobileAPI.get_product_size(product)
+
+        return size or ""
 
 
-# ─── Convenience Functions ──────────────────────────────────────────────────
+# ─── Convenience Functions ──────────────────────────────────────────
 
 def create_api(backend: Literal["edge", "mobile"] = "edge") -> NewWorldAPI:
     """Factory function to create API client with specified backend."""

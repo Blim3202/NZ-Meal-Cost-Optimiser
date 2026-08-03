@@ -38,10 +38,12 @@ from paknsave_api import (
 from optimizer_utils import (
     CSV_COLUMNS,
     RESULTS_FILE,
+    analyze_results,
     geocode,
     get_ingredients,
     get_quantities,
-    parse_paknsave_volume_size,
+    optimise,
+    parse_foodstuffs_volume_size,
     _compute_pk_hash,
     load_existing_hashes,
     append_rows,
@@ -67,7 +69,7 @@ def build_row(company, store, store_id, search_ingredient, product, pass1_hit, n
     promotions = product.get("promotions", [])
 
     # Parse quantity, measurement_unit, per_unit_quantity, per_unit_price
-    quantity, measurement_unit, per_unit_qty, per_unit_price = parse_paknsave_volume_size(
+    quantity, measurement_unit, per_unit_qty, per_unit_price = parse_foodstuffs_volume_size(
         product.get("displayName", ""),
         sp,
         promotions,
@@ -212,126 +214,6 @@ def query_and_save(user_address, dish_name, requery, max_dist_km=5.0):
     appended, skipped = append_rows(new_rows)
     print(f"\nAppended {appended} rows to {RESULTS_FILE.name} ({skipped} duplicates skipped)")
     return True
-
-
-def analyze_results(df, ingredients, dish_name):
-    """Build per-store cost summary and per-ingredient comparison table.
-
-    Args:
-        df: DataFrame with columns matching CSV_COLUMNS
-        ingredients: list of ingredient search terms for the dish
-        dish_name: dish name used to look up quantities
-
-    Returns:
-        (summary, table) where:
-        - summary: DataFrame indexed by store with total_cost column, sorted cheapest first
-        - table: DataFrame indexed by ingredient with per-store prices, best price/store, and TOTAL row
-    """
-    df = df.copy()
-    df["price"] = df["price"].astype(float)
-
-    # Step 1: For each (store, ingredient), keep only the cheapest product
-    cheapest_per_ing_per_store = (
-        df.groupby(["store", "search_ingredient"])["price"].min().reset_index()
-    )
-    # Step 2: Sum cheapest ingredients per store → total dish cost
-    summary = (
-        cheapest_per_ing_per_store.groupby("store")["price"]
-        .sum()
-        .reset_index()
-    )
-    summary.columns = ["store", "total_cost"]
-    summary = summary.set_index("store").sort_values("total_cost")
-
-    store_names = sorted(df["store"].unique())
-    quantities = get_quantities(dish_name)
-
-    rows = []
-    for ing in ingredients:
-        row = {"Ingredient": ing, "Qty": quantities.get(ing, "-")}
-        for sn in store_names:
-            match = df[(df["search_ingredient"] == ing) & (df["store"] == sn)]
-            if not match.empty:
-                best_prod = match.loc[match["price"].idxmin()]
-                row[sn] = f"${best_prod['price']:.2f}"
-            else:
-                row[sn] = "NOT FOUND"
-
-        # Find which store has the cheapest price for this ingredient
-        prices = []
-        for sn in store_names:
-            match = df[(df["search_ingredient"] == ing) & (df["store"] == sn)]
-            if not match.empty:
-                prices.append(
-                    (sn, match.loc[match["price"].idxmin()]["price"])
-                )
-        if prices:
-            best_sn, best_px = min(prices, key=lambda x: x[1])
-            row["Best Price"] = f"${best_px:.2f}"
-            row["Best Store"] = best_sn
-        else:
-            row["Best Price"] = "-"
-            row["Best Store"] = "-"
-        rows.append(row)
-
-    table = pd.DataFrame(rows).set_index("Ingredient")
-
-    totals = {"Qty": ""}
-    for sn in store_names:
-        # Sum cheapest price per ingredient at this specific store
-        store_total = (
-            df[df["store"] == sn].groupby("search_ingredient")["price"].min().sum()
-        )
-        totals[sn] = f"${store_total:.2f}"
-
-    # Best mix: sum of cheapest-per-ingredient across ALL stores (not limited to one store)
-    best_total_mix = 0
-    for ing in ingredients:
-        ing_prices = df[df["search_ingredient"] == ing]["price"]
-        if not ing_prices.empty:
-            best_total_mix += ing_prices.min()
-
-    totals["Best Price"] = f"${best_total_mix:.2f}"
-    totals["Best Store"] = "(mix)"
-    table.loc["TOTAL"] = totals
-
-    return summary, table
-
-
-def optimise(dish_name):
-    """Phase 2: Read today's results from CSV and print comparison table."""
-    if not RESULTS_FILE.exists():
-        print(f"No results file found: {RESULTS_FILE}")
-        return
-
-    df = pd.read_csv(RESULTS_FILE, encoding="utf-8")
-    today_str = date.today().strftime("%Y-%m-%d")
-    df_today = df[df["date_created"] == today_str]
-
-    if df_today.empty:
-        print(f"No results found for today ({today_str})")
-        return
-
-    ingredients = get_ingredients(dish_name)
-    # Filter to only ingredients that actually appear in today's CSV data
-    dish_ings = [i for i in ingredients if i in df_today["search_ingredient"].values]
-
-    if not dish_ings:
-        print(f"No results for dish '{dish_name}' ingredients in today's data")
-        return
-
-    df_dish = df_today[df_today["search_ingredient"].isin(dish_ings)]
-
-    summary, table = analyze_results(df_dish, dish_ings, dish_name)
-
-    print("\n" + "=" * 70)
-    print(f"TOTAL COST COMPARISON -- {dish_name.upper()}")
-    print("=" * 70)
-    print(summary.to_string())
-    print("\n" + "=" * 70)
-    print("PER-INGREDIENT BREAKDOWN")
-    print("=" * 70)
-    print(table.to_string())
 
 
 def main():
