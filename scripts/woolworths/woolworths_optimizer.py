@@ -50,14 +50,14 @@ from woolworths_api import (
     set_store_context,
     search_products,
     get_nearby_stores,
-    geocode,
 )
 from optimizer_utils import (
     CSV_COLUMNS,
     RESULTS_FILE,
+    geocode,
     get_ingredients,
     get_quantities,
-    parse_volume_size,
+    parse_woolworths_volume_size,
     _compute_pk_hash,
     load_existing_hashes,
     append_rows,
@@ -79,7 +79,7 @@ def build_row(company, store, store_id, search_ingredient, product, now):
     Returns:
         dict matching CSV_COLUMNS
     """
-    quantity, measurement_unit = parse_volume_size(
+    quantity, measurement_unit = parse_woolworths_volume_size(
         product.get("volumeSize", ""), product.get("cupMeasure", "")
     )
     date_created = now.strftime("%Y-%m-%d")
@@ -266,7 +266,7 @@ def optimise(dish_name):
         print(f"No results file found: {RESULTS_FILE}")
         return
 
-    df = pd.read_csv(RESULTS_FILE)
+    df = pd.read_csv(RESULTS_FILE, encoding="utf-8")
     today_str = date.today().strftime("%Y-%m-%d")
     df_today = df[df["date_created"] == today_str]
 

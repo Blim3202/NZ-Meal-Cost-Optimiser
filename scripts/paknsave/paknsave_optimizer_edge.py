@@ -1,267 +1,367 @@
 """
 Pak'nSave Edge API Optimizer
 ============================
-Finds the cheapest Pak'nSave store for a given dish within 5km of a NZ address.
+Two-phase meal cost optimizer using the Pak'nSave Edge API (two-pass pipeline).
 
-Uses the Edge API two-pass pipeline:
-  PASS 1: Relevance matching via Algolia products-index (with _highlightResult.matchedWords)
-  PASS 2: Per-store pricing via paginated/products with Algolia filters + PRICE_ASC sort
-
-Orders results by cheapest per-unit price (per kg, ml, piece, etc.) where available,
-falling back to total item price.
+Phase 1 (query):  Geocode address → find nearby stores → authenticate → search
+                   each ingredient at each store → append ALL results to full_results.csv
+Phase 2 (optimise): Read today's results from CSV → find best per-store totals
+                    and best mix → print comparison table
 
 Usage:
-    python -m scripts.paknsave.paknsave_optimizer_edge "Botany Town Centre, Auckland" "spaghetti bolognese"
+    python -m scripts.paknsave.paknsave_optimizer_edge "<address>" "<dish>" [--requery false] [--distance 5]
+
+Flags:
+    --requery true   (default) Query the API and append new results
+    --requery false  Skip API calls, optimise from existing CSV data only
+    --distance N     Store search radius in km (default 5)
+
+Defaults:
+    Address: 588 Chapel Road, East Tāmaki, Auckland 2016
+    Dish:    spaghetti bolognese
 """
 
+import csv
 import sys
 import time
-import pandas as pd
+from datetime import datetime, date
 from pathlib import Path
-from typing import Optional
+
+import pandas as pd
+
+# Add scripts/combined to path for optimizer_utils
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "combined"))
 
 from paknsave_api import (
     PaknSaveEdgeAPI,
     load_stores,
-    geocode,
     find_nearby_stores,
+)
+from optimizer_utils import (
+    CSV_COLUMNS,
+    RESULTS_FILE,
+    geocode,
     get_ingredients,
-    haversine,
+    get_quantities,
+    parse_paknsave_volume_size,
+    _compute_pk_hash,
+    load_existing_hashes,
+    append_rows,
 )
 
-DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
-OUTPUT_CSV = DATA_DIR / "paknsave_latest_results.csv"
 
+def build_row(company, store, store_id, search_ingredient, product, pass1_hit, now):
+    """Build a CSV row dict from a Pak'nSave product.
 
-def search_ingredient_at_store(
-    api: PaknSaveEdgeAPI,
-    store: dict,
-    ingredient: str,
-    max_relevance: int = 20,
-) -> list[dict]:
-    """
-    Run two-pass search for one ingredient at one store.
-    Returns enriched product list with price, unit_price, name, size.
-    """
-    store_id = store["store_id"]
-    region = store.get("region", "NI")
-    try:
-        products = api.search_ingredient(
-            store_id=store_id,
-            ingredient=ingredient,
-            max_relevance=max_relevance,
-            region=region,
-        )
-    except Exception as e:
-        print(f"    [ERROR] {ingredient}: {e}")
-        return []
-
-    enriched = []
-    for p in products:
-        price = PaknSaveEdgeAPI.extract_price(p)
-        if price is None:
-            continue
-        enriched.append({
-            "product_id": p.get("productID"),
-            "name": PaknSaveEdgeAPI.get_product_name(p),
-            "size": PaknSaveEdgeAPI.get_product_size(p),
-            "price": price,
-            "unit_price": PaknSaveEdgeAPI.extract_unit_price(p),
-            "is_promo": bool(p.get("promotions")),
-        })
-    return enriched
-
-
-def pick_cheapest_per_unit(products: list[dict]) -> Optional[dict]:
-    """
-    Pick the cheapest product by unit price (per kg/L/each).
-    Falls back to absolute price if unit_price unavailable.
-    """
-    if not products:
-        return None
-
-    # Try to parse unit price for comparison
-    def parse_unit_price(up_str: str) -> Optional[float]:
-        if not up_str:
-            return None
-        import re
-        m = re.search(r"[\d.]+", up_str.replace(",", ""))
-        return float(m.group()) if m else None
-
-    priced = []
-    for p in products:
-        up = parse_unit_price(p.get("unit_price", ""))
-        priced.append((up if up is not None else p["price"], p))
-
-    priced.sort(key=lambda x: x[0])
-    return priced[0][1]
-
-
-def optimize_dish_edge(
-    address: str,
-    dish_name: str,
-    radius_km: float = 5.0,
-    max_relevance: int = 20,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """
-    Main optimization function using Edge API.
+    Args:
+        company: retailer name (e.g. "PaknSave")
+        store: store name
+        store_id: store UUID
+        search_ingredient: the ingredient term we searched for
+        product: dict from Pass 2 (singlePrice, promotions, productId, etc.)
+        pass1_hit: dict from Pass 1 (category1, _highlightResult) or None
+        now: datetime object for timestamps
 
     Returns:
-        summary_df: DataFrame with store totals sorted by cheapest
-        detail_df:  DataFrame with per-ingredient breakdown per store
+        dict matching CSV_COLUMNS
     """
-    print("=" * 70)
-    print(f"Pak'nSave Edge API Optimizer -- {dish_name.title()}")
-    print("=" * 70)
+    sp = product.get("singlePrice", {})
+    promotions = product.get("promotions", [])
 
-    # 1. Geocode address
-    print(f"\n[1] Geocoding: {address}")
-    user_lat, user_lon = geocode(address)
-    if user_lat is None:
-        raise ValueError(f"Could not geocode address: {address}")
-    print(f"    Coordinates: {user_lat:.5f}, {user_lon:.5f}")
+    # Parse quantity, measurement_unit, per_unit_quantity, per_unit_price
+    quantity, measurement_unit, per_unit_qty, per_unit_price = parse_paknsave_volume_size(
+        product.get("displayName", ""),
+        sp,
+        promotions,
+    )
 
-    # 2. Find nearby stores (from CSV produced by paknsave_setup.py)
-    print(f"\n[2] Finding stores within {radius_km} km...")
-    nearby = find_nearby_stores(user_lat, user_lon, radius_km)
+    # Calculate price: per-item price considering promotions
+    # If promotion with threshold: use rewardValue / threshold (per-item promo price)
+    # Otherwise: use singlePrice.price (regular per-item price)
+    price_cents = sp.get("price")
+    if promotions:
+        best = promotions[0]
+        reward = best.get("rewardValue")
+        threshold = best.get("threshold")
+        if reward is not None and threshold and threshold > 0:
+            price_cents = reward / threshold
+
+    price_dollars = round(price_cents / 100.0, 2) if price_cents is not None else ""
+
+    cat1 = pass1_hit.get("category1", []) if pass1_hit else []
+    cat1_str = "|".join(cat1) if cat1 else ""
+
+    sku = product.get("productId", "")
+    date_str = now.strftime("%Y-%m-%d")
+
+    return {
+        "company": company,
+        "store": store,
+        "store_id": store_id,
+        "search_ingredient": search_ingredient,
+        "returned_ingredient": product.get("name", ""),
+        "price": price_dollars,
+        "quantity": quantity if quantity is not None else "",
+        "measurement_unit": measurement_unit,
+        "per_unit_quantity": per_unit_qty,
+        "per_unit_price": per_unit_price if per_unit_price else "",
+        "is_sale": bool(promotions),
+        "sku": sku,
+        "category1": cat1_str,
+        "department": "",
+        "datetime_created": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "date_created": date_str,
+        "pk_hash": _compute_pk_hash(store_id, sku, date_str),
+    }
+
+
+def query_and_save(user_address, dish_name, requery, max_dist_km=5.0):
+    """Phase 1: Query the API and append results to CSV.
+
+    Args:
+        user_address: NZ address to geocode
+        dish_name: dish to search ingredients for
+        requery: if False, skip API and read existing CSV
+        max_dist_km: maximum store search radius in km (default 5)
+
+    Returns True if data is available (newly queried or already in CSV).
+    """
+    if not requery:
+        if RESULTS_FILE.exists():
+            return True
+        print("No existing results file — run with --requery true to query the API")
+        return False
+
+    user_lat, user_lon = geocode(user_address)
+    if user_lat is None or user_lon is None:
+        print(f"Error: Could not geocode address '{user_address}'")
+        return False
+
+    print(f"Geocoding: {user_address}")
+    print(f"           lat: {user_lat:.6f}  lon: {user_lon:.6f}")
+    print()
+
+    nearby = find_nearby_stores(user_lat, user_lon, radius_km=max_dist_km)
     if not nearby:
-        raise ValueError(f"No Pak'nSave stores within {radius_km} km")
-    print(f"    Found {len(nearby)} stores:")
-    for s in nearby:
-        print(f"      {s['name']:35s} {s['distance_km']:.1f} km  ({s.get('region', '?')})")
+        print(f"Error: No Pak'nSave stores found within {max_dist_km} km")
+        return False
 
-    # 3. Initialize Edge API (authenticates via website JWT)
-    print("\n[3] Authenticating with Edge API (website JWT)...")
+    print(f"Found {len(nearby)} stores within {max_dist_km} km:")
+    for s in nearby:
+        print(f"  {s['name']:35s} {s['distance_km']:.1f} km")
+
+    print("\nAuthenticating with Edge API (website JWT)...")
     api = PaknSaveEdgeAPI()
     api.authenticate()
     print("    Authenticated successfully")
 
-    # 4. Get ingredients
     ingredients = get_ingredients(dish_name)
-    print(f"\n[4] Dish: {dish_name.title()}")
-    print(f"    Ingredients ({len(ingredients)}): {', '.join(ingredients)}")
+    print(f"\nDish: {dish_name}")
+    print(f"Ingredients: {', '.join(ingredients)}")
 
-    # 5. Search each ingredient at each store
-    print("\n[5] Searching products (two-pass per ingredient per store)...")
-    all_results = []
+    now = datetime.now()
+    new_rows = []
 
     for store in nearby:
         store_id = store["store_id"]
         store_name = store["name"]
-        store_dist = store["distance_km"]
         region = store.get("region", "NI")
-
-        print(f"\n  --- {store_name} ({store_dist:.1f} km, {region}) ---")
-        store_total = 0.0
-        found_count = 0
+        print(f"\n--- {store_name} ({store['distance_km']:.1f} km, {region}) ---")
 
         for ing in ingredients:
-            print(f"    Searching: {ing} ...", end=" ", flush=True)
-            products = search_ingredient_at_store(api, store, ing, max_relevance)
-            if products:
-                best = pick_cheapest_per_unit(products)
-                if best:
-                    store_total += best["price"]
-                    found_count += 1
-                    unit_str = f" ({best['unit_price']})" if best['unit_price'] else ""
-                    promo_str = "  [PROMO]" if best['is_promo'] else ""
-                    print(f"${best['price']:.2f}{unit_str}{promo_str}  --  {best['name'][:50]}")
-                    all_results.append({
-                        "store": store_name,
-                        "store_id": store_id,
-                        "distance_km": store_dist,
-                        "region": region,
-                        "ingredient": ing,
-                        "product_name": best["name"],
-                        "product_size": best["size"],
-                        "price": best["price"],
-                        "unit_price": best["unit_price"],
-                        "is_promo": best["is_promo"],
-                    })
-                else:
-                    print("no valid price")
+            try:
+                products, pass1_hits = api.search_ingredient(
+                    store_id=store_id,
+                    ingredient=ing,
+                    region=region,
+                )
+            except Exception as e:
+                print(f"  {ing}: [ERROR] {e}")
+                time.sleep(0.08)
+                continue
+
+            pass1_by_id = {h["productID"]: h for h in pass1_hits}
+
+            priced = []
+            for prod in products:
+                row = build_row(
+                    "PaknSave", store_name, store_id, ing,
+                    prod, pass1_by_id.get(prod.get("productId", "")), now,
+                )
+                if row["price"] != "":
+                    new_rows.append(row)
+                    priced.append(prod)
+
+            if priced:
+                best_price = min(p.get("singlePrice", {}).get("price", float("inf")) for p in priced)
+                print(f"  {ing}: {len(priced)} results (best: ${best_price / 100:.2f})")
             else:
-                print("NOT FOUND")
-            time.sleep(0.08)  # gentle rate limit
+                print(f"  {ing}: NOT FOUND")
 
-        print(f"    Subtotal: ${store_total:.2f}  ({found_count}/{len(ingredients)} found)")
+            time.sleep(0.08)
 
-    if not all_results:
-        raise ValueError("No products found for any ingredient at any store")
+    if not new_rows:
+        print("\nNo results collected from API")
+        return False
 
-    # 6. Build DataFrames
-    df = pd.DataFrame(all_results)
+    appended, skipped = append_rows(new_rows)
+    print(f"\nAppended {appended} rows to {RESULTS_FILE.name} ({skipped} duplicates skipped)")
+    return True
 
-    # Per-store summary (sum of cheapest per ingredient)
-    summary_rows = []
-    for store_name in df["store"].unique():
-        store_df = df[df["store"] == store_name]
-        # Cheapest per ingredient at this store
-        cheapest_per_ing = store_df.loc[store_df.groupby("ingredient")["price"].idxmin()]
-        total = cheapest_per_ing["price"].sum()
-        found = len(cheapest_per_ing)
-        dist = store_df["distance_km"].iloc[0]
-        region = store_df["region"].iloc[0]
-        summary_rows.append({
-            "store": store_name,
-            "distance_km": dist,
-            "region": region,
-            "items_found": found,
-            "total_cost": round(total, 2),
-        })
 
-    summary_df = pd.DataFrame(summary_rows).sort_values("total_cost").reset_index(drop=True)
+def analyze_results(df, ingredients, dish_name):
+    """Build per-store cost summary and per-ingredient comparison table.
 
-    # Detailed breakdown table (ingredient x store with cheapest product)
-    detail_rows = []
+    Args:
+        df: DataFrame with columns matching CSV_COLUMNS
+        ingredients: list of ingredient search terms for the dish
+        dish_name: dish name used to look up quantities
+
+    Returns:
+        (summary, table) where:
+        - summary: DataFrame indexed by store with total_cost column, sorted cheapest first
+        - table: DataFrame indexed by ingredient with per-store prices, best price/store, and TOTAL row
+    """
+    df = df.copy()
+    df["price"] = df["price"].astype(float)
+
+    cheapest_per_ing_per_store = (
+        df.groupby(["store", "search_ingredient"])["price"].min().reset_index()
+    )
+    summary = (
+        cheapest_per_ing_per_store.groupby("store")["price"]
+        .sum()
+        .reset_index()
+    )
+    summary.columns = ["store", "total_cost"]
+    summary = summary.set_index("store").sort_values("total_cost")
+
+    store_names = sorted(df["store"].unique())
+    quantities = get_quantities(dish_name)
+
+    rows = []
     for ing in ingredients:
-        row = {"Ingredient": ing}
-        for store_name in summary_df["store"]:
-            match = df[(df["ingredient"] == ing) & (df["store"] == store_name)]
+        row = {"Ingredient": ing, "Qty": quantities.get(ing, "-")}
+        for sn in store_names:
+            match = df[(df["search_ingredient"] == ing) & (df["store"] == sn)]
             if not match.empty:
-                best = match.loc[match["price"].idxmin()]
-                unit = f" ({best['unit_price']})" if best["unit_price"] else ""
-                row[store_name] = f"${best['price']:.2f}{unit} -- {best['product_name'][:40]}"
+                best_prod = match.loc[match["price"].idxmin()]
+                row[sn] = f"${best_prod['price']:.2f}"
             else:
-                row[store_name] = "NOT FOUND"
-        detail_rows.append(row)
+                row[sn] = "NOT FOUND"
 
-    detail_df = pd.DataFrame(detail_rows).set_index("Ingredient")
+        prices = []
+        for sn in store_names:
+            match = df[(df["search_ingredient"] == ing) & (df["store"] == sn)]
+            if not match.empty:
+                prices.append(
+                    (sn, match.loc[match["price"].idxmin()]["price"])
+                )
+        if prices:
+            best_sn, best_px = min(prices, key=lambda x: x[1])
+            row["Best Price"] = f"${best_px:.2f}"
+            row["Best Store"] = best_sn
+        else:
+            row["Best Price"] = "-"
+            row["Best Store"] = "-"
+        rows.append(row)
 
-    # 7. Output summary
+    table = pd.DataFrame(rows).set_index("Ingredient")
+
+    totals = {"Qty": ""}
+    for sn in store_names:
+        store_total = (
+            df[df["store"] == sn].groupby("search_ingredient")["price"].min().sum()
+        )
+        totals[sn] = f"${store_total:.2f}"
+
+    best_total_mix = 0
+    for ing in ingredients:
+        ing_prices = df[df["search_ingredient"] == ing]["price"]
+        if not ing_prices.empty:
+            best_total_mix += ing_prices.min()
+
+    totals["Best Price"] = f"${best_total_mix:.2f}"
+    totals["Best Store"] = "(mix)"
+    table.loc["TOTAL"] = totals
+
+    return summary, table
+
+
+def optimise(dish_name):
+    """Phase 2: Read today's results from CSV and print comparison table."""
+    if not RESULTS_FILE.exists():
+        print(f"No results file found: {RESULTS_FILE}")
+        return
+
+    df = pd.read_csv(RESULTS_FILE, encoding="utf-8")
+    today_str = date.today().strftime("%Y-%m-%d")
+    df_today = df[df["date_created"] == today_str]
+
+    if df_today.empty:
+        print(f"No results found for today ({today_str})")
+        return
+
+    ingredients = get_ingredients(dish_name)
+    dish_ings = [i for i in ingredients if i in df_today["search_ingredient"].values]
+
+    if not dish_ings:
+        print(f"No results for dish '{dish_name}' ingredients in today's data")
+        return
+
+    df_dish = df_today[df_today["search_ingredient"].isin(dish_ings)]
+
+    summary, table = analyze_results(df_dish, dish_ings, dish_name)
+
     print("\n" + "=" * 70)
-    print("COST COMPARISON (cheapest per-unit price at each store)")
+    print(f"TOTAL COST COMPARISON -- {dish_name.upper()}")
     print("=" * 70)
-    print(summary_df.to_string(index=False))
-
-    best = summary_df.iloc[0]
-    print(f"\n>>> CHEAPEST: {best['store']} -- ${best['total_cost']:.2f} total ({best['items_found']}/{len(ingredients)} items)")
-
+    print(summary.to_string())
     print("\n" + "=" * 70)
-    print("DETAILED BREAKDOWN (cheapest product per ingredient per store)")
+    print("PER-INGREDIENT BREAKDOWN")
     print("=" * 70)
-    print(detail_df.to_string())
-
-    # 8. Save results
-    df.to_csv(OUTPUT_CSV, index=False, encoding="utf-8")
-    print(f"\n[OK] Full results saved to {OUTPUT_CSV}")
-
-    return summary_df, detail_df
+    print(table.to_string())
 
 
 def main():
-    if len(sys.argv) > 2:
-        address = sys.argv[1]
-        dish = sys.argv[2]
-    else:
-        address = "Botany Town Centre, Auckland"
-        dish = "spaghetti bolognese"
+    """CLI entrypoint.
 
-    try:
-        optimize_dish_edge(address, dish)
-    except Exception as e:
-        print(f"\n[ERROR] {e}")
-        sys.exit(1)
+    Usage: python paknsave_optimizer_edge.py "<address>" "<dish>" [--requery false] [--distance 5]
+    Defaults to 588 Chapel Road, East Tāmaki, Auckland 2016 / spaghetti bolognese / requery true / distance 5km.
+    """
+    address = "588 Chapel Road, East Tāmaki, Auckland 2016"
+    dish = "spaghetti bolognese"
+    requery = True
+    max_dist_km = 5
+
+    positional = []
+    i = 1
+    while i < len(sys.argv):
+        if sys.argv[i] == "--requery":
+            if i + 1 < len(sys.argv):
+                requery = sys.argv[i + 1].lower() != "false"
+                i += 2
+            else:
+                requery = True
+                i += 1
+        elif sys.argv[i] == "--distance":
+            if i + 1 < len(sys.argv):
+                max_dist_km = float(sys.argv[i + 1])
+                i += 2
+            else:
+                i += 1
+        else:
+            positional.append(sys.argv[i])
+            i += 1
+
+    if len(positional) >= 1:
+        address = positional[0]
+    if len(positional) >= 2:
+        dish = positional[1]
+
+    has_data = query_and_save(address, dish, requery, max_dist_km=max_dist_km)
+    if has_data:
+        optimise(dish)
 
 
 if __name__ == "__main__":

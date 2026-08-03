@@ -13,7 +13,6 @@ Key functions:
     search_products()           - Keyword search against the product catalogue
     find_cheapest()             - Search and return the lowest-priced result
     get_nearby_stores()         - Haversine distance filter on store coordinates
-    geocode()                   - Nominatim geocoding for NZ addresses
 
 Data files:
     data/woolworths_store_data.json  - Store details with extra1 (fulfilmentStoreId)
@@ -259,16 +258,3 @@ def get_nearby_stores(user_lat, user_lon, max_dist_km: float = 5):
             })
     nearby.sort(key=lambda s: s["distance_km"])
     return nearby
-
-
-def geocode(address):
-    """Geocode a NZ address via Nominatim. Returns (lat, lon) or (None, None)."""
-    r = requests.get(
-        "https://nominatim.openstreetmap.org/search",
-        headers={"User-Agent": "NZMealCostOptimizer/1.0"},
-        params={"q": address, "format": "json", "limit": 1},
-    )
-    if r.status_code == 200 and r.json():
-        loc = r.json()[0]
-        return float(loc["lat"]), float(loc["lon"])
-    return None, None

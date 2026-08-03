@@ -46,6 +46,20 @@ EDGE_BASE = "https://api-prod.paknsave.co.nz/v1/edge"
 MOBILE_BASE = "https://api-prod.prod.fsniwaikato.kiwi/prod"
 
 
+def _configure_stdout_utf8() -> None:
+    """Best-effort stdout UTF-8 configuration for console use.
+
+    Safe to call when this module is imported, because we only touch the
+    stream if it actually exposes a reconfigure() method.
+    """
+    reconfigure = getattr(sys.stdout, "reconfigure", None)
+    if callable(reconfigure):
+        try:
+            reconfigure(encoding="utf-8")
+        except (AttributeError, ValueError, OSError):
+            pass
+
+
 def get_website_jwt(verbose: bool = True) -> str:
     """Get website JWT (fs-user-token) via get-current-user endpoint."""
     if verbose:
@@ -72,7 +86,7 @@ def fetch_stores_from_store_finder(verbose: bool = True) -> pd.DataFrame:
     Fetch stores from store-finder page __NEXT_DATA__.
     Returns 60 stores with GUID, name, address, city, region, lat, lon.
     """
-    sys.stdout.reconfigure(encoding="utf-8")
+    _configure_stdout_utf8()
 
     scraper = cloudscraper.create_scraper()
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:136.0) Gecko/20100101 Firefox/136.0"}
@@ -273,7 +287,7 @@ def fetch_stores(source: str = "edge", verbose: bool = True) -> pd.DataFrame:
     )
 
 
-def clean_stores(df: pd.DataFrame = None, cleaned: bool = True, verbose: bool = True) -> pd.DataFrame:
+def clean_stores(df: pd.DataFrame | None = None, cleaned: bool = True, verbose: bool = True) -> pd.DataFrame:
     """
     Optionally drop stores without latitude/longitude.
 

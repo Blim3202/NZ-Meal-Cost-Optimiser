@@ -14,7 +14,7 @@ import json
 import time
 import math
 from pathlib import Path
-from typing import Optional, Literal
+from typing import Optional, Literal, cast
 
 # ─── Constants ──────────────────────────────────────────────────────────────
 WEB_BASE = "https://www.paknsave.co.nz"
@@ -140,27 +140,7 @@ def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return R * 2 * math.asin(math.sqrt(a))
 
 
-def geocode(address: str) -> tuple[Optional[float], Optional[float]]:
-    """Geocode a NZ address via Nominatim (rate-limited: 1 req/sec)."""
-    time.sleep(1.1)  # respect Nominatim rate limit
-    try:
-        r = requests.get(
-            "https://nominatim.openstreetmap.org/search",
-            headers={"User-Agent": "NZMealCostOptimizer/1.0"},
-            params={"q": address, "format": "json", "limit": 1},
-            timeout=15,
-        )
-        if r.status_code == 200 and r.json():
-            loc = r.json()[0]
-            return float(loc["lat"]), float(loc["lon"])
-    except Exception:
-        pass
-    return None, None
-
-
-def find_nearby_stores(
-    user_lat: float, user_lon: float, radius_km: float = 5.0
-) -> list[dict]:
+def find_nearby_stores(user_lat: float, user_lon: float, radius_km: float = 5.0) -> list[dict]:
     """Return stores within radius_km, sorted by distance."""
     stores = load_stores()
     nearby = []
@@ -254,6 +234,21 @@ class PaknSaveEdgeAPI:
         Returns productIDs where _highlightResult has non-empty matchedWords.
         Filters out non-food category1 values via NON_FOOD_CATEGORIES.
         """
+        hits = self.pass1_relevance_search_hits(store_id, query, max_hits, region)
+        return [h["productID"] for h in hits]
+
+    def pass1_relevance_search_hits(
+        self,
+        store_id: str,
+        query: str,
+        max_hits: int = 20,
+        region: str = "NI",
+    ) -> list[dict]:
+        """
+        Search products-index for relevance matches.
+        Returns full hit objects (with productID, category1, _highlightResult, etc.).
+        Filters out non-food category1 values via NON_FOOD_CATEGORIES.
+        """
         headers = self._auth_headers()
         cookies = self._store_cookies(store_id, region)
         payload = {
@@ -272,7 +267,7 @@ class PaknSaveEdgeAPI:
         r.raise_for_status()
         hits = r.json().get("hits", [])
 
-        product_ids = []
+        filtered = []
         for h in hits:
             hr = h.get("_highlightResult", {})
             matched = any(
@@ -281,8 +276,8 @@ class PaknSaveEdgeAPI:
             )
             cat1 = h.get("category1", [])
             if matched and not any(c in NON_FOOD_CATEGORIES for c in cat1):
-                product_ids.append(h["productID"])
-        return product_ids
+                filtered.append(h)
+        return filtered
 
     # ── PASS 2: Per-Store Pricing ───────────────────────────────────────────
     def pass2_per_store_pricing(
@@ -329,10 +324,18 @@ class PaknSaveEdgeAPI:
         ingredient: str,
         max_relevance: int = 20,
         region: str = "NI",
-    ) -> list[dict]:
-        """Full two-pass search for one ingredient at one store."""
-        product_ids = self.pass1_relevance_search(store_id, ingredient, max_relevance, region)
-        return self.pass2_per_store_pricing(store_id, ingredient, product_ids, region=region)
+    ) -> tuple[list[dict], list[dict]]:
+        """Full two-pass search for one ingredient at one store.
+
+        Returns:
+            (products, pass1_hits) where:
+            - products: list of product dicts from Pass 2 (with pricing)
+            - pass1_hits: list of Pass 1 hit dicts (with category1, _highlightResult)
+        """
+        pass1_hits = self.pass1_relevance_search_hits(store_id, ingredient, max_relevance, region)
+        product_ids = [h["productID"] for h in pass1_hits]
+        products = self.pass2_per_store_pricing(store_id, ingredient, product_ids, region=region)
+        return products, pass1_hits
 
     # ── Price Extraction ────────────────────────────────────────────────────
     @staticmethod
@@ -445,53 +448,60 @@ class PaknSaveAPI:
 
     def __init__(self, backend: Literal["edge", "mobile"] = "edge"):
         self.backend = backend
+        self.client: PaknSaveEdgeAPI | PaknSaveMobileAPI
+
         if backend == "edge":
             self.client = PaknSaveEdgeAPI()
         else:
             self.client = PaknSaveMobileAPI()
 
-    def search_ingredient(self, store_id: str, ingredient: str, **kwargs) -> list[dict]:
-        """Search for an ingredient at a store. Returns list of product dicts."""
-        if self.backend == "edge":
+    def search_ingredient(self, store_id: str, ingredient: str, **kwargs) -> tuple[list[dict], list[dict]]:
+        """Search for an ingredient at a store.
+
+        Returns:
+            (products, pass1_hits) for edge backend.
+            ([], products) for mobile backend (no Pass 1 metadata).
+        """
+        if isinstance(self.client, PaknSaveEdgeAPI):
             return self.client.search_ingredient(store_id, ingredient, **kwargs)
-        else:
-            results = self.client.search_products(store_id, ingredient)
-            return results or []
+
+        results = self.client.search_products(store_id, ingredient)
+        return [], results or []
 
     def get_stores(self) -> list[dict]:
         """Get store list (format varies by backend)."""
-        if self.backend == "edge":
-            return self.client.get_stores()
-        else:
-            return list(self.client.get_stores().values())
+        if isinstance(self.client, PaknSaveEdgeAPI):
+            return cast(list[dict], self.client.get_stores())
 
-    @staticmethod
-    def extract_price(product: dict, backend: str) -> Optional[float]:
-        if backend == "edge":
-            return PaknSaveEdgeAPI.extract_price(product)
-        else:
-            return PaknSaveMobileAPI.extract_price(product)
+        stores = self.client.get_stores()
+        return list(cast(dict, stores).values())
 
     @staticmethod
     def extract_unit_price(product: dict, backend: str) -> str:
         if backend == "edge":
-            return PaknSaveEdgeAPI.extract_unit_price(product)
+            unit_price = PaknSaveEdgeAPI.extract_unit_price(product)
         else:
-            return PaknSaveMobileAPI.extract_unit_price(product)
+            unit_price = PaknSaveMobileAPI.extract_unit_price(product)
+
+        return unit_price or ""
 
     @staticmethod
     def get_product_name(product: dict, backend: str) -> str:
         if backend == "edge":
-            return PaknSaveEdgeAPI.get_product_name(product)
+            name = PaknSaveEdgeAPI.get_product_name(product)
         else:
-            return PaknSaveMobileAPI.get_product_name(product)
+            name = PaknSaveMobileAPI.get_product_name(product)
+
+        return name or ""
 
     @staticmethod
     def get_product_size(product: dict, backend: str) -> str:
         if backend == "edge":
-            return PaknSaveEdgeAPI.get_product_size(product)
+            size = PaknSaveEdgeAPI.get_product_size(product)
         else:
-            return PaknSaveMobileAPI.get_product_size(product)
+            size = PaknSaveMobileAPI.get_product_size(product)
+
+        return size or ""
 
 
 # ─── Convenience Functions ──────────────────────────────────────────────────

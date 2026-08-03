@@ -2,7 +2,7 @@
 Pak'nSave NZ Product Search Demo
 ==================================
 Example script demonstrating two-pass product search via the Pak'nSave Edge API.
-Searches for "milk" at Pak'nSave Albany and prints the top 10 results with
+Searches for "spring onion" at Pak'nSave Highland Park and prints the top 10 results with
 pricing details.
 
 What it does:
@@ -13,8 +13,8 @@ What it does:
     5. Dumps raw JSON for the first product
 
 Store info:
-    Name:       PAK'nSAVE Albany
-    Store ID:   65defcf2-bc15-490e-a84f-1f13b769cd22
+    Name:       PAK'nSAVE Highland Park
+    Store ID:   2a1b331a-fc4a-496a-b072-e97cc8f70cae
 
 Usage:
     python scripts/paknsave/paknsave_search_demo.py
@@ -29,8 +29,8 @@ import sys
 WEB_BASE = "https://www.paknsave.co.nz"
 EDGE_BASE = "https://api-prod.paknsave.co.nz/v1/edge"
 
-STORE_NAME = "PAK'nSAVE Albany"
-STORE_ID = "65defcf2-bc15-490e-a84f-1f13b769cd22"
+STORE_NAME = "PAK'nSAVE Highland Park"
+STORE_ID = "2a1b331a-fc4a-496a-b072-e97cc8f70cae"
 
 # Non-food category1 blacklist (shared with paknsave_api.py)
 NON_FOOD_CATEGORIES = {
@@ -169,7 +169,7 @@ def main():
     print()
 
     # Pass 1: Relevance search
-    query = "milk"
+    query = "spring onion"
     print(f"Step 2: Pass 1 — Relevance search for '{query}'")
     product_ids, raw_hits = pass1_relevance_search(token, STORE_ID, query, max_hits=20)
     print(f"  Matched productIDs: {len(product_ids)}")
@@ -208,7 +208,7 @@ def main():
     if products:
         print("=" * 80)
         print("RAW JSON for first product:")
-        print(json.dumps(products[0], indent=2))
+        print(json.dumps(products[1], indent=2))
 
 
 if __name__ == "__main__":
