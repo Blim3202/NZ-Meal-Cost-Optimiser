@@ -2,8 +2,8 @@
 Woolworths NZ Product Search Demo
 ==================================
 Example script demonstrating per-store product search via the Woolworths API.
-Searches for products at a single hardcoded store (Greville Road) and prints
-the top 10 results with pricing details.
+Searches for a given ingredient at a single hardcoded store (Greville Road)
+and prints the top 10 results with pricing details.
 
 What it does:
     1. Creates a fresh session and seeds cookies via GET /
@@ -16,14 +16,16 @@ What it does:
 Store info (from data/woolworths_store_data.json):
     Name:               Woolworths Greville Road
     pickupAddressId:    3105636
-    fulfilmentStoreId:  9171 (extra1)
+    fulfilmentStoreId:   9171 (extra1)
 
 Usage:
-    python woolworths_search_demo.py
+    python scripts/woolworths/woolworths_search_demo.py [ingredient]
+    python scripts/woolworths/woolworths_search_demo.py "spring onion"
 
-Reference: Woolworths_API.md sections 3, 4, 5.2, 8
+Reference: Woolworths_API.md sections 3, 4, 5.2, 8.
 """
 
+import argparse
 import json
 import requests
 import sys
@@ -118,7 +120,20 @@ def search_products(session, query, size=10):
 
 
 def main():
-    print(f"=== Woolworths Onion Search ===")
+    parser = argparse.ArgumentParser(
+        description="Woolworths NZ product search demo (per-store pricing via cookie injection).",
+        epilog="Example: python woolworths_search_demo.py 'spring onion'",
+    )
+    parser.add_argument(
+        "ingredient",
+        nargs="?",
+        default="Onion",
+        help="Ingredient to search for (default: 'Onion')",
+    )
+    args = parser.parse_args()
+    query = args.ingredient
+
+    print(f"=== Woolworths Product Search Demo ===")
     print(f"Store: {STORE_NAME} (pickupAddressId={PICKUP_ADDRESS_ID})")
     print()
 
@@ -127,8 +142,7 @@ def main():
     set_store_context(session, PICKUP_ADDRESS_ID)
     print()
 
-    # Search for Onion
-    query = "Onion"
+    # Search for the ingredient
     print(f"Searching for: '{query}' (top 10 results)")
     print("=" * 80)
 

@@ -11,10 +11,14 @@ Both backends use the same store data (from paknsave_setup.py output) and dish i
 import requests
 import cloudscraper
 import json
+import sys
 import time
 import math
 from pathlib import Path
 from typing import Optional, Literal, cast
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "combined"))
+from optimizer_utils import haversine
 
 # ─── Constants ──────────────────────────────────────────────────────────────
 WEB_BASE = "https://www.paknsave.co.nz"
@@ -129,17 +133,6 @@ def load_stores() -> list[dict]:
     return stores
 
 
-def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    """Great-circle distance in km."""
-    R = 6371.0
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = (math.sin(dlat / 2) ** 2 +
-         math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
-         math.sin(dlon / 2) ** 2)
-    return R * 2 * math.asin(math.sqrt(a))
-
-
 def find_nearby_stores(user_lat: float, user_lon: float, radius_km: float = 5.0) -> list[dict]:
     """Return stores within radius_km, sorted by distance."""
     stores = load_stores()
@@ -148,6 +141,7 @@ def find_nearby_stores(user_lat: float, user_lon: float, radius_km: float = 5.0)
         try:
             d = haversine(user_lat, user_lon, s["latitude"], s["longitude"])
             if d <= radius_km:
+                # Merge original store dict with computed distance
                 nearby.append({**s, "distance_km": round(d, 2)})
         except (KeyError, ValueError):
             continue
@@ -270,11 +264,13 @@ class PaknSaveEdgeAPI:
         filtered = []
         for h in hits:
             hr = h.get("_highlightResult", {})
+            # Check if any field in _highlightResult has matchedWords (Algolia confirmed relevance)
             matched = any(
                 isinstance(v, dict) and v.get("matchedWords")
                 for v in hr.values()
             )
             cat1 = h.get("category1", [])
+            # Keep only if Algolia matched AND not in non-food blacklist
             if matched and not any(c in NON_FOOD_CATEGORIES for c in cat1):
                 filtered.append(h)
         return filtered
@@ -299,6 +295,7 @@ class PaknSaveEdgeAPI:
 
         headers = self._auth_headers()
         cookies = self._store_cookies(store_id, region)
+        # Build Algolia filter: "productID:aaa OR productID:bbb" for Pass 2 pricing
         filter_str = " OR ".join(f"productID:{pid}" for pid in product_ids)
         payload = {
             "algoliaQuery": {"query": query, "filters": filter_str},
@@ -344,6 +341,7 @@ class PaknSaveEdgeAPI:
         sp = product.get("singlePrice", {})
         price_cents = sp.get("price")
         promo = product.get("promotions", [])
+        # Use promo rewardValue if available, else fall back to regular price
         promo_val = promo[0].get("rewardValue") if promo else None
         final_cents = promo_val if promo_val is not None else price_cents
         return final_cents / 100.0 if final_cents else None
@@ -397,18 +395,40 @@ class PaknSaveMobileAPI:
             "Content-Type": "application/json",
         }
 
-    def search_products(self, store_id: str, query: str) -> Optional[list[dict]]:
-        """Search products at a store via mobile API. Returns raw product list."""
+    def _is_food_product(self, product: dict) -> bool:
+        """
+        Check if a product is a food item (not pet/baby/household etc.).
+
+        Mirrors edge Pass 1 filtering against the category1 (sub_department) value.
+        In the mobile response, categories[0] = category1 (sub_department) and
+        categories[1] = category2 (subsub_department). Non-food markers such as
+        "Dog"/"Cat" appear at categories[0], so only the first entry is checked.
+        """
+        categories = product.get("categories", []) or []
+        cat1 = categories[0] if categories else ""
+        if not cat1:
+            return True  # no category1 to check — treat as food
+        return cat1 not in NON_FOOD_CATEGORIES
+
+    def search_products(self, store_id: str, query: str, hits_per_page: int = 20, food_only: bool = True) -> Optional[list[dict]]:
+        """Search products at a store via mobile API. Returns raw product list.
+
+        Limits results with hitsPerPage (default 20) to control response size.
+        When food_only=True (default), excludes non-food products by category1/`categories`.
+        """
         self._ensure_token()
         r = self.scraper.post(
-            f"{MOBILE_BASE}/mobile/ecomm-products/PNS/{store_id}/search?q={query}",
+            f"{MOBILE_BASE}/mobile/ecomm-products/PNS/{store_id}/search?q={query}&hitsPerPage={hits_per_page}",
             headers=self._auth_headers(),
             json=[],
         )
         if r.status_code == 200:
             data = r.json()
             # Mobile API returns list directly, not wrapped in "products" key
-            return data if isinstance(data, list) else data.get("products", [])
+            products = data if isinstance(data, list) else data.get("products", [])
+            if food_only:
+                products = [p for p in products if self._is_food_product(p)]
+            return products
         return None
 
     def get_stores(self) -> dict:
@@ -416,6 +436,7 @@ class PaknSaveMobileAPI:
         self._ensure_token()
         r = self.scraper.get(f"{MOBILE_BASE}/mobile/store/physical", headers=self._auth_headers())
         if r.status_code == 200:
+            # Index stores by ID for O(1) lookup
             return {s["id"]: s for s in r.json()["stores"]}
         return {}
 

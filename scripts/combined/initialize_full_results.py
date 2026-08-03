@@ -29,8 +29,8 @@ COLUMNS = [
     "per_unit_price",
     "is_sale",
     "sku",                  # PK
-    "category1",
     "department",
+    "sub_department",
     "datetime_created",
     "date_created",         # PK
     "pk_hash",              # SHA-256(store_id + sku + date_created)

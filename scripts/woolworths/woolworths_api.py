@@ -22,10 +22,14 @@ Reference: Woolworths_API.md (1290+ lines of endpoint documentation)
 """
 
 import json
+import sys
 import requests
 import time
 import os
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "combined"))
+from optimizer_utils import haversine
 
 BASE_URL = "https://www.woolworths.co.nz/api/v1"
 SITE_URL = "https://www.woolworths.co.nz/"
@@ -39,6 +43,7 @@ HEADERS = {
 }
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
+STORE_JSON = DATA_DIR / "woolworths_store_data.json"
 
 # Department IDs for non-food categories (excluded when food_only=True)
 # Source: /api/v1/shell → mainNavs[1] → Browse departments
@@ -69,7 +74,7 @@ def _load_store_mapping():
 
     Returns dict: {pickupAddressId (str): {fulfilmentStoreId (int), name (str)}}
     """
-    store_data_path = DATA_DIR / "woolworths_store_data.json"
+    store_data_path = STORE_JSON
     if not store_data_path.exists():
         raise FileNotFoundError(f"Store data not found: {store_data_path}")
 
@@ -227,20 +232,6 @@ def get_nearby_stores(user_lat, user_lon, max_dist_km: float = 5):
 
     Returns list of dicts: {pickupAddressId, name, fulfilmentStoreId, lat, lon, distance_km}
     """
-    import math
-
-    def haversine(lat1, lon1, lat2, lon2):
-        R = 6371
-        dlat = math.radians(lat2 - lat1)
-        dlon = math.radians(lon2 - lon1)
-        a = (
-            math.sin(dlat / 2) ** 2
-            + math.cos(math.radians(lat1))
-            * math.cos(math.radians(lat2))
-            * math.sin(dlon / 2) ** 2
-        )
-        return R * 2 * math.asin(math.sqrt(a))
-
     mapping = get_store_mapping()
     nearby = []
     for pid, info in mapping.items():

@@ -21,7 +21,6 @@ Defaults:
     Dish:    spaghetti bolognese
 """
 
-import csv
 import sys
 import time
 from datetime import datetime, date
@@ -34,7 +33,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "combined"))
 
 from paknsave_api import (
     PaknSaveEdgeAPI,
-    load_stores,
     find_nearby_stores,
 )
 from optimizer_utils import (
@@ -78,6 +76,7 @@ def build_row(company, store, store_id, search_ingredient, product, pass1_hit, n
     # Calculate price: per-item price considering promotions
     # If promotion with threshold: use rewardValue / threshold (per-item promo price)
     # Otherwise: use singlePrice.price (regular per-item price)
+    # Promo price: if multi-buy (e.g. 2 for $5), use per-item price; else regular
     price_cents = sp.get("price")
     if promotions:
         best = promotions[0]
@@ -88,7 +87,11 @@ def build_row(company, store, store_id, search_ingredient, product, pass1_hit, n
 
     price_dollars = round(price_cents / 100.0, 2) if price_cents is not None else ""
 
+    # department = category0 (broadest), sub_department = category1 (renamed from category1)
+    cat0 = pass1_hit.get("category0", []) if pass1_hit else []
     cat1 = pass1_hit.get("category1", []) if pass1_hit else []
+    # Join with "|" in case of duplicate categories (May not be needed)
+    dept_str = "|".join(cat0) if cat0 else ""
     cat1_str = "|".join(cat1) if cat1 else ""
 
     sku = product.get("productId", "")
@@ -107,8 +110,8 @@ def build_row(company, store, store_id, search_ingredient, product, pass1_hit, n
         "per_unit_price": per_unit_price if per_unit_price else "",
         "is_sale": bool(promotions),
         "sku": sku,
-        "category1": cat1_str,
-        "department": "",
+        "department": dept_str,
+        "sub_department": cat1_str,
         "datetime_created": now.strftime("%Y-%m-%d %H:%M:%S"),
         "date_created": date_str,
         "pk_hash": _compute_pk_hash(store_id, sku, date_str),
@@ -177,9 +180,10 @@ def query_and_save(user_address, dish_name, requery, max_dist_km=5.0):
                 )
             except Exception as e:
                 print(f"  {ing}: [ERROR] {e}")
-                time.sleep(0.08)
+                time.sleep(0.1)
                 continue
 
+            # Index Pass 1 hits by productID for quick lookup when building rows
             pass1_by_id = {h["productID"]: h for h in pass1_hits}
 
             priced = []
@@ -193,6 +197,7 @@ def query_and_save(user_address, dish_name, requery, max_dist_km=5.0):
                     priced.append(prod)
 
             if priced:
+                # Find cheapest product (by regular price in cents) across all results for this ingredient
                 best_price = min(p.get("singlePrice", {}).get("price", float("inf")) for p in priced)
                 print(f"  {ing}: {len(priced)} results (best: ${best_price / 100:.2f})")
             else:
@@ -225,9 +230,11 @@ def analyze_results(df, ingredients, dish_name):
     df = df.copy()
     df["price"] = df["price"].astype(float)
 
+    # Step 1: For each (store, ingredient), keep only the cheapest product
     cheapest_per_ing_per_store = (
         df.groupby(["store", "search_ingredient"])["price"].min().reset_index()
     )
+    # Step 2: Sum cheapest ingredients per store → total dish cost
     summary = (
         cheapest_per_ing_per_store.groupby("store")["price"]
         .sum()
@@ -250,6 +257,7 @@ def analyze_results(df, ingredients, dish_name):
             else:
                 row[sn] = "NOT FOUND"
 
+        # Find which store has the cheapest price for this ingredient
         prices = []
         for sn in store_names:
             match = df[(df["search_ingredient"] == ing) & (df["store"] == sn)]
@@ -270,11 +278,13 @@ def analyze_results(df, ingredients, dish_name):
 
     totals = {"Qty": ""}
     for sn in store_names:
+        # Sum cheapest price per ingredient at this specific store
         store_total = (
             df[df["store"] == sn].groupby("search_ingredient")["price"].min().sum()
         )
         totals[sn] = f"${store_total:.2f}"
 
+    # Best mix: sum of cheapest-per-ingredient across ALL stores (not limited to one store)
     best_total_mix = 0
     for ing in ingredients:
         ing_prices = df[df["search_ingredient"] == ing]["price"]
@@ -303,6 +313,7 @@ def optimise(dish_name):
         return
 
     ingredients = get_ingredients(dish_name)
+    # Filter to only ingredients that actually appear in today's CSV data
     dish_ings = [i for i in ingredients if i in df_today["search_ingredient"].values]
 
     if not dish_ings:
@@ -334,6 +345,7 @@ def main():
     requery = True
     max_dist_km = 5
 
+    # Manual arg parsing: collect positional args, handle --flag value pairs
     positional = []
     i = 1
     while i < len(sys.argv):

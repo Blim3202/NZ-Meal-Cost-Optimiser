@@ -7,6 +7,7 @@ Both optimizers write to the same data/full_results.csv with identical column st
 
 import csv
 import hashlib
+import math
 import re
 import time
 from pathlib import Path
@@ -29,8 +30,8 @@ CSV_COLUMNS = [
     "per_unit_price",
     "is_sale",
     "sku",
-    "category1",
     "department",
+    "sub_department",
     "datetime_created",
     "date_created",
     "pk_hash",
@@ -331,6 +332,101 @@ def parse_paknsave_volume_size(display_name, single_price, promotions):
     return quantity, measurement_unit, per_unit_qty, per_unit_price
 
 
+def parse_paknsave_mobile_unit(unit_price):
+    """Parse a Mobile API unitPrice string into (per_unit_quantity, per_unit_price).
+
+    Splits on '/': per_unit_price is the value before the slash (dollar sign
+    stripped), per_unit_quantity is the value after the slash.
+
+    Examples:
+        ("$26.99/1kg") -> ("1kg", 26.99)
+        ("$18.99/kg")  -> ("kg", 18.99)
+        ("$3.49/ea")   -> ("ea", 3.49)
+        ("", )         -> ("", 0)
+    """
+    if not unit_price or not isinstance(unit_price, str):
+        return "", 0
+
+    if "/" in unit_price:
+        price_part, qty_part = unit_price.split("/", 1)
+    else:
+        price_part, qty_part = unit_price, ""
+
+    price_part = price_part.replace("$", "").strip()
+    try:
+        per_unit_price = float(price_part)
+    except ValueError:
+        per_unit_price = 0
+
+    return qty_part.strip(), per_unit_price
+
+
+def parse_paknsave_mobile_units(units):
+    """Parse a Mobile API `units` string into (quantity, measurement_unit).
+
+    The mobile API packs the item count and the measure into a single `units`
+    string (e.g. "3 x 31g", "500g", "2 pack", "ea"). This splits off the leading
+    numeric count into `quantity` and leaves the measure in `measurement_unit`,
+    mirroring the edge pipeline's number/unit split of displayName.
+
+    Edge case — sachet/pack products like "3 x 31g":
+        The integer before the 'x' is the pack/sachet count (→ quantity). The
+        text including and after the 'x' becomes the measurement unit, with the
+        space that sat between the count and the 'x' stripped (e.g. "x 31g").
+
+    Examples:
+        ("3 x 31g") -> (3, "x 31g")   # sachet pack edge case
+        ("500g")    -> (500, "g")     # number directly adjacent to unit
+        ("1kg")     -> (1, "kg")
+        ("2 pack")  -> (2, "pack")    # number followed by space + unit
+        ("ea")      -> (1, "ea")      # unit only, no count
+        ("")        -> ("", "")       # missing/unrecognised
+
+    Args:
+        units: Mobile API `units` field (e.g. "3 x 31g", "500g").
+
+    Returns:
+        (quantity, measurement_unit). quantity is int/float when a count is
+        found, else "" (empty string to keep the CSV column blank, mirroring
+        the edge rows). measurement_unit is "" when unrecognised.
+    """
+    if not units or not isinstance(units, str):
+        return "", ""
+
+    raw = units.strip()
+    if not raw or raw.lower() == "null":
+        return "", ""
+
+    # Edge case: sachet/pack like "3 x 31g".
+    # Quantity is the leading count ("3"); the measurement is the "x 31g" part,
+    # keeping the 'x' but stripping the space that separated it from the count.
+    match = re.match(r"^(\d+(?:\.\d+)?)\s*[xX]\s*(\S.*)$", raw)
+    if match:
+        qty = float(match.group(1))
+        qty = int(qty) if qty == int(qty) else qty
+        return qty, "x " + match.group(2).strip()
+
+    # Pattern 1: "500g", "1L", "250ml" — number directly adjacent to unit
+    match = re.match(r"^(\d+(?:\.\d+)?)\s*([a-zA-Z]+)$", raw)
+    if match:
+        qty = float(match.group(1))
+        unit = match.group(2).lower()
+        return (int(qty) if qty == int(qty) else qty), unit
+
+    # Pattern 2: "2 pack", "6 eggs" — number followed by space + unit
+    match = re.match(r"^(\d+(?:\.\d+)?)\s+(.+)$", raw)
+    if match:
+        qty = float(match.group(1))
+        unit = match.group(2).lower().strip()
+        return (int(qty) if qty == int(qty) else qty), unit
+
+    # Pattern 3: "ea", "kg", "L" — unit only, no count → default to 1
+    if re.match(r"^[a-zA-Z]+$", raw):
+        return 1, raw.lower()
+
+    return "", ""
+
+
 def _parse_display_name(display_name):
     """Parse a Pak'nSave displayName string into (quantity, measurement_unit).
 
@@ -431,6 +527,18 @@ def append_rows(rows, results_file=None):
             appended += 1
 
     return appended, skipped
+
+
+def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Great-circle distance in km between two lat/lon points."""
+    R = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    # Haversine formula: a = sin²(Δlat/2) + cos(lat1)·cos(lat2)·sin²(Δlon/2)
+    a = (math.sin(dlat / 2) ** 2 +
+         math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
+         math.sin(dlon / 2) ** 2)
+    return R * 2 * math.asin(math.sqrt(a))
 
 
 def geocode(address):

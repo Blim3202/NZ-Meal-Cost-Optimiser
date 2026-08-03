@@ -1,9 +1,9 @@
 """
-Pak'nSave NZ Product Search Demo
-==================================
+Pak'nSave NZ Product Search Demo — EDGE API (Two-Pass)
+=======================================================
 Example script demonstrating two-pass product search via the Pak'nSave Edge API.
-Searches for "spring onion" at Pak'nSave Highland Park and prints the top 10 results with
-pricing details.
+Searches for a given ingredient at Pak'nSave Highland Park and prints the top 10
+results with pricing details.
 
 What it does:
     1. Authenticates via website JWT (fs-user-token cookie)
@@ -17,11 +17,13 @@ Store info:
     Store ID:   2a1b331a-fc4a-496a-b072-e97cc8f70cae
 
 Usage:
-    python scripts/paknsave/paknsave_search_demo.py
+    python scripts/paknsave/paknsave_search_demo_edge.py [ingredient]
+    python scripts/paknsave/paknsave_search_demo_edge.py "beef mince"
 
 Reference: PaknSave_API.md section 6 (Edge API two-pass pipeline)
 """
 
+import argparse
 import json
 import requests
 import sys
@@ -82,7 +84,7 @@ def store_cookies(store_id, region="NI"):
 
 
 def pass1_relevance_search(token, store_id, query, max_hits=20):
-    """Pass 1: Relevance search via products-index. Returns productIDs."""
+    """Pass 1: Relevance search via products-index. Returns (productIDs, rawHits)."""
     headers = auth_headers(token)
     cookies = store_cookies(store_id)
     payload = {
@@ -152,7 +154,20 @@ def extract_price(product):
 
 
 def main():
-    print(f"=== Pak'nSave Product Search Demo ===")
+    parser = argparse.ArgumentParser(
+        description="Pak'nSave Edge API product search demo (two-pass pipeline).",
+        epilog="Example: python paknsave_search_demo_edge.py 'beef mince'",
+    )
+    parser.add_argument(
+        "ingredient",
+        nargs="?",
+        default="spring onion",
+        help="Ingredient to search for (default: 'spring onion')",
+    )
+    args = parser.parse_args()
+    query = args.ingredient
+
+    print(f"=== Pak'nSave Product Search Demo (EDGE API) ===")
     print(f"Store: {STORE_NAME} ({STORE_ID})")
     print()
 
@@ -169,7 +184,6 @@ def main():
     print()
 
     # Pass 1: Relevance search
-    query = "spring onion"
     print(f"Step 2: Pass 1 — Relevance search for '{query}'")
     product_ids, raw_hits = pass1_relevance_search(token, STORE_ID, query, max_hits=20)
     print(f"  Matched productIDs: {len(product_ids)}")
@@ -204,11 +218,18 @@ def main():
         print(f"    Price: {price_str}  |  Unit: {unit_price}")
         print()
 
-    # Dump raw JSON for first product
+    # Dump raw JSON for first product (Pass 1 relevance hit)
+    if raw_hits:
+        print("=" * 80)
+        print("RAW JSON for first Pass 1 relevance hit:")
+        print(json.dumps(raw_hits[0], indent=2))
+        print()
+
+    # Dump raw JSON for first product (Pass 2 pricing result)
     if products:
         print("=" * 80)
-        print("RAW JSON for first product:")
-        print(json.dumps(products[1], indent=2))
+        print("RAW JSON for first Pass 2 product (with pricing):")
+        print(json.dumps(products[0], indent=2))
 
 
 if __name__ == "__main__":
