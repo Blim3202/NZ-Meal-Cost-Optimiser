@@ -501,6 +501,8 @@ Output: `data/paknsave_stores.csv` (60 stores from store_finder, 57 from edge, a
 - `scripts/foodstuffs/Foodstuffs_optimizer_mobile.py` — Mobile API fallback optimizer. Same CLI structure, single-pass search.
 - `scripts/foodstuffs/Foodstuffs_setup.py` — Unified store builder pipeline. Supports `source=edge` (default) or `source=mobile` for both brands. store_finder only available for paknsave.
 
+**Status update 2026-08-04**: `scripts/foodstuffs/` has since been deleted — the cross-brand optimizer and row-builder logic has been migrated to `scripts/combined/optimizer_utils.py`. See entry 44 below.
+
 ---
 
 ## 39. Store-Finder Method Limited to Pak'nSave Only
@@ -532,6 +534,10 @@ The following scripts are now legacy and should not be used for new development:
 | All `scripts/*/Exploration/` scripts | Archived — only `scripts/paknsave/Exploration/` retains the two-pass pipeline documentation |
 
 **Key principle**: Only the unified `foodstuffs/` package and brand-specific `paknsave/` and `newworld/` packages should be used for production code.
+
+**Status update 2026-08-04**: The `foodstuffs/` package referenced in the "Key principle"
+line is no longer present. The same modules remain via the brand-specific packages
+(`scripts/paknsave/`, `scripts/newworld/`) plus `scripts/combined/optimizer_utils.py`.
 
 ---
 
@@ -622,3 +628,25 @@ Alcoholic drinks (Red Wine, Beer, Cider, etc.) are currently **excluded from the
 **Files changed**: `scripts/woolworths/woolworths_optimizer.py`, `scripts/woolworths/woolworths_api.py`, `scripts/combined/initialize_full_results.py`
 
 ---
+
+## 44. Foodstuffs folder deleted — cross-brand logic consolidated into optimizer_utils.py
+
+**Date**: 2026-08-04
+
+**Summary**: Deleted `scripts/foodstuffs/`. The cross-brand logic previously in that
+folder was consolidated into `scripts/combined/optimizer_utils.py`. Brand-specific
+optimizers (`scripts/paknsave/`, `scripts/newworld/`) are now thin CLI wrappers that
+inject the brand API class and store-finder into the shared helpers.
+
+**Moved to `scripts/combined/optimizer_utils.py`:**
+- `foodstuffs_optimizer_edge` / `foodstuffs_optimizer_mobile` — full CLI runners
+- `build_edge_row` / `build_mobile_row` — per-product CSV row builders
+- `parse_foodstuffs_volume_size` / `parse_foodstuffs_mobile_unit` — size/price parsers
+- `geocode`, `haversine`, `find_nearby_stores` — geo helpers
+- `get_ingredients`, `get_quantities`, `DISH_INGREDIENTS` — dish lookup
+- `optimise()`, `analyze_results()` — Phase 2 CSV readers
+- `append_rows()`, `_compute_pk_hash()`, `load_existing_hashes()` — append-only CSV with SHA-256 dedup
+
+**Behavioral fix**: The `optimise(dish, company=...)` filter is now correctly applied
+in both brand optimizers (previously could blend PNS+NW rows from `full_results.csv`).
+The `per_unit_price` field is now blank (not 0.0) when falsy.

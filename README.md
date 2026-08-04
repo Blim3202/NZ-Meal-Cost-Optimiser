@@ -87,8 +87,8 @@ opencode/
 ├── data/
 │   ├── Exploration/
 │   │   └── woolworths/                         # Exploration data files (part2_cookies.json)
-│   ├── newworld_stores.csv                     # 148 stores (Edge) or 149 (Mobile): store_id, name, url, address, city, region, lat, lon, banner, click_and_collect, delivery
-│   ├── paknsave_stores.csv                     # 57 stores (Edge) / 60 (store_finder): store_id, name, address, city, region, lat, lon
+│   ├── newworld_stores.csv                     # 148 stores (Edge, default) or 149 (Mobile): store_id, name, address, city, region, lat, lon, banner, click_and_collect, delivery
+│   ├── paknsave_stores.csv                     # 57 stores (Edge, default) / 60 (store_finder): store_id, name, address, city, region, lat, lon, banner, click_and_collect, delivery
 │   ├── paknsave_stores.json                    # Same data as CSV, JSON format
 │   ├── woolworths_stores.csv                   # Merged Woolworths store list with lat/lon
 │   ├── woolworths_store_choices.csv            # Woolworths pickup location IDs (from pickup-addresses API)

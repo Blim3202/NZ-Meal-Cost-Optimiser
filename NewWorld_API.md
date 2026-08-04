@@ -5,11 +5,9 @@ Island) domain name, this API covers **all New World stores nationwide** includi
 both North Island (101 stores) and South Island (48 stores). It also works for
 Pak'nSave with `banner: "PNS"`.
 
-[Confirmed working](scripts/newworld/NewWorld_prototype.py): Auckland CBD stores
-(Metro Auckland, Newmarket, Devonport, Remuera, Mt Albert, Point Chevalier,
-Eastridge, Mt Roskill, Birkenhead, Stonefields, Shore City, Milford, New Lynn),
-plus stores nationwide (Christchurch, Dunedin, Wellington, Nelson, etc.) all return
-valid per-store pricing through the mobile API.
+Confirmed working across Auckland CBD, Auckland suburbs, and nationwide stores
+(Christchurch, Dunedin, Wellington, Nelson, etc.) — all return valid per-store pricing
+through the mobile API.
 
 ---
 
@@ -254,19 +252,21 @@ Returns an object with a single `"stores"` key containing an array:
 
 #### Store count
 
-149 stores are currently returned for `banner="MNW"`. Each store has a UUID-style
-`id` (e.g., `773ad0a0-024e-46c5-a94b-df1cf86d25cc`).
+149 stores are returned for `banner="MNW"` via the mobile endpoint (148 via Edge).
+Each store has a UUID-style `id` (e.g., `773ad0a0-024e-46c5-a94b-df1cf86d25cc`).
 
 #### Usage in this project
 
 ```python
-api = NewWorldAPI()
+from scripts.newworld.newworld_api import NewWorldMobileAPI
+api = NewWorldMobileAPI()
 stores = api.get_stores()  # returns {id: store_dict}
 ```
 
-The CSV at `data/newworld_stores.csv` is pre-built from the mobile API + store-finder
-page, containing the same `store_id` UUIDs with name, address, lat, lon, url, and
-service flags for all 149 stores.
+The canonical store CSV (`data/newworld_stores.csv`, 10 columns: `store_id, name, address,
+city, region, latitude, longitude, banner, click_and_collect, delivery`) is built by
+`scripts/newworld/newworld_setup.py`, which **defaults to the Edge API** (see
+section 9). The `url` column used by the legacy store-finder join is no longer produced.
 
 ### 5.2 `POST /mobile/ecomm-products/{banner}/{storeId}/search?q={query}`
 
@@ -287,9 +287,10 @@ specific store, **with per-store pricing**.
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `q` | `string` | (required) | Search query, e.g. `"beef mince"` |
-| `sortOrder` | `string` | (relevance) | Sort by relevance or price |
-| `searchingTobacco` | `bool` | `false` | If the search is for tobacco products |
-| `disableAdsOverride` | `bool` | `false` | Disable ad insertion in results |
+| `hitsPerPage` | `int` | `100` | Max products per page. **Honored** — production always sends `20`. |
+| `sortOrder` | `string` | (relevance) | Sort by relevance or price (not used by production) |
+| `searchingTobacco` | `bool` | `false` | If the search is for tobacco products (not used by production) |
+| `disableAdsOverride` | `bool` | `false` | Disable ad insertion in results (not used by production) |
 
 #### Request body
 
@@ -358,6 +359,16 @@ The body is required but can be empty — it's used internally for filter state
     }
   }
 }
+ ```
+
+The mobile search endpoint returns either a **bare JSON array** of products or a
+**wrapped dict** with a `"products"` key. The production code in
+`newworld_api.py` (and the shared `optimizer_utils.py` helpers) handles both shapes
+defensively:
+
+```python
+data = r.json()
+products = data if isinstance(data, list) else data.get("products", [])
 ```
 
 #### Product fields
@@ -737,55 +748,40 @@ Supports: `OR`, `AND`, field:value syntax. Full Algolia filter syntax works.
 | Auth | Guest login POST | Website session OR mobile token |
 | Store listing | [OK] 149 stores | [OK] 148 stores |
 | Product search | [OK] Single call | [OK] Two-pass (relevance + pricing) |
-| Relevance matching | Implicit (first result) | [OK] Explicit `_highlightResult.matchedWords` |
+| Relevance matching | Implicit (relevance ordering) | [OK] Explicit `_highlightResult.matchedWords` |
 | Per-store pricing | [OK] Native (storeId in URL) | [OK] Via cookies + Algolia filters |
 | Price format | Cents in response | Cents in `singlePrice.price` |
 | Promotions | Included | Included in `promotions[]` |
 | Sort | Relevance (default), PriceAsc | `PRICE_ASC`, `PRICE_DESC` only |
-| Pagination | Offset/limit | Algolia page/hitsPerPage |
+| Pagination | `hitsPerPage` query param (default 100) | Algolia page/hitsPerPage |
 | Token source | Mobile API only | Mobile API OR website |
 | Dependency | Internal mobile API | Public website API (more stable) |
+| Pet food filtering | [OK] Via `categories[0]` (category1) | [OK] Via `category1` in Pass 1 |
 
 ---
 
-### 6.8 Two-Pass Pipeline Implementation
+### 6.8 Two-Pass Pipeline Summary
 
-```python
-def two_pass_search(token, query, store_id, max_relevance=20, sort_order="PRICE_ASC"):
-    """
-    Complete two-pass pipeline: Relevance -> Per-Store Pricing
-    """
-    # PASS 1: Algolia relevance search (products-index)
-    url1 = f"{EDGE_BASE}/search/products/query/index/products-index"
-    payload1 = {
-        "algoliaQuery": {"query": query},
-        "page": 0,
-        "hitsPerPage": max_relevance,
-        "storeId": store_id
-    }
-    r1 = requests.post(url1, headers=headers, json=payload1, cookies=cookies)
-    hits = r1.json().get("hits", [])
-    
-    # Extract productIDs with relevance matches
-    product_ids = []
-    for hit in hits:
-        hr = hit.get("_highlightResult", {})
-        if any(isinstance(v, dict) and v.get("matchedWords") for v in hr.values()):
-            product_ids.append(hit["productID"])
-    
-    # PASS 2: Per-store pricing with Algolia filters
-    url2 = f"{EDGE_BASE}/search/paginated/products"
-    filter_str = " OR ".join([f"productID:{pid}" for pid in product_ids])
-    payload2 = {
-        "algoliaQuery": {"query": query, "filters": filter_str},
-        "page": 0,
-        "hitsPerPage": 50,
-        "storeId": store_id,
-        "sortOrder": sort_order
-    }
-    r2 = requests.post(url2, headers=headers, json=payload2, cookies=cookies)
-    return r2.json().get("products", [])
+The complete production pipeline is implemented by the shared helper
+`foodstuffs_optimizer_edge` in `scripts/combined/optimizer_utils.py`, which the
+New World Edge optimizer (`newworld_optimizer_edge.py`) calls with the
+`NewWorldEdgeAPI` class and `find_nearby_stores`. Each brand's API class mirrors the
+same two-pass structure:
+
 ```
+PASS 1  POST /v1/edge/search/products/query/index/products-index
+        payload: {"algoliaQuery":{"query":ingredient}, "page":0, "hitsPerPage":20, "storeId":id}
+        → hits with _highlightResult.matchedWords; keep productID where matched
+          AND category1 not in NON_FOOD_CATEGORIES
+
+PASS 2  POST /v1/edge/search/paginated/products
+        payload: {"algoliaQuery":{"query":ingredient,"filters":"productID:a OR productID:b ..."},
+                  "page":0, "hitsPerPage":50, "storeId":id, "sortOrder":"PRICE_ASC"}
+        → products with per-store singlePrice + promotions
+```
+
+Reference implementation: `scripts/newworld/newworld_api.py` —
+`NewWorldEdgeAPI.pass1_relevance_search_hits` / `pass2_per_store_pricing`.
 
 ---
 
@@ -839,7 +835,7 @@ This method seems to be superior to the mobile API in terms of search relevancy 
 - Works with standard browser JWT (same IdP: `online-customer`)
 - Categories endpoint available for navigation
 
-**Implementation Reference**: `scripts/newworld/Exploration/edge_optimizer_demo.py`
+**Implementation Reference**: `scripts/newworld/newworld_api.py` (`NewWorldEdgeAPI`) + `scripts/combined/optimizer_utils.py` (`foodstuffs_optimizer_edge`)
 **Full Exploration Details**: `scripts/newworld/Exploration/EDGE_API_FINDINGS.md`
 
 ---
@@ -891,281 +887,279 @@ this comparison would be meaningless.
 
 ---
 
-## 8. Store Data Sources
+## 8. Data Query & Parsing Pipeline
 
-### 8.1 Primary: Mobile API (`GET /mobile/store/physical`)
+> **Default backend: Edge API (two-pass).** The unified API client
+> `NewWorldAPI(backend="edge")` and the production CLI optimizer
+> (`newworld_optimizer_edge.py`) default to the Edge backend. The mobile backend
+> (`backend="mobile"`, `newworld_optimizer_mobile.py`) is the legacy fallback.
 
-149 stores with precise coordinates. This is the most accurate source and provides
-all data needed for the optimizer (store_id, name, address, lat/lon, banner,
-clickAndCollect, delivery).
-
-```python
-api = NewWorldAPI()
-api_stores = api.get_stores()  # returns {id: store_dict}
-```
-
-### 8.2 CSV (`data/newworld_stores.csv`)
-
-Pre-built from the mobile API + store-finder page, containing the same `store_id`
-UUIDs with name, address, lat, lon, url, and service flags for all 149 stores.
-
-```csv
-store_id,name,url,address,latitude,longitude,banner,click_and_collect,delivery
-773ad0a0-...,New World Albany,/upper-north-island/auckland/albany,"219 Don McKinnon Drive...",-36.728207,174.710519,MNW,True,True
-```
-
-### 8.3 Store URLs from Store-Finder Page
-
-The store-finder page at `https://www.newworld.co.nz/store-finder` provides URL
-slugs for 150 stores (142 match the API). The `__NEXT_DATA__` JSON path is:
+This section shows how the production code queries the two backends and parses the
+responses into CSV rows. Both backends follow the same skeleton (shared by Pak'nSave;
+see [PaknSave_API.md §8](PaknSave_API.md) for the parallel implementation):
 
 ```
-data.props.pageProps.page.page_content.content_blocks[1].store_finder.regionStoreGroupings
+geocode(address) → find_nearby_stores(lat, lon, radius_km)
+→ for each store, for each ingredient:  search_ingredient (edge) / search_products (mobile)
+→ build_row(product[, pass1_hit]) → append_rows() → data/full_results.csv
+→ Phase 2: optimise() reads today's rows → per-store totals + per-ingredient breakdown
 ```
 
-→ `northIsland`/`southIsland` → `groups` → `stores` → each with `title`, `url`, `address`
+### 8.1 Edge API (two-pass) — `NewWorldEdgeAPI`
 
-### 8.4 Build Pipeline (`scripts/newworld/fetch_stores.py`)
+Two calls per ingredient per store, bridged by Algolia `filters` (identical structure to
+Pak'nSave — see [PaknSave_API.md §6.3](PaknSave_API.md)):
 
 ```
-fetch_stores.py
-  → POST /mobile/user/login/guest (banner: "MNW")
-  → GET /mobile/store/physical → 149 stores with UUID, name, address, lat/lon, banner
-  → GET https://www.newworld.co.nz/store-finder → parse __NEXT_DATA__
-  → Extract store_finder.regionStoreGroupings: title, url, address per store
-  → Join on name (strip "New World " prefix) → DataFrame → data/newworld_stores.csv
+Pass 1  POST /v1/edge/search/products/query/index/products-index
+        payload: {"algoliaQuery":{"query":ingredient}, "page":0, "hitsPerPage":20, "storeId":id}
+        → hits with _highlightResult.matchedWords; keep productID where matched
+          AND category1 not in NON_FOOD_CATEGORIES  (Dog/Cat/Pet excluded)
+
+Pass 2  POST /v1/edge/search/paginated/products
+        payload: {"algoliaQuery":{"query":ingredient,"filters":"productID:a OR productID:b ..."},
+                  "page":0, "hitsPerPage":50, "storeId":id, "sortOrder":"PRICE_ASC"}
+        → products with per-store singlePrice + promotions
 ```
 
-No geocoding required — coordinates are provided directly by the mobile API.
+`build_row` then calls `parse_foodstuffs_volume_size(displayName, singlePrice, promotions)`
+to get `(quantity, measurement_unit, per_unit_quantity, per_unit_price)` from the
+`comparativePrice.measureDescription` (e.g. `"100g"`, `"1L"`).
+
+### 8.2 Mobile API (single-pass) — `NewWorldMobileAPI`
+
+One call per ingredient per store:
+
+```
+POST /mobile/ecomm-products/MNW/{storeId}/search?q={ingredient}&hitsPerPage=20
+→ bare-or-wrapped products; _is_food_product() keeps rows where categories[0]
+  (category1) not in NON_FOOD_CATEGORIES
+```
+
+`build_row` calls `parse_foodstuffs_mobile_unit(units, unitPrice, price_cents)` to get
+`(quantity, measurement_unit, per_unit_quantity, per_unit_price)`. `units` packs
+count + measure (`"3 x 80g"`, `"500g"`, `"1pk"`, `"each"`); `unitPrice` splits on `/`
+(`"$18.99/kg"` → qty `1kg`, price `18.99`). When `unitPrice` is missing/null and `units`
+has a numeric prefix, per-unit pricing is inferred from the item's own `price`.
+
+### 8.3 Shared CSV schema (`data/full_results.csv`)
+
+Both backends write to the same `full_results.csv` with 17 columns. `pk_hash`
+(SHA-256 of `store_id|sku|date_created`) deduplicates appended rows.
+
+| Column | Edge source | Mobile source |
+|--------|-------------|---------------|
+| `quantity` / `measurement_unit` | `displayName` via `parse_foodstuffs_volume_size` | `units` via `parse_foodstuffs_mobile_unit` |
+| `per_unit_quantity` / `per_unit_price` | `comparativePrice.measureDescription` / `pricePerUnit` | `unitPrice` split (or `price` for bare-`ea`) |
+| `department` | Pass 1 `category0` | *(empty — mobile has no category0)* |
+| `sub_department` | Pass 1 `category1` | `categories[0]` |
+| `price` | promo `rewardValue` else `singlePrice.price` (cents) | `price` (cents) |
 
 ---
 
-## 9. Production Architecture
+## 9. Store Data Sources
 
-### 9.1 How to Search Products by Store (Mobile API)
+**Default source: Edge API.** `scripts/newworld/newworld_setup.py` defaults to
+`source="edge"` (148 stores) — the store builder, like the query layer, is Edge-first.
+Edge and mobile are the only sources; New World has no store-finder pipeline (unlike
+Pak'nSave).
 
 ```python
-import cloudscraper
-import math
-import os
+from scripts.newworld.newworld_setup import fetch_stores, clean_stores, run_full_setup
+run_full_setup()                  # default: edge → 148 stores
+run_full_setup(source="edge")     # 148 stores
+run_full_setup(source="mobile")   # 149 stores (legacy fallback)
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..', 'data'))
-
-BASE = "https://api-prod.prod.fsniwaikato.kiwi/prod"
-
-class NewWorldAPI:
-    def __init__(self):
-        self.scraper = cloudscraper.create_scraper()
-        self._token = None
-
-    def _ensure_token(self):
-        if self._token:
-            return
-        r = self.scraper.post(
-            f"{BASE}/mobile/user/login/guest",
-            json={"banner": "MNW"},
-            headers={"User-Agent": "NewWorldApp/4.32.0", "Content-Type": "application/json"},
-        )
-        r.raise_for_status()
-        self._token = r.json()["access_token"]
-        self._auth = {
-            "Authorization": f"Bearer {self._token}",
-            "access_token": self._token,
-            "User-Agent": "NewWorldApp/4.32.0",
-            "Content-Type": "application/json",
-        }
-
-    def search_products(self, store_id: str, query: str):
-        self._ensure_token()
-        r = self.scraper.post(
-            f"{BASE}/mobile/ecomm-products/MNW/{store_id}/search?q={query}",
-            headers=self._auth, json=[],
-        )
-        if r.status_code == 200:
-            return r.json()
-        return None
-
-    def get_stores(self):
-        self._ensure_token()
-        r = self.scraper.get(f"{BASE}/mobile/store/physical", headers=self._auth)
-        if r.status_code == 200:
-            return {s["id"]: s for s in r.json()["stores"] if s.get("banner") == "MNW"}
-        return {}
+df = fetch_stores(source="edge")
+df = clean_stores(df, cleaned=True)   # drop stores without coordinates (no-op for NW)
 ```
 
-### 9.2 How to Find Nearby Stores and Compare Prices (Mobile API)
+| Source | Stores | Method | Auth | Notes |
+|--------|--------|--------|------|-------|
+| **Edge API** (default) | 148 | `GET /v1/edge/store` | `fs-user-token` from `get-current-user` | 1 store missing (Foodie Mart) |
+| **Mobile API** (legacy fallback) | 149 | guest login + `GET /mobile/store/physical` | guest token + `NewWorldApp/4.32.0` UA | Most complete set |
+
+**No geocoding required** — all sources provide lat/lon directly.
+
+**Output schema** — `data/newworld_stores.csv` / `.json` (148 or 149 rows) with 10
+columns (`store_id, name, address, city, region, latitude, longitude, banner,
+click_and_collect, delivery`). The old store-builder flow joined website store-finder
+URL slugs onto store rows; the URL column is **no longer produced** — per-store
+identity and pricing come from the Edge/mobile `store_id` UUIDs via the authentication
+pipeline, not website URLs.
+
+CLI: `python -m scripts.newworld.newworld_setup [--source edge|mobile] [--cleaned true|false]`
+(defaults: `--source edge --cleaned true`).
+
+### 9.1 Primary: Edge API (`GET /v1/edge/store`)
+
+148 stores with precise coordinates, store IDs, and service flags (banner,
+click-and-collect, delivery). This is the default source and the recommended starting
+point.
+
+### 9.2 Mobile API (legacy)
+
+149 stores via guest login + `GET /mobile/store/physical`. Returns the same 10-column
+schema (filtered to `banner="MNW"`). Use only as a fallback.
+
+### 9.3 CSV (`data/newworld_stores.csv`)
+
+Pre-built by `newworld_setup.py` (see build pipeline below), with the `store_id`
+UUIDs, name, address, lat, lon, and service flags for all stores:
+
+```csv
+store_id,name,address,city,region,latitude,longitude,banner,click_and_collect,delivery
+773ad0a0-...,New World Albany,"219 Don McKinnon Drive...",Auckland,NI,-36.728207,174.710519,MNW,True,True
+```
+
+### 9.4 Build Pipeline (`scripts/newworld/newworld_setup.py`)
+
+```
+newworld_setup.py
+  → source="edge" (default): POST /api/user/get-current-user → fs-user-token cookie
+                             → GET /v1/edge/store → 148 stores with UUID, name, address, lat/lon, banner, services
+  → (or source="mobile"): POST /mobile/user/login/guest (banner: "MNW")
+                          → GET /mobile/store/physical → 149 stores, filter banner=MNW
+  → clean_stores(df) drop NaN coords
+  → DataFrame → data/newworld_stores.csv / newworld_stores.json
+```
+
+No store-finder parsing, no name-joining — coordinates and store IDs come directly from
+the Edge/mobile API.
+
+---
+
+## 10. Production Architecture & Optimizers
+
+### 10.1 How to Search Products by Store (Mobile API)
 
 ```python
-import pandas as pd
-import requests
+from scripts.newworld.newworld_api import NewWorldMobileAPI
 
-# Load store data
-stores_csv = pd.read_csv(os.path.join(DATA_DIR, "newworld_stores.csv"))
+api = NewWorldMobileAPI()
+api._ensure_token()
 
-# Geocode user address via Nominatim
-def geocode(address):
-    r = requests.get(
-        "https://nominatim.openstreetmap.org/search",
-        headers={"User-Agent": "NZMealCostOptimizer/1.0"},
-        params={"q": address, "format": "json", "limit": 1},
-    )
-    if r.status_code == 200 and r.json():
-        loc = r.json()[0]
-        return float(loc["lat"]), float(loc["lon"])
-    return None, None
+results = api.search_products(store_id, "beef mince")
+products = results or []
+for p in products:
+    print(p["name"], p["price"] / 100)   # price in cents
+```
 
-# Haversine distance
-def haversine(lat1, lon1, lat2, lon2):
-    R = 6371
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = (math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1))
-         * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2)
-    return R * 2 * math.asin(math.sqrt(a))
+`NewWorldMobileAPI` handles auth (guest token, 30-min expiry), headers, and the
+`POST /mobile/ecomm-products/MNW/{storeId}/search?q=...` call.
 
-# Filter stores within radius
-def find_nearby(user_lat, user_lon, radius_km=5):
-    df = stores_csv.copy()
-    df["distance_km"] = df.apply(
-        lambda r: haversine(user_lat, user_lon, r["latitude"], r["longitude"]),
-        axis=1,
-    )
-    return df[df["distance_km"] <= radius_km].sort_values("distance_km")
+### 10.2 How to Find Nearby Stores and Compare Prices
 
-# Search a single ingredient
-def search_ingredient(api, store_id, ingredient):
-    results = api.search_products(store_id, ingredient)
-    if not results:
-        return None
-    products = results.get("products", [])
-    if not products:
-        return None
-    p = products[0]
-    price_cents = p.get("price")
-    if price_cents is None or price_cents <= 0:
-        return None
-    return {
-        "name": p["name"],
-        "brand": p.get("brand", ""),
-        "price": price_cents / 100,
-        "units": p.get("units", ""),
-    }
+```python
+from scripts.combined.optimizer_utils import geocode, find_nearby_stores, get_ingredients
+from scripts.newworld.newworld_setup import load_stores
+from scripts.newworld.newworld_api import NewWorldMobileAPI
 
-# Full pipeline
-api = NewWorldAPI()
-user_lat, user_lon = geocode("123 Queen Street, Auckland CBD, 1010")
-nearby = find_nearby(user_lat, user_lon, radius_km=5)
+stores = load_stores(source="edge")   # DataFrame with store_id, lat, lon, etc.
+user_lat, user_lon = geocode("Botany Town Centre, Auckland")
+nearby = find_nearby_stores(user_lat, user_lon, stores, radius_km=5)
 
+api = NewWorldMobileAPI()
 for _, store in nearby.iterrows():
-    store_id = store["store_id"]
-    store_name = store["name"]
     total = 0.0
-    print(f"--- {store_name} ---")
-    for ingredient in ["beef mince", "spaghetti pasta", "canned tomatoes"]:
-        result = search_ingredient(api, store_id, ingredient)
-        if result:
-            print(f"  {ingredient:25s} ${result['price']:.2f}  {result['name']}")
-            total += result["price"]
+    print(f"--- {store['name']} ---")
+    for ing in get_ingredients("spaghetti bolognese"):
+        products = api.search_products(store["store_id"], ing) or []
+        if products:
+            price = NewWorldMobileAPI.extract_price(products[0])
+            if price is not None:
+                print(f"  {ing:25s} ${price:.2f}")
+                total += price
         else:
-            print(f"  {ingredient:25s}  NOT FOUND")
+            print(f"  {ing:25s}  NOT FOUND")
     print(f"  {'TOTAL':25s} ${total:.2f}\n")
 ```
 
-### 9.3 Edge API Two-Pass Pipeline (New — Recommended)
+### 10.3 Edge API Two-Pass Pipeline (Production — default)
 
 ```python
-import requests
+from scripts.combined.optimizer_utils import foodstuffs_optimizer_edge
+from scripts.newworld.newworld_api import NewWorldEdgeAPI, find_nearby_stores
 
-WEB_BASE = "https://www.newworld.co.nz"
-EDGE_BASE = "https://api-prod.newworld.co.nz/v1/edge"
-
-def get_website_session():
-    session = requests.Session()
-    session.headers.update({
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Origin": WEB_BASE,
-        "Referer": WEB_BASE + "/",
-    })
-    session.get(WEB_BASE, timeout=30)
-    session.post(f"{WEB_BASE}/api/user/get-current-user", json={}, timeout=30)
-    return session.cookies.get("fs-user-token")
-
-def two_pass_search(token, query, store_id, max_relevance=20, sort_order="PRICE_ASC"):
-    """Complete two-pass pipeline: Relevance -> Per-Store Pricing"""
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "access_token": token,
-        "Content-Type": "application/json",
-        "Origin": WEB_BASE,
-        "Referer": f"{WEB_BASE}/shop",
-        "User-Agent": "Mozilla/5.0",
-    }
-    cookies = {
-        "eCom_STORE_ID": store_id,
-        "STORE_ID_V2": f"{store_id}|False",
-        "Region": "NI",
-    }
-    
-    # PASS 1: Relevance matching
-    url1 = f"{EDGE_BASE}/search/products/query/index/products-index"
-    payload1 = {
-        "algoliaQuery": {"query": query},
-        "page": 0,
-        "hitsPerPage": max_relevance,
-        "storeId": store_id
-    }
-    r1 = requests.post(url1, headers=headers, json=payload1, cookies=cookies, timeout=30)
-    hits = r1.json().get("hits", [])
-    
-    product_ids = []
-    for hit in hits:
-        hr = hit.get("_highlightResult", {})
-        if any(isinstance(v, dict) and v.get("matchedWords") for v in hr.values()):
-            product_ids.append(hit["productID"])
-    
-    # PASS 2: Per-store pricing
-    url2 = f"{EDGE_BASE}/search/paginated/products"
-    filter_str = " OR ".join([f"productID:{pid}" for pid in product_ids])
-    payload2 = {
-        "algoliaQuery": {"query": query, "filters": filter_str},
-        "page": 0,
-        "hitsPerPage": 50,
-        "storeId": store_id,
-        "sortOrder": sort_order
-    }
-    r2 = requests.post(url2, headers=headers, json=payload2, cookies=cookies, timeout=30)
-    return r2.json().get("products", [])
+foodstuffs_optimizer_edge(
+    api_class=NewWorldEdgeAPI,
+    find_nearby_stores_fn=find_nearby_stores,
+    company_id="NewWorld",
+    company_name="New World",
+    user_address="Botany Town Centre, Auckland",
+    dish_name="spaghetti bolognese",
+)
 ```
 
-### 9.4 Ingredient Search Strategy
+This is the full two-phase pipeline: geocode → find stores → Pass 1 (Algolia relevance
++ `category1` non-food filter) → Pass 2 (per-store pricing + `PRICE_ASC`) → build CSV
+rows → Phase 2 (per-ingredient cheapest → totals + breakdown). The shared helper
+`foodstuffs_optimizer_edge` in `scripts/combined/optimizer_utils.py` implements the
+complete loop; the CLI wrapper `newworld_optimizer_edge.py` just calls it with brand
+params.
+
+### 10.4 Unified API Module (`newworld_api.py`)
+
+| Backend | Auth | Pipeline | Use Case |
+|---------|------|----------|----------|
+| **Edge API** (default) | Website JWT (`fs-user-token`) | Two-pass (relevance + per-store pricing) | Production — explicit relevance, pet food filtering, `PRICE_ASC` sort |
+| **Mobile API** (fallback) | Guest token (30 min) | Single-pass (relevance only) | Fallback — simpler, no per-store price sort |
+
+```python
+from scripts.newworld.newworld_api import NewWorldAPI, NewWorldEdgeAPI, NewWorldMobileAPI
+api = NewWorldAPI(backend="edge")           # or "mobile"
+products, hits = api.search_ingredient(store_id, "beef mince")
+edge = NewWorldEdgeAPI(); edge.authenticate()
+pids = edge.pass1_relevance_search(store_id, "beef mince")
+products = edge.pass2_per_store_pricing(store_id, "beef mince", pids)
+```
+
+### 10.5 Optimizers
+
+Both optimizers are **two-phase**: Phase 1 queries the API and appends to
+`full_results.csv`; Phase 2 reads today's rows and prints a comparison. Both are thin
+wrappers that inject the brand API class and store-finder function (`find_nearby_stores`) into the shared helpers
+`foodstuffs_optimizer_edge` / `foodstuffs_optimizer_mobile` in
+`scripts/combined/optimizer_utils.py`.
+
+**Edge** (`scripts/newworld/newworld_optimizer_edge.py` — **production, default**):
+two-pass (relevance + per-store pricing, `PRICE_ASC`), `parse_foodstuffs_volume_size`
+→ saves `data/newworld_latest_results.csv`.
+
+**Mobile** (`scripts/newworld/newworld_optimizer_mobile.py` — fallback): single-pass
+(guest token), `_is_food_product()` filter on `categories[0]`,
+`parse_foodstuffs_mobile_unit` → saves `data/newworld_mobile_latest_results.csv`.
+
+Shared flags: `--requery true|false` (default true), `--distance N` (default 5 km).
+
+### 10.6 Ingredient Search Strategy
 
 The optimizer takes the **first (most relevant)** result per query. This avoids
 irrelevant bulk items that might appear at lower prices (e.g., pet food for
-"beef mince"). 21 dishes are hand-curated in `DISH_INGREDIENTS` — no NLP/LLM
-parsing.
+"beef mince"). 21 dishes are hand-curated in `DISH_INGREDIENTS` in
+`scripts/combined/optimizer_utils.py` — no NLP/LLM parsing.
 
-### 9.5 Architecture Diagram
+### 10.7 Architecture Diagrams
 
-**Mobile API Pipeline:**
+**Mobile API pipeline:**
 ```
-newworld_stores.csv  (149 stores with UUID, name, lat, lon)
+newworld_stores.csv  (148/149 stores with store_id, name, lat, lon, ...)
    |
    +---> haversine filter (user address → lat/lon → nearby stores within 5 km)
    |
    v
 FOR EACH nearby store:
-  1. NewWorldAPI().search_products(store_id, ingredient)
-  2. products[0]["price"] / 100  →  price in dollars
+  1. NewWorldMobileAPI.search_products(store_id, ingredient)
+  2. price = product["price"] / 100
   3. Sum across all ingredients
-  |
-  v
+   |
+   v
 Compare totals → cheapest store
 ```
 
-**Edge API Two-Pass Pipeline:**
+**Edge API two-pass pipeline (production):**
 ```
-newworld_stores.csv  (149 stores with UUID, name, lat, lon)
+newworld_stores.csv  (148 stores with store_id, name, lat, lon, ...)
    |
    +---> haversine filter (user address → lat/lon → nearby stores within 5 km)
    |
@@ -1173,17 +1167,22 @@ newworld_stores.csv  (149 stores with UUID, name, lat, lon)
 FOR EACH nearby store:
   PASS 1: POST /v1/edge/search/products/query/index/products-index
     → Get productIDs with _highlightResult.matchedWords
-  PASS 2: POST /v1/edge/search/paginated/products with filters
+    → Filter by category1 ∉ NON_FOOD_CATEGORIES
+  PASS 2: POST /v1/edge/search/paginated/products with filters + PRICE_ASC
     → Get per-store singlePrice + promotions for matched products
-    → Sort by PRICE_ASC
-  |
-  v
+   |
+   v
 Compare totals → cheapest store
 ```
 
+Shared helpers (`foodstuffs_optimizer_edge`, `foodstuffs_optimizer_mobile`,
+`build_edge_row`, `build_mobile_row`) live in `scripts/combined/optimizer_utils.py`.
+CLI entry points are thin wrappers: `scripts/newworld/newworld_optimizer_edge.py`
+and `scripts/newworld/newworld_optimizer_mobile.py`.
+
 ---
 
-## 10. Supported Dishes (21)
+## 11. Supported Dishes (21)
 
 | Dish | Ingredients |
 |------|------------|
@@ -1209,29 +1208,41 @@ Compare totals → cheapest store
 | tomato pasta | pasta, canned tomatoes, garlic, olive oil, mixed herbs, cheese |
 | chicken katsu | chicken breast, flour, eggs, bread, rice, katsu sauce |
 
-Dishes are defined in `DISH_INGREDIENTS` in `scripts/newworld/NewWorld_prototype.py`.
+Dishes are defined in `DISH_INGREDIENTS` in `scripts/combined/optimizer_utils.py` (via
+`get_ingredients()`; identical ingredient lists for both Pak'nSave and New World).
 Unknown dish names fall through — the dish name itself becomes the single search query.
 
 ---
 
-## 11. CLI Usage
+## 12. CLI Usage
 
+**Edge API Optimizer (Production — two-pass, default):**
 ```powershell
-python scripts/newworld/NewWorld_prototype.py "123 Queen Street, Auckland CBD, 1010" "spaghetti bolognese"
+python scripts/newworld/newworld_optimizer_edge.py "Botany Town Centre, Auckland" "spaghetti bolognese"
+```
+
+**Mobile API Optimizer (Fallback — single-pass):**
+```powershell
+python scripts/newworld/newworld_optimizer_mobile.py "Botany Town Centre, Auckland" "spaghetti bolognese"
 ```
 
 | Argument | Default | Description |
 |----------|---------|-------------|
-| `address` | `"123 Queen Street, Auckland CBD, 1010"` | NZ address to geocode |
+| `address` | `"Botany Town Centre, Auckland"` | NZ address to geocode |
 | `dish` | `"spaghetti bolognese"` | Dish name from the supported list |
+| `--requery` | `true` | `false` to skip API and optimise from existing CSV |
+| `--distance` | `5` | Store search radius in km |
 
-Output: per-store itemised prices, total cost comparison, and the cheapest store.
-
+The Edge optimizer is the **production default** (two-pass relevance + per-store
+pricing, pet-food filtering, `PRICE_ASC` sort). Use the mobile optimizer only as a
+fallback when the Edge API is unavailable. Raw rows are appended to `data/full_results.csv`;
+per-run results saved to `data/newworld_latest_results.csv` (Edge) or
+`data/newworld_mobile_latest_results.csv` (Mobile).
 
 ---
 
-## 12. Appendix: Full Edge API Endpoint Reference
-### 12.1 Base Configuration
+## 13. Appendix: Full Edge API Endpoint Reference
+### 13.1 Base Configuration
 ```
 Base URL: https://api-prod.newworld.co.nz/v1/edge
 Auth:     JWT (mobile token OR website fs-user-token cookie)
@@ -1241,7 +1252,7 @@ Headers:  Authorization: Bearer {jwt}, access_token: {jwt}
 Cookies:  eCom_STORE_ID, STORE_ID_V2, Region (for per-store pricing)
 ```
 
-### 12.2 Endpoints
+### 13.2 Endpoints
 
 | Method | Endpoint | Auth | Cookies | Purpose |
 |--------|----------|------|---------|---------|
@@ -1252,7 +1263,7 @@ Cookies:  eCom_STORE_ID, STORE_ID_V2, Region (for per-store pricing)
 | POST | `/search/products/query/index/products-index-popularity-desc` | JWT | Required | Popularity browse (DESC) |
 | POST | `/search/paginated/products` | JWT | Required | **Per-store pricing + sort** |
 
-### 12.3 Algolia Index Payload (all index endpoints)
+### 13.3 Algolia Index Payload (all index endpoints)
 ```json
 {
   "algoliaQuery": {"query": "search term"},
@@ -1262,7 +1273,7 @@ Cookies:  eCom_STORE_ID, STORE_ID_V2, Region (for per-store pricing)
 }
 ```
 
-### 12.4 Paginated Search Payload
+### 13.4 Paginated Search Payload
 ```json
 {
   "algoliaQuery": {
@@ -1276,24 +1287,28 @@ Cookies:  eCom_STORE_ID, STORE_ID_V2, Region (for per-store pricing)
 }
 ```
 
-### 12.5 Valid sortOrder Values
+### 13.5 Valid `sortOrder` Values
 | Value | Description |
 |-------|-------------|
 | `PRICE_ASC` | Cheapest first at this store |
 | `PRICE_DESC` | Most expensive first |
 
-### 12.6 Response Price Extraction
+Invalid values (`RELEVANCE`, `RELEVANCY`, `DEFAULT`, `BEST_MATCH`) return HTTP 400.
+
+### 13.6 Response Price Extraction
 ```python
-# Regular price (dollars)
+# Regular price (cents → dollars)
 price = product["singlePrice"]["price"] / 100
 
-# Promotional price (dollars) - if available
+# Promotional price (dollars) — if available
 promo = product["promotions"][0]["rewardValue"] / 100 if product["promotions"] else None
 
-# Use promo price if exists, else regular
+# Use promo price if present, else regular
 final_price = promo if promo is not None else price
 
 # Unit price (cents per unit)
-unit_price = product["singlePrice"]["comparativePrice"]["pricePerUnit"]
+unit_price_cents = product["singlePrice"]["comparativePrice"]["pricePerUnit"]
 unit_uom = product["singlePrice"]["comparativePrice"]["unitQuantityUom"]
 ```
+
+Note: `promotions` is **`null`** (not always `[]`) when a product has no promo.

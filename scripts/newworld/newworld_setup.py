@@ -1,26 +1,20 @@
 """
 New World Unified Store Setup Pipeline
-
-Fetches all New World stores from either:
-1. Edge API (via website JWT) — store IDs, coordinates (148 stores)
-2. Mobile API (legacy) — store IDs, coordinates, click-and-collect, delivery (149 stores)
+======================================
+Fetches all New World stores and writes a 10-column CSV/JSON to
+data/newworld_stores.csv / .json with columns:
+    store_id, name, address, city, region, latitude, longitude,
+    banner, click_and_collect, delivery
 
 Usage:
-    from scripts.newworld.newworld_setup import fetch_stores, clean_stores, run_full_setup
+    python -m scripts.newworld.newworld_setup --source edge --cleaned true
 
-    # Full pipeline (default: edge)
-    run_full_setup()
-
-    # Edge API source
-    run_full_setup(source="edge")
-
-    # Mobile API source (legacy)
-    run_full_setup(source="mobile")
-
-    # Individual steps
-    fetch_stores(source="edge")
-    clean_stores(cleaned=True)
+Flags:
+    --source    "edge" (default 148 stores via Edge API) ,
+                or "mobile" (legacy, 149 stores)
+    --cleaned  "true" (default) drop stores without coordinates, or "false" to keep all
 """
+import argparse
 import cloudscraper
 import json
 import os
@@ -188,7 +182,7 @@ def fetch_stores(source: str = "edge", verbose: bool = True) -> pd.DataFrame:
     )
 
 
-def clean_stores(df: pd.DataFrame = None, cleaned: bool = True, verbose: bool = True) -> pd.DataFrame:
+def clean_stores(df: pd.DataFrame | None = None, cleaned: bool = True, verbose: bool = True) -> pd.DataFrame:
     """
     Optionally drop stores without latitude/longitude.
 
@@ -237,6 +231,7 @@ def run_full_setup(source: str = "edge", cleaned: bool = True, verbose: bool = T
     df = fetch_stores(source=source, verbose=verbose)
     df = clean_stores(df, cleaned=cleaned, verbose=verbose)
 
+    df = _enforce_schema(df)
     df.to_csv(OUTPUT_CSV, index=False)
     df.to_json(OUTPUT_JSON, orient="records", indent=2)
 
@@ -247,6 +242,47 @@ def run_full_setup(source: str = "edge", cleaned: bool = True, verbose: bool = T
     return df
 
 
+EXPECTED_COLUMNS = ["store_id", "name", "address", "city", "region", "latitude", "longitude", "banner", "click_and_collect", "delivery"]
+
+
+def _enforce_schema(df: pd.DataFrame) -> pd.DataFrame:
+    """Ensure the DataFrame has exactly the 10 expected columns, filling missing ones with defaults."""
+    for col in EXPECTED_COLUMNS:
+        if col not in df.columns:
+            if col == "banner":
+                df[col] = "MNW"
+            elif col in ("click_and_collect", "delivery"):
+                df[col] = False
+            else:
+                df[col] = ""
+    return df[EXPECTED_COLUMNS]
+
+
+def _parse_cleaned(value: str) -> bool:
+    """Parse the --cleaned argument into a boolean."""
+    if value.lower() in ("true", "1", "yes"):
+        return True
+    if value.lower() in ("false", "0", "no"):
+        return False
+    raise argparse.ArgumentTypeError(f"Invalid boolean value: '{value}'. Use 'true' or 'false'.")
+
+
 if __name__ == "__main__":
-    source = sys.argv[1] if len(sys.argv) > 1 else "edge"
-    run_full_setup(source=source)
+    parser = argparse.ArgumentParser(
+        description="New World Store Setup Pipeline"
+    )
+    parser.add_argument(
+        "--source",
+        choices=["edge", "mobile"],
+        default="edge",
+        help="Data source: 'edge' (default, 148 stores via Edge API) or 'mobile' (legacy, 149 stores)",
+    )
+    parser.add_argument(
+        "--cleaned",
+        type=_parse_cleaned,
+        default=True,
+        help="Drop stores without coordinates: 'true' (default) or 'false'",
+    )
+    args = parser.parse_args()
+
+    run_full_setup(source=args.source, cleaned=args.cleaned)

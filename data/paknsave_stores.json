@@ -1,12 +1,15 @@
 [
   {
-    "store_id":"6c73764e-b8e6-4e55-ad37-f6a9d207da1f",
-    "name":"PAK'nSAVE Alderman Dr Henderson",
-    "address":"8-18 Alderman Drive, Henderson, Auckland, 0612",
-    "city":"Auckland",
+    "store_id":"3bb30799-82ce-4648-8c02-5113228963ed",
+    "name":"PAK'nSAVE Te Awamutu",
+    "address":"670 Cambridge Road, Te Awamutu, 3800",
+    "city":"Te Awamutu",
     "region":"NI",
-    "latitude":-36.87743,
-    "longitude":174.63292
+    "latitude":-38.008101,
+    "longitude":175.340102,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"50b1216b-d066-4457-b88b-9bccf97bf6d3",
@@ -15,7 +18,10 @@
     "city":"Whakatane",
     "region":"NI",
     "latitude":-37.961198,
-    "longitude":176.98257
+    "longitude":176.98257,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"b92cc33f-b5a8-4b57-9b82-412946800020",
@@ -24,25 +30,34 @@
     "city":"Taupo",
     "region":"NI",
     "latitude":-38.685532,
-    "longitude":176.073247
+    "longitude":176.073247,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
-    "store_id":"3bb30799-82ce-4648-8c02-5113228963ed",
-    "name":"PAK'nSAVE Te Awamutu",
-    "address":"670 Cambridge Road, Te Awamutu, 3800",
-    "city":"Te Awamutu",
+    "store_id":"6c73764e-b8e6-4e55-ad37-f6a9d207da1f",
+    "name":"PAK'nSAVE Alderman Dr Henderson",
+    "address":"8-18 Alderman Drive, Henderson, Auckland, 0612",
+    "city":"Auckland",
     "region":"NI",
-    "latitude":-38.008101,
-    "longitude":175.340102
+    "latitude":-36.87743,
+    "longitude":174.63292,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
-    "store_id":"3c5e3145-0767-4066-9349-6c0a1313acc5",
-    "name":"PAK'nSAVE Kaitaia",
-    "address":"111 North Road, Kaitaia, 0410",
-    "city":"Kaitaia",
+    "store_id":"21ecaaed-0749-4492-985e-4bb7ba43d59c",
+    "name":"Pak'n Save Kilbirnie",
+    "address":"76 Rongotai Road, Kilbirnie, Wellington, 6003",
+    "city":"Wellington",
     "region":"NI",
-    "latitude":-35.09945,
-    "longitude":173.258322
+    "latitude":-41.319324,
+    "longitude":174.79672,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"e1925ea7-01bc-4358-ae7c-c6502da5ab12",
@@ -51,7 +66,22 @@
     "city":"Auckland",
     "region":"NI",
     "latitude":-36.91014,
-    "longitude":174.77342
+    "longitude":174.77342,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
+  },
+  {
+    "store_id":"3c5e3145-0767-4066-9349-6c0a1313acc5",
+    "name":"PAK'nSAVE Kaitaia",
+    "address":"111 North Road, Kaitaia, 0410",
+    "city":"Kaitaia",
+    "region":"NI",
+    "latitude":-35.09945,
+    "longitude":173.258322,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"714431ab-6e39-4df6-ac77-cfc5c1e25bc8",
@@ -60,7 +90,10 @@
     "city":"Tauranga",
     "region":"NI",
     "latitude":-37.696716,
-    "longitude":176.161533
+    "longitude":176.161533,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"3bfe040b-f0c9-45e0-949b-b9ad5a591d55",
@@ -69,7 +102,10 @@
     "city":"Papamoa",
     "region":"NI",
     "latitude":-37.70191,
-    "longitude":176.283687
+    "longitude":176.283687,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"9cd8eb60-3222-4efc-bd7c-50e03e6a81a4",
@@ -78,25 +114,10 @@
     "city":"Auckland",
     "region":"NI",
     "latitude":-36.987929,
-    "longitude":174.880604
-  },
-  {
-    "store_id":"b39562a4-2b72-43fe-b9ba-eda1d651ad0b",
-    "name":"PAK'nSAVE Hastings",
-    "address":"602 Heretaunga Street West, West End Shopping Centre, Hastings, 4120",
-    "city":"Hastings",
-    "region":"NI",
-    "latitude":-39.636804,
-    "longitude":176.836635
-  },
-  {
-    "store_id":"21ecaaed-0749-4492-985e-4bb7ba43d59c",
-    "name":"PAK'nSAVE Kilbirnie",
-    "address":"76 Rongotai Road, Kilbirnie, Wellington, 6003",
-    "city":"Wellington",
-    "region":"NI",
-    "latitude":-41.319324,
-    "longitude":174.79672
+    "longitude":174.880604,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"529d66cc-60e3-432e-b8d1-efc9f2ec4919",
@@ -105,7 +126,10 @@
     "city":"Whangarei",
     "region":"NI",
     "latitude":-35.725958,
-    "longitude":174.32475
+    "longitude":174.32475,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"5f167936-79ae-4f6a-b9d2-74afe1bb096b",
@@ -114,7 +138,10 @@
     "city":"Auckland",
     "region":"NI",
     "latitude":-36.965078,
-    "longitude":174.914819
+    "longitude":174.914819,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"60561e46-ece7-43a7-b142-9b14812586e4",
@@ -123,7 +150,10 @@
     "city":"Auckland",
     "region":"NI",
     "latitude":-36.930652,
-    "longitude":174.913004
+    "longitude":174.913004,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"6e6809dd-01bc-45c9-aab1-f01ccd8338b0",
@@ -132,7 +162,22 @@
     "city":"Thames",
     "region":"NI",
     "latitude":-37.138597,
-    "longitude":175.538994
+    "longitude":175.538994,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
+  },
+  {
+    "store_id":"b39562a4-2b72-43fe-b9ba-eda1d651ad0b",
+    "name":"PAK'nSAVE Hastings",
+    "address":"602 Heretaunga Street West, West End Shopping Centre, Hastings, 4120",
+    "city":"Hastings",
+    "region":"NI",
+    "latitude":-39.636804,
+    "longitude":176.836635,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"64eab5b1-8d79-45f4-94f1-02b8cf8b6202",
@@ -141,16 +186,10 @@
     "city":"Auckland",
     "region":"NI",
     "latitude":-36.620413,
-    "longitude":174.672975
-  },
-  {
-    "store_id":"7d48a781-4f68-4c91-a908-8659e1b22f95",
-    "name":"PAK'nSAVE Rotorua",
-    "address":"Cnr Fenton and Amohau Streets, Rotorua, 3010",
-    "city":"Rotorua",
-    "region":"NI",
-    "latitude":-38.140495,
-    "longitude":176.25459
+    "longitude":174.672975,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"c2204dae-579e-4b6b-9d42-2e13ceaa6031",
@@ -159,7 +198,10 @@
     "city":"Pukekohe",
     "region":"NI",
     "latitude":-37.205157,
-    "longitude":174.899612
+    "longitude":174.899612,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"b2e98a14-c8ca-401e-99ed-edf74570c6f6",
@@ -168,7 +210,10 @@
     "city":"Auckland",
     "region":"NI",
     "latitude":-36.89305,
-    "longitude":174.70624
+    "longitude":174.70624,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"3e82142c-78dc-46f3-82ec-28e65fcf84c9",
@@ -177,7 +222,10 @@
     "city":"Auckland",
     "region":"NI",
     "latitude":-37.03242,
-    "longitude":174.867278
+    "longitude":174.867278,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"a7d09522-bee2-41e4-8fe0-0b82b7f342f5",
@@ -186,7 +234,10 @@
     "city":"Auckland",
     "region":"NI",
     "latitude":-37.053393,
-    "longitude":174.93096
+    "longitude":174.93096,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"3404c253-577f-45ca-b301-c98312e46efb",
@@ -195,7 +246,10 @@
     "city":"Auckland",
     "region":"NI",
     "latitude":-36.875918,
-    "longitude":174.855148
+    "longitude":174.855148,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"076e8177-943b-41fc-a885-ba3d28297acf",
@@ -204,7 +258,10 @@
     "city":"Hamilton",
     "region":"NI",
     "latitude":-37.7799,
-    "longitude":175.27281
+    "longitude":175.27281,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"65defcf2-bc15-490e-a84f-1f13b769cd22",
@@ -213,7 +270,10 @@
     "city":"Auckland",
     "region":"NI",
     "latitude":-36.729975,
-    "longitude":174.706725
+    "longitude":174.706725,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"d6d39eea-889d-4e20-923c-55cab225cf7f",
@@ -222,7 +282,10 @@
     "city":"Hamilton",
     "region":"NI",
     "latitude":-37.795653,
-    "longitude":175.282839
+    "longitude":175.282839,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"33d8d6fc-861a-45ff-9937-5ccdb55eaede",
@@ -231,7 +294,10 @@
     "city":"Auckland",
     "region":"NI",
     "latitude":-36.820257,
-    "longitude":174.608696
+    "longitude":174.608696,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"92086ded-a55d-4241-a364-7d7ea91531b4",
@@ -240,7 +306,10 @@
     "city":"Auckland",
     "region":"NI",
     "latitude":-36.857794,
-    "longitude":174.627968
+    "longitude":174.627968,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"c0f80e87-16be-4488-9553-da437e8c6c2a",
@@ -249,7 +318,10 @@
     "city":"Auckland",
     "region":"NI",
     "latitude":-36.913347,
-    "longitude":174.84009
+    "longitude":174.84009,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"49037947-e450-49bf-ba1f-a94551c79a72",
@@ -258,7 +330,10 @@
     "city":"Napier South NAPIER",
     "region":"NI",
     "latitude":-39.494788,
-    "longitude":176.913562
+    "longitude":176.913562,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"af385423-d0f1-41f0-9482-ffd10b745143",
@@ -267,7 +342,10 @@
     "city":"Porirua",
     "region":"NI",
     "latitude":-41.131559,
-    "longitude":174.841818
+    "longitude":174.841818,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"94ef1985-cab1-4b39-a2f3-230120f03c16",
@@ -276,7 +354,10 @@
     "city":"Auckland",
     "region":"NI",
     "latitude":-36.968516,
-    "longitude":174.796863
+    "longitude":174.796863,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"15e6f441-5c1c-4d25-b4ec-1adf918c49c7",
@@ -285,7 +366,10 @@
     "city":"Hawera",
     "region":"NI",
     "latitude":-39.590947,
-    "longitude":174.283801
+    "longitude":174.283801,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"c180a72d-5dbe-4403-b7c7-91655e505492",
@@ -294,7 +378,10 @@
     "city":"Paraparaumu",
     "region":"NI",
     "latitude":-40.9180863,
-    "longitude":175.0017611
+    "longitude":175.0017611,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"b83029b6-5dd5-449e-8056-26f3943a4e18",
@@ -303,7 +390,10 @@
     "city":"Lower Hutt",
     "region":"NI",
     "latitude":-41.205578,
-    "longitude":174.913149
+    "longitude":174.913149,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"48dd98cc-a757-4102-b15d-ea82b4b10571",
@@ -312,7 +402,10 @@
     "city":"Palmerston North",
     "region":"NI",
     "latitude":-40.359198,
-    "longitude":175.611537
+    "longitude":175.611537,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"98ec3885-ac93-4fcb-807b-59c9055c52c4",
@@ -321,7 +414,10 @@
     "city":"Wellington",
     "region":"NI",
     "latitude":-41.224456,
-    "longitude":174.872537
+    "longitude":174.872537,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"6cda96e1-7d29-44a6-956b-3fcfdecc8184",
@@ -330,7 +426,10 @@
     "city":"Napier",
     "region":"NI",
     "latitude":-39.509905,
-    "longitude":176.869414
+    "longitude":176.869414,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"4fcc1c8e-cc5e-4675-ba25-5e56b579cf69",
@@ -339,7 +438,10 @@
     "city":"Upper Hutt",
     "region":"NI",
     "latitude":-41.123787,
-    "longitude":175.066601
+    "longitude":175.066601,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"01a114de-149c-4f5f-80a1-90cc63f69c6e",
@@ -348,7 +450,22 @@
     "city":"Whanganui",
     "region":"NI",
     "latitude":-39.92638,
-    "longitude":175.038901
+    "longitude":175.038901,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
+  },
+  {
+    "store_id":"7d48a781-4f68-4c91-a908-8659e1b22f95",
+    "name":"PAK'nSAVE Rotorua",
+    "address":"Cnr Fenton and Amohau Streets, Rotorua, 3010",
+    "city":"Rotorua",
+    "region":"NI",
+    "latitude":-38.140495,
+    "longitude":176.25459,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"90082979-fb9f-4305-9c72-83274fc438cc",
@@ -357,7 +474,10 @@
     "city":"Dunedin",
     "region":"SI",
     "latitude":-45.8927,
-    "longitude":170.4992
+    "longitude":170.4992,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"1c388d5e-29ac-4956-b476-cb3431353d2e",
@@ -366,7 +486,10 @@
     "city":"Tauranga",
     "region":"NI",
     "latitude":-37.738653,
-    "longitude":176.103745
+    "longitude":176.103745,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"d1cd1fdd-8767-46a6-a8d3-c3e0632c2dc8",
@@ -375,7 +498,10 @@
     "city":"Masterton",
     "region":"NI",
     "latitude":-40.957214,
-    "longitude":175.649687
+    "longitude":175.649687,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"53989945-1a28-481d-a61c-d6f75f760ada",
@@ -384,7 +510,10 @@
     "city":"New Plymouth",
     "region":"NI",
     "latitude":-39.05712,
-    "longitude":174.08127
+    "longitude":174.08127,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"8cd700ae-d96f-4761-bd7a-805d6b93536d",
@@ -393,7 +522,10 @@
     "city":"Christchurch",
     "region":"SI",
     "latitude":-43.48557,
-    "longitude":172.61472
+    "longitude":172.61472,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"5cf0392f-c187-4fc4-a463-eb269d2e8f45",
@@ -402,7 +534,10 @@
     "city":"Nelson",
     "region":"SI",
     "latitude":-41.3386,
-    "longitude":173.1866
+    "longitude":173.1866,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":true
   },
   {
     "store_id":"61dd754e-8525-4b9e-9e08-173389eea8a8",
@@ -411,7 +546,10 @@
     "city":"Christchurch",
     "region":"SI",
     "latitude":-43.5392,
-    "longitude":172.6383
+    "longitude":172.6383,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"715f0e22-95e0-45ce-af3a-07057209976e",
@@ -420,7 +558,10 @@
     "city":"Rangiora",
     "region":"SI",
     "latitude":-43.3248,
-    "longitude":172.5999
+    "longitude":172.5999,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"dbca5e00-f7f9-43ae-91de-031ad16f8a92",
@@ -429,7 +570,10 @@
     "city":"Christchurch",
     "region":"SI",
     "latitude":-43.5125,
-    "longitude":172.6933
+    "longitude":172.6933,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"d8032da3-c1b9-456e-b626-41ce21f8c67b",
@@ -438,7 +582,10 @@
     "city":"Invercargill",
     "region":"SI",
     "latitude":-46.4143,
-    "longitude":168.353
+    "longitude":168.353,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"b29a98bd-749c-489c-9eef-6aa38e66a29b",
@@ -447,7 +594,10 @@
     "city":"Timaru",
     "region":"SI",
     "latitude":-44.383,
-    "longitude":171.2366
+    "longitude":171.2366,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"2ed73be8-936d-4f35-9398-75a707f40a7b",
@@ -456,7 +606,10 @@
     "city":"Queenstown",
     "region":"SI",
     "latitude":-45.0108,
-    "longitude":168.7492
+    "longitude":168.7492,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"c3f9e1a3-fc34-452d-af2e-95349e666ba4",
@@ -465,7 +618,10 @@
     "city":"Blenheim",
     "region":"SI",
     "latitude":-41.5087,
-    "longitude":173.9234
+    "longitude":173.9234,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"be4c4780-218e-425a-a90f-63e21773572b",
@@ -474,7 +630,10 @@
     "city":"Christchurch",
     "region":"SI",
     "latitude":-43.543,
-    "longitude":172.5232
+    "longitude":172.5232,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"4a279605-eaa8-470d-bcd4-0a9e3c9ab43b",
@@ -483,7 +642,10 @@
     "city":"Christchurch",
     "region":"SI",
     "latitude":-43.5312,
-    "longitude":172.5963
+    "longitude":172.5963,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"8f0d70be-5cb7-464b-99cb-8b0130671895",
@@ -492,7 +654,10 @@
     "city":"Warkworth",
     "region":"NI",
     "latitude":-36.392108,
-    "longitude":174.649519
+    "longitude":174.649519,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"2a1b331a-fc4a-496a-b072-e97cc8f70cae",
@@ -501,7 +666,10 @@
     "city":"Highland Park",
     "region":"NI",
     "latitude":-36.8988953,
-    "longitude":174.9047405
+    "longitude":174.9047405,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   },
   {
     "store_id":"bdc5ef4a-c6a7-4f8a-b8cb-28109e6d61c3",
@@ -510,6 +678,9 @@
     "city":"Rolleston",
     "region":"SI",
     "latitude":-43.59731231,
-    "longitude":172.39645748
+    "longitude":172.39645748,
+    "banner":"PNS",
+    "click_and_collect":true,
+    "delivery":false
   }
 ]

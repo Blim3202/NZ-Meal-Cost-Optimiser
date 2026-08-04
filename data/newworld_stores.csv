@@ -1,149 +1,150 @@
-store_id,name,address,city,region,latitude,longitude
-f95243ac-bfc9-483a-b10a-b681f4fc4ba2,New World Te Puke,"12 Jocelyn Street, Te Puke, 3119",Te Puke,NI,-37.783124,176.328028
-07828d6b-4c90-430e-8ea9-37c671d375e9,New World Rototuna,"Cnr Thomas & Horsham Downs Rds, Hamilton, 3210",Hamilton,NI,-37.728271,175.273985
-3e66e1a7-bf5c-4f39-9638-c3f57e5c3889,New World Gate Pa,"948 Cameron Road, Gate Pa, Tauranga, 3112",Tauranga,NI,-37.713787,176.142697
-de5595ab-1d28-46c6-9e9a-b1c3db1af827,New World Mount Maunganui,"Cnr Tweed St & Maunganui Rd, Mount Maunganui, 3116",Mount Maunganui,NI,-37.653862,176.198938
-64c24e04-516d-40b3-958c-96b15797684a,New World Glenview,"Unit 1/220 Ohaupo Road, Glenview, Hamilton, 3206",Hamilton,NI,-37.822527,175.287416
-edc986dd-a28c-4fbe-899d-5680d51f584d,New World Brookfield,"89 Bellevue Road, Otumoetai, Tauranga, 3110",Tauranga,NI,-37.688946,176.1347
-bc0ebd13-e131-4efd-a226-415c40ce8c4e,New World Ormiston,"240 Ormiston Road, Ormiston, Auckland, 2019",Auckland,NI,-36.9647262,174.912703
-36fb31df-6b41-4a10-ac9a-db831f4f5f47,New World Te Rapa,"751 Te Rapa Road, Te Rapa, Hamilton, 3200",Hamilton,NI,-37.753024,175.239998
-b6d36090-c7f4-4ff3-9343-5b48159f8f6d,New World Green Bay,"64 Godley Road, Green Bay, Auckland, 0604",Auckland,NI,-36.93074,174.679184
-ef977d89-f3d8-4e8b-8a48-b895ded38646,New World Papakura,"29-31 East Street, Auckland, 2110",Auckland,NI,-37.064268,174.941101
-1fa53d02-1ed5-4dd5-b0ac-fd280425c19a,New World Masterton,"11 Bruce Street, Masterton, 5810",Masterton,NI,-40.948688,175.665517
-0870db3b-2e91-43b7-89aa-ce3c031b3856,New World Greenmeadows,"9 Gloucester Street, Greenmeadows, Napier, 4112",Napier,NI,-39.525324,176.862409
-ff680fec-3a34-4666-99ed-ab1a9d1c6ba0,New World Newtown,"195 Riddiford Street, Wellington, 6021",Wellington,NI,-41.314466,174.780574
-79b03f4b-5e2b-437c-83f8-54d9dace4999,New World Turangi,"19 Ohuanga Street, Turangi, 3334",Turangi,NI,-38.991014,175.809118
-24be83cd-b9f2-47f0-8895-82867e3d4f08,New World Whanganui,"374 Victoria Avenue, Whanganui, 4500",Whanganui,NI,-39.926194,175.041161
-f5da324f-f415-4c8d-a360-ea8d2c74d49b,New World Whitby,"Discovery Drive, Whitby Village Centre, Porirua, 5024",Porirua,NI,-41.117024,174.893023
-7508cf88-9fd0-4e71-b2f2-d564b1decf8d,New World Whangaparaoa,"580 Whangaparaoa Road, Stanmore Bay, Whangaparaoa, 0932",Whangaparaoa,NI,-36.628789,174.732596
-4664daab-1897-4e69-9117-067b4afd41bb,New World Onerahi,"128 Onerahi Road, Whangarei, 0110",Whangarei,NI,-35.755737,174.367937
-d48eba45-0c1c-4f5d-b836-0ed54b45c99c,New World Kerikeri,"99 Kerikeri Road, Kerikeri, 0230",Kerikeri,NI,-35.2267,173.951368
-6b9af900-3f25-4fdb-8418-b43a596aee48,New World Kaikohe,"14 Marino Place, Kaikohe, 0405",Kaikohe,NI,-35.408951,173.801012
-dbdfdd2a-55f7-4870-9b51-979286323647,New World Browns Bay,"2 Inverness Road, Browns Bay, Auckland, 0630",Auckland,NI,-36.715961,174.747287
-403b1c6f-121c-4945-8aa8-fa53a7e59133,New World Hobsonville,"120 Hobsonville Road, Hobsonville, Auckland, 0618",Auckland,NI,-36.79915,174.64505
-b012c209-9dfe-48c2-940c-acf73afebed4,New World Warkworth,"6 Percy Street, Warkworth, 0910",Warkworth,NI,-36.398709,174.666795
-60928d93-06fa-4d8f-92a6-8c359e7e846d,New World Metro Queen St,"125 Queen Street, Auckland Central, Auckland, 1010",Auckland,NI,-36.846405,174.765935
-c570bb70-c783-4692-aee1-6a1b235f9476,New World Papatoetoe,"65 St Georges Street, Papatoetoe, Auckland, 2025",Auckland,NI,-36.9802,174.853287
-4ff026b8-a60d-4383-8f0c-6c85f5623afa,New World Milford,"141 Kitchener Road, Milford, Auckland, 0620",Auckland,NI,-36.772298,174.764805
-adcd3dee-0ead-4b84-944a-809b95e0e36b,New World Southmall,"187 Great South Road, Manurewa, Auckland, 2102",Auckland,NI,-37.02246,174.89719
-0f82d3fe-acd0-4e98-b3e7-fbabbf8b8ef5,New World Orewa,"11 Moana Avenue, Orewa, 0931",Orewa,NI,-36.586612,174.69366
-91b26327-b240-4778-a3d8-190dfc8c16f3,New World Nelson City,"Cnr Vanguard and Gloucester Street, Nelson South, Nelson, 7010",Nelson,SI,-41.2757,173.2781
-c032987b-0387-4fc0-bb44-ce7510e35335,New World Pukekohe,"17 Paerata Road, Pukekohe, Auckland, 2120",Auckland,NI,-37.18988,174.90306
-d83b5f5e-db6e-4696-823e-5940493ef41c,New World Temuka,"185 King Street, Temuka, Temuka, 7920",Temuka,SI,-44.2413,171.2763
-51ee2a79-4693-410c-9287-66940847736d,New World Newmarket,"42 Nuffield Street, Newmarket, Auckland, 1023",Auckland,NI,-36.8709201,174.778261
-3ca6692b-e2a3-4d51-95b6-d061b9541e6c,New World Mt Roskill,"53 May Road, Mt Roskill, Auckland, 1041",Auckland,NI,-36.908622,174.734362
-513fc849-3dbe-4333-a148-4edee5baef67,New World Devonport,"35 Bartley Terrace, Devonport, Auckland, 0624",Auckland,NI,-36.82951,174.796193
-91e4dddd-aed7-4ccc-ad0b-dfe25805a495,New World Remuera,"10 Clonbern Road, Remuera, Auckland, 1050",Auckland,NI,-36.88171,174.79751
-b42476bd-bded-4c80-827e-e1d587096f54,New World Ngaruawahia,"7 Galileo Street, Ngaruawahia, 3720",Ngaruawahia,NI,-37.667256,175.150107
-f54433e6-5c6c-41b9-a5e2-d7502f454da8,New World Kapiti,"159 Kapiti Road, Paraparaumu, 5032",Paraparaumu,NI,-40.905625,174.994131
-2fe74bf7-5123-4faa-8fcb-97db954a714d,New World Waihi,"35 Kenny Street, Waihi, 3610",Waihi,NI,-37.393116,175.839644
-63190876-2bd4-4562-ae34-bb5caebab4f9,New World Birkenhead,"180 Mokoia Road, Chatswood, Auckland, 0626",Auckland,NI,-36.811428,174.711486
-01076456-6c8a-42c3-a647-2e70a94c4e6c,New World Morrinsville,"89 Thames Street, Morrinsville, 3300",Morrinsville,NI,-37.659507,175.522299
-04de234b-9f3e-4388-9662-7a4c8d7180c8,New World Merrilands,"200 Mangorei Road, Merrilands, New Plymouth, 4312",New Plymouth,NI,-39.06659,174.102988
-517424bd-8840-49e7-8206-58f4da24b1d7,New World Taumarunui,"10 Hakiaha Street, Taumarunui, 3920",Taumarunui,NI,-38.8829294,175.2579086
-a799b706-07b8-4825-9524-95b03c9e0b14,New World Westend,"247 Old Taupo Road, Hillcrest, Rotorua, 3015",Rotorua,NI,-38.146066,176.237248
-4db31fed-1e21-4884-82a5-cfaa178af8ac,New World Cambridge,"14 Anzac Street, Cambridge, 3434",Cambridge,NI,-37.893425,175.472202
-e42fdd7c-6a4e-48d5-964c-5654fd36992b,New World Opotiki,"19 Bridge Street, Opotiki, 3122",Opotiki,NI,-38.011812,177.275962
-8d2ceac4-9520-4b8e-82bb-7867873580da,New World Broadway,"Broadway Avenue, Palmerston North, 4414",Palmerston North,NI,-40.348551,175.623806
-c8998066-d39b-401c-aa6b-d6d18f8d122f,New World New Lynn,"2-6 Crown Lynn Place, New Lynn, Auckland, 0600",Auckland,NI,-36.910865,174.685569
-c3a42e9d-ac58-4abf-be43-17920c720540,New World Stonefields,"100 Lunn Avenue, Mt Wellington, Auckland, 1072",Auckland,NI,-36.890274,174.831971
-b525d98f-8df5-415f-837e-abb793821e1e,New World Stokes Valley,"14 Oates Street, Stokes Valley, Lower Hutt, 5019",Lower Hutt,NI,-41.174103,174.980844
-bbe5aa58-69dd-4b29-abe6-58670234b3b7,New World Tawa,"37 Oxford Street, Tawa, Wellington, 5028",Wellington,NI,-41.169962,174.82611
-491d26a4-78fd-4c6e-85e9-5b67fd97e2cc,New World Eastridge,"209 Kepa Road, Mission Bay, Auckland, 1071",Auckland,NI,-36.861179,174.82901
-773ad0a0-024e-46c5-a94b-df1cf86d25cc,New World Albany,"219 Don McKinnon Drive, Albany, Auckland, 0632",Auckland,NI,-36.728207,174.710519
-177c82e0-7343-434c-8b98-9c20e72561c2,New World Hillcrest,"280 Cambridge Road, Hillcrest, Hamilton, 3216",Hamilton,NI,-37.801952,175.322549
-471d0657-713c-430a-816f-2ca8448e6b35,New World Aokautere,"194-200 Ruapehu Drive, Summerhill, Palmerston North, 4410",Palmerston North,NI,-40.387171,175.639157
-d4408e0f-5268-42c2-ba76-2bc9732d4316,New World Island Bay,"6 Medway Street, Island Bay, Wellington, 6023",Wellington,NI,-41.334534,174.772497
-c387ac97-5e0a-43ed-9c93-f1edccda298d,New World Botany,"588 Chapel Road, East Tamaki, Auckland, 2013",Auckland,NI,-36.933874,174.911485
-1926eed9-3d44-4339-9f6e-23c96becab07,New World Porirua,"2 Walton Leigh Avenue, Porirua City Centre, Porirua, 5022",Porirua,NI,-41.136386,174.841919
-412c5dcf-142c-4133-b766-7bd21c30ae01,New World Whitianga,"1 Joan Gaskell Drive, Whitianga, 3510",Whitianga,NI,-36.834308,175.699435
-c4d78c33-1f9c-4039-8cd5-82ddb43fbe16,New World Whangamata,"308 Aickin Road, Whangamata, 3620",Whangamata,NI,-37.201793,175.867411
-3a5fd4b8-6ea0-4a6c-aeec-5af83e093322,New World Thorndon,"150 Molesworth Street, Thorndon, Wellington, 6011",Wellington,NI,-41.274006,174.778067
-686c8e35-aa87-40e9-b46e-8ffbad4713aa,New World Kumeu,"108-110 Main Road, Kumeu, Auckland, 0810",Auckland,NI,-36.774933,174.553672
-0d045690-bd75-42d8-a7bc-ee44aa57fc61,New World Waiuku,"25-49 Bowen Street, Waiuku, 2123",Waiuku,NI,-37.249975,174.727925
-d4f24174-f962-4db1-9024-75495bb2dfbb,New World Churton Park,"69 Lakewood Avenue, Churton Park, Wellington, 6037",Wellington,NI,-41.203041,174.807839
-aed206ae-c0ba-4c81-b7e9-7b420bc3616c,New World Dannevirke,"Denmark Street, Dannevirke, 4930",Dannevirke,NI,-40.210911,176.096788
-11b389ec-b197-4476-9b7f-2eaeffa2c1c9,New World Ohakune,"12 Goldfinch Street, Ohakune, 4625",Ohakune,NI,-39.41772,175.39904
-ebcc2edb-73bd-4d8e-b6f3-528849677b62,New World Foxton,"Cnr Main and Whyte Streets, FOXTON, 4814",FOXTON,NI,-40.472517,175.281707
-be37802e-1355-466e-9a1b-1ede5a099705,New World Hastings,"400 Heretaunga Street East, Hastings, 4122",Hastings,NI,-39.644715,176.847154
-745d0bda-4b4f-4e4c-ab1f-6d77512f92f4,New World Hutt City,"Bloomfield Terrace, Lower Hutt, 5010",Lower Hutt,NI,-41.209025,174.90804
-7daec5c2-789a-4577-ba1f-39e730acdd27,New World Karori,"236 Karori Road, Karori, Wellington, 6012",Wellington,NI,-41.284257,174.738052
-c78b7034-7f10-480a-b502-2e5c4066a790,New World Levin,"21 Bath Street, Levin, 5510",Levin,NI,-40.623065,175.282791
-1ee51b21-c2c8-42c4-b01e-8ef081738e23,New World Newlands,"Cnr Bracken and Newlands Road, Newlands, Wellington, 6037",Wellington,NI,-41.223472,174.823202
-1fc7bc09-1d0c-4a88-a9f4-5f1536d797dd,New World Regent,"167 Bank Street, Regent, Whangarei, 0112",Whangarei,NI,-35.716277,174.321962
-cb3f240a-a157-490c-9e80-f537d202ef49,New World Howick,"77 Union Road, Howick, Auckland, 2014",Auckland,NI,-36.903857,174.925067
-997b5318-0d47-4eac-b4ec-bbbd9feb8ae3,New World Onekawa,"34 Maadi Road, Onekawa, Napier, 4110",Napier,NI,-39.508662,176.887458
-1257ed9a-1790-4ad0-beae-383397043e35,New World Carterton,"60 High Street South, -, Carterton, 5713",Carterton,NI,-41.026035,175.526349
-02874261-edfe-4daa-886c-09429e2d06d7,New World Stratford,"124 Regan Street, Stratford, 4332",Stratford,NI,-39.337111,174.286329
-89ba1656-0ad7-4af0-8694-08bf335e99b9,New World Wellington City,"279 Wakefield Street, Wellington, 6011",Wellington,NI,-41.292409,174.784342
-420eff4b-5266-4667-8943-a21caf4b1b03,New World Khandallah,"26 Ganges Road, Khandallah, Wellington, 6035",Wellington,NI,-41.247527,174.791469
-e2852742-1bb5-42a5-8635-4c4e7c7cb758,New World Marton,"427 Wellington Road, Marton, 4710",Marton,NI,-40.07666,175.379646
-5c3070dd-312f-4755-a92c-7607b2a694e4,New World Winton,"293 Great North Road, Winton, Winton, 9720",Winton,SI,-46.1417,168.3256
-38b074c4-0e5a-4bd5-b743-d30f28d94982,New World Metro Willis St,"68- 70 Willis Street, Wellington Central, Wellington, 6011",Wellington,NI,-41.287948,174.775268
-5255b27a-b224-4f58-a424-144e81ecf244,New World Miramar,"48 Miramar Avenue, Miramar, WELLINGTON, 6022",WELLINGTON,NI,-41.315835,174.814635
-514b1db1-fe88-4e79-a6dd-f1e0d4d4c01f,New World Te Kuiti,"39-51 Rora Street, Te Kuiti, 3910",Te Kuiti,NI,-38.331839,175.16319
-55d4fe03-e82e-44a8-8324-57f3afcf16ba,New World New Plymouth,"78 Courtenay Street, New Plymouth, 4310",New Plymouth,NI,-39.05782,174.07774
-5dde0d09-05ca-4b78-ab83-00e47233cf55,New World Otaki,"155-163 Main Highway, Otaki, 5512",Otaki,NI,-40.763486,175.153556
-b01a01ac-d6ef-45ef-b9fe-d66036d55b56,New World Pahiatua,"101 Main Street, Pahiatua, 4910",Pahiatua,NI,-40.452412,175.841836
-6defcd27-e944-45ad-982f-768ab3b4c2ac,New World Paremata,"93-97 Mana Esplanade, Paremata, Porirua, 5026",Porirua,NI,-41.0944,174.868615
-59b56cc6-645c-4fa8-836b-c667662d7ec4,New World Pioneer,"179-197 Main Street, Palmerston North, 4412",Palmerston North,NI,-40.359638,175.600741
-692b45a2-2ab9-49de-adc3-e4a0ddd661a5,New World Silverstream,"28 Whitemans Road, Silverstream, Upper Hutt, 5019",Upper Hutt,NI,-41.148436,175.012536
-65201d94-8805-4be8-b1ba-f547d6bf7ecd,New World Taihape,"112 Hautapu Street, Taihape, 4720",Taihape,NI,-39.67708,175.798534
-55231137-b7be-48f2-b8a0-6aaed59f4540,New World Waikanae,"5 Parata Street, Waikanae, 5036",Waikanae,NI,-40.874943,175.066744
-c15270b3-4ced-4b8e-be01-16b9fc31c4c7,New World Tokoroa,"84 Bridge Street, Tokoroa, 3420",Tokoroa,NI,-38.218917,175.867537
-b2f012df-3c55-4bca-98ba-e30c3cd3aa70,New World Waipukurau,"27 Russell Street, Waipukurau, 4200",Waipukurau,NI,-39.99467,176.55584
-83f2d5fc-132b-4603-aaaf-323e4a426fa0,New World Wairoa,"51 Queen Street, Wairoa, 4108",Wairoa,NI,-39.033806,177.418651
-99798e55-18bb-4f16-9f3e-425c555111a7,New World Waitara,"42 Queen Street, Waitara, 4320",Waitara,NI,-39.000167,174.236804
-524d7a29-550c-4d14-8f89-ec334a60cd6d,New World Matamata,"45 Waharoa East Road, Matamata, 3400",Matamata,NI,-37.803437,175.769835
-5b8f8e3b-e1a0-4a11-b16b-9cfe782c124e,New World Prestons,"420 Marshland Road, Marshland, Christchurch, 8083",Christchurch,SI,-43.4749,172.6621
-ad3ea12c-d9c1-4640-908c-feb9d3c79c11,New World Inglewood,"46 Matai Street, Inglewood, 4330",Inglewood,NI,-39.158214,174.20708
-8e5b742c-0957-4b97-b9e2-290d75c02046,New World Kaikoura,"124 Beach Road, Kaikoura, Kaikoura, 7300",Kaikoura,SI,-42.3877,173.6804
-756356f9-9985-40c9-a368-bf1ea8072b0e,New World Blenheim,"4 Freswick Street, Blenheim, Blenheim, 7201",Blenheim,SI,-41.5141,173.9613
-0637c08c-ac36-4940-8582-38e44a4812fa,New World Northwood,"2 Mounter Avenue, Northwood, Christchurch, 8051",Christchurch,SI,-43.4596,172.6225
-fc91d59f-6ab5-4447-8737-125e09e8e50e,New World Ferry Road,"7/11 St Johns Street, Woolston, Christchurch, 8062",Christchurch,SI,-43.5492,172.6842
-341f876f-9a83-4882-aa79-5e5c9dc8fb2e,New World Wanaka,"20 Dunmore Street, Wānaka, Wānaka, 9305",Wānaka,SI,-44.6963,169.135
-b7fe0c9e-24e9-46f2-a59a-95dce1725b06,New World Motueka,"271 High Street, Motueka, Motueka, 7120",Motueka,SI,-41.1146,173.0124
-3ee7214b-6df4-4fdb-9dd6-3b2fc252ba6b,New World Wigram,"51 Skyhawk Road, Wigram, Christchurch, 8042",Christchurch,SI,-43.5532267333,172.5580681167
-80bebcaf-d5a3-4ca6-a999-beab902aef55,New World Balclutha,"9 Lanark Street, Balclutha, 9230",Balclutha,SI,-46.2381,169.7437
-ff528de5-233a-4cf6-a3a9-bc140565367e,New World Three Parks,"83 Sir Tim Wallis Drive, Wanaka, Wanaka, 9305",Wanaka,SI,-44.6993,169.1553
-bfe3a4ae-2f6d-46ed-ba60-28451a4807bf,New World Lincoln,"77 Gerald Street, Lincoln, Lincoln, 7608",Lincoln,SI,-43.642,172.4739
-12c83069-9220-466b-9145-6ac5706d841c,New World Timaru,"145 Wai-Iti Road, Highfield, Timaru, 7910",Timaru,SI,-44.389894977891,171.22618470502
-50a98f3b-ffbd-4229-84bc-bfd3c956119f,New World Centre City,"133 Great King Street, Dunedin Central, Dunedin, 9016",Dunedin,SI,-45.8713,170.5083
-bae1da58-ac6b-4ef2-816d-4932691218d1,New World St Martins,"92 Wilsons Road, Saint Martins, Christchurch, 8023",Christchurch,SI,-43.5578,172.6548
-a0d86b5f-fdf4-44d1-b7a2-f418bdb37f4e,New World Stanmore,"288 Stanmore Road, Richmond, Christchurch, 8013",Christchurch,SI,-43.5203,172.6568
-401accb9-6430-45a1-888d-29337ab34f12,New World Westport,"244 Palmerston St, Nelson, Westport, 7825",Westport,SI,-41.7575,171.5989
-afbe3446-1f57-4dca-9a58-0c7d5a4a6020,New World Greymouth,"Cnr High & Marlborough Streets, Greymouth, Greymouth, 7805",Greymouth,SI,-42.4617,171.1961
-b007db90-0a16-47d8-9a89-407be8496d9a,New World Mosgiel,"10 Hartstonge Avenue, Mosgiel, Mosgiel, 9024",Mosgiel,SI,-45.8725,170.3493
-b3158cd8-72b9-40e5-8c4e-abd43c1be305,New World Bishopdale,"41 Bishopdale Court, Bishopdale, Christchurch, 8053",Christchurch,SI,-43.4885,172.5872
-f7f6ce3e-c7f6-459a-8466-e29d868257d1,New World Ravenswood,"10 Bob Robertson Drive, Woodend, 7691",Woodend,SI,-43.308,172.6713
-81f807e9-1879-484c-b27e-ded56245c6a4,New World Fendalton,"19-23 Memorial Avenue, Fendalton, Christchurch, 8053",Christchurch,SI,-43.5179,172.5883
-4f76214d-40a5-4c71-a94f-81d45f3f0a59,New World Gardens,"6 North Road, North East Valley, Dunedin, 9010",Dunedin,SI,-45.8549,170.5197
-04ba529d-3dee-4f86-adb6-62b0111114d7,New World Waimate,"95 Queen Street, Waimate, Waimate, 7924",Waimate,SI,-44.7337,171.0472
-95d161ea-9a31-4fca-acbe-96f271d627df,New World Halswell,"346 Halswell Road, Halswell, Christchurch, 8025",Christchurch,SI,-43.5806,172.566
-421d563e-ce40-4d5c-a79c-4afb521fc5b0,New World Oamaru,"72 Wansbeck Street, Oamaru, Oamaru, 9400",Oamaru,SI,-45.102,170.9548
-30a90cf9-3547-46d1-b8b1-cc9ff4af5f88,New World Ashburton,"75 Moore Street, Ashburton, 7700",Ashburton,SI,-43.9039,171.7439
-810832cb-2748-4e87-bc17-929eab5a5a61,New World Feilding,"42 Aorangi Street, Feilding, 4702",Feilding,NI,-40.228015,175.569532
-e3a57a0b-156f-4994-a06a-921df65c20cc,New World Stoke,"107 Neale Avenue, Stoke, Nelson, 7011",Nelson,SI,-41.3127,173.2327
-6ea5a1cf-56b8-44eb-856c-fd916560e92e,New World Queenstown,"1/12 Hawthorne Dr, Remarkables Park, Queenstown, 9300",Queenstown,SI,-45.0258,168.7419
-5eb8d7a2-c5e4-4046-a17e-be2806626fd7,New World Te Kauwhata,"6-8 Main Road, Te Kauwhata, 3710",Te Kauwhata,NI,-37.404219,175.143247
-1898a189-acf3-4320-8704-7a9cc6b3924d,New World Metro Shore City,"52-56 Anzac Street, Takapuna, Auckland, 0622",Auckland,NI,-36.78756,174.77005
-f0c21eab-1919-4cba-ac00-5b795947cdcb,New World Long Bay,"55B Glenvar Ridge Road, Long Bay, Auckland, 0630",Auckland,NI,-36.684964,174.73973
-ca27a97f-03d4-4969-9400-e3af61c99816,New World Gore,"2 Irk Street, Gore, Gore, 9710",Gore,SI,-46.0993,168.9427
-c6abac35-b75f-4a02-9b43-7ad5a7c7aa37,New World Ilam,"47C/57C Peer Street, Upper Riccarton, Christchurch, 8041",Christchurch,SI,-43.5260484333,172.5699320333
-a7c2a0cc-d39d-4b26-93ba-09adaa3a8bf6,New World Elles Road,"244 Elles Road, Strathern, Invercargill, 9812",Invercargill,SI,-46.4269544,168.36167166667
-e197b67e-2cf9-4bae-bae5-5b8ffdccfa87,New World Kaiapoi,"52 Charles Street, Kaiapoi, Kaiapoi, 7630",Kaiapoi,SI,-43.3823,172.6596
-10de9574-cf98-4bc8-973d-3d3e36cb0c4d,New World Waitaki,"402 Thames Highway, Oamaru North, Oamaru, 9400",Oamaru,SI,-45.0766,170.9849
-84c3115a-fe09-4bc3-b373-f43cc9e9627c,New World Rolleston,"92 Rolleston Drive, Rolleston, Rolleston, 7614",Rolleston,SI,-43.5968,172.3825
-d0914aa0-ab30-4354-a223-6ba9ef6069c1,New World Windsor,"51 Windsor Street, Windsor, Invercargill, 9810",Invercargill,SI,-46.3954,168.3661
-5080816d-825d-4a6e-9835-a93d986b1ee0,New World Rangiora,"10 Good Street, Rangiora, Rangiora, 7400",Rangiora,SI,-43.302554280866,172.594487955856
-9829c627-42c8-4ad7-b550-f9dba9fcd44a,New World Cromwell,"2 Murray Terrace, Cromwell, Cromwell, 9310",Cromwell,SI,-45.0375,169.1943
-c1aaac72-38c0-4cc0-ad05-f241047d88c5,New World Durham Street,"175 Durham Street South, Christchurch Central, Christchurch, 8011",Christchurch,SI,-43.5388269667,172.6332807333
-6739e54f-ffab-47b9-9fe1-899d91a7ad78,New World Mangawhai,"83 Molesworth Drive, Mangawhai, 0505",Mangawhai,NI,-36.1124401,174.572448
-2de22d8e-54d4-4575-be10-0d783324ec75,New World Hokitika,"116 Revell Street, Hokitika, Hokitika, 7810",Hokitika,SI,-42.7161,170.9638
-8d098344-5474-4626-ae1c-90ed0f57306f,New World Alexandra,"89 Centennial Avenue, Alexandra, Alexandra, 9320",Alexandra,SI,-45.2499,169.387
-c3f80f70-0ad3-409a-b60a-9eac6ad38681,New World The Sands,"255 The Boulevard, Papamoa East, Tauranga, 3118",Tauranga,NI,-37.7273,176.3464
-871ff39f-99b5-4030-b035-b2dab7225082,New World Point Chevalier,"1132 Great North Road, Point Chevalier, Auckland, 1022",Auckland,NI,-36.8699276,174.7126578
-d999418f-c2ca-4748-b56b-15ee82c6e85e,New World Havelock North,"34 Havelock Road, Havelock North, 4130",Havelock North,NI,-39.668128,176.875873
-dae2d4e3-9b97-41f4-a969-4eded0bd3554,New World Mt Albert,"1 Alberton Avenue, Mt Albert, Auckland, 1025",Auckland,NI,-36.880146,174.72622
-f145f120-ba19-4524-9fc5-e8caf516e209,New World Kawerau,"Tarawera Court, Kawerau, 3127",Kawerau,NI,-38.085853,176.700944
-96c43bec-8c0d-4752-b417-266546fddda1,New World Whakatane,"51 Kakahoroa Drive, Whakatane, 3120",Whakatane,NI,-37.950929,176.993759
+store_id,name,address,city,region,latitude,longitude,banner,click_and_collect,delivery
+f95243ac-bfc9-483a-b10a-b681f4fc4ba2,New World Te Puke,"12 Jocelyn Street, Te Puke, 3119",,,-37.783124,176.328028,MNW,True,True
+bc0ebd13-e131-4efd-a226-415c40ce8c4e,New World Ormiston,"240 Ormiston Road, Ormiston, Auckland, 2019",,,-36.9647262,174.912703,MNW,True,True
+07828d6b-4c90-430e-8ea9-37c671d375e9,New World Rototuna,"Cnr Thomas & Horsham Downs Rds, Hamilton, 3210",,,-37.728271,175.273985,MNW,True,True
+3e66e1a7-bf5c-4f39-9638-c3f57e5c3889,New World Gate Pa,"948 Cameron Road, Gate Pa, Tauranga, 3112",,,-37.713787,176.142697,MNW,True,True
+de5595ab-1d28-46c6-9e9a-b1c3db1af827,New World Mount Maunganui,"Cnr Tweed St & Maunganui Rd, Mount Maunganui, 3116",,,-37.653862,176.198938,MNW,True,True
+64c24e04-516d-40b3-958c-96b15797684a,New World Glenview,"Unit 1/220 Ohaupo Road, Glenview, Hamilton, 3206",,,-37.822527,175.287416,MNW,True,True
+edc986dd-a28c-4fbe-899d-5680d51f584d,New World Brookfield,"89 Bellevue Road, Otumoetai, Tauranga, 3110",,,-37.688946,176.1347,MNW,True,True
+36fb31df-6b41-4a10-ac9a-db831f4f5f47,New World Te Rapa,"751 Te Rapa Road, Te Rapa, Hamilton, 3200",,,-37.753024,175.239998,MNW,True,True
+b6d36090-c7f4-4ff3-9343-5b48159f8f6d,New World Green Bay,"64 Godley Road, Green Bay, Auckland, 0604",,,-36.93074,174.679184,MNW,False,True
+ef977d89-f3d8-4e8b-8a48-b895ded38646,New World Papakura,"29-31 East Street, Auckland, 2110",,,-37.064268,174.941101,MNW,True,True
+0870db3b-2e91-43b7-89aa-ce3c031b3856,New World Greenmeadows,"9 Gloucester Street, Greenmeadows, Napier, 4112",,,-39.525324,176.862409,MNW,True,True
+79b03f4b-5e2b-437c-83f8-54d9dace4999,New World Turangi,"19 Ohuanga Street, Turangi, 3334",,,-38.991014,175.809118,MNW,True,True
+7508cf88-9fd0-4e71-b2f2-d564b1decf8d,New World Whangaparaoa,"580 Whangaparaoa Road, Stanmore Bay, Whangaparaoa, 0932",,,-36.628789,174.732596,MNW,True,True
+4664daab-1897-4e69-9117-067b4afd41bb,New World Onerahi,"128 Onerahi Road, Whangarei, 0110",,,-35.755737,174.367937,MNW,True,True
+d48eba45-0c1c-4f5d-b836-0ed54b45c99c,New World Kerikeri,"99 Kerikeri Road, Kerikeri, 0230",,,-35.2267,173.951368,MNW,True,True
+6b9af900-3f25-4fdb-8418-b43a596aee48,New World Kaikohe,"14 Marino Place, Kaikohe, 0405",,,-35.408951,173.801012,MNW,True,True
+dbdfdd2a-55f7-4870-9b51-979286323647,New World Browns Bay,"2 Inverness Road, Browns Bay, Auckland, 0630",,,-36.715961,174.747287,MNW,True,True
+403b1c6f-121c-4945-8aa8-fa53a7e59133,New World Hobsonville,"120 Hobsonville Road, Hobsonville, Auckland, 0618",,,-36.79915,174.64505,MNW,True,True
+b012c209-9dfe-48c2-940c-acf73afebed4,New World Warkworth,"6 Percy Street, Warkworth, 0910",,,-36.398709,174.666795,MNW,True,True
+60928d93-06fa-4d8f-92a6-8c359e7e846d,New World Metro Queen St,"125 Queen Street, Auckland Central, Auckland, 1010",,,-36.846405,174.765935,MNW,True,True
+c570bb70-c783-4692-aee1-6a1b235f9476,New World Papatoetoe,"65 St Georges Street, Papatoetoe, Auckland, 2025",,,-36.9802,174.853287,MNW,True,True
+4ff026b8-a60d-4383-8f0c-6c85f5623afa,New World Milford,"141 Kitchener Road, Milford, Auckland, 0620",,,-36.772298,174.764805,MNW,True,True
+adcd3dee-0ead-4b84-944a-809b95e0e36b,New World Southmall,"187 Great South Road, Manurewa, Auckland, 2102",,,-37.02246,174.89719,MNW,True,True
+0f82d3fe-acd0-4e98-b3e7-fbabbf8b8ef5,New World Orewa,"11 Moana Avenue, Orewa, 0931",,,-36.586612,174.69366,MNW,True,True
+1fa53d02-1ed5-4dd5-b0ac-fd280425c19a,New World Masterton,"11 Bruce Street, Masterton, 5810",,,-40.948688,175.665517,MNW,True,True
+91b26327-b240-4778-a3d8-190dfc8c16f3,New World Nelson City,"Cnr Vanguard and Gloucester Street, Nelson South, Nelson, 7010",,,-41.2757,173.2781,MNW,True,True
+3ca6692b-e2a3-4d51-95b6-d061b9541e6c,New World Mt Roskill,"53 May Road, Mt Roskill, Auckland, 1041",,,-36.908622,174.734362,MNW,True,True
+ff680fec-3a34-4666-99ed-ab1a9d1c6ba0,New World Newtown,"195 Riddiford Street, Wellington, 6021",,,-41.314466,174.780574,MNW,True,True
+513fc849-3dbe-4333-a148-4edee5baef67,New World Devonport,"35 Bartley Terrace, Devonport, Auckland, 0624",,,-36.82951,174.796193,MNW,True,True
+91e4dddd-aed7-4ccc-ad0b-dfe25805a495,New World Remuera,"10 Clonbern Road, Remuera, Auckland, 1050",,,-36.88171,174.79751,MNW,False,True
+24be83cd-b9f2-47f0-8895-82867e3d4f08,New World Whanganui,"374 Victoria Avenue, Whanganui, 4500",,,-39.926194,175.041161,MNW,True,True
+f5da324f-f415-4c8d-a360-ea8d2c74d49b,New World Whitby,"Discovery Drive, Whitby Village Centre, Porirua, 5024",,,-41.117024,174.893023,MNW,True,True
+b42476bd-bded-4c80-827e-e1d587096f54,New World Ngaruawahia,"7 Galileo Street, Ngaruawahia, 3720",,,-37.667256,175.150107,MNW,True,True
+f54433e6-5c6c-41b9-a5e2-d7502f454da8,New World Kapiti,"159 Kapiti Road, Paraparaumu, 5032",,,-40.905625,174.994131,MNW,True,True
+c032987b-0387-4fc0-bb44-ce7510e35335,New World Pukekohe,"17 Paerata Road, Pukekohe, Auckland, 2120",,,-37.18988,174.90306,MNW,True,True
+2fe74bf7-5123-4faa-8fcb-97db954a714d,New World Waihi,"35 Kenny Street, Waihi, 3610",,,-37.393116,175.839644,MNW,True,True
+5c3070dd-312f-4755-a92c-7607b2a694e4,New World Winton,"293 Great North Road, Winton, Winton, 9720",,,-46.1417,168.3256,MNW,True,True
+63190876-2bd4-4562-ae34-bb5caebab4f9,New World Birkenhead,"180 Mokoia Road, Chatswood, Auckland, 0626",,,-36.811428,174.711486,MNW,True,True
+01076456-6c8a-42c3-a647-2e70a94c4e6c,New World Morrinsville,"89 Thames Street, Morrinsville, 3300",,,-37.659507,175.522299,MNW,True,True
+04de234b-9f3e-4388-9662-7a4c8d7180c8,New World Merrilands,"200 Mangorei Road, Merrilands, New Plymouth, 4312",,,-39.06659,174.102988,MNW,True,True
+517424bd-8840-49e7-8206-58f4da24b1d7,New World Taumarunui,"10 Hakiaha Street, Taumarunui, 3920",,,-38.8829294,175.2579086,MNW,True,True
+51ee2a79-4693-410c-9287-66940847736d,New World Newmarket,"42 Nuffield Street, Newmarket, Auckland, 1023",,,-36.8709201,174.778261,MNW,True,True
+4db31fed-1e21-4884-82a5-cfaa178af8ac,New World Cambridge,"14 Anzac Street, Cambridge, 3434",,,-37.893425,175.472202,MNW,True,True
+8d2ceac4-9520-4b8e-82bb-7867873580da,New World Broadway,"Broadway Avenue, Palmerston North, 4414",,,-40.348551,175.623806,MNW,True,True
+c8998066-d39b-401c-aa6b-d6d18f8d122f,New World New Lynn,"2-6 Crown Lynn Place, New Lynn, Auckland, 0600",,,-36.910865,174.685569,MNW,True,True
+c3a42e9d-ac58-4abf-be43-17920c720540,New World Stonefields,"100 Lunn Avenue, Mt Wellington, Auckland, 1072",,,-36.890274,174.831971,MNW,True,True
+b525d98f-8df5-415f-837e-abb793821e1e,New World Stokes Valley,"14 Oates Street, Stokes Valley, Lower Hutt, 5019",,,-41.174103,174.980844,MNW,True,True
+bbe5aa58-69dd-4b29-abe6-58670234b3b7,New World Tawa,"37 Oxford Street, Tawa, Wellington, 5028",,,-41.169962,174.82611,MNW,True,True
+491d26a4-78fd-4c6e-85e9-5b67fd97e2cc,New World Eastridge,"209 Kepa Road, Mission Bay, Auckland, 1071",,,-36.861179,174.82901,MNW,True,True
+773ad0a0-024e-46c5-a94b-df1cf86d25cc,New World Albany,"219 Don McKinnon Drive, Albany, Auckland, 0632",,,-36.728207,174.710519,MNW,True,True
+471d0657-713c-430a-816f-2ca8448e6b35,New World Aokautere,"194-200 Ruapehu Drive, Summerhill, Palmerston North, 4410",,,-40.387171,175.639157,MNW,True,True
+d4408e0f-5268-42c2-ba76-2bc9732d4316,New World Island Bay,"6 Medway Street, Island Bay, Wellington, 6023",,,-41.334534,174.772497,MNW,True,True
+c387ac97-5e0a-43ed-9c93-f1edccda298d,New World Botany,"588 Chapel Road, East Tamaki, Auckland, 2013",,,-36.933874,174.911485,MNW,True,True
+1926eed9-3d44-4339-9f6e-23c96becab07,New World Porirua,"2 Walton Leigh Avenue, Porirua City Centre, Porirua, 5022",,,-41.136386,174.841919,MNW,True,True
+412c5dcf-142c-4133-b766-7bd21c30ae01,New World Whitianga,"1 Joan Gaskell Drive, Whitianga, 3510",,,-36.834308,175.699435,MNW,True,True
+c4d78c33-1f9c-4039-8cd5-82ddb43fbe16,New World Whangamata,"308 Aickin Road, Whangamata, 3620",,,-37.201793,175.867411,MNW,True,True
+3a5fd4b8-6ea0-4a6c-aeec-5af83e093322,New World Thorndon,"150 Molesworth Street, Thorndon, Wellington, 6011",,,-41.274006,174.778067,MNW,True,True
+686c8e35-aa87-40e9-b46e-8ffbad4713aa,New World Kumeu,"108-110 Main Road, Kumeu, Auckland, 0810",,,-36.774933,174.553672,MNW,True,True
+0d045690-bd75-42d8-a7bc-ee44aa57fc61,New World Waiuku,"25-49 Bowen Street, Waiuku, 2123",,,-37.249975,174.727925,MNW,True,True
+d4f24174-f962-4db1-9024-75495bb2dfbb,New World Churton Park,"69 Lakewood Avenue, Churton Park, Wellington, 6037",,,-41.203041,174.807839,MNW,True,True
+aed206ae-c0ba-4c81-b7e9-7b420bc3616c,New World Dannevirke,"Denmark Street, Dannevirke, 4930",,,-40.210911,176.096788,MNW,True,True
+11b389ec-b197-4476-9b7f-2eaeffa2c1c9,New World Ohakune,"12 Goldfinch Street, Ohakune, 4625",,,-39.41772,175.39904,MNW,True,True
+ebcc2edb-73bd-4d8e-b6f3-528849677b62,New World Foxton,"Cnr Main and Whyte Streets, FOXTON, 4814",,,-40.472517,175.281707,MNW,True,True
+be37802e-1355-466e-9a1b-1ede5a099705,New World Hastings,"400 Heretaunga Street East, Hastings, 4122",,,-39.644715,176.847154,MNW,True,True
+745d0bda-4b4f-4e4c-ab1f-6d77512f92f4,New World Hutt City,"Bloomfield Terrace, Lower Hutt, 5010",,,-41.209025,174.90804,MNW,True,True
+7daec5c2-789a-4577-ba1f-39e730acdd27,New World Karori,"236 Karori Road, Karori, Wellington, 6012",,,-41.284257,174.738052,MNW,True,True
+c78b7034-7f10-480a-b502-2e5c4066a790,New World Levin,"21 Bath Street, Levin, 5510",,,-40.623065,175.282791,MNW,True,True
+1ee51b21-c2c8-42c4-b01e-8ef081738e23,New World Newlands,"Cnr Bracken and Newlands Road, Newlands, Wellington, 6037",,,-41.223472,174.823202,MNW,True,True
+1fc7bc09-1d0c-4a88-a9f4-5f1536d797dd,New World Regent,"167 Bank Street, Regent, Whangarei, 0112",,,-35.716277,174.321962,MNW,True,True
+cb3f240a-a157-490c-9e80-f537d202ef49,New World Howick,"77 Union Road, Howick, Auckland, 2014",,,-36.903857,174.925067,MNW,True,True
+997b5318-0d47-4eac-b4ec-bbbd9feb8ae3,New World Onekawa,"34 Maadi Road, Onekawa, Napier, 4110",,,-39.508662,176.887458,MNW,True,True
+1257ed9a-1790-4ad0-beae-383397043e35,New World Carterton,"60 High Street South, -, Carterton, 5713",,,-41.026035,175.526349,MNW,True,True
+02874261-edfe-4daa-886c-09429e2d06d7,New World Stratford,"124 Regan Street, Stratford, 4332",,,-39.337111,174.286329,MNW,True,True
+89ba1656-0ad7-4af0-8694-08bf335e99b9,New World Wellington City,"279 Wakefield Street, Wellington, 6011",,,-41.292409,174.784342,MNW,True,True
+420eff4b-5266-4667-8943-a21caf4b1b03,New World Khandallah,"26 Ganges Road, Khandallah, Wellington, 6035",,,-41.247527,174.791469,MNW,True,True
+e2852742-1bb5-42a5-8635-4c4e7c7cb758,New World Marton,"427 Wellington Road, Marton, 4710",,,-40.07666,175.379646,MNW,True,True
+d83b5f5e-db6e-4696-823e-5940493ef41c,New World Temuka,"185 King Street, Temuka, Temuka, 7920",,,-44.2413,171.2763,MNW,True,True
+38b074c4-0e5a-4bd5-b743-d30f28d94982,New World Metro Willis St,"68- 70 Willis Street, Wellington Central, Wellington, 6011",,,-41.287948,174.775268,MNW,True,True
+5255b27a-b224-4f58-a424-144e81ecf244,New World Miramar,"48 Miramar Avenue, Miramar, WELLINGTON, 6022",,,-41.315835,174.814635,MNW,True,True
+55d4fe03-e82e-44a8-8324-57f3afcf16ba,New World New Plymouth,"78 Courtenay Street, New Plymouth, 4310",,,-39.05782,174.07774,MNW,True,True
+5dde0d09-05ca-4b78-ab83-00e47233cf55,New World Otaki,"155-163 Main Highway, Otaki, 5512",,,-40.763486,175.153556,MNW,True,True
+b01a01ac-d6ef-45ef-b9fe-d66036d55b56,New World Pahiatua,"101 Main Street, Pahiatua, 4910",,,-40.452412,175.841836,MNW,True,True
+6defcd27-e944-45ad-982f-768ab3b4c2ac,New World Paremata,"93-97 Mana Esplanade, Paremata, Porirua, 5026",,,-41.0944,174.868615,MNW,True,True
+59b56cc6-645c-4fa8-836b-c667662d7ec4,New World Pioneer,"179-197 Main Street, Palmerston North, 4412",,,-40.359638,175.600741,MNW,True,True
+692b45a2-2ab9-49de-adc3-e4a0ddd661a5,New World Silverstream,"28 Whitemans Road, Silverstream, Upper Hutt, 5019",,,-41.148436,175.012536,MNW,True,True
+65201d94-8805-4be8-b1ba-f547d6bf7ecd,New World Taihape,"112 Hautapu Street, Taihape, 4720",,,-39.67708,175.798534,MNW,True,True
+55231137-b7be-48f2-b8a0-6aaed59f4540,New World Waikanae,"5 Parata Street, Waikanae, 5036",,,-40.874943,175.066744,MNW,True,True
+b2f012df-3c55-4bca-98ba-e30c3cd3aa70,New World Waipukurau,"27 Russell Street, Waipukurau, 4200",,,-39.99467,176.55584,MNW,True,True
+83f2d5fc-132b-4603-aaaf-323e4a426fa0,New World Wairoa,"51 Queen Street, Wairoa, 4108",,,-39.033806,177.418651,MNW,True,True
+99798e55-18bb-4f16-9f3e-425c555111a7,New World Waitara,"42 Queen Street, Waitara, 4320",,,-39.000167,174.236804,MNW,True,True
+a799b706-07b8-4825-9524-95b03c9e0b14,New World Westend,"247 Old Taupo Road, Hillcrest, Rotorua, 3015",,,-38.146066,176.237248,MNW,True,True
+5b8f8e3b-e1a0-4a11-b16b-9cfe782c124e,New World Prestons,"420 Marshland Road, Marshland, Christchurch, 8083",,,-43.4749,172.6621,MNW,True,True
+ad3ea12c-d9c1-4640-908c-feb9d3c79c11,New World Inglewood,"46 Matai Street, Inglewood, 4330",,,-39.158214,174.20708,MNW,True,True
+e42fdd7c-6a4e-48d5-964c-5654fd36992b,New World Opotiki,"19 Bridge Street, Opotiki, 3122",,,-38.011812,177.275962,MNW,True,True
+8e5b742c-0957-4b97-b9e2-290d75c02046,New World Kaikoura,"124 Beach Road, Kaikoura, Kaikoura, 7300",,,-42.3877,173.6804,MNW,True,True
+756356f9-9985-40c9-a368-bf1ea8072b0e,New World Blenheim,"4 Freswick Street, Blenheim, Blenheim, 7201",,,-41.5141,173.9613,MNW,True,True
+0637c08c-ac36-4940-8582-38e44a4812fa,New World Northwood,"2 Mounter Avenue, Northwood, Christchurch, 8051",,,-43.4596,172.6225,MNW,True,True
+fc91d59f-6ab5-4447-8737-125e09e8e50e,New World Ferry Road,"7/11 St Johns Street, Woolston, Christchurch, 8062",,,-43.5492,172.6842,MNW,True,True
+341f876f-9a83-4882-aa79-5e5c9dc8fb2e,New World Wanaka,"20 Dunmore Street, Wānaka, Wānaka, 9305",,,-44.6963,169.135,MNW,True,True
+b7fe0c9e-24e9-46f2-a59a-95dce1725b06,New World Motueka,"271 High Street, Motueka, Motueka, 7120",,,-41.1146,173.0124,MNW,True,True
+3ee7214b-6df4-4fdb-9dd6-3b2fc252ba6b,New World Wigram,"51 Skyhawk Road, Wigram, Christchurch, 8042",,,-43.5532267333,172.5580681167,MNW,True,True
+80bebcaf-d5a3-4ca6-a999-beab902aef55,New World Balclutha,"9 Lanark Street, Balclutha, 9230",,,-46.2381,169.7437,MNW,True,True
+177c82e0-7343-434c-8b98-9c20e72561c2,New World Hillcrest,"280 Cambridge Road, Hillcrest, Hamilton, 3216",,,-37.801952,175.322549,MNW,True,True
+ff528de5-233a-4cf6-a3a9-bc140565367e,New World Three Parks,"83 Sir Tim Wallis Drive, Wanaka, Wanaka, 9305",,,-44.6993,169.1553,MNW,True,True
+bfe3a4ae-2f6d-46ed-ba60-28451a4807bf,New World Lincoln,"77 Gerald Street, Lincoln, Lincoln, 7608",,,-43.642,172.4739,MNW,True,True
+12c83069-9220-466b-9145-6ac5706d841c,New World Timaru,"145 Wai-Iti Road, Highfield, Timaru, 7910",,,-44.389894977891,171.22618470502,MNW,True,True
+50a98f3b-ffbd-4229-84bc-bfd3c956119f,New World Centre City,"133 Great King Street, Dunedin Central, Dunedin, 9016",,,-45.8713,170.5083,MNW,True,True
+bae1da58-ac6b-4ef2-816d-4932691218d1,New World St Martins,"92 Wilsons Road, Saint Martins, Christchurch, 8023",,,-43.5578,172.6548,MNW,True,True
+a0d86b5f-fdf4-44d1-b7a2-f418bdb37f4e,New World Stanmore,"288 Stanmore Road, Richmond, Christchurch, 8013",,,-43.5203,172.6568,MNW,True,True
+401accb9-6430-45a1-888d-29337ab34f12,New World Westport,"244 Palmerston St, Nelson, Westport, 7825",,,-41.7575,171.5989,MNW,True,True
+afbe3446-1f57-4dca-9a58-0c7d5a4a6020,New World Greymouth,"Cnr High & Marlborough Streets, Greymouth, Greymouth, 7805",,,-42.4617,171.1961,MNW,True,True
+514b1db1-fe88-4e79-a6dd-f1e0d4d4c01f,New World Te Kuiti,"39-51 Rora Street, Te Kuiti, 3910",,,-38.331839,175.16319,MNW,True,True
+b007db90-0a16-47d8-9a89-407be8496d9a,New World Mosgiel,"10 Hartstonge Avenue, Mosgiel, Mosgiel, 9024",,,-45.8725,170.3493,MNW,True,True
+b3158cd8-72b9-40e5-8c4e-abd43c1be305,New World Bishopdale,"41 Bishopdale Court, Bishopdale, Christchurch, 8053",,,-43.4885,172.5872,MNW,True,False
+f7f6ce3e-c7f6-459a-8466-e29d868257d1,New World Ravenswood,"10 Bob Robertson Drive, Woodend, 7691",,,-43.308,172.6713,MNW,True,True
+81f807e9-1879-484c-b27e-ded56245c6a4,New World Fendalton,"19-23 Memorial Avenue, Fendalton, Christchurch, 8053",,,-43.5179,172.5883,MNW,True,True
+4f76214d-40a5-4c71-a94f-81d45f3f0a59,New World Gardens,"6 North Road, North East Valley, Dunedin, 9010",,,-45.8549,170.5197,MNW,True,True
+04ba529d-3dee-4f86-adb6-62b0111114d7,New World Waimate,"95 Queen Street, Waimate, Waimate, 7924",,,-44.7337,171.0472,MNW,True,True
+95d161ea-9a31-4fca-acbe-96f271d627df,New World Halswell,"346 Halswell Road, Halswell, Christchurch, 8025",,,-43.5806,172.566,MNW,True,True
+421d563e-ce40-4d5c-a79c-4afb521fc5b0,New World Oamaru,"72 Wansbeck Street, Oamaru, Oamaru, 9400",,,-45.102,170.9548,MNW,True,True
+30a90cf9-3547-46d1-b8b1-cc9ff4af5f88,New World Ashburton,"75 Moore Street, Ashburton, 7700",,,-43.9039,171.7439,MNW,True,True
+810832cb-2748-4e87-bc17-929eab5a5a61,New World Feilding,"42 Aorangi Street, Feilding, 4702",,,-40.228015,175.569532,MNW,True,True
+c15270b3-4ced-4b8e-be01-16b9fc31c4c7,New World Tokoroa,"84 Bridge Street, Tokoroa, 3420",,,-38.218917,175.867537,MNW,True,True
+e3a57a0b-156f-4994-a06a-921df65c20cc,New World Stoke,"107 Neale Avenue, Stoke, Nelson, 7011",,,-41.3127,173.2327,MNW,True,True
+524d7a29-550c-4d14-8f89-ec334a60cd6d,New World Matamata,"45 Waharoa East Road, Matamata, 3400",,,-37.803437,175.769835,MNW,True,True
+6ea5a1cf-56b8-44eb-856c-fd916560e92e,New World Queenstown,"1/12 Hawthorne Dr, Remarkables Park, Queenstown, 9300",,,-45.0258,168.7419,MNW,True,True
+5eb8d7a2-c5e4-4046-a17e-be2806626fd7,New World Te Kauwhata,"6-8 Main Road, Te Kauwhata, 3710",,,-37.404219,175.143247,MNW,True,True
+1898a189-acf3-4320-8704-7a9cc6b3924d,New World Metro Shore City,"52-56 Anzac Street, Takapuna, Auckland, 0622",,,-36.78756,174.77005,MNW,True,True
+f0c21eab-1919-4cba-ac00-5b795947cdcb,New World Long Bay,"55B Glenvar Ridge Road, Long Bay, Auckland, 0630",,,-36.684964,174.73973,MNW,True,True
+ca27a97f-03d4-4969-9400-e3af61c99816,New World Gore,"2 Irk Street, Gore, Gore, 9710",,,-46.0993,168.9427,MNW,True,True
+c6abac35-b75f-4a02-9b43-7ad5a7c7aa37,New World Ilam,"47C/57C Peer Street, Upper Riccarton, Christchurch, 8041",,,-43.5260484333,172.5699320333,MNW,True,True
+e89d6e45-f824-464a-8a69-c8028840c899,Foodie Mart,"35 Landing Drive, Mangere, Auckland, 2022",,,-36.991298,174.781402,MNW,False,False
+a7c2a0cc-d39d-4b26-93ba-09adaa3a8bf6,New World Elles Road,"244 Elles Road, Strathern, Invercargill, 9812",,,-46.4269544,168.36167166667,MNW,True,False
+e197b67e-2cf9-4bae-bae5-5b8ffdccfa87,New World Kaiapoi,"52 Charles Street, Kaiapoi, Kaiapoi, 7630",,,-43.3823,172.6596,MNW,True,True
+10de9574-cf98-4bc8-973d-3d3e36cb0c4d,New World Waitaki,"402 Thames Highway, Oamaru North, Oamaru, 9400",,,-45.0766,170.9849,MNW,True,False
+84c3115a-fe09-4bc3-b373-f43cc9e9627c,New World Rolleston,"92 Rolleston Drive, Rolleston, Rolleston, 7614",,,-43.5968,172.3825,MNW,True,True
+d0914aa0-ab30-4354-a223-6ba9ef6069c1,New World Windsor,"51 Windsor Street, Windsor, Invercargill, 9810",,,-46.3954,168.3661,MNW,True,True
+5080816d-825d-4a6e-9835-a93d986b1ee0,New World Rangiora,"10 Good Street, Rangiora, Rangiora, 7400",,,-43.302554280866,172.594487955856,MNW,True,True
+9829c627-42c8-4ad7-b550-f9dba9fcd44a,New World Cromwell,"2 Murray Terrace, Cromwell, Cromwell, 9310",,,-45.0375,169.1943,MNW,True,True
+c1aaac72-38c0-4cc0-ad05-f241047d88c5,New World Durham Street,"175 Durham Street South, Christchurch Central, Christchurch, 8011",,,-43.5388269667,172.6332807333,MNW,True,True
+6739e54f-ffab-47b9-9fe1-899d91a7ad78,New World Mangawhai,"83 Molesworth Drive, Mangawhai, 0505",,,-36.1124401,174.572448,MNW,True,True
+2de22d8e-54d4-4575-be10-0d783324ec75,New World Hokitika,"116 Revell Street, Hokitika, Hokitika, 7810",,,-42.7161,170.9638,MNW,True,True
+8d098344-5474-4626-ae1c-90ed0f57306f,New World Alexandra,"89 Centennial Avenue, Alexandra, Alexandra, 9320",,,-45.2499,169.387,MNW,True,True
+c3f80f70-0ad3-409a-b60a-9eac6ad38681,New World The Sands,"255 The Boulevard, Papamoa East, Tauranga, 3118",,,-37.7273,176.3464,MNW,True,True
+871ff39f-99b5-4030-b035-b2dab7225082,New World Point Chevalier,"1132 Great North Road, Point Chevalier, Auckland, 1022",,,-36.8699276,174.7126578,MNW,True,True
+d999418f-c2ca-4748-b56b-15ee82c6e85e,New World Havelock North,"34 Havelock Road, Havelock North, 4130",,,-39.668128,176.875873,MNW,True,True
+dae2d4e3-9b97-41f4-a969-4eded0bd3554,New World Mt Albert,"1 Alberton Avenue, Mt Albert, Auckland, 1025",,,-36.880146,174.72622,MNW,False,True
+f145f120-ba19-4524-9fc5-e8caf516e209,New World Kawerau,"Tarawera Court, Kawerau, 3127",,,-38.085853,176.700944,MNW,True,True
+96c43bec-8c0d-4752-b417-266546fddda1,New World Whakatane,"51 Kakahoroa Drive, Whakatane, 3120",,,-37.950929,176.993759,MNW,True,True
