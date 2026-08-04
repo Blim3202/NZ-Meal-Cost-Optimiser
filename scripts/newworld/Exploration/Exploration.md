@@ -125,14 +125,14 @@ This folder contains **14 exploration scripts** documenting the multi phase jour
 **What it tests**: 12 index names based on common patterns:
 - `products-index-popularity-asc` ✅ 200
 - `products-index-popularity-desc` ✅ 200
-- `products-index-relevance` ❌ 404
-- `products-index-price-asc` ❌ 404
-- `products-index-price-desc` ❌ 404
-- `products-index-name-asc` ❌ 404
-- `products-index-name-desc` ❌ 404
-- `products-index-newest` ❌ 404
-- `products-index-bestselling` ❌ 404
-- `products-index-trending` ❌ 404
+- `products-index-relevance` ❌ 500
+- `products-index-price-asc` ❌ 500
+- `products-index-price-desc` ❌ 500
+- `products-index-name-asc` ❌ 500
+- `products-index-name-desc` ❌ 500
+- `products-index-newest` ❌ 500
+- `products-index-bestselling` ❌ 500
+- `products-index-trending` ❌ 500
 - `products-index` (default) ✅ 200
 - `products` ❌ 404
 

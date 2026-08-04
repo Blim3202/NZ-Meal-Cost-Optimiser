@@ -286,7 +286,7 @@ See `scripts/newworld/Exploration/explore_edge_auth.py`, `edge_full_test.py`, `e
   - `products-index` (default) — **HAS `_highlightResult` with `matchedWords`** — relevance sorted
   - `products-index-popularity-asc` — HAS `_highlightResult` with `matchedWords`, popularity sorted ASC
   - `products-index-popularity-desc` — HAS `_highlightResult` with `matchedWords`, popularity sorted DESC
-- All other indices (`price-asc`, `price-desc`, `relevance`, `name-asc`, `name-desc`, `newest`, `bestselling`, `trending`) return 404
+- All other indices (`price-asc`, `price-desc`, `relevance`, `name-asc`, `name-desc`, `newest`, `bestselling`, `trending`) return 500 (verified 2026-08-04; previously 404)
 
 **Breakthrough**: The paginated endpoint accepts Algolia `filters` parameter! Using `filters: "productID:xxx OR productID:yyy"` allows querying per-store pricing for SPECIFIC product IDs discovered in Pass 1.
 
@@ -349,7 +349,7 @@ See `scripts/newworld/Exploration/edge_api_relevance_exploration.py` (comprehens
 - `products-index-popularity-asc` [OK] — Popularity sorted, HAS `matchedWords`
 - `products-index-popularity-desc` [OK] — Popularity sorted, HAS `matchedWords`
 
-All other indices (`price-asc`, `price-desc`, `relevance`, `name-asc`, `name-desc`, `newest`, `bestselling`, `trending`) return 404.
+All other indices (`price-asc`, `price-desc`, `relevance`, `name-asc`, `name-desc`, `newest`, `bestselling`, `trending`) return 500 (verified 2026-08-04; previously 404).
 
 **Key Insight**: The default `products-index` is still recommended for the two-pass pipeline because it's relevance-sorted (most relevant first), which is optimal for ingredient search.
 

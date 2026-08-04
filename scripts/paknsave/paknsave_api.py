@@ -327,7 +327,7 @@ class PaknSaveEdgeAPI:
         Returns:
             (products, pass1_hits) where:
             - products: list of product dicts from Pass 2 (with pricing)
-            - pass1_hits: list of Pass 1 hit dicts (with category1, _highlightResult)
+            - pass1_hits: list of Pass 1 hit dicts (with category0, category1, _highlightResult, etc.)
         """
         pass1_hits = self.pass1_relevance_search_hits(store_id, ingredient, max_relevance, region)
         product_ids = [h["productID"] for h in pass1_hits]

@@ -434,6 +434,69 @@ def parse_foodstuffs_mobile_unit(units, unit_price, price_cents=None):
     return quantity, measurement_unit, per_unit_qty, per_unit_price
 
 
+def build_edge_row(company, store, store_id, search_ingredient, product, pass1_hit, now):
+    """Build a CSV row dict from an Edge API product (Pak'nSave or New World).
+
+    Args:
+        company: retailer name (e.g. "PaknSave" or "NewWorld")
+        store: store name
+        store_id: store UUID
+        search_ingredient: the ingredient term we searched for
+        product: dict from Pass 2 (singlePrice, promotions, productId, etc.)
+        pass1_hit: dict from Pass 1 (category0, category1, _highlightResult) or None
+        now: datetime object for timestamps
+
+    Returns:
+        dict matching CSV_COLUMNS
+    """
+    sp = product.get("singlePrice", {})
+    promotions = product.get("promotions") or []
+
+    quantity, measurement_unit, per_unit_qty, per_unit_price = parse_foodstuffs_volume_size(
+        product.get("displayName", ""),
+        sp,
+        promotions,
+    )
+
+    price_cents = sp.get("price")
+    if promotions:
+        best = promotions[0]
+        reward = best.get("rewardValue")
+        threshold = best.get("threshold")
+        if reward is not None and threshold and threshold > 0:
+            price_cents = reward / threshold
+
+    price_dollars = round(price_cents / 100.0, 2) if price_cents is not None else ""
+
+    cat0 = pass1_hit.get("category0", []) if pass1_hit else []
+    cat1 = pass1_hit.get("category1", []) if pass1_hit else []
+    dept_str = "|".join(cat0) if cat0 else ""
+    cat1_str = "|".join(cat1) if cat1 else ""
+
+    sku = product.get("productId", "")
+    date_str = now.strftime("%Y-%m-%d")
+
+    return {
+        "company": company,
+        "store": store,
+        "store_id": store_id,
+        "search_ingredient": search_ingredient,
+        "returned_ingredient": product.get("name", ""),
+        "price": price_dollars,
+        "quantity": quantity if quantity is not None else "",
+        "measurement_unit": measurement_unit,
+        "per_unit_quantity": per_unit_qty,
+        "per_unit_price": per_unit_price if per_unit_price else "",
+        "is_sale": bool(promotions),
+        "sku": sku,
+        "department": dept_str,
+        "sub_department": cat1_str,
+        "datetime_created": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "date_created": date_str,
+        "pk_hash": _compute_pk_hash(store_id, sku, date_str),
+    }
+
+
 def _parse_display_name(display_name):
     """Parse a Pak'nSave displayName string into (quantity, measurement_unit).
 

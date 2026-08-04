@@ -732,14 +732,19 @@ We tested multiple index names based on New World patterns. Only THREE return HT
 | `products-index` | [OK] 200 | **Relevance (Algolia default)** | [OK] **YES** — has `matchedWords` | **PASS 1: Relevance matching** |
 | `products-index-popularity-asc` | [OK] 200 | Popularity ascending | [OK] Has matches (popularity sorted) | Browsing (least popular first) |
 | `products-index-popularity-desc` | [OK] 200 | Popularity descending | [OK] Has matches (popularity sorted) | Browsing (most popular first) |
-| `products-index-price-asc` | [NO] 404 | — | — | Does not exist |
-| `products-index-price-desc` | [NO] 404 | — | — | Does not exist |
-| `products-index-relevance` | [NO] 404 | — | — | Does not exist |
-| `products-index-name-asc` | [NO] 404 | — | — | Does not exist |
-| `products-index-name-desc` | [NO] 404 | — | — | Does not exist |
-| `products-index-newest` | [NO] 404 | — | — | Does not exist |
-| `products-index-bestselling` | [NO] 404 | — | — | Does not exist |
-| `products-index-trending` | [NO] 404 | — | — | Does not exist |
+| `products-index-price-asc` | [NO] 500 | — | — | Does not exist |
+| `products-index-price-desc` | [NO] 500 | — | — | Does not exist |
+| `products-index-relevance` | [NO] 500 | — | — | Does not exist |
+| `products-index-name-asc` | [NO] 500 | — | — | Does not exist |
+| `products-index-name-desc` | [NO] 500 | — | — | Does not exist |
+| `products-index-newest` | [NO] 500 | — | — | Does not exist |
+| `products-index-bestselling` | [NO] 500 | — | — | Does not exist |
+| `products-index-trending` | [NO] 500 | — | — | Does not exist |
+
+> **Status note (verified 2026-08-04)**: These eight indices do not exist and
+> return an error — the Edge API now responds with **`HTTP 500`
+> (`{"code":"InternalServer","message":""}`)**, not `404` as previously
+> documented. They cannot be used for search.
 
 **Key Discovery**: All three working Pak'nSave indices have `_highlightResult.matchedWords` populated (same as New World). The default `products-index` is relevance-sorted and has the best relevance matching.
 

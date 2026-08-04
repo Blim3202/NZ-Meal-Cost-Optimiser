@@ -214,6 +214,21 @@ class NewWorldEdgeAPI:
         return r.json().get("stores", [])
 
     # ── PASS 1: Relevance Search ────────────────────────────────────────────
+    def pass1_relevance_search(
+        self,
+        store_id: str,
+        query: str,
+        max_hits: int = 20,
+        region: str = "NI",
+    ) -> list[str]:
+        """
+        Search products-index for relevance matches.
+        Returns productIDs where _highlightResult has non-empty matchedWords.
+        Filters out non-food category1 values via NON_FOOD_CATEGORIES.
+        """
+        hits = self.pass1_relevance_search_hits(store_id, query, max_hits, region)
+        return [h["productID"] for h in hits]
+
     def pass1_relevance_search_hits(
         self,
         store_id: str,
@@ -247,29 +262,16 @@ class NewWorldEdgeAPI:
         filtered = []
         for h in hits:
             hr = h.get("_highlightResult", {})
+            # Check if any field in _highlightResult has matchedWords (Algolia confirmed relevance)
             matched = any(
                 isinstance(v, dict) and v.get("matchedWords")
                 for v in hr.values()
             )
             cat1 = h.get("category1", [])
+            # Keep only if Algolia matched AND not in non-food blacklist
             if matched and not any(c in NON_FOOD_CATEGORIES for c in cat1):
                 filtered.append(h)
         return filtered
-
-    def pass1_relevance_search(
-        self,
-        store_id: str,
-        query: str,
-        max_hits: int = 20,
-        region: str = "NI",
-    ) -> list[str]:
-        """
-        Search products-index for relevance matches.
-        Returns productIDs where _highlightResult has non-empty matchedWords.
-        Filters out non-food category1 values via NON_FOOD_CATEGORIES.
-        """
-        hits = self.pass1_relevance_search_hits(store_id, query, max_hits, region)
-        return [h["productID"] for h in hits]
 
     # ── PASS 2: Per-Store Pricing ───────────────────────────────────
     def pass2_per_store_pricing(
@@ -322,7 +324,7 @@ class NewWorldEdgeAPI:
         Returns:
             (products, pass1_hits) where:
             - products: list of product dicts from Pass 2 (with pricing)
-            - pass1_hits: list of Pass 1 hit dicts (with category1, _highlightResult)
+            - pass1_hits: list of Pass 1 hit dicts (with category0, category1, _highlightResult, etc.)
         """
         pass1_hits = self.pass1_relevance_search_hits(store_id, ingredient, max_relevance, region)
         product_ids = [h["productID"] for h in pass1_hits]

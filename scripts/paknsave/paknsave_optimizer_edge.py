@@ -39,6 +39,7 @@ from optimizer_utils import (
     CSV_COLUMNS,
     RESULTS_FILE,
     analyze_results,
+    build_edge_row,
     geocode,
     get_ingredients,
     get_quantities,
@@ -48,76 +49,6 @@ from optimizer_utils import (
     load_existing_hashes,
     append_rows,
 )
-
-
-def build_row(company, store, store_id, search_ingredient, product, pass1_hit, now):
-    """Build a CSV row dict from a Pak'nSave product.
-
-    Args:
-        company: retailer name (e.g. "PaknSave")
-        store: store name
-        store_id: store UUID
-        search_ingredient: the ingredient term we searched for
-        product: dict from Pass 2 (singlePrice, promotions, productId, etc.)
-        pass1_hit: dict from Pass 1 (category1, _highlightResult) or None
-        now: datetime object for timestamps
-
-    Returns:
-        dict matching CSV_COLUMNS
-    """
-    sp = product.get("singlePrice", {})
-    promotions = product.get("promotions", [])
-
-    # Parse quantity, measurement_unit, per_unit_quantity, per_unit_price
-    quantity, measurement_unit, per_unit_qty, per_unit_price = parse_foodstuffs_volume_size(
-        product.get("displayName", ""),
-        sp,
-        promotions,
-    )
-
-    # Calculate price: per-item price considering promotions
-    # If promotion with threshold: use rewardValue / threshold (per-item promo price)
-    # Otherwise: use singlePrice.price (regular per-item price)
-    # Promo price: if multi-buy (e.g. 2 for $5), use per-item price; else regular
-    price_cents = sp.get("price")
-    if promotions:
-        best = promotions[0]
-        reward = best.get("rewardValue")
-        threshold = best.get("threshold")
-        if reward is not None and threshold and threshold > 0:
-            price_cents = reward / threshold
-
-    price_dollars = round(price_cents / 100.0, 2) if price_cents is not None else ""
-
-    # department = category0 (broadest), sub_department = category1 (renamed from category1)
-    cat0 = pass1_hit.get("category0", []) if pass1_hit else []
-    cat1 = pass1_hit.get("category1", []) if pass1_hit else []
-    # Join with "|" in case of duplicate categories (May not be needed)
-    dept_str = "|".join(cat0) if cat0 else ""
-    cat1_str = "|".join(cat1) if cat1 else ""
-
-    sku = product.get("productId", "")
-    date_str = now.strftime("%Y-%m-%d")
-
-    return {
-        "company": company,
-        "store": store,
-        "store_id": store_id,
-        "search_ingredient": search_ingredient,
-        "returned_ingredient": product.get("name", ""),
-        "price": price_dollars,
-        "quantity": quantity if quantity is not None else "",
-        "measurement_unit": measurement_unit,
-        "per_unit_quantity": per_unit_qty,
-        "per_unit_price": per_unit_price if per_unit_price else "",
-        "is_sale": bool(promotions),
-        "sku": sku,
-        "department": dept_str,
-        "sub_department": cat1_str,
-        "datetime_created": now.strftime("%Y-%m-%d %H:%M:%S"),
-        "date_created": date_str,
-        "pk_hash": _compute_pk_hash(store_id, sku, date_str),
-    }
 
 
 def query_and_save(user_address, dish_name, requery, max_dist_km=5.0):
@@ -190,7 +121,7 @@ def query_and_save(user_address, dish_name, requery, max_dist_km=5.0):
 
             priced = []
             for prod in products:
-                row = build_row(
+                row = build_edge_row(
                     "PaknSave", store_name, store_id, ing,
                     prod, pass1_by_id.get(prod.get("productId", "")), now,
                 )

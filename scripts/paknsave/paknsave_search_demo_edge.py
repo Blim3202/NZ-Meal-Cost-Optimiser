@@ -161,8 +161,8 @@ def main():
     parser.add_argument(
         "ingredient",
         nargs="?",
-        default="spring onion",
-        help="Ingredient to search for (default: 'spring onion')",
+        default="milk",
+        help="Ingredient to search for (default: 'milk')",
     )
     args = parser.parse_args()
     query = args.ingredient
