@@ -409,9 +409,7 @@ The optimizer splits the mobile product into
   `measurement_unit="x 80g"`; `"500g"` → `(500, "g")`; `"ea"` → `(1, "ea")`.
 - `unitPrice` splits on `/`: `"$26.99/1kg"` → `per_unit_quantity="1kg"`,
   `per_unit_price=26.99` (dollar sign stripped, cents→dollars).
-- **Bare-`"ea"` fallback**: when `units="ea"` and `unitPrice` is `null`, set
-  `per_unit_quantity="ea"` and mirror the item's own `price` into
-  `per_unit_price` — avoids blank per-unit columns.
+- **Bare-`"ea"` and numeric-prefix fallback**: when `unitPrice` is `null` or missing but `units` has a numeric count (e.g. `"1pk"`, `"500g"`, `"2 pack"`) or is bare `"ea"`, set `per_unit_quantity` to the `measurement_unit` (e.g. `"pk"`, `"g"`, `"pack"`, `"ea"`) and mirror the item's own `price` (from `price_cents`) into `per_unit_price` — avoids blank per-unit columns.
 
 #### Pagination
 
@@ -1001,9 +999,11 @@ POST /mobile/ecomm-products/PNS/{storeId}/search?q={ingredient}&hitsPerPage=20
 
 Then `build_row` calls `parse_foodstuffs_mobile_unit(units, unitPrice, price_cents)` to get
 `(quantity, measurement_unit, per_unit_quantity, per_unit_price)`. `units` packs
-count + measure (`"3 x 80g"`, `"500g"`, `"ea"`); `unitPrice` splits on `/`
-(`"$26.99/1kg"` → qty `1kg`, price `26.99`). Bare `"ea"` with no `unitPrice` falls back
-to `per_unit_quantity="ea"` and mirrors the item `price`.
+count + measure (`"3 x 80g"`, `"500g"`, `"1pk"`, `"ea"`); `unitPrice` splits on `/`
+(`"$26.99/1kg"` → qty `1kg`, price `26.99`). When `unitPrice` is missing/null and `units`
+has a numeric prefix (e.g. `"1pk"`, `"500g"`) or is bare `"ea"`, the optimizer infers
+per-unit pricing from the item's own `price` — `per_unit_quantity` becomes the
+`measurement_unit` and `per_unit_price` mirrors the item price.
 
 ### 8.3 Shared CSV schema (`data/full_results.csv`)
 

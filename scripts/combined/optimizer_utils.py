@@ -356,26 +356,26 @@ def parse_foodstuffs_mobile_unit(units, unit_price, price_cents=None):
        Splits on '/': per_unit_price is the value before the slash (dollar sign
        stripped), per_unit_quantity is the value after the slash.
 
-       Fallback — bare "ea" with no `unitPrice`:
-           Some single-each items expose only `units` of "ea" and no unitPrice
-           string, which would otherwise leave per_unit_quantity/per_unit_price
-           blank. Treat the item as being sold per each: per_unit_quantity
-           becomes "ea" and per_unit_price mirrors the item's own price (from
-           `price_cents`), so the per-unit columns never go empty.
+        Fallback — no `unitPrice` but `units` has a numeric count (e.g. "1pk",
+        "500g", "2 pack") or bare "ea": use `measurement_unit` as
+        `per_unit_quantity` and mirror the item's own `price_cents` into
+        `per_unit_price` so the per-unit columns never go blank.
 
     Examples:
         ("3 x 31g", "$26.99/1kg") -> (3, "x 31g", "1kg", 26.99)
         ("500g", "$18.99/kg")     -> (500, "g", "kg", 18.99)
         ("2 pack", "$3.49/ea")    -> (2, "pack", "ea", 3.49)
-        ("ea", "", 250)           -> (1, "ea", "ea", 2.5)   # fallback
-        ("ea", "")                -> (1, "ea", "", 0)        # fallback, no price known
+        ("1pk", "", 299)           -> (1, "pk", "pk", 2.99)  # no unitPrice, infer from price_cents
+        ("ea", "", 250)           -> (1, "ea", "ea", 2.5)   # fallback, no unitPrice
+        ("ea", "")                -> (1, "ea", "ea", 0)     # fallback, no price known
         ("", "")                  -> ("", "", "", 0)
 
     Args:
         units: Mobile API `units` field (e.g. "3 x 31g", "500g", "ea").
         unit_price: Mobile API `unitPrice` formatted string (e.g. "$26.99/1kg").
-        price_cents: Item price in cents (from `product["price"]`), used only for
-            the bare-"ea" fallback so per_unit_price can mirror the item price.
+        price_cents: Item price in cents (from `product["price"]`), used for
+            the fallback when `unitPrice` is missing so per_unit_price
+            can mirror the item price.
 
     Returns:
         (quantity, measurement_unit, per_unit_quantity, per_unit_price).
@@ -424,12 +424,12 @@ def parse_foodstuffs_mobile_unit(units, unit_price, price_cents=None):
             per_unit_price = 0
         per_unit_qty = qty_part.strip()
 
-    # Fallback: bare "ea" with no unitPrice → per-each at the item's own price.
+    # Fallback: no unitPrice but units has a numeric count → per-unit at item's own price.
     # Avoids blank per_unit columns (per_unit_price mirrors `price`).
-    if not per_unit_qty and units and isinstance(units, str) and units.strip().lower() == "ea":
-        per_unit_qty = "ea"
-        if price_cents is not None:
-            per_unit_price = price_cents / 100.0
+    # Covers "1pk", "500g", "2 pack", bare "ea", etc.
+    if not per_unit_qty and measurement_unit and price_cents is not None:
+        per_unit_qty = measurement_unit
+        per_unit_price = price_cents / 100.0
 
     return quantity, measurement_unit, per_unit_qty, per_unit_price
 

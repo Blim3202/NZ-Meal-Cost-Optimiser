@@ -368,7 +368,7 @@ The body is required but can be empty — it's used internally for filter state
 | `name` | `string` | Product display name |
 | `brand` | `string` | Brand name (e.g. `"Pams"`, `"Value"`) |
 | `price` | `integer` | **Price in cents** — divide by 100 for dollars |
-| `units` | `string` | Unit of sale: `"kg"`, `"L"`, `"400g"`, `"12pk"`, `"each"` |
+| `units` | `string` | Unit of sale: `"kg"`, `"L"`, `"400g"`, `"12pk"`, `"each"`, `"1pk"`. When `unitPrice` is missing/null and `units` has a numeric prefix (e.g. `"1pk"`), the optimizer infers per-unit pricing from the item's own `price` — `per_unit_quantity` becomes the `measurement_unit` (e.g. `"pk"`) and `per_unit_price` mirrors the item price. |
 | `unitPrice` | `string` | Formatted unit price string, e.g. `"$18.99/kg"` |
 | `categories` | `array[string]` | Hierarchical category path, e.g. `["Meat & Poultry", "Beef", "Mince"]` |
 | `availableInOnline` | `bool` | Can be ordered online |

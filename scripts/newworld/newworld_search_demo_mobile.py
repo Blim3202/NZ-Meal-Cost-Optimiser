@@ -30,8 +30,8 @@ import cloudscraper
 
 MOBILE_BASE = "https://api-prod.prod.fsniwaikato.kiwi/prod"
 
-STORE_NAME = "New World Albany"
-STORE_ID = "773ad0a0-024e-46c5-a94b-df1cf86d25cc"
+STORE_NAME = "New World Botany"
+STORE_ID = "c387ac97-5e0a-43ed-9c93-f1edccda298d"
 BANNER = "MNW"
 USER_AGENT = "NewWorldApp/4.32.0"
 
@@ -166,7 +166,7 @@ def main():
     if products:
         print("=" * 80)
         print("RAW JSON for first product:")
-        print(json.dumps(products[0], indent=2))
+        print(json.dumps(products[1], indent=2))
 
 
 if __name__ == "__main__":
