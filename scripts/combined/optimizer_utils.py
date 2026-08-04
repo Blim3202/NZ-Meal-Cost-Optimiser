@@ -711,6 +711,110 @@ def analyze_results(df, ingredients, dish_name, company=None):
     return summary, table
 
 
+def foodstuffs_optimizer_edge(api_class, find_nearby_stores, company_id, company_name,
+                              user_address, dish_name, requery, max_dist_km=5.0):
+    """Phase 1 (query): shared Edge API pipeline for Pak'nSave and New World.
+
+    The two brand optimizers (paknsave_optimizer_edge.py, newworld_optimizer_edge.py)
+    are identical except for the API class, store finder, and company label. This
+    single implementation replaces both files' duplicated query_and_save.
+
+    Args:
+        api_class: the Edge API class to instantiate and authenticate
+            (PaknSaveEdgeAPI or NewWorldEdgeAPI)
+        find_nearby_stores: the API module's find_nearby_stores function
+        company_id: CSV company value written to rows (e.g. "PaknSave", "NewWorld")
+        company_name: display name for print lines (e.g. "Pak'nSave", "New World")
+        user_address: NZ address to geocode
+        dish_name: dish to search ingredients for
+        requery: if False, skip API and read existing CSV
+        max_dist_km: maximum store search radius in km (default 5)
+
+    Returns True if data is available (newly queried or already in CSV).
+    """
+    if not requery:
+        if RESULTS_FILE.exists():
+            return True
+        print("No existing results file — run with --requery true to query the API")
+        return False
+
+    user_lat, user_lon = geocode(user_address)
+    if user_lat is None or user_lon is None:
+        print(f"Error: Could not geocode address '{user_address}'")
+        return False
+
+    print(f"Geocoding: {user_address}")
+    print(f"           lat: {user_lat:.6f}  lon: {user_lon:.6f}")
+    print()
+
+    nearby = find_nearby_stores(user_lat, user_lon, radius_km=max_dist_km)
+    if not nearby:
+        print(f"Error: No {company_name} stores found within {max_dist_km} km")
+        return False
+
+    print(f"Found {len(nearby)} stores within {max_dist_km} km:")
+    for s in nearby:
+        print(f"  {s['name']:35s} {s['distance_km']:.1f} km")
+
+    print("\nAuthenticating with Edge API (website JWT)...")
+    api = api_class()
+    api.authenticate()
+    print("    Authenticated successfully")
+
+    ingredients = get_ingredients(dish_name)
+    print(f"\nDish: {dish_name}")
+    print(f"Ingredients: {', '.join(ingredients)}")
+
+    now = datetime.now()
+    new_rows = []
+
+    for store in nearby:
+        store_id = store["store_id"]
+        store_name = store["name"]
+        region = store.get("region", "NI")
+        print(f"\n--- {store_name} ({store['distance_km']:.1f} km, {region}) ---")
+
+        for ing in ingredients:
+            try:
+                products, pass1_hits = api.search_ingredient(
+                    store_id=store_id,
+                    ingredient=ing,
+                    region=region,
+                )
+            except Exception as e:
+                print(f"  {ing}: [ERROR] {e}")
+                time.sleep(0.1)
+                continue
+
+            pass1_by_id = {h["productID"]: h for h in pass1_hits}
+
+            priced = []
+            for prod in products:
+                row = build_edge_row(
+                    company_id, store_name, store_id, ing,
+                    prod, pass1_by_id.get(prod.get("productId", "")), now,
+                )
+                if row["price"] != "":
+                    new_rows.append(row)
+                    priced.append(prod)
+
+            if priced:
+                best_price = min(p.get("singlePrice", {}).get("price", float("inf")) for p in priced)
+                print(f"  {ing}: {len(priced)} results (best: ${best_price / 100:.2f})")
+            else:
+                print(f"  {ing}: NOT FOUND")
+
+            time.sleep(0.08)
+
+    if not new_rows:
+        print("\nNo results collected from API")
+        return False
+
+    appended, skipped = append_rows(new_rows)
+    print(f"\nAppended {appended} rows to {RESULTS_FILE.name} ({skipped} duplicates skipped)")
+    return True
+
+
 def optimise(dish_name, company=None):
     """Phase 2: Read today's results from CSV and print comparison table.
 

@@ -66,11 +66,19 @@ DEAD_INDICES = [
 # Fields whose values are redacted in printed JSON.
 REDACT_KEYS = {"inStoreAvailable", "onlineAvailable", "stores"}
 
-if sys.stdout and hasattr(sys.stdout, "reconfigure"):
-    try:
-        sys.stdout.reconfigure(encoding="utf-8")
-    except Exception:
-        pass
+
+def _configure_stdout_utf8() -> None:
+    """Best-effort stdout UTF-8 configuration for console use.
+
+    Safe to call when this module is imported, because we only touch the
+    stream if it actually exposes a reconfigure() method.
+    """
+    reconfigure = getattr(sys.stdout, "reconfigure", None)
+    if callable(reconfigure):
+        try:
+            reconfigure(encoding="utf-8")
+        except (AttributeError, ValueError, OSError):
+            pass
 
 
 def get_jwt():
@@ -205,6 +213,8 @@ def analyze_hit(hit, query):
 
 def main():
     import requests  # deferred so the module can be imported without it
+
+    _configure_stdout_utf8()
 
     print("=" * 80)
     print("TEST: _highlightResult / matchedWords on products-index (New World Edge)")
