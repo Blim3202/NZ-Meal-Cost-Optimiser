@@ -5,11 +5,6 @@ Island) domain name, this API covers **all Pak'nSave stores nationwide** includi
 both North Island (47 stores) and South Island (13 stores). It also works for
 New World with `banner: "MNW"`.
 
-[Confirmed working]: Dunedin, Invercargill,
-Queenstown, Christchurch-area stores (Riccarton, Hornby, Moorhouse, Papanui,
-Rangiora, Rolleston, Wainoni), Timaru, Blenheim, and Richmond all return valid
-per-store pricing through the mobile API.
-
 ---
 
 ## 1. Overview
@@ -121,10 +116,15 @@ If the body is omitted entirely, a New World token is returned by default.
 
 #### Token auto-refresh
 
-The `PaknSaveMobileAPI` class auto-authenticates on first use (`_ensure_token`) and
-caches the token in memory. Token expiry is 30 minutes; `_ensure_token()` is called on
-every API call and is a no-op once a token is set. For long-running sessions, the
-`refresh_token` endpoint (section 4.2) can be used.
+**No automatic refresh in production code.** Guest login returns `expires_in: 1800` (30 min)
+but `PaknSaveMobileAPI._ensure_token()` discards it — the token is cached once and is a
+permanent no-op thereafter, so it is **never refreshed**; a stale token 401s after 30 min
+and only a new `PaknSaveMobileAPI()` recovers. The `/refreshtoken` endpoint (4.2) is
+confirmed working in `Exploration/explore_edge_api3.py` but **not wired into** the client.
+Edge's `fs-user-token` JWT also expires ~30 min (design.md "Fresh JWT required"), but
+`PaknSaveEdgeAPI` reads only the cookie *value* (never its Max-Age) and `authenticate()`
+runs **once per run** (optimizer_utils.py:761, not per store) — no per-store re-auth, no
+retry on expiry.
 
 ### 4.2 Token Refresh
 
@@ -164,9 +164,7 @@ User-Agent: PAKnSAVEApp/4.32.0
 }
 ```
 
-The refresh token approach is not currently used by this project — a new guest
-login is issued instead when the token expires (which is simpler and avoids
-refresh-token lifecycle management).
+The refresh token approach is not currently used by this project.
 
 ---
 
@@ -271,6 +269,9 @@ specific store, **with per-store pricing**.
 |-----------|------|---------|-------------|
 | `q` | `string` | (required) | Search query, e.g. `"beef mince"` |
 | `hitsPerPage` | `int` | `100` | Max products per page. **Honored** — confirmed: `5`→5 products, `20`→20 products returned (see Pagination). Production always sends `20`. |
+| `sortOrder` | `string` | (relevance) | Sort by relevance or price (not used by production) |
+| `searchingTobacco` | `bool` | `false` | If the search is for tobacco products (not used by production) |
+| `disableAdsOverride` | `bool` | `false` | Disable ad insertion in results (not used by production) |
 
 The `sortOrder`, `searchingTobacco`, and `disableAdsOverride` params are *not used* by
 this project (the optimizer always relies on the default relevance ordering and only
@@ -483,34 +484,7 @@ To filter by deal category:
 
 #### Response structure
 
-```json
-{
-  "tobaccoFiltered": false,
-  "totalHits": 50,
-  "hitsPerPage": 20,
-  "numberOfPages": 3,
-  "page": 1,
-  "products": [
-    {
-      "productId": "...",
-      "brand": "Pams",
-      "name": "NZ Beef Mince",
-      "units": "kg",
-      "price": 1499,
-      "unitPrice": "$14.99/kg",
-      ...
-      "saleType": "special",
-      "algoliaAnalytics": { ... }
-    }
-  ],
-  "filters": {
-    "Deals": { "Super Specials": 20, "Weekly Specials": 30 },
-    "Dietary & lifestyle": { ... },
-    "Categories": { ... },
-    "Brands": { ... }
-  }
-}
-```
+Same product array format as search/specials.
 
 #### Known deal types (observed)
 

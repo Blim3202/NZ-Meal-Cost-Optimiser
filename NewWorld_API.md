@@ -5,10 +5,6 @@ Island) domain name, this API covers **all New World stores nationwide** includi
 both North Island (101 stores) and South Island (48 stores). It also works for
 Pak'nSave with `banner: "PNS"`.
 
-Confirmed working across Auckland CBD, Auckland suburbs, and nationwide stores
-(Christchurch, Dunedin, Wellington, Nelson, etc.) — all return valid per-store pricing
-through the mobile API.
-
 ---
 
 ## 1. Overview
@@ -107,36 +103,15 @@ If the body is omitted entirely, a New World token is returned by default.
 
 #### Token auto-refresh
 
-The `NewWorldAPI` class in this project automatically refreshes expired tokens:
-
-```python
-class NewWorldAPI:
-    def __init__(self):
-        self.scraper = cloudscraper.create_scraper()
-        self._token = None
-
-    def _ensure_token(self):
-        if self._token:
-            return
-        r = self.scraper.post(
-            f"{BASE}/mobile/user/login/guest",
-            json={"banner": "MNW"},
-            headers={"User-Agent": "NewWorldApp/4.32.0", "Content-Type": "application/json"},
-        )
-        r.raise_for_status()
-        data = r.json()
-        self._token = data["access_token"]
-        self._auth = {
-            "Authorization": f"Bearer {self._token}",
-            "access_token": self._token,
-            "User-Agent": "NewWorldApp/4.32.0",
-            "Content-Type": "application/json",
-        }
-```
-
-The token expiry is 30 minutes. `_ensure_token()` is called on every API call —
-if the token is already set, the call is a no-op. For long-running sessions, the
-`refresh_token` endpoint (section 4.2) can be used.
+**No automatic refresh in production code.** Guest login returns `expires_in: 1800` (30 min)
+but `NewWorldMobileAPI._ensure_token()` discards it — the token is cached once and is a
+permanent no-op thereafter, so it is **never refreshed**; a stale token 401s after 30 min
+and only a new `NewWorldMobileAPI()` recovers. The `/refreshtoken` endpoint (4.2) is
+confirmed working in `Exploration/explore_edge_api3.py` but **not wired into** the client.
+Edge's `fs-user-token` JWT also expires ~30 min (design.md "Fresh JWT required"), but
+`NewWorldEdgeAPI` reads only the cookie *value* (never its Max-Age) and `authenticate()`
+runs **once per run** (optimizer_utils.py:761, not per store) — no per-store re-auth, no
+retry on expiry.
 
 ### 4.2 Token Refresh
 
@@ -176,9 +151,7 @@ User-Agent: NewWorldApp/4.32.0
 }
 ```
 
-The refresh token approach is not currently used by this project — a new guest
-login is issued instead when the token expires (which is simpler and avoids
-refresh-token lifecycle management).
+The refresh token approach is not currently used by this project.
 
 ---
 
@@ -287,10 +260,14 @@ specific store, **with per-store pricing**.
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `q` | `string` | (required) | Search query, e.g. `"beef mince"` |
-| `hitsPerPage` | `int` | `100` | Max products per page. **Honored** — production always sends `20`. |
+| `hitsPerPage` | `int` | `100` | Max products per page. **Honored** — confirmed: `5`→5 products, `20`→20 products returned (see Pagination). Production always sends `20`. |
 | `sortOrder` | `string` | (relevance) | Sort by relevance or price (not used by production) |
 | `searchingTobacco` | `bool` | `false` | If the search is for tobacco products (not used by production) |
 | `disableAdsOverride` | `bool` | `false` | Disable ad insertion in results (not used by production) |
+
+The `sortOrder`, `searchingTobacco`, and `disableAdsOverride` params are *not used* by
+this project (the optimizer always relies on the default relevance ordering and only
+sends `q` + `hitsPerPage`).
 
 #### Request body
 
@@ -360,6 +337,7 @@ The body is required but can be empty — it's used internally for filter state
   }
 }
  ```
+#### Response shape (Mobile API)
 
 The mobile search endpoint returns either a **bare JSON array** of products or a
 **wrapped dict** with a `"products"` key. The production code in
@@ -403,27 +381,53 @@ searching "standard milk" at New World Albany vs New World Newmarket may return
 different `price` values for the same `productId`. This is the foundation of the
 meal cost optimizer.
 
+#### `categories` mapping & non-food filtering
+
+The mobile `categories` array has exactly 2 elements and is **not** the 3-level
+hierarchical path. Mapping to the CSV columns:
+
+| Index | Meaning | CSV column |
+|-------|---------|------------|
+| `categories[0]` | category1 | `sub_department` |
+| `categories[1]` | category2 | (not stored) |
+
+There is **no department (category0)** field in the mobile product — `department`
+is left blank for mobile rows. Non-food filtering checks **only** `categories[0]`
+(category1) against the shared `NON_FOOD_CATEGORIES` set — e.g. `["Dog", "Wet Dog
+Food"]` is filtered out because `categories[0]` is `"Dog"`. A product with an empty
+`categories` array is treated as food.
+
+#### Mobile parsing (`units` + `unitPrice` → 4-tuple)
+
+The optimizer splits the mobile product into
+`(quantity, measurement_unit, per_unit_quantity, per_unit_price)` in one call via
+`parse_foodstuffs_mobile_unit(units, unitPrice, price_cents)`:
+
+- `units` packs count + measure together, e.g. `"3 x 80g"` → `quantity=3`,
+  `measurement_unit="x 80g"`; `"500g"` → `(500, "g")`; `"ea"` → `(1, "ea")`.
+- `unitPrice` splits on `/`: `"$26.99/1kg"` → `per_unit_quantity="1kg"`,
+  `per_unit_price=26.99` (dollar sign stripped, cents→dollars).
+- **Bare-`"ea"` and numeric-prefix fallback**: when `unitPrice` is `null` or missing but `units` has a numeric count (e.g. `"1pk"`, `"500g"`, `"2 pack"`) or is bare `"ea"`, set `per_unit_quantity` to the `measurement_unit` (e.g. `"pk"`, `"g"`, `"pack"`, `"ea"`) and mirror the item's own `price` (from `price_cents`) into `per_unit_price` — avoids blank per-unit columns.
+
 #### Pagination
 
 | Field | Description |
 |-------|-------------|
 | `page` | Current page (1-indexed) |
-| `hitsPerPage` | Items per page (default 20) |
+| `hitsPerPage` | Items per page — **default 100** unless a `hitsPerPage` query param is sent |
 | `numberOfPages` | Total page count |
-| `totalHits` | Total matching products |
+| `totalHits` | Total matching products (across all pages) |
 
-All results are returned in a single page for typical ingredient searches
-(which usually return 1-20 results).
+`hitsPerPage` is honored: sending it caps the returned `products` length without
+affecting `totalHits`. Default is `100` (larger than the typical result count, so most
+ingredient searches return in a single page).
+
 
 #### Specifying sort order
 
-Add `sortOrder` to the query string:
-
-```
-POST .../search?q=beef+mince&sortOrder=PriceAsc
-```
-
-`sortOrder` values are not fully documented but known to accept `"PriceAsc"`.
+The mobile endpoint's sort parameter is not used by this project. The optimizer relies
+on the default relevance ordering (returns the most-relevant results first) and only
+sends `q` + `hitsPerPage`.
 
 ### 5.3 `POST /mobile/ecomm-products/{banner}/{storeId}/specials`
 
@@ -492,13 +496,60 @@ Returns the hierarchical product category tree for a specific store.
 
 #### Response structure
 
-Same category tree format as Pak'nSave.
+```json
+[
+  {
+    "name": "Meat & Poultry",
+    "code": "delicounter",
+    "appContent": { ... },
+    "children": [
+      {
+        "name": "Beef",
+        "code": null,
+        "appContent": { ... },
+        "children": [
+          {
+            "name": "Mince",
+            "code": null
+          }
+        ]
+      }
+    ]
+  }
+]
+```
+
+Categories are nested three levels deep. Each node has:
+- `name`: display name
+- `code`: optional category code (present for top-level "aisle" categories)
+- `appContent`: optional promotional content (panel with title, image, product)
+- `children`: subcategories (same structure)
 
 ### 5.5 `GET /mobile/v1/products/category` (Browse by category path)
 
 Returns products for a specific category path within a store.
 
-Same parameters and response format as Pak'nSave.
+**HTTP 200** — requires auth headers.
+
+#### Path parameters
+
+| Parameter | Type |
+|-----------|------|
+| `banner` | `string` |
+| `storeId` | `string` (UUID) |
+
+#### Query parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `cat0` | `string` | Top-level category name |
+| `cat1` | `string` | Second-level category name (optional) |
+| `cat2` | `string` | Third-level category name (optional) |
+| `sortOrder` | `string` | Sort order |
+
+#### Response structure
+
+Same product array format as search/specials.
 
 ---
 
@@ -638,6 +689,7 @@ Response with per-store pricing:
 - Regular price (cents): `singlePrice.price`
 - Promotional price (cents): `promotions[].rewardValue` where `bestPromotion: true`
 - Unit price: `singlePrice.comparativePrice.pricePerUnit` (cents per unit)
+- `promotions` is **`null`** when a product has no promo (not always `[]`)
 
 ---
 
@@ -679,7 +731,7 @@ We probed 14+ index names. Only THREE return HTTP 200:
 cookies = {
     "eCom_STORE_ID": store_id,
     "STORE_ID_V2": f"{store_id}|False",
-    "Region": "NI"
+    "Region": "NI" # or "SI" for South Island
 }
 ```
 
@@ -729,6 +781,12 @@ Supports: `OR`, `AND`, field:value syntax. Full Algolia filter syntax works.
 | `availability` | array | `["IN_STORE", "ONLINE"]` etc. |
 | `algoliaAnalytics.searchPosition` | int | Position in sorted results |
 
+**Price extraction:**
+- Regular price (cents): `singlePrice.price`
+- Promotional price (cents): `promotions[].rewardValue` where `bestPromotion: true`
+- Unit price (cents per unit): `singlePrice.comparativePrice.pricePerUnit` — note the
+  base quantity can be 100g/10g/1L (see `measureDescription`), so convert with that.
+
 ---
 
 ### 6.6 Categories Endpoint
@@ -762,12 +820,6 @@ Supports: `OR`, `AND`, field:value syntax. Full Algolia filter syntax works.
 
 ### 6.8 Two-Pass Pipeline Summary
 
-The complete production pipeline is implemented by the shared helper
-`foodstuffs_optimizer_edge` in `scripts/combined/optimizer_utils.py`, which the
-New World Edge optimizer (`newworld_optimizer_edge.py`) calls with the
-`NewWorldEdgeAPI` class and `find_nearby_stores`. Each brand's API class mirrors the
-same two-pass structure:
-
 ```
 PASS 1  POST /v1/edge/search/products/query/index/products-index
         payload: {"algoliaQuery":{"query":ingredient}, "page":0, "hitsPerPage":20, "storeId":id}
@@ -779,6 +831,11 @@ PASS 2  POST /v1/edge/search/paginated/products
                   "page":0, "hitsPerPage":50, "storeId":id, "sortOrder":"PRICE_ASC"}
         → products with per-store singlePrice + promotions
 ```
+The complete production pipeline is implemented by the shared helper
+`foodstuffs_optimizer_edge` in `scripts/combined/optimizer_utils.py`, which the
+New World Edge optimizer (`newworld_optimizer_edge.py`) calls with the
+`NewWorldEdgeAPI` class and `find_nearby_stores`. Each brand's API class mirrors the
+same two-pass structure:
 
 Reference implementation: `scripts/newworld/newworld_api.py` —
 `NewWorldEdgeAPI.pass1_relevance_search_hits` / `pass2_per_store_pricing`.
