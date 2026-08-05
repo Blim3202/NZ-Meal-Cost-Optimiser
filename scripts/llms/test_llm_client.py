@@ -8,7 +8,7 @@ Verifies:
 
 Usage:
     python -m scripts.llms.test_llm_client
-    python -m scripts.llms.test_llm_client --dish "chicken katsu" --portions "2 servings"
+    python -m scripts.llms.test_llm_client --dish "chicken katsu" --portions 2
     python -m scripts.llms.test_llm_client --model small
 """
 
@@ -46,7 +46,7 @@ def get_rate_limit_sleep(model_alias: str) -> float:
     rps = RATE_LIMITS.get(model_alias, 0.5)
     return 1.0 / rps if rps > 0 else 0.0
 
-PROMPT = """You are a recipe ingredient generator. Given a classic or user stylised dish and portion size,
+PROMPT = """You are a recipe ingredient generator. Given a classic or user stylised dish and portion count,
 return a JSON object with ingredients and quantities.
 
 Dish: {dish}
@@ -55,7 +55,7 @@ Portions: {portions}
 Return a JSON object with this shape:
 {{
   "dish_name": "...",
-  "portion": "...",
+  "portion": 4,
   "ingredients": [
     {{
       "quantity": 500,
@@ -68,7 +68,9 @@ Return a JSON object with this shape:
 Rules:
 - Each ingredient must have exactly ONE search_term (a single string, not a list).
 - "search_term" is the term to query supermarket APIs (use the most common NZ supermarket name).
-- Quantities and units reflect portion size at typical NZ supermarket pack sizes.
+- "portion" must be an integer (number of servings), not a string.
+- "quantity" must be a number (int or float).
+- "unit" must be a string (e.g. "g", "ml", "tbsp", "cloves", "unit").
 - OMIT small or condiment ingredients like "water", "oil", "salt", "pepper" UNLESS the dish is centred around them (e.g. "deep fried chicken" keeps oil for frying, "pepper crab" keeps pepper).
 - Do not include notes or extra fields.
 """
@@ -134,7 +136,7 @@ def generate_ingredients(client, model, dish, portions, model_alias="medium"):
 def main():
     parser = argparse.ArgumentParser(description="Phase 1: Mistral API smoke test")
     parser.add_argument("--dish", default="spaghetti bolognese", help="Dish name")
-    parser.add_argument("--portions", default="4 servings", help="Portion description")
+    parser.add_argument("--portions", type=int, default=4, help="Number of portions (integer)")
     parser.add_argument("--model", default="medium", choices=["small", "medium", "large"], help="Model size alias")
     parser.add_argument("--skip-models", action="store_true", help="Skip model listing (faster)")
     args = parser.parse_args()
