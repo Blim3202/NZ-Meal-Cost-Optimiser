@@ -1,15 +1,15 @@
 """
-Pak'nSave Edge API Optimizer
-============================
-Two-phase meal cost optimizer using the Pak'nSave Edge API (two-pass pipeline).
+New World Edge API Optimizer
+=============================
+Two-phase meal cost optimizer using the New World Edge API (two-pass pipeline).
 
 Phase 1 (query):  Geocode address → find nearby stores → authenticate → search
-                   each ingredient at each store → append ALL results to full_results.csv
+                    each ingredient at each store → append ALL results to full_results.csv
 Phase 2 (optimise): Read today's results from CSV → find best per-store totals
-                    and best mix → print comparison table
+                     and best mix → print comparison table
 
 Usage:
-    python -m scripts.paknsave.paknsave_optimizer_edge "<address>" "<dish>" [--requery false] [--distance 5]
+    python -m scripts.newworld.newworld_optimizer_edge "<address>" "<dish>" [--requery false] [--distance 5]
 
 Flags:
     --requery true   (default) Query the API and append new results
@@ -17,18 +17,17 @@ Flags:
     --distance N     Store search radius in km (default 5)
 
 Defaults:
-    Address: 588 Chapel Road, East Tāmaki, Auckland 2016
+    Address: Botany Town Centre, Auckland
     Dish:    spaghetti bolognese
 """
 
 import sys
 from pathlib import Path
 
-# Add scripts/combined to path for optimizer_utils
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "combined"))
 
-from paknsave_api import (
-    PaknSaveEdgeAPI,
+from newworld_api import (
+    NewWorldEdgeAPI,
     find_nearby_stores,
 )
 from optimizer_utils import (
@@ -40,15 +39,14 @@ from optimizer_utils import (
 def main():
     """CLI entrypoint.
 
-    Usage: python paknsave_optimizer_edge.py "<address>" "<dish>" [--requery false] [--distance 5]
-    Defaults to 588 Chapel Road, East Tāmaki, Auckland 2016 / spaghetti bolognese / requery true / distance 5km.
+    Usage: python newworld_optimizer_edge.py "<address>" "<dish>" [--requery false] [--distance 5]
+    Defaults to Botany Town Centre, Auckland / spaghetti bolognese / requery true / distance 5km.
     """
-    address = "588 Chapel Road, East Tāmaki, Auckland 2016"
+    address = "Botany Town Centre, Auckland"
     dish = "spaghetti bolognese"
     requery = True
     max_dist_km = 5
 
-    # Manual arg parsing: collect positional args, handle --flag value pairs
     positional = []
     i = 1
     while i < len(sys.argv):
@@ -75,17 +73,17 @@ def main():
         dish = positional[1]
 
     has_data = foodstuffs_optimizer_edge(
-        PaknSaveEdgeAPI,
+        NewWorldEdgeAPI,
         find_nearby_stores,
-        "PaknSave",
-        "Pak'nSave",
+        "NewWorld",
+        "New World",
         address,
         dish,
         requery,
         max_dist_km=max_dist_km,
     )
     if has_data:
-        optimise(dish, company="PaknSave")
+        optimise(dish, company="NewWorld")
 
 
 if __name__ == "__main__":

@@ -1,36 +1,33 @@
 """
-Pak'nSave API Module
+New World API Module
 ====================
 Unified API client supporting two backends:
 - EDGE API (default): Two-pass pipeline — relevance via Algolia products-index, then per-store pricing via paginated/products
 - MOBILE API (fallback): Single-pass search via Foodstuffs mobile endpoint
 
-Both backends use the same store data (from paknsave_setup.py output) and dish ingredients.
+Both backends use the same store data (from newworld_setup.py output) and dish ingredients.
 """
 
 import requests
 import cloudscraper
-import json
 import sys
-import time
-import math
 from pathlib import Path
 from typing import Optional, Literal, cast
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "combined"))
-from optimizer_utils import haversine
+from optimizer_utils import haversine, geocode
 
 # ─── Constants ──────────────────────────────────────────────────────────────
-WEB_BASE = "https://www.paknsave.co.nz"
-EDGE_BASE = "https://api-prod.paknsave.co.nz/v1/edge"
+WEB_BASE = "https://www.newworld.co.nz"
+EDGE_BASE = "https://api-prod.newworld.co.nz/v1/edge"
 MOBILE_BASE = "https://api-prod.prod.fsniwaikato.kiwi/prod"
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
-STORES_CSV = DATA_DIR / "paknsave_stores.csv"
-STORES_JSON = DATA_DIR / "paknsave_stores.json"
+STORES_CSV = DATA_DIR / "newworld_stores.csv"
+STORES_JSON = DATA_DIR / "newworld_stores.json"
 
 # Non-food category1 blacklist — values to exclude from ingredient search results.
-# Sourced from observed_category1_paknsave.json (all 116 unique category1 values).
+# Sourced from observed_category1_newworld.json (all 116 unique category1 values).
 NON_FOOD_CATEGORIES = {
     # Pet / Animal
     "Dog",
@@ -89,7 +86,7 @@ NON_FOOD_CATEGORIES = {
     # "Alcohol Free Drinks",
 }
 
-# Dish ingredients (21 dishes) — matches PaknSave_prototype.py and woolworths_optimizer.py
+# Dish ingredients (21 dishes) — matches NewWorld_prototype.py and woolworths_optimizer.py
 DISH_INGREDIENTS = {
     "spaghetti bolognese": ["beef mince", "spaghetti pasta", "canned tomatoes", "onion", "carrot", "garlic", "mixed herbs"],
     "chicken stir fry": ["chicken breast", "stir fry vegetables", "soy sauce", "rice noodles"],
@@ -117,7 +114,7 @@ DISH_INGREDIENTS = {
 # ─── Utilities ──────────────────────────────────────────────────────────────
 
 def load_stores() -> list[dict]:
-    """Load store list from CSV/JSON produced by paknsave_setup.py."""
+    """Load store list from CSV/JSON produced by newworld_setup.py."""
     import csv
     stores = []
     if STORES_CSV.exists():
@@ -133,7 +130,9 @@ def load_stores() -> list[dict]:
     return stores
 
 
-def find_nearby_stores(user_lat: float, user_lon: float, radius_km: float = 5.0) -> list[dict]:
+def find_nearby_stores(
+    user_lat: float, user_lon: float, radius_km: float = 5.0
+) -> list[dict]:
     """Return stores within radius_km, sorted by distance."""
     stores = load_stores()
     nearby = []
@@ -141,7 +140,6 @@ def find_nearby_stores(user_lat: float, user_lon: float, radius_km: float = 5.0)
         try:
             d = haversine(user_lat, user_lon, s["latitude"], s["longitude"])
             if d <= radius_km:
-                # Merge original store dict with computed distance
                 nearby.append({**s, "distance_km": round(d, 2)})
         except (KeyError, ValueError):
             continue
@@ -156,9 +154,9 @@ def get_ingredients(dish_name: str) -> list[str]:
 
 # ─── EDGE API (Two-Pass) ────────────────────────────────────────────────────
 
-class PaknSaveEdgeAPI:
+class NewWorldEdgeAPI:
     """
-    Pak'nSave Edge API client using website JWT authentication.
+    New World Edge API client using website JWT authentication.
     Two-pass pipeline:
       PASS 1: POST /v1/edge/search/products/query/index/products-index (relevance + _highlightResult)
       PASS 2: POST /v1/edge/search/paginated/products (per-store pricing with filters + PRICE_ASC)
@@ -275,7 +273,7 @@ class PaknSaveEdgeAPI:
                 filtered.append(h)
         return filtered
 
-    # ── PASS 2: Per-Store Pricing ───────────────────────────────────────────
+    # ── PASS 2: Per-Store Pricing ───────────────────────────────────
     def pass2_per_store_pricing(
         self,
         store_id: str,
@@ -295,7 +293,6 @@ class PaknSaveEdgeAPI:
 
         headers = self._auth_headers()
         cookies = self._store_cookies(store_id, region)
-        # Build Algolia filter: "productID:aaa OR productID:bbb" for Pass 2 pricing
         filter_str = " OR ".join(f"productID:{pid}" for pid in product_ids)
         payload = {
             "algoliaQuery": {"query": query, "filters": filter_str},
@@ -314,7 +311,7 @@ class PaknSaveEdgeAPI:
         r.raise_for_status()
         return r.json().get("products", [])
 
-    # ── Combined Two-Pass Search ────────────────────────────────────────────
+    # ── Combined Two-Pass Search ────────────────────────────────────
     def search_ingredient(
         self,
         store_id: str,
@@ -341,7 +338,6 @@ class PaknSaveEdgeAPI:
         sp = product.get("singlePrice", {})
         price_cents = sp.get("price")
         promo = product.get("promotions", [])
-        # Use promo rewardValue if available, else fall back to regular price
         promo_val = promo[0].get("rewardValue") if promo else None
         final_cents = promo_val if promo_val is not None else price_cents
         return final_cents / 100.0 if final_cents else None
@@ -363,9 +359,9 @@ class PaknSaveEdgeAPI:
 
 # ─── MOBILE API (Single-Pass, Legacy Fallback) ──────────────────────────────
 
-class PaknSaveMobileAPI:
+class NewWorldMobileAPI:
     """
-    Pak'nSave Mobile API client (legacy, fallback).
+    New World Mobile API client (legacy, fallback).
     Uses Foodstuffs mobile endpoint with guest token auth.
     Single search per ingredient per store; no relevance visibility.
     """
@@ -379,8 +375,8 @@ class PaknSaveMobileAPI:
             return
         r = self.scraper.post(
             f"{MOBILE_BASE}/mobile/user/login/guest",
-            json={"banner": "PNS"},
-            headers={"User-Agent": "PAKnSAVEApp/4.32.0", "Content-Type": "application/json"},
+            json={"banner": "MNW"},
+            headers={"User-Agent": "NewWorldApp/4.32.0", "Content-Type": "application/json"},
         )
         r.raise_for_status()
         data = r.json()
@@ -391,7 +387,7 @@ class PaknSaveMobileAPI:
         return {
             "Authorization": f"Bearer {self._token}",
             "access_token": self._token,
-            "User-Agent": "PAKnSAVEApp/4.32.0",
+            "User-Agent": "NewWorldApp/4.32.0",
             "Content-Type": "application/json",
         }
 
@@ -410,7 +406,13 @@ class PaknSaveMobileAPI:
             return True  # no category1 to check — treat as food
         return cat1 not in NON_FOOD_CATEGORIES
 
-    def search_products(self, store_id: str, query: str, hits_per_page: int = 20, food_only: bool = True) -> Optional[list[dict]]:
+    def search_products(
+        self,
+        store_id: str,
+        query: str,
+        hits_per_page: int = 20,
+        food_only: bool = True,
+    ) -> Optional[list[dict]]:
         """Search products at a store via mobile API. Returns raw product list.
 
         Limits results with hitsPerPage (default 20) to control response size.
@@ -418,14 +420,14 @@ class PaknSaveMobileAPI:
         """
         self._ensure_token()
         r = self.scraper.post(
-            f"{MOBILE_BASE}/mobile/ecomm-products/PNS/{store_id}/search?q={query}&hitsPerPage={hits_per_page}",
+            f"{MOBILE_BASE}/mobile/ecomm-products/MNW/{store_id}/search?q={query}&hitsPerPage={hits_per_page}",
             headers=self._auth_headers(),
             json=[],
         )
         if r.status_code == 200:
             data = r.json()
-            # Mobile API returns list directly, not wrapped in "products" key
-            products = data if isinstance(data, list) else data.get("products", [])
+            # Mobile API returns a wrapped dict (not a bare list)
+            products = data.get("products", []) if isinstance(data, dict) else data
             if food_only:
                 products = [p for p in products if self._is_food_product(p)]
             return products
@@ -436,7 +438,6 @@ class PaknSaveMobileAPI:
         self._ensure_token()
         r = self.scraper.get(f"{MOBILE_BASE}/mobile/store/physical", headers=self._auth_headers())
         if r.status_code == 200:
-            # Index stores by ID for O(1) lookup
             return {s["id"]: s for s in r.json()["stores"]}
         return {}
 
@@ -461,20 +462,20 @@ class PaknSaveMobileAPI:
 
 # ─── Unified Interface ──────────────────────────────────────────────────────
 
-class PaknSaveAPI:
+class NewWorldAPI:
     """
-    Unified Pak'nSave API client.
+    Unified New World API client.
     Defaults to Edge API (two-pass). Falls back to Mobile API if requested.
     """
 
     def __init__(self, backend: Literal["edge", "mobile"] = "edge"):
         self.backend = backend
-        self.client: PaknSaveEdgeAPI | PaknSaveMobileAPI
+        self.client: NewWorldEdgeAPI | NewWorldMobileAPI
 
         if backend == "edge":
-            self.client = PaknSaveEdgeAPI()
+            self.client = NewWorldEdgeAPI()
         else:
-            self.client = PaknSaveMobileAPI()
+            self.client = NewWorldMobileAPI()
 
     def search_ingredient(self, store_id: str, ingredient: str, **kwargs) -> tuple[list[dict], list[dict]]:
         """Search for an ingredient at a store.
@@ -483,7 +484,7 @@ class PaknSaveAPI:
             (products, pass1_hits) for edge backend.
             ([], products) for mobile backend (no Pass 1 metadata).
         """
-        if isinstance(self.client, PaknSaveEdgeAPI):
+        if isinstance(self.client, NewWorldEdgeAPI):
             return self.client.search_ingredient(store_id, ingredient, **kwargs)
 
         results = self.client.search_products(store_id, ingredient)
@@ -491,8 +492,8 @@ class PaknSaveAPI:
 
     def get_stores(self) -> list[dict]:
         """Get store list (format varies by backend)."""
-        if isinstance(self.client, PaknSaveEdgeAPI):
-            return cast(list[dict], self.client.get_stores())
+        if isinstance(self.client, NewWorldEdgeAPI):
+            return self.client.get_stores()
 
         stores = self.client.get_stores()
         return list(cast(dict, stores).values())
@@ -500,33 +501,33 @@ class PaknSaveAPI:
     @staticmethod
     def extract_unit_price(product: dict, backend: str) -> str:
         if backend == "edge":
-            unit_price = PaknSaveEdgeAPI.extract_unit_price(product)
+            unit_price = NewWorldEdgeAPI.extract_unit_price(product)
         else:
-            unit_price = PaknSaveMobileAPI.extract_unit_price(product)
+            unit_price = NewWorldMobileAPI.extract_unit_price(product)
 
         return unit_price or ""
 
     @staticmethod
     def get_product_name(product: dict, backend: str) -> str:
         if backend == "edge":
-            name = PaknSaveEdgeAPI.get_product_name(product)
+            name = NewWorldEdgeAPI.get_product_name(product)
         else:
-            name = PaknSaveMobileAPI.get_product_name(product)
+            name = NewWorldMobileAPI.get_product_name(product)
 
         return name or ""
 
     @staticmethod
     def get_product_size(product: dict, backend: str) -> str:
         if backend == "edge":
-            size = PaknSaveEdgeAPI.get_product_size(product)
+            size = NewWorldEdgeAPI.get_product_size(product)
         else:
-            size = PaknSaveMobileAPI.get_product_size(product)
+            size = NewWorldMobileAPI.get_product_size(product)
 
         return size or ""
 
 
-# ─── Convenience Functions ──────────────────────────────────────────────────
+# ─── Convenience Functions ──────────────────────────────────────────
 
-def create_api(backend: Literal["edge", "mobile"] = "edge") -> PaknSaveAPI:
+def create_api(backend: Literal["edge", "mobile"] = "edge") -> NewWorldAPI:
     """Factory function to create API client with specified backend."""
-    return PaknSaveAPI(backend=backend)
+    return NewWorldAPI(backend=backend)

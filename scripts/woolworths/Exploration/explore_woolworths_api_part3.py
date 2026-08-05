@@ -37,7 +37,7 @@ from playwright.async_api import async_playwright
 
 # ── Paths ────────────────────────────────────────────────────────────────────
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR   = os.path.abspath(os.path.join(SCRIPT_DIR, "..", "..", "data"))
+DATA_DIR   = os.path.abspath(os.path.join(SCRIPT_DIR, "..", "..", "..", "data", "Exploration", "woolworths"))
 COOKIE_JAR = os.path.join(DATA_DIR, "part2_cookies.json")
 BASE_URL   = "https://www.woolworths.co.nz"
 API_BASE   = f"{BASE_URL}/api/v1"

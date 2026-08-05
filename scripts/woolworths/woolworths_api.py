@@ -1,8 +1,35 @@
+"""
+Woolworths NZ API Module
+========================
+Provides functions for interacting with the Woolworths NZ (Countdown) backend API.
+
+The API is hosted at shop.countdown.co.nz and serves Woolworths NZ product data.
+Per-store pricing is achieved by injecting a cw-lrkswrdjp cookie constructed from
+the store's fulfilmentStoreId (available in data/woolworths_store_data.json as extra1).
+
+Key functions:
+    create_session()            - Create a seeded requests.Session with required headers
+    set_store_context()         - Inject per-store cookie for pricing
+    search_products()           - Keyword search against the product catalogue
+    find_cheapest()             - Search and return the lowest-priced result
+    get_nearby_stores()         - Haversine distance filter on store coordinates
+
+Data files:
+    data/woolworths_store_data.json  - Store details with extra1 (fulfilmentStoreId)
+                                       and extra2 (pickupAddressId)
+
+Reference: Woolworths_API.md (1290+ lines of endpoint documentation)
+"""
+
 import json
+import sys
 import requests
 import time
 import os
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "combined"))
+from optimizer_utils import haversine
 
 BASE_URL = "https://www.woolworths.co.nz/api/v1"
 SITE_URL = "https://www.woolworths.co.nz/"
@@ -16,6 +43,30 @@ HEADERS = {
 }
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
+STORE_JSON = DATA_DIR / "woolworths_store_data.json"
+
+# Department IDs for non-food categories (excluded when food_only=True)
+# Source: /api/v1/shell → mainNavs[1] → Browse departments
+NON_FOOD_DEPARTMENT_IDS = {10, 11, 12, 13, 14}
+# 10 = Health & Body, 11 = Household, 12 = Baby & Child,
+# 13 = Pet, 14 = Back to School
+
+
+def is_food_department(product):
+    """Check if a product belongs to a food department.
+
+    Args:
+        product: raw product dict from the API (must contain 'departments' key)
+
+    Returns:
+        True if the product is in a food department, False otherwise.
+        Products with no department info are included (assumed food).
+    """
+    depts = product.get("departments", [])
+    if not depts:
+        return True
+    dept_ids = {d.get("id") for d in depts if "id" in d}
+    return not dept_ids.intersection(NON_FOOD_DEPARTMENT_IDS)
 
 
 def _load_store_mapping():
@@ -23,7 +74,7 @@ def _load_store_mapping():
 
     Returns dict: {pickupAddressId (str): {fulfilmentStoreId (int), name (str)}}
     """
-    store_data_path = DATA_DIR / "woolworths_store_data.json"
+    store_data_path = STORE_JSON
     if not store_data_path.exists():
         raise FileNotFoundError(f"Store data not found: {store_data_path}")
 
@@ -108,11 +159,18 @@ def set_store_context(session, pickup_address_id):
     }
 
 
-def search_products(session, query, size=20):
+def search_products(session, query, size=20, food_only=False):
     """Search for products with the current store context.
 
+    Args:
+        session: requests.Session with store context set
+        query: search term (e.g. "milk", "beef mince")
+        size: max results to return
+        food_only: if True, exclude non-food departments
+                   (Health & Body, Household, Baby & Child, Pet, Back to School)
+
     Returns list of product dicts with keys: sku, name, salePrice, originalPrice,
-    isSpecial, unitPrice, url, imageUrl.
+    isSpecial, unitPrice, volumeSize, cupMeasure, url, imageUrl, departments.
     """
     resp = session.get(
         f"{BASE_URL}/products",
@@ -123,26 +181,41 @@ def search_products(session, query, size=20):
     items = data.get("products", {}).get("items", [])
     results = []
     for item in items:
+        if food_only and not is_food_department(item):
+            continue
         price_info = item.get("price", {})
+        size_info = item.get("size", {})
+        departments = item.get("departments", [])
+        dept_name = departments[0].get("name", "") if departments else ""
         results.append({
             "sku": item.get("sku"),
             "name": item.get("name", ""),
             "salePrice": price_info.get("salePrice"),
             "originalPrice": price_info.get("originalPrice"),
             "isSpecial": price_info.get("isSpecial", False),
-            "unitPrice": item.get("cupPrice", ""),
+            "unitPrice": size_info.get("cupPrice", ""),
+            "volumeSize": size_info.get("volumeSize", ""),
+            "cupMeasure": size_info.get("cupMeasure", ""),
+            "cupListPrice": size_info.get("cupListPrice", ""),
             "url": item.get("url", ""),
             "imageUrl": item.get("imageUrl", ""),
+            "department": dept_name,
         })
     return results
 
 
-def find_cheapest(session, query, size=20):
+def find_cheapest(session, query, size=20, food_only=False):
     """Search and return the cheapest product for a query.
+
+    Args:
+        session: requests.Session with store context set
+        query: search term
+        size: max results to consider
+        food_only: if True, exclude non-food departments
 
     Returns dict with product info and price, or None if nothing found.
     """
-    products = search_products(session, query, size=size)
+    products = search_products(session, query, size=size, food_only=food_only)
     if not products:
         return None
 
@@ -154,25 +227,11 @@ def find_cheapest(session, query, size=20):
     return cheapest
 
 
-def get_nearby_stores(user_lat, user_lon, max_dist_km=5):
+def get_nearby_stores(user_lat, user_lon, max_dist_km: float = 5):
     """Return stores within max_dist_km, sorted by distance.
 
     Returns list of dicts: {pickupAddressId, name, fulfilmentStoreId, lat, lon, distance_km}
     """
-    import math
-
-    def haversine(lat1, lon1, lat2, lon2):
-        R = 6371
-        dlat = math.radians(lat2 - lat1)
-        dlon = math.radians(lon2 - lon1)
-        a = (
-            math.sin(dlat / 2) ** 2
-            + math.cos(math.radians(lat1))
-            * math.cos(math.radians(lat2))
-            * math.sin(dlon / 2) ** 2
-        )
-        return R * 2 * math.asin(math.sqrt(a))
-
     mapping = get_store_mapping()
     nearby = []
     for pid, info in mapping.items():
@@ -190,16 +249,3 @@ def get_nearby_stores(user_lat, user_lon, max_dist_km=5):
             })
     nearby.sort(key=lambda s: s["distance_km"])
     return nearby
-
-
-def geocode(address):
-    """Geocode a NZ address via Nominatim. Returns (lat, lon) or (None, None)."""
-    r = requests.get(
-        "https://nominatim.openstreetmap.org/search",
-        headers={"User-Agent": "NZMealCostOptimizer/1.0"},
-        params={"q": address, "format": "json", "limit": 1},
-    )
-    if r.status_code == 200 and r.json():
-        loc = r.json()[0]
-        return float(loc["lat"]), float(loc["lon"])
-    return None, None

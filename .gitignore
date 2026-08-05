@@ -9,3 +9,4 @@ __pycache__/
 .opencode
 .vscode
 tempCodeRunnerFile.py
+pyrightconfig.json

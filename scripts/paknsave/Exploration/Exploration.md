@@ -77,7 +77,7 @@ Referer: https://www.paknsave.co.nz/
 **Critical Fields for Relevance Filtering**:
 - `_highlightResult.DisplayName.matchedWords` — query terms matched in product name
 - `_highlightResult.category2AndBrand.matchedWords` — query terms matched in category
-- `category1`, `category2`, `category3` — hierarchical categories for filtering pet food
+- `category1`, `category2`, `category3` — hierarchical categories for filtering non-food items
 
 ---
 
@@ -98,7 +98,7 @@ FOR EACH INGREDIENT AT EACH STORE:
     POST /v1/edge/search/products/query/index/products-index
     Body: {"algoliaQuery": {"query": "beef mince"}, "page": 0, "hitsPerPage": 20, "storeId": "..."}
     → Extract productIDs where _highlightResult has non-empty matchedWords
-    → Filter by category1 to exclude pet food (Dog, Cat, Pet)
+    → Filter by category1 to exclude non-food items (NON_FOOD_CATEGORIES: 53 values)
 
   PASS 2 — PER-STORE PRICING (Paginated with filters)
     POST /v1/edge/search/paginated/products
@@ -147,7 +147,7 @@ cookies = {
 - Geocoding via Nominatim
 - Haversine distance filtering (5km radius)
 - Two-pass search per ingredient per store (top 20 relevance → price sorted)
-- Pet food category filtering
+- Non-food category1 filtering (53 categories: pet, baby, household, health, etc.)
 - Promotional price detection (`promotions[].rewardValue`)
 - Cost comparison across nearby stores
 
@@ -180,7 +180,7 @@ COST COMPARISON
 
 **PASS 1 Detail** (beef mince):
 ```
-Relevant product IDs found: 37 (after pet food filtering)
+Relevant product IDs found: 37 (after non-food category1 filtering)
   5104350-KGM-000  (NZ Beef Mince)
   5101189-KGM-000  (NZ Premium Beef Mince)
   5040757-EA-000   (Angus Beef Mince)
@@ -212,7 +212,7 @@ Relevant product IDs found: 37 (after pet food filtering)
 | 2 | Category fields (`category1`, `category2`, `category3`) available in Pass 1 for filtering |
 | 3 | Paginated endpoint `/v1/edge/search/paginated/products` accepts Algolia `filters` parameter |
 | 3 | Two-pass pipeline: Pass 1 gets relevant productIDs → Pass 2 gets per-store prices via filters |
-| 3 | Pet food filtering via `category1` exclusion (Dog, Cat, Pet) |
+| 3 | Non-food category1 filtering via `NON_FOOD_CATEGORIES` (53 values) in Pass 1 |
 | 3 | Promotional pricing via `promotions[].rewardValue` |
 | 4 | Full optimizer demo working across multiple stores for multi-ingredient dishes |
 
@@ -228,7 +228,7 @@ Relevant product IDs found: 37 (after pet food filtering)
 | Per-store pricing | Native (storeId in URL) | Via cookies + Algolia filters |
 | Price sorting | `PriceAsc` | `PRICE_ASC`, `PRICE_DESC` |
 | Promotions | Included | Included (`rewardValue`) |
-| Pet food filtering | Not available | **Available via `category1` in Pass 1** |
+| Non-food filtering | Not available | **Available via `category1` in Pass 1 (53 categories)** |
 
 ---
 

@@ -194,7 +194,7 @@ Response includes `_highlightResult`:
 }
 ```
 
-Only `products-index` (default) has relevance matching. The other two working indices (`products-index-popularity-asc`, `products-index-popularity-desc`) have empty `_highlightResult.matchedWords` — they are for browsing, not search.
+All three indices (`products-index`, `products-index-popularity-asc`, `products-index-popularity-desc`) have identical `_highlightResult.matchedWords` — the only difference is sort order. `products-index` (relevance-sorted) is preferred for the two-pass pipeline since top hits match the query best.
 
 ### Two-Pass Pipeline
 
@@ -329,3 +329,52 @@ The Pak'nSave Edge API (`GET /v1/edge/store`) returns 57 stores, while the mobil
 **Note**: This is similar to the New World discrepancy (148 Edge API stores vs 149 mobile API stores).
 
 **See also**: Log 34 in logs.md for verification details.
+
+## 37. Cross-Brand API Comparison (Pak'nSave vs New World vs Woolworths)
+
+| Feature | Pak'nSave | New World | Woolworths |
+|---------|-----------|-----------|------------|
+| Auth | Bearer token (guest login) | Bearer token (guest login) | Session cookies (no login) |
+| Token/ session expiry | 30 min (auto-refreshable) | 30 min (auto-refreshable) | Indefinite (observed weeks) |
+| Per-store pricing | Native (store ID in URL) | Native (store ID in URL) | Cookie injection (`cw-lrkswrdjp`) |
+| Fresh session per store | Not required | Not required | Required (server resets cookies) |
+| Product search | `POST` with JSON body | `POST` with JSON body | `GET` with query params |
+| Prices in | Cents (integer) | Cents (integer) | Dollars (float) |
+| Cloudflare | API: none, Website: Cloudflare | API: none, Website: Cloudflare | No Cloudflare on API |
+| Store count | 60 (mobile) / 57 (Edge) | 149 (mobile) / 148 (Edge) | 183 (Woolworths NZ) |
+| Auth complexity | Low (2 POST calls) | Low (2 POST calls) | Medium (cookie construction) |
+| Banner value | `"PNS"` | `"MNW"` | N/A |
+| User-Agent | `PAKnSAVEApp/4.32.0` | `NewWorldApp/4.32.0` | N/A |
+| Relevance matching (mobile) | Implicit (first result) | Implicit (first result) | First result (no highlight) |
+| Relevance matching (Edge) | Explicit `_highlightResult.matchedWords` | Explicit `_highlightResult.matchedWords` | N/A |
+| Price sorting (mobile) | PriceAsc | PriceAsc | Not available |
+| Price sorting (Edge) | PRICE_ASC, PRICE_DESC | PRICE_ASC, PRICE_DESC | Not applicable |
+| Edge API two-pass pipeline | [OK] Working | [OK] Working | Not applicable |
+| Pet food filtering | Via `category1` in Pass 1 | Via `category1` in Pass 1 | Not available |
+
+The Edge API two-pass pipeline on both Pak'nSave and New World is the recommended production path. See decisions #32 and #33 for details.
+
+---
+
+## 38. Why the Mobile API is Preferred Over Website CommonApi
+
+The Pak'nSave website at `www.paknsave.co.nz` exposes legacy `CommonApi` endpoints (website-only, require authenticated browser sessions, inconsistent JSON shapes). The project uses the Foodstuffs mobile API instead because:
+
+1. **No session cookies required** — mobile API uses simple bearer token
+2. **Consistent JSON format** — CommonApi responses vary by endpoint
+3. **Per-store pricing** — mobile API returns prices per-store natively
+4. **More data per product** — mobile API returns `productImageUrls`, `unitPrice`, `algoliaAnalytics`, `brand`, `availableInOnline`, flag fields
+
+The specific CommonApi endpoints that were removed from `PaknSave_API.md` (no longer used by project code):
+
+| Endpoint | Method | Notes |
+|----------|--------|-------|
+| `/CommonApi/Store/GetStoreList` | POST | Returns store list with basic info |
+| `/CommonApi/Store/ChangeStore?storeId={id}&clickSource=list` | POST | Sets store session cookie |
+| `/CommonApi/Navigation/MegaMenu?v=&storeId={id}` | GET | Category navigation tree |
+| `/CommonApi/Cart/Index` | GET | Cart state (requires authenticated session) |
+| `/CommonApi/Product/GetBannerAd` | POST | Banner advertisements |
+| `/CommonApi/Checkout/GetPreviousProductPurchases` | GET | Previous purchases |
+| `/CommonApi/Checkout/GetAisleOfValueProducts` | GET | Aisle-of-value deals |
+| `/CommonApi/Delivery/GetStoreCollectionPoints?id={id}` | GET | Collection point details |
+| `/CommonApi/ShoppingLists/GetLists` | GET | Shopping lists |

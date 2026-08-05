@@ -284,9 +284,9 @@ See `scripts/newworld/Exploration/explore_edge_auth.py`, `edge_full_test.py`, `e
 - Tested 14+ Algolia index names via `/search/products/query/index/{index_name}`
 - Only 3 indices exist and return 200:
   - `products-index` (default) — **HAS `_highlightResult` with `matchedWords`** — relevance sorted
-  - `products-index-popularity-asc` — NO relevance matches, popularity sorted ASC
-  - `products-index-popularity-desc` — NO relevance matches, popularity sorted DESC
-- All other indices (`price-asc`, `price-desc`, `relevance`, `name-asc`, `name-desc`, `newest`, `bestselling`, `trending`) return 404
+  - `products-index-popularity-asc` — HAS `_highlightResult` with `matchedWords`, popularity sorted ASC
+  - `products-index-popularity-desc` — HAS `_highlightResult` with `matchedWords`, popularity sorted DESC
+- All other indices (`price-asc`, `price-desc`, `relevance`, `name-asc`, `name-desc`, `newest`, `bestselling`, `trending`) return 500 (verified 2026-08-04; previously 404)
 
 **Breakthrough**: The paginated endpoint accepts Algolia `filters` parameter! Using `filters: "productID:xxx OR productID:yyy"` allows querying per-store pricing for SPECIFIC product IDs discovered in Pass 1.
 
@@ -344,12 +344,12 @@ See `scripts/newworld/Exploration/edge_api_relevance_exploration.py` (comprehens
 
 **Symptom**: Needed to confirm that `_highlightResult.matchedWords` exists in Pak'nSave Algolia indices for the two-pass pipeline.
 
-**Discovery**: Unlike New World (where only `products-index` has relevance), **ALL THREE working Pak'nSave indices have `_highlightResult.matchedWords` populated**:
+**Discovery**: All three working Pak'nSave indices have `_highlightResult.matchedWords` populated (same as New World):
 - `products-index` [OK] — Relevance sorted, HAS `matchedWords`
 - `products-index-popularity-asc` [OK] — Popularity sorted, HAS `matchedWords`
 - `products-index-popularity-desc` [OK] — Popularity sorted, HAS `matchedWords`
 
-All other indices (`price-asc`, `price-desc`, `relevance`, `name-asc`, `name-desc`, `newest`, `bestselling`, `trending`) return 404.
+All other indices (`price-asc`, `price-desc`, `relevance`, `name-asc`, `name-desc`, `newest`, `bestselling`, `trending`) return 500 (verified 2026-08-04; previously 404).
 
 **Key Insight**: The default `products-index` is still recommended for the two-pass pipeline because it's relevance-sorted (most relevant first), which is optimal for ingredient search.
 
@@ -490,3 +490,163 @@ Output: `data/paknsave_stores.csv` (60 stores from store_finder, 57 from edge, a
 **Key files**: `scripts/paknsave/paknsave_api.py`, `paknsave_optimizer_edge.py`, `paknsave_optimizer_mobile.py`
 
 ---
+
+## 38. Unified Foodstuffs API Module Created
+
+**Summary**: Created `scripts/foodstuffs/` as a combined module for both Pak'nSave and New World, consolidating the brand-specific API, optimizer, and setup logic into a single unified package. The shared `Foodstuffs_api.py` handles brand-specific credentials (banner, User-Agent) and stores the two-pass pipeline logic in `Foodstuffs_optimizer_edge.py`.
+
+**Files created**:
+- `scripts/foodstuffs/Foodstuffs_api.py` — Unified API client for both brands. `FoodstuffsEdgeAPI(brand)`, `FoodstuffsMobileAPI(brand)` with brand-specific credentials. Includes shared utilities (`load_stores()`, `geocode()`, `find_nearby_stores()`, `get_ingredients()`, `haversine()`, `BRANDS` dict).
+- `scripts/foodstuffs/Foodstuffs_optimizer_edge.py` — Edge API two-pass optimizer CLI. Accepts `brand` argument (`paknsave` or `newworld`). Supports both source types.
+- `scripts/foodstuffs/Foodstuffs_optimizer_mobile.py` — Mobile API fallback optimizer. Same CLI structure, single-pass search.
+- `scripts/foodstuffs/Foodstuffs_setup.py` — Unified store builder pipeline. Supports `source=edge` (default) or `source=mobile` for both brands. store_finder only available for paknsave.
+
+**Status update 2026-08-04**: `scripts/foodstuffs/` has since been deleted — the cross-brand optimizer and row-builder logic has been migrated to `scripts/combined/optimizer_utils.py`. See entry 44 below.
+
+---
+
+## 39. Store-Finder Method Limited to Pak'nSave Only
+
+**Summary**: Removed store_finder as a valid source for New World. Only Pak'nSave's `__NEXT_DATA__` contains `contentstackStores` with store GUID mappings (`uid` → `store_id`). New World's `__NEXT_DATA__` has no `contentstackStores` — only `title`, `url`, `address` per store. Therefore, store_finder source only produces full store data (with IDs, coordinates) for Pak'nSave.
+
+**Changes**:
+- `Foodstuffs_setup.py`: `BRANDS["newworld"]["sources"]` = `["edge", "mobile"]` only (no `store_finder`)
+- `BRANDS["paknsave"]["sources"]` = `["edge", "mobile", "store_finder"]`
+- `fetch_stores()` validates source against `BRANDS[brand]["sources"]` — raises `ValueError` for invalid combinations
+- `newworld_setup.py` updated to only support `edge` and `mobile` sources
+- `PaknSave_API.md` section 9 and `NewWorld_API.md` section 8 updated to reflect this
+
+---
+
+## 40. Legacy Scripts Marked
+
+The following scripts are now legacy and should not be used for new development:
+
+| Legacy File | Replaced By |
+|---|---|
+| `scripts/paknsave/fetch_stores.py` | `scripts/paknsave/paknsave_setup.py` |
+| `scripts/paknsave/PaknSave_prototype.py` | `scripts/paknsave/paknsave_api.py`, `paknsave_optimizer_edge.py`, `paknsave_optimizer_mobile.py` |
+| `scripts/newworld/fetch_stores.py` | `scripts/newworld/newworld_setup.py` |
+| `scripts/newworld/NewWorld_prototype.py` | `scripts/newworld/newworld_api.py`, new optimizers |
+| `scripts/paknsave/PaknSave_prototype.py` | `scripts/paknsave/paknsave_api.py` |
+| All `scripts/woolworths/Playwright/` scripts | `scripts/woolworths/woolworths_api.py` (cookie-based, no Playwright needed) |
+| `scripts/woolworths/woolworths_scrape.py` | `scripts/woolworths/woolworths_api.py` |
+| All `scripts/*/Exploration/` scripts | Archived — only `scripts/paknsave/Exploration/` retains the two-pass pipeline documentation |
+
+**Key principle**: Only the unified `foodstuffs/` package and brand-specific `paknsave/` and `newworld/` packages should be used for production code.
+
+**Status update 2026-08-04**: The `foodstuffs/` package referenced in the "Key principle"
+line is no longer present. The same modules remain via the brand-specific packages
+(`scripts/paknsave/`, `scripts/newworld/`) plus `scripts/combined/optimizer_utils.py`.
+
+---
+
+## 41. Woolworths — Non-Food Department Filtering (Client-Side)
+
+**Symptom**: The meal cost optimizer was returning non-food items (pet food, toiletries, cleaning products) in search results for ingredient queries like "beef mince" or "milk". The `target=search` endpoint ignores `dasFilter` (server-side department filtering is only available on `target=browse`), so there is no API parameter to exclude non-food departments.
+
+**Discovery**: Each product returned by `GET /api/v1/products?target=search` includes a `departments` array with `id` and `name` fields. The 14 Woolworths departments map to these IDs:
+
+| Dept ID | Name | Food? |
+|---------|------|-------|
+| 1 | Fruit & Veg | Yes |
+| 2 | Meat & Poultry | Yes |
+| 3 | Fish & Seafood | Yes |
+| 4 | Fridge & Deli | Yes |
+| 5 | Bakery | Yes |
+| 6 | Frozen | Yes |
+| 7 | Pantry | Yes |
+| 8 | Beer & Wine | Yes |
+| 9 | Drinks | Yes |
+| 10 | Health & Body | **No** |
+| 11 | Household | **No** |
+| 12 | Baby & Child | **No** |
+| 13 | Pet | **No** |
+| 14 | Back to School | **No** |
+
+**Resolution**: Added `NON_FOOD_DEPARTMENT_IDS = {10, 11, 12, 13, 14}` and `is_food_department(product)` function to `woolworths_api.py`. The `search_products()` and `find_cheapest()` functions accept a `food_only=False` parameter. When `True`, products whose `departments[].id` intersects with the non-food set are excluded. Products with no department info are included (assumed food).
+
+The optimizer (`woolworths_optimizer.py`) now calls `find_cheapest(session, ing, food_only=True)` for all ingredient searches.
+
+**Note**: This is client-side filtering — the API itself does not support department filtering on `target=search`. The `dasFilter` parameter only works with `target=browse`.
+
+**Files changed**: `scripts/woolworths/woolworths_api.py` (added constant, function, params), `scripts/woolworths/woolworths_optimizer.py` (pass `food_only=True`)
+
+---
+
+## 42. Foodstuffs — Category1 Non-Food Filtering (Client-Side, Edge API)
+
+**Symptom**: The Pak'nSave and New World Edge API two-pass optimizers were returning non-food items in search results — pet food ("Dog", "Cat"), baby products ("Baby Formula", "Nappies & Changing"), household items ("Cleaning & Accessories", "Laundry"), personal care ("Bath, Shower & Soap", "Hair Care"), and more. These appeared in Pass 1 relevance matches because Algolia returns them for broad queries like "beef mince" or "milk".
+
+**Discovery**: Ran `explore_categories.py` (637 broad search queries) against the Pak'nSave Edge API to discover all 116 unique `category1` values present in the Algolia products-index. Each value was logged with frequency counts and example products. The full list was saved to `data/observed_category1_paknsave.json`. New World shares the same Foodstuffs category taxonomy (same parent company), so the same blacklist applies to both brands.
+
+**Resolution**: Created `NON_FOOD_CATEGORIES` — a set of 53 `category1` values to exclude from Pass 1 results. Covers:
+- **Pet/Animal**: Dog, Cat, Pet Health & Accessories, Birds/Fish/Small Animals
+- **Baby/Toddler**: Baby & Toddler Food, Baby Formula, Baby Wipes, Nappies & Changing, Nursing & Feeding
+- **Household/Cleaning**: Cleaning & Accessories, Dishwashing, Bathroom & Toilet Cleaners, Kitchen Cleaners, Laundry, Food Wrap/Storage/Bags, Pest & Insect Control, Homewares
+- **Health/Personal Care**: Bath/Shower/Soap, Dental & Oral Care, Deodorant, Hair Care, Make Up & Nail Care, Medical & First Aid, Period & Continence Care, Shaving, Skin Care, Tissues, Toilet Paper, Vitamins & Supplements
+- **Other non-food**: Stationery & Entertainment, Clothing & Accessories, Garage & Outdoor, Batteries & Electrical
+
+Alcoholic drinks (Red Wine, Beer, Cider, etc.) are currently **excluded from the blacklist** (commented out) — they are beverages, not cooking ingredients, but may be useful for recipe lookups in the future.
+
+**Implementation**: The `pass1_relevance_search()` method in all three API modules now checks each hit's `category1` array against `NON_FOOD_CATEGORIES` and excludes matches before passing productIDs to Pass 2.
+
+**Files changed**:
+- `scripts/paknsave/paknsave_api.py` — added `NON_FOOD_CATEGORIES`, updated `pass1_relevance_search()`
+- `scripts/newworld/newworld_api.py` — same changes
+- `scripts/foodstuffs/Foodstuffs_api.py` — same changes (shared across both brands)
+
+**Demo scripts created**:
+- `scripts/paknsave/paknsave_search_demo.py` — standalone two-pass demo for PAK'nSAVE Albany
+- `scripts/newworld/newworld_search_demo.py` — standalone two-pass demo for New World Albany
+
+**Note on category1 vs categoryTrees**: Pass 2 (`paginated/products`) returns `categoryTrees` (nested navigation hierarchy with `level0`/`level1`/`level2`) instead of the flat `category1` array returned by Pass 1 (`products-index`). This means category1-based filtering only happens in Pass 1 — by the time products reach Pass 2, the `category1` field is empty. In the future, a second phase of filtering could be applied in Pass 2 using `categoryTrees` for more granular control (e.g., excluding specific sub-aisles like "Flavoured Milk" while keeping "Standard Milk"). This is an area for future exploration and has not been implemented.
+
+---
+
+## 43. Woolworths Optimizer — Shared CSV with Hash-Based Deduplication
+
+**Symptom**: Each optimizer run saved results to a per-run CSV (`woolworths_results.csv`), requiring re-querying the API every time. No way to accumulate results across runs or compare prices across different query sessions.
+
+**Resolution**: Restructured `woolworths_optimizer.py` into a two-phase pipeline (query → optimise) writing to a shared `data/full_results.csv`:
+
+**Phase 1 (query)**: Geocode address → find nearby stores → search ingredients at each store → append all results to CSV (not just cheapest). Deduplication via `pk_hash` — a SHA-256 hash of `store_id|sku|date_created` (truncated to 16 hex chars). Duplicate PKs are skipped on insert.
+
+**Phase 2 (optimise)**: Read today's results from CSV → group by (store, ingredient, date) → pick cheapest per ingredient → print comparison table.
+
+**CLI flags**:
+- `--requery false` — skip API, optimise from existing CSV data only
+- `--distance 5` — set store search radius in km (default 2)
+
+**Key design decisions**:
+- Append-only CSV: new rows are added, never overwritten. PK hash enables dedup without loading all rows into memory (O(n) set lookup).
+- `date_created` normalised to `yyyy-mm-dd` format. Old `dd/mm/yyyy` rows from legacy scripts cause hash mismatches — avoid editing CSV in Excel (blank rows corrupt the file).
+- `parse_volume_size(volume_size, cup_measure="")` falls back to `cupMeasure` from API when `volumeSize` is missing/null. Returns `(quantity, measurement_unit)`.
+- `search_products()` now returns all results (not just cheapest) with `cupMeasure`, `cupListPrice`, and `department` fields.
+- Geocode results printed before store list: `Geocoding: <address>` / `lat: xxx  lon: xxx`.
+
+**Files changed**: `scripts/woolworths/woolworths_optimizer.py`, `scripts/woolworths/woolworths_api.py`, `scripts/combined/initialize_full_results.py`
+
+---
+
+## 44. Foodstuffs folder deleted — cross-brand logic consolidated into optimizer_utils.py
+
+**Date**: 2026-08-04
+
+**Summary**: Deleted `scripts/foodstuffs/`. The cross-brand logic previously in that
+folder was consolidated into `scripts/combined/optimizer_utils.py`. Brand-specific
+optimizers (`scripts/paknsave/`, `scripts/newworld/`) are now thin CLI wrappers that
+inject the brand API class and store-finder into the shared helpers.
+
+**Moved to `scripts/combined/optimizer_utils.py`:**
+- `foodstuffs_optimizer_edge` / `foodstuffs_optimizer_mobile` — full CLI runners
+- `build_edge_row` / `build_mobile_row` — per-product CSV row builders
+- `parse_foodstuffs_volume_size` / `parse_foodstuffs_mobile_unit` — size/price parsers
+- `geocode`, `haversine`, `find_nearby_stores` — geo helpers
+- `get_ingredients`, `get_quantities`, `DISH_INGREDIENTS` — dish lookup
+- `optimise()`, `analyze_results()` — Phase 2 CSV readers
+- `append_rows()`, `_compute_pk_hash()`, `load_existing_hashes()` — append-only CSV with SHA-256 dedup
+
+**Behavioral fix**: The `optimise(dish, company=...)` filter is now correctly applied
+in both brand optimizers (previously could blend PNS+NW rows from `full_results.csv`).
+The `per_unit_price` field is now blank (not 0.0) when falsy.

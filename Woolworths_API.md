@@ -145,7 +145,7 @@ Top-level keys and their types:
 
 ```
 context: {
-  shoeper: { ... },            # see 5.1.2
+  shopper: { ... },            # see 5.1.2
   fulfilment: { ... },         # see 5.1.3
   enabledFeatures: list[106],  # scalar strings, feature-flag IDs
   shoppingListItems: list[0],  # empty for unauthenticated sessions
@@ -1068,10 +1068,9 @@ for store in nearby_stores:
 
 | File | Content | Source |
 |------|---------|--------|
-| woolworths_store_data.json | Site details including extra1/extra2 | Get_woolworths_store_API_data.py (CDX API) |
-| woolworths_store_choices.csv | Store IDs and names | Get_woolworths_store_choices.py (pickup-addresses API) |
-| woolworths_stores.csv | Store locations with lat/lon | Merge_woolworths_stores.py |
-| store_id_mapping.json | Playwright-captured fulfilmentStoreId/areaId | explore_woolworths_api_part4.py |
+| woolworths_store_data.json | Site details including extra1/extra2 | woolworths_setup.py → `fetch_store_data()` (CDX API) |
+| woolworths_store_choices.csv | Store IDs and names | woolworths_setup.py → `fetch_store_choices()` (pickup-addresses API) |
+| woolworths_stores.csv | Store locations with lat/lon | woolworths_setup.py → `merge_stores()` |
 
 ---
 
@@ -1093,10 +1092,14 @@ for detail in store_data.get('siteDetail', []):
     extra1 = site.get('extra1')  # fulfilmentStoreId
     extra2 = site.get('extra2')  # pickupAddressId
     name = site.get('name', '')
-    if extra1 and extra2 and str(extra1) != 'null':
+    lat = site.get('latitude', '')
+    lon = site.get('longitude', '')
+    if extra1 and extra2 and str(extra1) != 'null' and str(extra2) != 'null':
         store_map[str(extra2)] = {
             'fulfilmentStoreId': int(extra1),
             'name': name,
+            'lat': lat,
+            'lon': lon,
         }
 
 # 2. Set store context
@@ -1116,17 +1119,49 @@ def set_store_context(session, pickup_address_id):
     fulf = resp.json().get('context', {}).get('fulfilment', {})
     if fulf.get('fulfilmentStoreId') == 9171:
         raise RuntimeError('Cookie not accepted — store context not set')
-    return fulf
+    return {
+        'fulfilmentStoreId': fulf.get('fulfilmentStoreId'),
+        'method': fulf.get('method'),
+        'storeName': store['name'],
+    }
 
 # 3. Search for products
-def search_products(session, query, size=5):
-    """Search products with current store context."""
+def search_products(session, query, size=20, food_only=False):
+    """Search products with current store context.
+
+    Returns list of dicts: sku, name, salePrice, originalPrice, isSpecial,
+    unitPrice, volumeSize, cupMeasure, cupListPrice, url, imageUrl, department.
+    """
     resp = session.get(
         'https://www.woolworths.co.nz/api/v1/products',
         params={'target': 'search', 'search': query, 'size': size},
         timeout=15,
     )
-    return resp.json().get('products', {}).get('items', [])
+    data = resp.json()
+    items = data.get('products', {}).get('items', [])
+    results = []
+    for item in items:
+        if food_only and not is_food_department(item):
+            continue
+        price_info = item.get('price', {})
+        size_info = item.get('size', {})
+        departments = item.get('departments', [])
+        dept_name = departments[0].get('name', '') if departments else ''
+        results.append({
+            'sku': item.get('sku'),
+            'name': item.get('name', ''),
+            'salePrice': price_info.get('salePrice'),
+            'originalPrice': price_info.get('originalPrice'),
+            'isSpecial': price_info.get('isSpecial', False),
+            'unitPrice': size_info.get('cupPrice', ''),
+            'volumeSize': size_info.get('volumeSize', ''),
+            'cupMeasure': size_info.get('cupMeasure', ''),
+            'cupListPrice': size_info.get('cupListPrice', ''),
+            'url': item.get('url', ''),
+            'imageUrl': item.get('imageUrl', ''),
+            'department': dept_name,
+        })
+    return results
 
 # 4. Usage
 session = requests.Session()
@@ -1137,10 +1172,12 @@ session.headers.update({
 })
 session.get('https://www.woolworths.co.nz/', timeout=15)  # seed cookies
 
-set_store_context(session, pickup_address_id=764300)  # Greymouth
-items = search_products(session, 'milk')
+ctx = set_store_context(session, pickup_address_id=764300)  # Greymouth
+print(f"Store: {ctx['storeName']}, fulfilmentStoreId={ctx['fulfilmentStoreId']}")
+
+items = search_products(session, 'milk', food_only=True)
 for item in items:
-    print(f"${item['price']['salePrice']} — {item['name']}")
+    print(f"${item['salePrice']} — {item['name']}")
 ```
 
 ### 10.2 Architecture Diagram
@@ -1191,10 +1228,16 @@ store's ID.
 
 **Implementation in `woolworths_optimizer.py`:**
 ```python
-for store in nearby_stores:
+for store in nearby:
+    store_name = store["name"]
+    pid = store["pickupAddressId"]
     session = create_session()       # fresh session per store
-    set_store_context(session, pid)  # inject cookie
-    search_products(session, ...)    # search with correct context
+    try:
+        ctx = set_store_context(session, pid)
+        products = search_products(session, ing, food_only=True)
+    except RuntimeError as e:
+        print(f"  [WARN] {e} -- skipping store")
+        continue
 ```
 
 ### 10.5 Cookie Refresh Strategy
@@ -1256,10 +1299,94 @@ Strategy:
 11. **Fresh session required per store** — reusing a `requests.Session` causes the
     server's `Set-Cookie` response to overwrite the injected `cw-lrkswrdjp` cookie.
     Create a new session (with `GET /`) for each store.
+12. **`target=search` ignores `dasFilter`** — department/aisle filtering only works
+    with `target=browse`. For search, filter client-side using the `departments[].id`
+    field on each product (see section 13).
 
 ---
 
-## 13. Exploration Scripts
+## 13. Client-Side Department Filtering
+
+### 13.1 The Problem
+
+The `target=search` endpoint **ignores `dasFilter`** (section 5.2). There is no
+API parameter to restrict search results to food departments only. Non-food items
+(Health & Body, Household, Baby & Child, Pet, Back to School) can appear in
+ingredient search results (e.g., pet food matching "beef mince").
+
+### 13.2 Solution: Filter by `departments[].id`
+
+Each product returned by `GET /api/v1/products?target=search` includes a
+`departments` array:
+
+```json
+"departments": [{"id": 4, "name": "Fridge & Deli"}]
+```
+
+The 14 Woolworths department IDs (from `/api/v1/shell` → `mainNavs[1]`):
+
+| Dept ID | Name | Food? |
+|---------|------|-------|
+| 1 | Fruit & Veg | Yes |
+| 2 | Meat & Poultry | Yes |
+| 3 | Fish & Seafood | Yes |
+| 4 | Fridge & Deli | Yes |
+| 5 | Bakery | Yes |
+| 6 | Frozen | Yes |
+| 7 | Pantry | Yes |
+| 8 | Beer & Wine | Yes |
+| 9 | Drinks | Yes |
+| 10 | Health & Body | **No** |
+| 11 | Household | **No** |
+| 12 | Baby & Child | **No** |
+| 13 | Pet | **No** |
+| 14 | Back to School | **No** |
+
+**Non-food IDs**: `{10, 11, 12, 13, 14}`
+
+### 13.3 Implementation in `woolworths_api.py`
+
+```python
+NON_FOOD_DEPARTMENT_IDS = {10, 11, 12, 13, 14}
+
+def is_food_department(product):
+    """Check if a product is in a food department.
+
+    Products with no department info are included (assumed food).
+    """
+    depts = product.get("departments", [])
+    if not depts:
+        return True
+    dept_ids = {d.get("id") for d in depts if "id" in d}
+    return not dept_ids.intersection(NON_FOOD_DEPARTMENT_IDS)
+```
+
+`search_products()` accepts `food_only=False`. When `True`,
+products failing `is_food_department()` are excluded from results.
+
+### 13.4 Usage
+
+```python
+# Food-only search (excludes Health & Body, Household, Baby & Child, Pet, Back to School)
+items = search_products(session, "beef mince", size=10, food_only=True)
+
+# Unfiltered (includes all departments — default)
+items = search_products(session, "milk", size=10)
+```
+
+### 13.5 Limitations
+
+- **Client-side only**: The API does not support department filtering on
+  `target=search`. Filtering happens after results are returned.
+- **Extra API calls**: To guarantee N food-only results, the caller may need to
+  request more than N items from the API and filter down.
+- **`target=browse` supports `dasFilter`**: If department-level filtering is
+  needed without keyword search, use `target=browse&dasFilter=Department;;<slug>;false`
+  instead (but this does not support free-text search).
+
+---
+
+## 14. Exploration Scripts
 
 | Script | Phase | Purpose |
 |--------|-------|---------|
@@ -1270,9 +1397,9 @@ Strategy:
 
 ---
 
-## 14. Woolworths Store Setup Process (Unified Pipeline)
+## 15. Woolworths Store Setup Process (Unified Pipeline)
 
-### 14.1 The Problem: Incomplete Pickup Store Coverage
+### 15.1 The Problem: Incomplete Pickup Store Coverage
 
 The `GET /api/v1/addresses/pickup-addresses` endpoint returns 19 `storeAreas`. 
 Area `id=494` ("All Pick up locations") contains only **171 stores**. 
@@ -1282,7 +1409,7 @@ Regional areas (e.g., area 302 "Waikato") contain additional pickup points that 
 - Woolworths Chartwell (area 302, Waikato)
 - Remote collection points: Paparoa Hall, Ruawai, Whangamomona Hall, Makahu Hall, EXPRESS PU Spotswood, etc. (17 total)
 
-### 14.2 Solution: Unified Pipeline (`woolworths_setup.py`)
+### 15.2 Solution: Unified Pipeline (`woolworths_setup.py`)
 
 A single module `scripts/woolworths/woolworths_setup.py` with three callable functions + `run_full_setup()`:
 
@@ -1295,7 +1422,7 @@ from scripts.woolworths.woolworths_setup import (
 )
 ```
 
-### 14.3 Pipeline Details
+### 15.3 Pipeline Details
 
 **Step 1: `fetch_store_choices()`**
 - Fetches `GET /api/v1/addresses/pickup-addresses`
@@ -1315,7 +1442,7 @@ from scripts.woolworths.woolworths_setup import (
 - `cleaned=False`: keeps all 188 rows (11 without coordinates)
 - Output: `data/woolworths_stores.csv`
 
-### 14.4 Key Files
+### 15.4 Key Files
 
 | File | Rows | Description |
 |------|------|-------------|
@@ -1323,7 +1450,7 @@ from scripts.woolworths.woolworths_setup import (
 | `data/woolworths_store_data.csv` | 183 | CDX store data with lat/lon + extra1/extra2 |
 | `data/woolworths_stores.csv` | 177 | Merged + cleaned (default) — used by optimizer |
 
-### 14.5 CLI Usage
+### 15.5 CLI Usage
 
 ```powershell
 # Full pipeline
@@ -1337,24 +1464,23 @@ python -c "from scripts.woolworths.woolworths_setup import merge_stores; merge_s
 
 ---
 
-## 15. Files and Data Sources
+## 16. Files and Data Sources
 
 | File | Purpose |
 |------|---------|
 | Woolworths_API.md | This document |
-| exploration_plan.md | Detailed findings and implementation checklist |
-| compaction.md | Session-by-session progress record |
 | AGENTS.md | Project overview and file structure |
 | scripts/woolworths/woolworths_api.py | Cookie-based API module: session creation, store context injection, product search, nearby stores |
-| scripts/woolworths/woolworths_optimizer.py | API-based optimizer: geocode, nearby stores, per-store pricing, cost comparison |
+| scripts/woolworths/woolworths_optimizer.py | Two-phase optimizer: query API → save to full_results.csv → optimise from CSV. Supports `--requery`, `--distance` flags |
 | scripts/woolworths/woolworths_setup.py | Unified store pipeline: fetch choices (all 19 areas, 188 stores), fetch data (CDX API, 183 stores), merge (177 cleaned) |
-| scripts/woolworths/exploration/explore_woolworths_api_part1.py | Phase 1: black-box API probing, endpoint enumeration, dasFilter taxonomy |
-| scripts/woolworths/exploration/explore_woolworths_api_part2.py | Phase 2: URL-param seeding test, Playwright cookie capture/injection, cookie diff |
-| scripts/woolworths/exploration/explore_woolworths_api_part3.py | Phase 3: shell validation, cw-lrkswrdjp deep-dive (cookie-only injection, minimal cookie) |
-| scripts/woolworths/exploration/explore_woolworths_api_part4.py | Phase 4: programmatic cookie construction, mapping capture, price validation |
+| scripts/combined/initialize_full_results.py | Creates `data/full_results.csv` with 17-column structure including `pk_hash` for deduplication |
+| scripts/woolworths/Exploration/explore_woolworths_api_part1.py | Phase 1: black-box API probing, endpoint enumeration, dasFilter taxonomy |
+| scripts/woolworths/Exploration/explore_woolworths_api_part2.py | Phase 2: URL-param seeding test, Playwright cookie capture/injection, cookie diff |
+| scripts/woolworths/Exploration/explore_woolworths_api_part3.py | Phase 3: shell validation, cw-lrkswrdjp deep-dive (cookie-only injection, minimal cookie) |
+| scripts/woolworths/Exploration/explore_woolworths_api_part4.py | Phase 4: programmatic cookie construction, mapping capture, price validation |
 | scripts/woolworths/Playwright/ChangeStore.py | Playwright store selection via modal (reference implementation) |
 | data/woolworths_store_data.json | Store details with extra1 (fulfilmentStoreId) and extra2 (pickupAddressId) |
 | data/woolworths_store_choices.csv | Store IDs and names from pickup-addresses API |
 | data/woolworths_stores.csv | Store locations with lat/lon |
-| data/store_id_mapping.json | Playwright-captured fulfilmentStoreId/areaId mapping (3 stores) |
-| data/Exploration/part2_cookies.json | Playwright-captured full cookie jars (Greymouth, Glenfield, baseline) |
+| data/full_results.csv | Shared append-only CSV with all search results (pk_hash for dedup) |
+| data/Exploration/woolworths/part2_cookies.json | Playwright-captured full cookie jars (Greymouth, Glenfield, baseline) |

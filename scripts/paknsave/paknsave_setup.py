@@ -1,23 +1,21 @@
 """
 Pak'nSave Unified Store Setup Pipeline
-
-Fetches all Pak'nSave stores from either:
-1. Website store-finder page (via __NEXT_DATA__) — 60 stores, GUIDs, coordinates
-2. Edge API (via website JWT) — 57 stores, coordinates (3 stores not configured for Edge API)
+=======================================
+Fetches all Pak'nSave stores and writes a 10-column CSV/JSON to
+data/paknsave_stores.csv / .json with columns:
+    store_id, name, address, city, region, latitude, longitude,
+    banner, click_and_collect, delivery
 
 Usage:
-    from scripts.paknsave.paknsave_setup import fetch_stores, clean_stores, run_full_setup
+    python -m scripts.paknsave.paknsave_setup --source edge --cleaned true
 
-    # Full pipeline (default: edge)
-    run_full_setup()
-
-    # Or use Store-finder API
-    run_full_setup(source="store_finder")
-
-    # Individual steps
-    fetch_stores()
-    clean_stores(cleaned=True)  # drop stores without coordinates
+Flags:
+    --source    "edge" (default, 57 stores via Edge API), 
+                or "mobile" (legacy, 60 stores),
+                or "store_finder" (website __NEXT_DATA__, 60 stores)
+    --cleaned  "true" (default) drop stores without coordinates, or "false" to keep all
 """
+import argparse
 import cloudscraper
 import json
 import re
@@ -36,6 +34,21 @@ OUTPUT_JSON = os.path.join(DATA_DIR, "paknsave_stores.json")
 
 WEB_BASE = "https://www.paknsave.co.nz"
 EDGE_BASE = "https://api-prod.paknsave.co.nz/v1/edge"
+MOBILE_BASE = "https://api-prod.prod.fsniwaikato.kiwi/prod"
+
+
+def _configure_stdout_utf8() -> None:
+    """Best-effort stdout UTF-8 configuration for console use.
+
+    Safe to call when this module is imported, because we only touch the
+    stream if it actually exposes a reconfigure() method.
+    """
+    reconfigure = getattr(sys.stdout, "reconfigure", None)
+    if callable(reconfigure):
+        try:
+            reconfigure(encoding="utf-8")
+        except (AttributeError, ValueError, OSError):
+            pass
 
 
 def get_website_jwt(verbose: bool = True) -> str:
@@ -64,7 +77,7 @@ def fetch_stores_from_store_finder(verbose: bool = True) -> pd.DataFrame:
     Fetch stores from store-finder page __NEXT_DATA__.
     Returns 60 stores with GUID, name, address, city, region, lat, lon.
     """
-    sys.stdout.reconfigure(encoding="utf-8")
+    _configure_stdout_utf8()
 
     scraper = cloudscraper.create_scraper()
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:136.0) Gecko/20100101 Firefox/136.0"}
@@ -131,10 +144,13 @@ def fetch_stores_from_store_finder(verbose: bool = True) -> pd.DataFrame:
                     "region": region_label,
                     "latitude": latitude,
                     "longitude": longitude,
+                    "banner": "PNS",
+                    "click_and_collect": False,
+                    "delivery": False,
                 })
 
     df = pd.DataFrame(store_entries)
-    df = df[["store_id", "name", "address", "city", "region", "latitude", "longitude"]]
+    df = df[["store_id", "name", "address", "city", "region", "latitude", "longitude", "banner", "click_and_collect", "delivery"]]
 
     if verbose:
         print(f"Found {len(df)} stores from regionStoreGroupings")
@@ -179,10 +195,13 @@ def fetch_stores_from_edge_api(verbose: bool = True) -> pd.DataFrame:
             "region": region,
             "latitude": s.get("latitude"),
             "longitude": s.get("longitude"),
+            "banner": s.get("banner", "PNS"),
+            "click_and_collect": s.get("clickAndCollect", False),
+            "delivery": s.get("delivery", False),
         })
 
     df = pd.DataFrame(store_entries)
-    df = df[["store_id", "name", "address", "city", "region", "latitude", "longitude"]]
+    df = df[["store_id", "name", "address", "city", "region", "latitude", "longitude", "banner", "click_and_collect", "delivery"]]
 
     if verbose:
         print(f"Found {len(df)} stores from Edge API")
@@ -190,28 +209,110 @@ def fetch_stores_from_edge_api(verbose: bool = True) -> pd.DataFrame:
     return df
 
 
+def fetch_stores_from_mobile_api(verbose: bool = True) -> pd.DataFrame:
+    """
+    Fetch stores from Foodstuffs Mobile API (legacy approach).
+    Returns 60 stores with store_id, name, address, coordinates.
+    """
+    scraper = cloudscraper.create_scraper()
+    r = scraper.post(
+        f"{MOBILE_BASE}/mobile/user/login/guest",
+        json={"banner": "PNS"},
+        headers={"User-Agent": "PAKnSAVEApp/4.32.0", "Content-Type": "application/json"},
+    )
+    r.raise_for_status()
+    data = r.json()
+    token = data["access_token"]
+    auth = {
+        "Authorization": f"Bearer {token}",
+        "access_token": token,
+        "User-Agent": "PAKnSAVEApp/4.32.0",
+        "Content-Type": "application/json",
+    }
+
+    if verbose:
+        print("Fetching stores from Mobile API...")
+    r2 = scraper.get(f"{MOBILE_BASE}/mobile/store/physical", headers=auth, timeout=30)
+    r2.raise_for_status()
+    stores = r2.json()["stores"]
+
+    if verbose:
+        print(f"Found {len(stores)} stores from Mobile API")
+
+    store_entries = []
+    for s in stores:
+        store_entries.append({
+            "store_id": s.get("id", ""),
+            "name": s.get("name", ""),
+            "address": s.get("address", ""),
+            "city": "",
+            "region": "",
+            "latitude": s.get("latitude"),
+            "longitude": s.get("longitude"),
+            "banner": s.get("banner", "PNS"),
+            "click_and_collect": s.get("clickAndCollect", False),
+            "delivery": s.get("delivery", False),
+        })
+
+    df = pd.DataFrame(store_entries)
+    df = df[["store_id", "name", "address", "city", "region", "latitude", "longitude", "banner", "click_and_collect", "delivery"]]
+
+    return df
+
+
+EXPECTED_COLUMNS = ["store_id", "name", "address", "city", "region", "latitude", "longitude", "banner", "click_and_collect", "delivery"]
+
+
+def _enforce_schema(df: pd.DataFrame) -> pd.DataFrame:
+    """Ensure the DataFrame has exactly the 10 expected columns, filling missing ones with defaults."""
+    for col in EXPECTED_COLUMNS:
+        if col not in df.columns:
+            if col == "banner":
+                df[col] = "PNS"
+            elif col in ("click_and_collect", "delivery"):
+                df[col] = False
+            else:
+                df[col] = ""
+    return df[EXPECTED_COLUMNS]
+
+
+def _parse_cleaned(value: str) -> bool:
+    """Parse the --cleaned argument into a boolean."""
+    if value.lower() in ("true", "1", "yes"):
+        return True
+    if value.lower() in ("false", "0", "no"):
+        return False
+    raise argparse.ArgumentTypeError(f"Invalid boolean value: '{value}'. Use 'true' or 'false'.")
+
+
 def fetch_stores(source: str = "edge", verbose: bool = True) -> pd.DataFrame:
     """
     Fetch all Pak'nSave stores.
 
     Args:
-        source: "store_finder" (60 stores) or "edge" (default, 57 stores)
+        source: "edge" (default, 57 stores via Edge API),
+                "mobile" (legacy, 60 stores via Mobile API),
+                "store_finder" (website __NEXT_DATA__, 60 stores with store IDs)
         verbose: Print status messages
 
     Returns:
         DataFrame with store data
 
     Raises:
-        ValueError: If source is not "edge" or "store_finder"
+        ValueError: If source is not "edge", "mobile", or "store_finder"
     """
     if source == "edge":
         return fetch_stores_from_edge_api(verbose=verbose)
+    if source == "mobile":
+        return fetch_stores_from_mobile_api(verbose=verbose)
     if source == "store_finder":
         return fetch_stores_from_store_finder(verbose=verbose)
-    raise ValueError(f"Invalid source: '{source}'. Choose from 'edge' or 'store_finder'")
+    raise ValueError(
+        f"Invalid source: '{source}'. Choose from 'edge', 'mobile', or 'store_finder'"
+    )
 
 
-def clean_stores(df: pd.DataFrame = None, cleaned: bool = True, verbose: bool = True) -> pd.DataFrame:
+def clean_stores(df: pd.DataFrame | None = None, cleaned: bool = True, verbose: bool = True) -> pd.DataFrame:
     """
     Optionally drop stores without latitude/longitude.
 
@@ -244,7 +345,7 @@ def run_full_setup(source: str = "edge", cleaned: bool = True, verbose: bool = T
     Run the complete Pak'nSave store setup pipeline.
 
     Args:
-        source: "store_finder" (60 stores) or "edge" (default, 57 stores)
+        source: "store_finder" (60 stores), "edge" (default, 57 stores), or "mobile" (60 stores).
         cleaned: If True (default), drop stores without coordinates.
         verbose: Print status messages.
 
@@ -260,6 +361,7 @@ def run_full_setup(source: str = "edge", cleaned: bool = True, verbose: bool = T
     df = fetch_stores(source=source, verbose=verbose)
     df = clean_stores(df, cleaned=cleaned, verbose=verbose)
 
+    df = _enforce_schema(df)
     # Overwrite final output
     df.to_csv(OUTPUT_CSV, index=False)
     df.to_json(OUTPUT_JSON, orient="records", indent=2)
@@ -272,6 +374,21 @@ def run_full_setup(source: str = "edge", cleaned: bool = True, verbose: bool = T
 
 
 if __name__ == "__main__":
-    import sys
-    source = sys.argv[1] if len(sys.argv) > 1 else "edge"
-    run_full_setup(source=source)
+    parser = argparse.ArgumentParser(
+        description="Pak'nSave Store Setup Pipeline"
+    )
+    parser.add_argument(
+        "--source",
+        choices=["edge", "mobile", "store_finder"],
+        default="edge",
+        help="Data source: 'edge' (default, 57 stores via Edge API), 'mobile' (legacy, 60 stores), or 'store_finder' (website __NEXT_DATA__, 60 stores)",
+    )
+    parser.add_argument(
+        "--cleaned",
+        type=_parse_cleaned,
+        default=True,
+        help="Drop stores without coordinates: 'true' (default) or 'false'",
+    )
+    args = parser.parse_args()
+
+    run_full_setup(source=args.source, cleaned=args.cleaned)
