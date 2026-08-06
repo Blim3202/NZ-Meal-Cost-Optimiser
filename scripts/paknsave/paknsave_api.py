@@ -89,31 +89,6 @@ NON_FOOD_CATEGORIES = {
     # "Alcohol Free Drinks",
 }
 
-# Dish ingredients (21 dishes) — matches PaknSave_prototype.py and woolworths_optimizer.py
-DISH_INGREDIENTS = {
-    "spaghetti bolognese": ["beef mince", "spaghetti pasta", "canned tomatoes", "onion", "carrot", "garlic", "mixed herbs"],
-    "chicken stir fry": ["chicken breast", "stir fry vegetables", "soy sauce", "rice noodles"],
-    "beef stir fry": ["beef strips", "stir fry vegetables", "soy sauce", "rice noodles"],
-    "roast lamb": ["lamb roast", "potato", "carrot", "broccoli", "stock"],
-    "chicken curry": ["chicken thigh", "curry paste", "coconut milk", "rice", "onion"],
-    "beef curry": ["diced beef", "curry paste", "coconut milk", "rice", "onion"],
-    "fish and chips": ["fish fillet", "potato", "oil"],
-    "nachos": ["beef mince", "tortilla chips", "cheese", "beans", "sour cream"],
-    "pumpkin soup": ["pumpkin", "onion", "cream", "stock", "bread"],
-    "tacos": ["beef mince", "taco shells", "lettuce", "tomato", "cheese", "sour cream"],
-    "lamb chops": ["lamb chops", "potato", "mint sauce", "mixed vegetables"],
-    "butter chicken": ["chicken thigh", "butter chicken sauce", "rice", "cream"],
-    "lasagne": ["beef mince", "lasagne sheets", "cheese", "canned tomatoes", "milk", "butter", "flour"],
-    "shepherd's pie": ["beef mince", "potato", "carrot", "peas", "stock"],
-    "pizza": ["pizza base", "pizza sauce", "cheese", "pepperoni"],
-    "vegie stir fry": ["stir fry vegetables", "tofu", "soy sauce", "rice noodles", "garlic"],
-    "frittata": ["eggs", "potato", "onion", "cheese", "milk"],
-    "pancakes": ["flour", "eggs", "milk", "sugar", "butter"],
-    "chicken soup": ["chicken breast", "carrot", "onion", "celery", "stock", "pasta"],
-    "tomato pasta": ["pasta", "canned tomatoes", "garlic", "olive oil", "mixed herbs", "cheese"],
-    "chicken katsu": ["chicken breast", "flour", "eggs", "bread", "rice", "katsu sauce"],
-}
-
 # ─── Utilities ──────────────────────────────────────────────────────────────
 
 def load_stores() -> list[dict]:
@@ -149,9 +124,7 @@ def find_nearby_stores(user_lat: float, user_lon: float, radius_km: float = 5.0)
     return nearby
 
 
-def get_ingredients(dish_name: str) -> list[str]:
-    """Get ingredient list for a dish (case-insensitive)."""
-    return DISH_INGREDIENTS.get(dish_name.lower().strip(), [dish_name])
+
 
 
 # ─── EDGE API (Two-Pass) ────────────────────────────────────────────────────

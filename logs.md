@@ -468,7 +468,7 @@ Output: `data/paknsave_stores.csv` (60 stores from store_finder, 57 from edge, a
    - `PaknSaveAPI(backend="edge"|"mobile")` — unified interface, defaults to Edge
    - `PaknSaveEdgeAPI` — full two-pass pipeline: Pass 1 relevance (`products-index` with `_highlightResult.matchedWords`), pet food filtering via `category1`; Pass 2 per-store pricing (`paginated/products` with Algolia filters + `PRICE_ASC`)
    - `PaknSaveMobileAPI` — legacy single-pass fallback (guest token)
-   - Shared utilities: `load_stores()`, `geocode()`, `find_nearby_stores()`, `get_ingredients()`, `haversine()`, `DISH_INGREDIENTS` (21 dishes)
+    - Shared utilities: `load_stores()`, `geocode()`, `find_nearby_stores()`, `get_ingredients()`, `haversine()`, `DISHES` (21 dishes, dict format)
 
 2. **`scripts/paknsave/paknsave_optimizer_edge.py`** — Edge API optimizer:
    - Geocodes address → finds nearby stores (5km) → authenticates via website JWT
@@ -496,7 +496,7 @@ Output: `data/paknsave_stores.csv` (60 stores from store_finder, 57 from edge, a
 **Summary**: Created `scripts/foodstuffs/` as a combined module for both Pak'nSave and New World, consolidating the brand-specific API, optimizer, and setup logic into a single unified package. The shared `Foodstuffs_api.py` handles brand-specific credentials (banner, User-Agent) and stores the two-pass pipeline logic in `Foodstuffs_optimizer_edge.py`.
 
 **Files created**:
-- `scripts/foodstuffs/Foodstuffs_api.py` — Unified API client for both brands. `FoodstuffsEdgeAPI(brand)`, `FoodstuffsMobileAPI(brand)` with brand-specific credentials. Includes shared utilities (`load_stores()`, `geocode()`, `find_nearby_stores()`, `get_ingredients()`, `haversine()`, `BRANDS` dict).
+- `scripts/foodstuffs/Foodstuffs_api.py` — Unified API client for both brands. `FoodstuffsEdgeAPI(brand)`, `FoodstuffsMobileAPI(brand)` with brand-specific credentials. Includes shared utilities (`load_stores()`, `geocode()`, `find_nearby_stores()`, `get_ingredients()`, `haversine()`, `BRANDS` dict). [NOTE: `DISH_INGREDIENTS` has since been refactored to `DISHES` dict format]
 - `scripts/foodstuffs/Foodstuffs_optimizer_edge.py` — Edge API two-pass optimizer CLI. Accepts `brand` argument (`paknsave` or `newworld`). Supports both source types.
 - `scripts/foodstuffs/Foodstuffs_optimizer_mobile.py` — Mobile API fallback optimizer. Same CLI structure, single-pass search.
 - `scripts/foodstuffs/Foodstuffs_setup.py` — Unified store builder pipeline. Supports `source=edge` (default) or `source=mobile` for both brands. store_finder only available for paknsave.
@@ -643,10 +643,69 @@ inject the brand API class and store-finder into the shared helpers.
 - `build_edge_row` / `build_mobile_row` — per-product CSV row builders
 - `parse_foodstuffs_volume_size` / `parse_foodstuffs_mobile_unit` — size/price parsers
 - `geocode`, `haversine`, `find_nearby_stores` — geo helpers
-- `get_ingredients`, `get_quantities`, `DISH_INGREDIENTS` — dish lookup
+- `get_ingredients`, `_build_quantity_map`, `DISHES` — dish lookup (DISHES is dict format with quantity/unit/search_term)
 - `optimise()`, `analyze_results()` — Phase 2 CSV readers
 - `append_rows()`, `_compute_pk_hash()`, `load_existing_hashes()` — append-only CSV with SHA-256 dedup
 
 **Behavioral fix**: The `optimise(dish, company=...)` filter is now correctly applied
 in both brand optimizers (previously could blend PNS+NW rows from `full_results.csv`).
 The `per_unit_price` field is now blank (not 0.0) when falsy.
+
+---
+
+## 58. Dish Format Refactored from String List to Dict
+
+**Date**: 2026-08-06
+
+Refactored the hardcoded dish format from a simple string-list mapping
+(`DISH_INGREDIENTS = {"dish": ["ingredient1", ...]}`) to a structured dict
+format matching LLM output (`DISHES = {"dish": {"dish_name": str, "portion": int,
+"ingredients": [{quantity, unit, search_term}, ...]}}`).
+
+**Changes:**
+- `DISH_INGREDIENTS` (string list dict) → `DISHES` (structured dict with
+  quantity/unit/search_term per ingredient) in `optimizer_utils.py`
+- `DISH_QUANTITIES` (separate human-readable quantity dict) → removed;
+  quantities now embedded in `DISHES` dict
+- `get_ingredients(dish_name)` — now extracts search_terms from `DISHES` dict
+- `get_quantities(dish_name)` — replaced by `_build_quantity_map(dish)` which
+  resolves the quantity string from the `DISHES` dict
+- `_resolve_dish_dict(dish)` — new helper that resolves a string dish name to
+  its full `DISHES` dict, used by `_build_quantity_map`
+- `analyze_results()` — updated to call `_build_quantity_map(dish)` instead of
+  `get_quantities(dish_name)`
+- Removed duplicate `DISH_INGREDIENTS` and `get_ingredients()` from
+  `paknsave_api.py` and `newworld_api.py` — both now use the shared version
+  from `optimizer_utils.py`
+- `woolworths_optimizer.py` — removed `get_ingredients`/`get_quantities` imports
+  (no longer needed; uses `_resolve_dish` directly)
+- `ingredient_parser.py` — removed import of `DISH_INGREDIENTS`; legacy fallback
+  now uses `DISHES` dict from `optimizer_utils.py`
+- `init_dishes_json.py` — now seeds `dishes.json` from `DISHES` dict
+
+**Backward compatibility**: `_resolve_dish()` still accepts both string dish
+names and dict dishes. CLI optimizers pass strings, LLM pipeline passes dicts.
+
+### Log #59 — Migrated DISHES dict from code to data/dishes.json
+
+**Date**: 2026-08-06
+
+Moved the `DISHES` dict from `scripts/combined/optimizer_utils.py` into
+`data/dishes.json` (JSON file). The dict is now lazily loaded at module import
+time via `_load_dishes()`. A `_reload_dishes()` helper is available for
+refreshing after manual edits.
+
+**Changes:**
+- `optimizer_utils.py` — replaced hardcoded 275-line `DISHES` dict with
+  `_load_dishes()` call + `DISHES = _load_dishes()` + `_reload_dishes()` helper
+- `data/dishes.json` — now stores full structured dish data (dish_name,
+  portion, ingredients with quantity/unit/search_term) instead of the old
+  lightweight schema (search_terms + default_portions)
+- `ingredient_parser.py` — updated `dish_to_json()` and `json_to_dish()` to
+  read/write the new structured schema; `resolve_ingredients()` now checks only
+  `dishes.json` (removed the redundant `DISHES` from `optimizer_utils` fallback)
+- `init_dishes_json.py` — regenerated to output full structured format from
+  the `DISHES` dict; preserved metadata fields (last_generated, generator_model)
+- `llm-dish-pipeline.md` — updated to reflect that `dishes.json` now stores
+  full structured format, eliminating the need for `_resolve_dish_dict`
+  fallback at lookup time

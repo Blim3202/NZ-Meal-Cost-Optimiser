@@ -1108,7 +1108,7 @@ for p in products:
 ### 10.2 How to Find Nearby Stores and Compare Prices
 
 ```python
-from scripts.combined.optimizer_utils import geocode, find_nearby_stores, get_ingredients
+from scripts.combined.optimizer_utils import geocode, find_nearby_stores, DISHES
 from scripts.newworld.newworld_setup import load_stores
 from scripts.newworld.newworld_api import NewWorldMobileAPI
 
@@ -1117,15 +1117,16 @@ user_lat, user_lon = geocode("Botany Town Centre, Auckland")
 nearby = find_nearby_stores(user_lat, user_lon, stores, radius_km=5)
 
 api = NewWorldMobileAPI()
+dish_dict = DISHES["spaghetti bolognese"]
 for _, store in nearby.iterrows():
     total = 0.0
     print(f"--- {store['name']} ---")
-    for ing in get_ingredients("spaghetti bolognese"):
-        products = api.search_products(store["store_id"], ing) or []
+    for ing in dish_dict["ingredients"]:
+        products = api.search_products(store["store_id"], ing["search_term"]) or []
         if products:
             price = NewWorldMobileAPI.extract_price(products[0])
             if price is not None:
-                print(f"  {ing:25s} ${price:.2f}")
+                print(f"  {ing['search_term']:25s} ${price:.2f}")
                 total += price
         else:
             print(f"  {ing:25s}  NOT FOUND")
@@ -1193,8 +1194,10 @@ Shared flags: `--requery true|false` (default true), `--distance N` (default 5 k
 
 The optimizer takes the **first (most relevant)** result per query. This avoids
 irrelevant bulk items that might appear at lower prices (e.g., pet food for
-"beef mince"). 21 dishes are hand-curated in `DISH_INGREDIENTS` in
-`scripts/combined/optimizer_utils.py` — no NLP/LLM parsing.
+"beef mince"). 21 dishes are hand-curated in `DISHES` (dict format with
+quantity/unit/search_term) loaded from `data/dishes.json` via
+`scripts/combined/optimizer_utils.py`. LLM-backed dish generation available
+via `scripts/llms/llm_utils.py`.
 
 ### 10.7 Architecture Diagrams
 
@@ -1265,8 +1268,10 @@ and `scripts/newworld/newworld_optimizer_mobile.py`.
 | tomato pasta | pasta, canned tomatoes, garlic, olive oil, mixed herbs, cheese |
 | chicken katsu | chicken breast, flour, eggs, bread, rice, katsu sauce |
 
-Dishes are defined in `DISH_INGREDIENTS` in `scripts/combined/optimizer_utils.py` (via
-`get_ingredients()`; identical ingredient lists for both Pak'nSave and New World).
+Dishes are defined in `DISHES` (dict format with quantity/unit/search_term) loaded
+from `data/dishes.json` via `scripts/combined/optimizer_utils.py` (via `get_ingredients()`; identical
+ingredient lists for both Pak'nSave and New World).
+`newworld_api.py` no longer re-exports — use the shared module directly.
 Unknown dish names fall through — the dish name itself becomes the single search query.
 
 ---

@@ -34,7 +34,7 @@ opencode/
 │   └── Woolworths_meal_cost_optimizer.ipynb    # Woolworths Jupyter pipeline
 ├── scripts/
 │   ├── combined/
-│   │   ├── optimizer_utils.py                  # **Cross-brand helpers**: foodstuffs_optimizer_edge/mobile, build_edge_row/mobile_row, parsing, geocoding, haversine, get_ingredients, DISH_INGREDIENTS, optimise(), append_rows, _compute_pk_hash
+│   │   ├── optimizer_utils.py                  # **Cross-brand helpers**: foodstuffs_optimizer_edge/mobile, build_edge_row/mobile_row, parsing, geocoding, haversine, DISHES, get_ingredients, _resolve_dish, _build_quantity_map, optimise(), append_rows, _compute_pk_hash
 │   │   └── initialize_full_results.py          # Creates data/full_results.csv with 17-column schema + pk_hash
 │   ├── newworld/
 │   │   ├── newworld_setup.py                   # **Unified store builder pipeline**: Edge API (148 stores), Mobile API (149 stores). Callable module + CLI with `source` param. Mirrors paknsave_setup.py structure.
@@ -75,7 +75,7 @@ opencode/
 |---|---|
 | `NewWorld_API.md` | Foodstuffs New World API docs — shared structure referenced from PaknSave_API.md; New World-specific Edge API, dishes, store data sources |
 | `PaknSave_API.md` | Foodstuffs Pak'nSave API docs — primary reference for shared Foodstuffs mobile API + Edge API structure; New World references this for common content |
-| `scripts/combined/optimizer_utils.py` | **Cross-brand helpers**: foodstuffs_optimizer_edge/mobile, build_edge_row/mobile_row, parsing, geocoding, haversine, get_ingredients, DISH_INGREDIENTS, optimise(), append_rows, _compute_pk_hash |
+| `scripts/combined/optimizer_utils.py` | **Cross-brand helpers**: foodstuffs_optimizer_edge/mobile, build_edge_row/mobile_row, parsing, geocoding, haversine, DISHES, get_ingredients, _resolve_dish, _build_quantity_map, optimise(), append_rows, _compute_pk_hash |
 | `scripts/combined/initialize_full_results.py` | Creates data/full_results.csv with 17-column schema + pk_hash for deduplication |
 | `scripts/newworld/newworld_setup.py` | **Unified store builder**: Edge API (148 stores), Mobile API (149 stores). Callable module + CLI with `source` param. Mirrors paknsave_setup.py structure. |
 | `scripts/newworld/newworld_api.py` | **Unified API module**: Edge API (two-pass) + Mobile API (single-pass) with shared utilities |
@@ -120,7 +120,7 @@ opencode/
 - **Session seeding**: A single `GET /` with browser-like headers establishes cookies. No login needed for public endpoints.
 - **Playwright headless=False required**: If you do use Playwright, the site blocks headless Chromium.
 - Search returns first/most-relevant result per query, not cheapest (avoids pet food for "beef mince").
-- 21 dishes are hand-curated in `DISH_INGREDIENTS` — no NLP/LLM parsing yet.
+- 21 dishes are hand-curated in `DISHES` (dict format with quantity/unit/search_term) loaded from `data/dishes.json` via `optimizer_utils.py`. LLM-backed dish generation available via `scripts/llms/llm_utils.py`.
 - **`full_results.csv` is append-only**: New rows are added per run; duplicates detected via `pk_hash` (SHA-256 of `store_id|sku|date_created`). Avoid editing in Excel — blank rows corrupt the file.
 - **`--distance` flag**: `--distance 5` sets search radius in km (default 2).
 

@@ -54,15 +54,15 @@ from woolworths_api import (
 from optimizer_utils import (
     CSV_COLUMNS,
     RESULTS_FILE,
-    analyze_results, # loaded in optimise()
+    analyze_results,
     geocode,
-    get_ingredients,
-    get_quantities,
     optimise,
     parse_woolworths_volume_size,
     _compute_pk_hash,
     load_existing_hashes,
     append_rows,
+    get_ingredients,
+    _resolve_dish,
 )
 
 
@@ -107,12 +107,12 @@ def build_row(company, store, store_id, search_ingredient, product, now):
     }
 
 
-def query_and_save(user_address, dish_name, requery, max_dist_km: float = 2.0):
+def query_and_save(user_address, dish_input, requery, max_dist_km: float = 2.0):
     """Phase 1: Query the API and append results to CSV.
 
     Args:
         user_address: NZ address to geocode
-        dish_name: dish to search ingredients for
+        dish_input: dish name (str) or dish dict to search ingredients for
         requery: if False, skip API and read existing CSV
         max_dist_km: maximum store search radius in km (default 2)
 
@@ -142,7 +142,7 @@ def query_and_save(user_address, dish_name, requery, max_dist_km: float = 2.0):
     for s in nearby:
         print(f"  {s['name']} ({s['distance_km']} km)")
 
-    ingredients = get_ingredients(dish_name)
+    dish_name, ingredients = _resolve_dish(dish_input)
     print(f"\nDish: {dish_name}")
     print(f"Ingredients: {', '.join(ingredients)}")
 

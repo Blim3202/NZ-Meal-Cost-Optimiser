@@ -1,0 +1,653 @@
+{
+  "spaghetti bolognese": {
+    "dish_name": "spaghetti bolognese",
+    "portion": 4,
+    "ingredients": [
+      {
+        "quantity": 500,
+        "unit": "g",
+        "search_term": "beef mince"
+      },
+      {
+        "quantity": 400,
+        "unit": "g",
+        "search_term": "spaghetti pasta"
+      },
+      {
+        "quantity": 1,
+        "unit": "can",
+        "search_term": "canned tomatoes"
+      },
+      {
+        "quantity": 1,
+        "unit": "medium",
+        "search_term": "onion"
+      },
+      {
+        "quantity": 2,
+        "unit": "medium",
+        "search_term": "carrot"
+      },
+      {
+        "quantity": 2,
+        "unit": "cloves",
+        "search_term": "garlic"
+      },
+      {
+        "quantity": 1,
+        "unit": "tsp",
+        "search_term": "mixed herbs"
+      }
+    ]
+  },
+  "chicken stir fry": {
+    "dish_name": "chicken stir fry",
+    "portion": 4,
+    "ingredients": [
+      {
+        "quantity": 2,
+        "unit": "fillets",
+        "search_term": "chicken breast"
+      },
+      {
+        "quantity": 1,
+        "unit": "bag",
+        "search_term": "stir fry vegetables"
+      },
+      {
+        "quantity": 2,
+        "unit": "tbsp",
+        "search_term": "soy sauce"
+      },
+      {
+        "quantity": 250,
+        "unit": "g",
+        "search_term": "rice noodles"
+      }
+    ]
+  },
+  "beef stir fry": {
+    "dish_name": "beef stir fry",
+    "portion": 4,
+    "ingredients": [
+      {
+        "quantity": 400,
+        "unit": "g",
+        "search_term": "beef strips"
+      },
+      {
+        "quantity": 1,
+        "unit": "bag",
+        "search_term": "stir fry vegetables"
+      },
+      {
+        "quantity": 2,
+        "unit": "tbsp",
+        "search_term": "soy sauce"
+      },
+      {
+        "quantity": 250,
+        "unit": "g",
+        "search_term": "rice noodles"
+      }
+    ]
+  },
+  "roast lamb": {
+    "dish_name": "roast lamb",
+    "portion": 4,
+    "ingredients": [
+      {
+        "quantity": 1.2,
+        "unit": "kg",
+        "search_term": "lamb roast"
+      },
+      {
+        "quantity": 4,
+        "unit": "medium",
+        "search_term": "potato"
+      },
+      {
+        "quantity": 3,
+        "unit": "medium",
+        "search_term": "carrot"
+      },
+      {
+        "quantity": 1,
+        "unit": "head",
+        "search_term": "broccoli"
+      },
+      {
+        "quantity": 2,
+        "unit": "cups",
+        "search_term": "stock"
+      }
+    ]
+  },
+  "chicken curry": {
+    "dish_name": "chicken curry",
+    "portion": 4,
+    "ingredients": [
+      {
+        "quantity": 500,
+        "unit": "g",
+        "search_term": "chicken thigh"
+      },
+      {
+        "quantity": 2,
+        "unit": "tbsp",
+        "search_term": "curry paste"
+      },
+      {
+        "quantity": 1,
+        "unit": "can",
+        "search_term": "coconut milk"
+      },
+      {
+        "quantity": 1.5,
+        "unit": "cups",
+        "search_term": "rice"
+      },
+      {
+        "quantity": 1,
+        "unit": "medium",
+        "search_term": "onion"
+      }
+    ]
+  },
+  "beef curry": {
+    "dish_name": "beef curry",
+    "portion": 4,
+    "ingredients": [
+      {
+        "quantity": 500,
+        "unit": "g",
+        "search_term": "diced beef"
+      },
+      {
+        "quantity": 2,
+        "unit": "tbsp",
+        "search_term": "curry paste"
+      },
+      {
+        "quantity": 1,
+        "unit": "can",
+        "search_term": "coconut milk"
+      },
+      {
+        "quantity": 1.5,
+        "unit": "cups",
+        "search_term": "rice"
+      },
+      {
+        "quantity": 1,
+        "unit": "medium",
+        "search_term": "onion"
+      }
+    ]
+  },
+  "fish and chips": {
+    "dish_name": "fish and chips",
+    "portion": 4,
+    "ingredients": [
+      {
+        "quantity": 2,
+        "unit": "fillets",
+        "search_term": "fish fillet"
+      },
+      {
+        "quantity": 4,
+        "unit": "medium",
+        "search_term": "potato"
+      },
+      {
+        "quantity": 1,
+        "unit": "bottle",
+        "search_term": "oil"
+      }
+    ]
+  },
+  "nachos": {
+    "dish_name": "nachos",
+    "portion": 4,
+    "ingredients": [
+      {
+        "quantity": 300,
+        "unit": "g",
+        "search_term": "beef mince"
+      },
+      {
+        "quantity": 1,
+        "unit": "bag",
+        "search_term": "tortilla chips"
+      },
+      {
+        "quantity": 1,
+        "unit": "cup",
+        "search_term": "cheese"
+      },
+      {
+        "quantity": 1,
+        "unit": "can",
+        "search_term": "beans"
+      },
+      {
+        "quantity": 0.5,
+        "unit": "cup",
+        "search_term": "sour cream"
+      }
+    ]
+  },
+  "pumpkin soup": {
+    "dish_name": "pumpkin soup",
+    "portion": 4,
+    "ingredients": [
+      {
+        "quantity": 1,
+        "unit": "kg",
+        "search_term": "pumpkin"
+      },
+      {
+        "quantity": 1,
+        "unit": "medium",
+        "search_term": "onion"
+      },
+      {
+        "quantity": 0.5,
+        "unit": "cup",
+        "search_term": "cream"
+      },
+      {
+        "quantity": 2,
+        "unit": "cups",
+        "search_term": "stock"
+      },
+      {
+        "quantity": 4,
+        "unit": "slices",
+        "search_term": "bread"
+      }
+    ]
+  },
+  "tacos": {
+    "dish_name": "tacos",
+    "portion": 4,
+    "ingredients": [
+      {
+        "quantity": 400,
+        "unit": "g",
+        "search_term": "beef mince"
+      },
+      {
+        "quantity": 1,
+        "unit": "pack",
+        "search_term": "taco shells"
+      },
+      {
+        "quantity": 0.5,
+        "unit": "head",
+        "search_term": "lettuce"
+      },
+      {
+        "quantity": 2,
+        "unit": "medium",
+        "search_term": "tomato"
+      },
+      {
+        "quantity": 1,
+        "unit": "cup",
+        "search_term": "cheese"
+      },
+      {
+        "quantity": 0.5,
+        "unit": "cup",
+        "search_term": "sour cream"
+      }
+    ]
+  },
+  "lamb chops": {
+    "dish_name": "lamb chops",
+    "portion": 4,
+    "ingredients": [
+      {
+        "quantity": 4,
+        "unit": "chops",
+        "search_term": "lamb chops"
+      },
+      {
+        "quantity": 4,
+        "unit": "medium",
+        "search_term": "potato"
+      },
+      {
+        "quantity": 2,
+        "unit": "tbsp",
+        "search_term": "mint sauce"
+      }
+    ]
+  },
+  "butter chicken": {
+    "dish_name": "butter chicken",
+    "portion": 4,
+    "ingredients": [
+      {
+        "quantity": 500,
+        "unit": "g",
+        "search_term": "chicken thigh"
+      },
+      {
+        "quantity": 1,
+        "unit": "jar",
+        "search_term": "butter chicken sauce"
+      },
+      {
+        "quantity": 1.5,
+        "unit": "cups",
+        "search_term": "rice"
+      },
+      {
+        "quantity": 0.5,
+        "unit": "cup",
+        "search_term": "cream"
+      }
+    ]
+  },
+  "lasagne": {
+    "dish_name": "lasagne",
+    "portion": 4,
+    "ingredients": [
+      {
+        "quantity": 500,
+        "unit": "g",
+        "search_term": "beef mince"
+      },
+      {
+        "quantity": 1,
+        "unit": "pack",
+        "search_term": "lasagne sheets"
+      },
+      {
+        "quantity": 1,
+        "unit": "cup",
+        "search_term": "cheese"
+      },
+      {
+        "quantity": 1,
+        "unit": "can",
+        "search_term": "canned tomatoes"
+      },
+      {
+        "quantity": 1,
+        "unit": "cup",
+        "search_term": "milk"
+      },
+      {
+        "quantity": 2,
+        "unit": "tbsp",
+        "search_term": "butter"
+      },
+      {
+        "quantity": 2,
+        "unit": "tbsp",
+        "search_term": "flour"
+      }
+    ]
+  },
+  "shepherd's pie": {
+    "dish_name": "shepherd's pie",
+    "portion": 4,
+    "ingredients": [
+      {
+        "quantity": 500,
+        "unit": "g",
+        "search_term": "beef mince"
+      },
+      {
+        "quantity": 4,
+        "unit": "medium",
+        "search_term": "potato"
+      },
+      {
+        "quantity": 2,
+        "unit": "medium",
+        "search_term": "carrot"
+      },
+      {
+        "quantity": 1,
+        "unit": "cup",
+        "search_term": "peas"
+      },
+      {
+        "quantity": 0.5,
+        "unit": "cup",
+        "search_term": "stock"
+      }
+    ]
+  },
+  "pizza": {
+    "dish_name": "pizza",
+    "portion": 4,
+    "ingredients": [
+      {
+        "quantity": 1,
+        "unit": "base",
+        "search_term": "pizza base"
+      },
+      {
+        "quantity": 0.5,
+        "unit": "cup",
+        "search_term": "pizza sauce"
+      },
+      {
+        "quantity": 1.5,
+        "unit": "cups",
+        "search_term": "cheese"
+      },
+      {
+        "quantity": 1,
+        "unit": "pack",
+        "search_term": "pepperoni"
+      }
+    ]
+  },
+  "veggie stir fry": {
+    "dish_name": "veggie stir fry",
+    "portion": 4,
+    "ingredients": [
+      {
+        "quantity": 1,
+        "unit": "bag",
+        "search_term": "stir fry vegetables"
+      },
+      {
+        "quantity": 1,
+        "unit": "block",
+        "search_term": "tofu"
+      },
+      {
+        "quantity": 2,
+        "unit": "tbsp",
+        "search_term": "soy sauce"
+      },
+      {
+        "quantity": 250,
+        "unit": "g",
+        "search_term": "rice noodles"
+      },
+      {
+        "quantity": 2,
+        "unit": "cloves",
+        "search_term": "garlic"
+      }
+    ]
+  },
+  "frittata": {
+    "dish_name": "frittata",
+    "portion": 4,
+    "ingredients": [
+      {
+        "quantity": 6,
+        "unit": "eggs",
+        "search_term": "eggs"
+      },
+      {
+        "quantity": 2,
+        "unit": "medium",
+        "search_term": "potato"
+      },
+      {
+        "quantity": 1,
+        "unit": "medium",
+        "search_term": "onion"
+      },
+      {
+        "quantity": 1,
+        "unit": "cup",
+        "search_term": "cheese"
+      },
+      {
+        "quantity": 0.25,
+        "unit": "cup",
+        "search_term": "milk"
+      }
+    ]
+  },
+  "pancakes": {
+    "dish_name": "pancakes",
+    "portion": 4,
+    "ingredients": [
+      {
+        "quantity": 1.5,
+        "unit": "cups",
+        "search_term": "flour"
+      },
+      {
+        "quantity": 1,
+        "unit": "egg",
+        "search_term": "eggs"
+      },
+      {
+        "quantity": 1,
+        "unit": "cup",
+        "search_term": "milk"
+      },
+      {
+        "quantity": 2,
+        "unit": "tbsp",
+        "search_term": "sugar"
+      },
+      {
+        "quantity": 2,
+        "unit": "tbsp",
+        "search_term": "butter"
+      }
+    ]
+  },
+  "chicken soup": {
+    "dish_name": "chicken soup",
+    "portion": 4,
+    "ingredients": [
+      {
+        "quantity": 2,
+        "unit": "fillets",
+        "search_term": "chicken breast"
+      },
+      {
+        "quantity": 2,
+        "unit": "medium",
+        "search_term": "carrot"
+      },
+      {
+        "quantity": 1,
+        "unit": "medium",
+        "search_term": "onion"
+      },
+      {
+        "quantity": 2,
+        "unit": "stalks",
+        "search_term": "celery"
+      },
+      {
+        "quantity": 4,
+        "unit": "cups",
+        "search_term": "stock"
+      },
+      {
+        "quantity": 1,
+        "unit": "cup",
+        "search_term": "pasta"
+      }
+    ]
+  },
+  "tomato pasta": {
+    "dish_name": "tomato pasta",
+    "portion": 4,
+    "ingredients": [
+      {
+        "quantity": 400,
+        "unit": "g",
+        "search_term": "pasta"
+      },
+      {
+        "quantity": 1,
+        "unit": "can",
+        "search_term": "canned tomatoes"
+      },
+      {
+        "quantity": 2,
+        "unit": "cloves",
+        "search_term": "garlic"
+      },
+      {
+        "quantity": 2,
+        "unit": "tbsp",
+        "search_term": "olive oil"
+      },
+      {
+        "quantity": 1,
+        "unit": "tsp",
+        "search_term": "mixed herbs"
+      },
+      {
+        "quantity": 0.25,
+        "unit": "cup",
+        "search_term": "cheese"
+      }
+    ]
+  },
+  "chicken katsu": {
+    "dish_name": "chicken katsu",
+    "portion": 4,
+    "ingredients": [
+      {
+        "quantity": 2,
+        "unit": "fillets",
+        "search_term": "chicken breast"
+      },
+      {
+        "quantity": 0.5,
+        "unit": "cup",
+        "search_term": "flour"
+      },
+      {
+        "quantity": 2,
+        "unit": "eggs",
+        "search_term": "eggs"
+      },
+      {
+        "quantity": 1,
+        "unit": "cup",
+        "search_term": "bread"
+      },
+      {
+        "quantity": 1.5,
+        "unit": "cups",
+        "search_term": "rice"
+      },
+      {
+        "quantity": 0.33,
+        "unit": "cup",
+        "search_term": "katsu sauce"
+      }
+    ]
+  }
+}

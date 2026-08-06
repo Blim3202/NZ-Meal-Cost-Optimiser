@@ -6,7 +6,7 @@
 User input (address + dish)
   → Geocode address to lat/lon
   → Haversine filter (stores within 5 km)
-  → Dish name → ingredient list (DISH_INGREDIENTS map)
+  → Dish name → ingredient list (DISHES dict, resolves via get_ingredients)
   → Foodstuffs Edge API (default): two-pass search per ingredient at each nearby store
     → PASS 1: Relevance via Algolia products-index (matchedWords + pet food filtering)
     → PASS 2: Per-store pricing via paginated/products (Algolia filters + PRICE_ASC)
@@ -40,7 +40,7 @@ Unified interface via `PaknSaveAPI(backend="edge"|"mobile")`.
 - `haversine(lat1, lon1, lat2, lon2)` — distance in km
 - `load_stores()` — from `data/paknsave_stores.csv`
 - `find_nearby_stores(lat, lon, radius_km=5)` — filtered & sorted
-- `get_ingredients(dish_name)` — 21-dish ingredient map
+- `get_ingredients(dish_name)` — 21-dish ingredient map (from DISHES dict)
 
 ### 2. `paknsave_optimizer_edge.py` — Edge API Optimizer (Production)
 
@@ -179,9 +179,9 @@ from scripts.paknsave.paknsave_api import (
     load_stores,
     geocode,
     find_nearby_stores,
-    get_ingredients,
     haversine,
 )
+from scripts.combined.optimizer_utils import get_ingredients
 
 # Default: Edge API (two-pass)
 api = PaknSaveAPI(backend="edge")
@@ -248,7 +248,7 @@ python scripts/paknsave/paknsave_optimizer_mobile.py "Botany Town Centre, Auckla
 User input (address + dish)
   → Geocode address to lat/lon (Nominatim)
   → Haversine filter (stores within 5 km from paknsave_stores.csv)
-  → Dish name → ingredient list (DISH_INGREDIENTS map, 21 dishes)
+  → Dish name → ingredient list (DISHES dict, resolves via get_ingredients)
   → Get website JWT via get-current-user → fs-user-token cookie
   → FOR EACH nearby store:
       → FOR EACH ingredient:
@@ -384,7 +384,7 @@ def two_pass_search(token, store_id, query, max_relevance=20):
 User input (address + dish)
   → Geocode address to lat/lon (Nominatim)
   → Haversine filter (stores within 5 km from newworld_stores.csv)
-  → Dish name → ingredient list (DISH_INGREDIENTS map, 21 dishes)
+  → Dish name → ingredient list (DISHES dict, resolves via get_ingredients)
   → Get website JWT via get-current-user → fs-user-token cookie
   → FOR EACH nearby store:
       → FOR EACH ingredient:
@@ -533,10 +533,10 @@ def newworld_two_pass_search(token, store_id, query, max_relevance=20):
 
 ## Ingredient Mapping
 
-- `DISH_INGREDIENTS` dict in `scripts/prototype.py` (and notebook cell 4)
-- 21 dishes, each mapping to a list of search query strings
+- `DISHES` dict loaded from `data/dishes.json` via `scripts/combined/optimizer_utils.py` (dict format with quantity/unit/search_term)
+- 21 dishes, each mapping to structured ingredients with quantity, unit, and search_term
 - Unknown dishes fall through: the dish name itself becomes the single search query
-- No NLP/LLM parsing — entirely hand-curated
+- LLM-backed dish generation available via `scripts/llms/llm_utils.py`
 
 ### Supported Dishes (21)
 
@@ -564,7 +564,7 @@ def newworld_two_pass_search(token, store_id, query, max_relevance=20):
 | tomato pasta | pasta, canned tomatoes, garlic, olive oil, mixed herbs, cheese |
 | chicken katsu | chicken breast, flour, eggs, bread, rice, katsu sauce |
 
-To add a dish: edit `DISH_INGREDIENTS` in `scripts/paknsave/paknsave_api.py` (or notebook cell 4).
+To add a dish: edit `data/dishes.json` directly — the file is loaded by `optimizer_utils.py` at runtime and by `llm_utils.py`'s `resolve_ingredients`.
 
 ## CLI Usage
 
@@ -595,7 +595,7 @@ python -m scripts.paknsave.paknsave_setup mobile         # Mobile API (60 stores
 User input (address + dish)
   → Geocode address to lat/lon (Nominatim)
   → Haversine filter (stores within 5 km from woolworths_store_data.json)
-  → Dish name → ingredient list (DISH_INGREDIENTS map, 21 dishes)
+  → Dish name → ingredient list (DISHES dict, resolves via get_ingredients)
   → FOR EACH nearby store:
       → Create fresh requests.Session + GET / to seed cookies
       → Inject cw-lrkswrdjp cookie (constructed from extra1)

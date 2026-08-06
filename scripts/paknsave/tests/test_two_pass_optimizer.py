@@ -16,25 +16,13 @@ import math
 import pandas as pd
 import os
 import sys
+from pathlib import Path
 
 WEB_BASE = "https://www.paknsave.co.nz"
 EDGE_BASE = "https://api-prod.paknsave.co.nz/v1/edge"
 
-DISH_INGREDIENTS = {
-    "spaghetti bolognese": [
-        "beef mince", "spaghetti pasta", "canned tomatoes",
-        "onion", "carrot", "garlic", "mixed herbs"
-    ],
-    "butter chicken": [
-        "chicken breast", "butter chicken sauce", "rice", "cream", "onion"
-    ],
-    "fish and chips": [
-        "fish fillets", "potatoes", "flour", "oil"
-    ],
-    "chicken stir fry": [
-        "chicken breast", "stir fry vegetables", "soy sauce", "rice noodles"
-    ],
-}
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "combined"))
+from optimizer_utils import DISHES, get_ingredients
 
 
 class PaknSaveEdgeAPI:
@@ -180,7 +168,7 @@ class PaknSaveEdgeAPI:
         loc = geo.json()[0]
         user_lat, user_lon = float(loc["lat"]), float(loc["lon"])
 
-        ingredients = DISH_INGREDIENTS.get(dish_name.lower(), [dish_name])
+        ingredients = get_ingredients(dish_name)
         nearby = self.find_nearby(user_lat, user_lon, radius_km)
 
         print(f"\n{'='*60}")

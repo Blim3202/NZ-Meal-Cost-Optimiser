@@ -1138,7 +1138,7 @@ for p in products:
 ### 10.4 How to Find Nearby Stores and Compare Prices
 
 ```python
-from scripts.combined.optimizer_utils import geocode, find_nearby_stores, get_ingredients
+from scripts.combined.optimizer_utils import geocode, find_nearby_stores, DISHES
 from scripts.paknsave.paknsave_setup import load_stores
 from scripts.paknsave.paknsave_api import PaknSaveEdgeAPI
 
@@ -1147,18 +1147,19 @@ user_lat, user_lon = geocode("588 Chapel Road, East Tāmaki, Auckland 2016")
 nearby = find_nearby_stores(user_lat, user_lon, stores, radius_km=5)
 
 api = PaknSaveEdgeAPI(); api.authenticate()
+dish_dict = DISHES["spaghetti bolognese"]
 for _, store in nearby.iterrows():
     total = 0.0
     print(f"--- {store['name']} ---")
-    for ing in get_ingredients("spaghetti bolognese"):
-        products, hits = api.search_ingredient(store["store_id"], ing)
+    for ing in dish_dict["ingredients"]:
+        products, hits = api.search_ingredient(store["store_id"], ing["search_term"])
         if products:
             price = PaknSaveEdgeAPI.extract_price(products[0])
             if price is not None:
-                print(f"  {ing:25s} ${price:.2f}")
+                print(f"  {ing['search_term']:25s} ${price:.2f}")
                 total += price
         else:
-            print(f"  {ing:25s}  NOT FOUND")
+            print(f"  {ing['search_term']:25s}  NOT FOUND")
     print(f"  {'TOTAL':25s} ${total:.2f}\n")
 ```
 
@@ -1166,8 +1167,10 @@ for _, store in nearby.iterrows():
 
 The optimizer takes the **first (most relevant)** result per query. This avoids
 irrelevant bulk items that might appear at lower prices (e.g., pet food for
-"beef mince"). 21 dishes are hand-curated in `DISH_INGREDIENTS` in
-`scripts/combined/optimizer_utils.py` — no NLP/LLM parsing.
+"beef mince"). 21 dishes are hand-curated in `DISHES` (dict format with
+quantity/unit/search_term) loaded from `data/dishes.json` via
+`scripts/combined/optimizer_utils.py`. LLM-backed
+dish generation available via `scripts/llms/llm_utils.py`.
 
 ### 10.6 Architecture Diagrams
 
@@ -1235,8 +1238,9 @@ Compare totals → cheapest store
 | tomato pasta | pasta, canned tomatoes, garlic, olive oil, mixed herbs, cheese |
 | chicken katsu | chicken breast, flour, eggs, bread, rice, katsu sauce |
 
-Dishes are defined in `DISH_INGREDIENTS` in `scripts/combined/optimizer_utils.py` (via
-`get_ingredients()`). `paknsave_api.py` re-exports for backward compatibility.
+Dishes are defined in `DISHES` (dict format with quantity/unit/search_term) loaded
+from `data/dishes.json` via `scripts/combined/optimizer_utils.py` (via `get_ingredients()`).
+`paknsave_api.py` no longer re-exports — use the shared module directly.
 Unknown dish names fall through — the dish name itself becomes the single search query.
 
 ---
