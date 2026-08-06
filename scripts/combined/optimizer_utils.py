@@ -542,7 +542,7 @@ def geocode(address):
     return None, None
 
 
-def analyze_results(df, ingredients, dish, company=None):
+def analyze_results(df, ingredients, dish, company=None, store_ids=None):
     """Build per-store cost summary and per-ingredient comparison table.
 
     Args:
@@ -550,6 +550,8 @@ def analyze_results(df, ingredients, dish, company=None):
         ingredients: list of ingredient search terms for the dish
         dish: dish name (string) or dict for quantity lookup
         company: optional retailer name to filter rows (e.g. "PaknSave", "NewWorld", "Woolworths")
+        store_ids: optional set of valid store_ids (from distance-radius filtering)
+                   to restrict which stores are included
 
     Returns:
         (summary, table) where:
@@ -559,6 +561,8 @@ def analyze_results(df, ingredients, dish, company=None):
     df = df.copy()
     if company:
         df = df[df["company"] == company]
+    if store_ids:
+        df = df[df["store_id"].isin(store_ids)]
     df["price"] = df["price"].astype(float)
 
     cheapest_per_ing_per_store = (
@@ -582,7 +586,16 @@ def analyze_results(df, ingredients, dish, company=None):
             match = df[(df["search_ingredient"] == ing) & (df["store"] == sn)]
             if not match.empty:
                 best_prod = match.loc[match["price"].idxmin()]
-                row[sn] = f"${best_prod['price']:.2f}"
+                qty = best_prod['quantity']
+                unit = best_prod['measurement_unit']
+                # Clean up float formatting (600.0 -> 600, 1.5 -> 1.5)
+                if isinstance(qty, float) and qty.is_integer():
+                    qty_str = str(int(qty))
+                else:
+                    qty_str = str(qty) if qty else ""
+                unit_str = str(unit) if unit else ""
+                pack_info = f" ({qty_str} {unit_str})".strip() if qty_str and unit_str else ""
+                row[sn] = f"${best_prod['price']:.2f}{pack_info}"
             else:
                 row[sn] = "NOT FOUND"
 
@@ -894,7 +907,7 @@ def foodstuffs_optimizer_mobile(api_class, find_nearby_stores_fn, company_id, co
     return True
 
 
-def optimise(dish, company=None):
+def optimise(dish, company=None, store_ids=None):
     """Phase 2: Read today's results from CSV and print comparison table.
 
     Args:
@@ -902,6 +915,8 @@ def optimise(dish, company=None):
               resolved from DISHES or used as a single search term) or a dict
               with keys 'dish_name' and 'ingredients'.
         company: optional retailer name to filter rows (e.g. "PaknSave", "NewWorld", "Woolworths")
+        store_ids: optional set of valid store_ids (from distance-radius filtering)
+                   to restrict which stores are included
     """
     if not RESULTS_FILE.exists():
         print(f"No results file found: {RESULTS_FILE}")
@@ -912,6 +927,8 @@ def optimise(dish, company=None):
     df_today = df[df["date_created"] == today_str]
     if company:
         df_today = df_today[df_today["company"] == company]
+    if store_ids:
+        df_today = df_today[df_today["store_id"].isin(store_ids)]
 
     if df_today.empty:
         print(f"No results found for today ({today_str})")
@@ -926,7 +943,7 @@ def optimise(dish, company=None):
 
     df_dish = df_today[df_today["search_ingredient"].isin(dish_ings)]
 
-    summary, table = analyze_results(df_dish, dish_ings, dish, company=company)
+    summary, table = analyze_results(df_dish, dish_ings, dish, company=company, store_ids=store_ids)
 
     print("\n" + "=" * 70)
     print(f"TOTAL COST COMPARISON -- {dish_name.upper()}")

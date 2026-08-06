@@ -33,6 +33,7 @@ Supermarket choices (numbers and/or names, comma-separated):
 
 import argparse
 import csv
+import math
 import sys
 from datetime import date
 from pathlib import Path
@@ -314,13 +315,20 @@ def _print_ingredient_table(ingredients):
 # ─── Step 4: Query Optimizers ─────────────────────────────────────────────
 
 def step4_query(address, dish_dict, requery, distance, selected):
-    """Query selected optimizers with the dish dict."""
+    """Query selected optimizers with the dish dict.
+
+    Returns:
+        set of store_ids that are within the distance radius (for Steps 5/6 filtering).
+        Empty set if requery is false (no filtering will be applied).
+    """
     dish_name, _ = _resolve_dish(dish_dict)
     requery_bool = requery.lower() != "false" if isinstance(requery, str) else requery
 
     print(f"\n{'='*60}")
     print(f"STEP 4: Querying optimizers (requery={requery_bool})")
     print(f"{'='*60}")
+
+    store_ids = set()
 
     for sm in selected:
         print(f"\n--- {sm} ---")
@@ -332,6 +340,7 @@ def step4_query(address, dish_dict, requery, distance, selected):
                     ALL_SUPERMARKETS[sm][0], ALL_SUPERMARKETS[sm][1],
                     address, dish_dict, requery_bool, max_dist_km=distance,
                 )
+                _collect_store_ids(store_ids, sm, address, distance)
             elif sm == "pns_mobile":
                 api_class, find_nearby = _import_pns_mobile()
                 foodstuffs_optimizer_mobile(
@@ -339,6 +348,7 @@ def step4_query(address, dish_dict, requery, distance, selected):
                     ALL_SUPERMARKETS[sm][0], ALL_SUPERMARKETS[sm][1],
                     address, dish_dict, requery_bool, max_dist_km=distance,
                 )
+                _collect_store_ids(store_ids, sm, address, distance)
             elif sm == "nw_edge":
                 api_class, find_nearby = _import_nw_edge()
                 foodstuffs_optimizer_edge(
@@ -346,6 +356,7 @@ def step4_query(address, dish_dict, requery, distance, selected):
                     ALL_SUPERMARKETS[sm][0], ALL_SUPERMARKETS[sm][1],
                     address, dish_dict, requery_bool, max_dist_km=distance,
                 )
+                _collect_store_ids(store_ids, sm, address, distance)
             elif sm == "nw_mobile":
                 api_class, find_nearby = _import_nw_mobile()
                 foodstuffs_optimizer_mobile(
@@ -353,18 +364,52 @@ def step4_query(address, dish_dict, requery, distance, selected):
                     ALL_SUPERMARKETS[sm][0], ALL_SUPERMARKETS[sm][1],
                     address, dish_dict, requery_bool, max_dist_km=distance,
                 )
+                _collect_store_ids(store_ids, sm, address, distance)
             elif sm == "woolworths":
                 _create_session, _set_ctx, _search, _nearby, _query_save = _import_woolworths()
                 _query_save(address, dish_dict, requery_bool, max_dist_km=distance)
+                _collect_store_ids(store_ids, sm, address, distance)
             else:
                 print(f"  Unknown supermarket: {sm}")
         except Exception as e:
             print(f"  [ERROR] {sm}: {e}")
 
+    if store_ids:
+        print(f"\n  Collected {len(store_ids)} store_ids within {distance} km radius")
+
+    return store_ids
+
+
+def _collect_store_ids(store_ids, sm, address, distance):
+    """Call find_nearby_stores / get_nearby_stores to collect store_ids within distance."""
+    from optimizer_utils import geocode
+
+    user_lat, user_lon = geocode(address)
+    if user_lat is None or user_lon is None:
+        print(f"  [WARN] Could not geocode address for store_id collection")
+        return
+
+    if sm in ("pns_edge", "pns_mobile"):
+        _api_class, find_nearby = _import_pns_edge()
+    elif sm in ("nw_edge", "nw_mobile"):
+        _api_class, find_nearby = _import_nw_edge()
+    elif sm == "woolworths":
+        _create_session, _set_ctx, _search, get_nearby, _query_save = _import_woolworths()
+        nearby = get_nearby(user_lat, user_lon, max_dist_km=distance)
+        for s in nearby:
+            store_ids.add(str(s["pickupAddressId"]))
+        return
+    else:
+        return
+
+    nearby = find_nearby(user_lat, user_lon, radius_km=distance)
+    for s in nearby:
+        store_ids.add(s["store_id"])
+
 
 # ─── Step 5: Optimise ─────────────────────────────────────────────────────
 
-def step5_optimise(dish_dict, selected):
+def step5_optimise(dish_dict, selected, store_ids=None):
     """Run optimise() for each brand used."""
     print(f"\n{'='*60}")
     print("STEP 5: Optimising & presenting results")
@@ -376,13 +421,20 @@ def step5_optimise(dish_dict, selected):
 
     for company in sorted(companies):
         print(f"\n--- {company} ---")
-        optimise(dish_dict, company=company)
+        optimise(dish_dict, company=company, store_ids=store_ids)
 
 
 # ─── Step 6: Apply Quantity Scaling ───────────────────────────────────────
 
-def step6_scaling(dish_dict, selected):
-    """Apply quantity scaling to today's CSV results and print scaled costs."""
+def step6_scaling(dish_dict, selected, store_ids=None):
+    """Apply quantity scaling to today's CSV results and print scaled costs.
+
+    Args:
+        dish_dict: dish with ingredients
+        selected: list of supermarket backend keys
+        store_ids: optional set of store_ids within the distance radius;
+                   if provided, only rows with matching store_id are considered
+    """
     print(f"\n{'='*60}")
     print("STEP 6: Scaled Dish Cost Analysis")
     print(f"{'='*60}")
@@ -403,6 +455,13 @@ def step6_scaling(dish_dict, selected):
             if row.get("date_created") == today_str:
                 rows.append(row)
 
+    # Filter to companies used
+    company_names = set(ALL_SUPERMARKETS[sm][0] for sm in selected)
+    
+    # Filter to store_ids within distance radius (if provided)
+    if store_ids:
+        rows = [r for r in rows if r.get("store_id", "") in store_ids]
+
     if not rows:
         print(f"  No results for today ({today_str})")
         return
@@ -410,96 +469,125 @@ def step6_scaling(dish_dict, selected):
     # Filter to companies used
     company_names = set(ALL_SUPERMARKETS[sm][0] for sm in selected)
     
-    # Organize data: pivoted[search_term][store] = scaled_row_dict
-    pivoted = {}
+    # Organize data: candidates[search_term][store] = [list of scaled_row_dicts]
+    candidates = {}
     all_stores = set()
-    
+
     for row in rows:
         company = row.get("company", "")
         if company not in company_names:
             continue
-            
+
         search_term = row.get("search_ingredient", "")
         if search_term not in ingredients_dict:
             continue
-            
+
         llm_info = ingredients_dict.get(search_term, {})
         enriched = dict(row)
         enriched["ingredient_quantity"] = llm_info.get("quantity", 0)
         enriched["ingredient_measurement"] = llm_info.get("unit", "")
-        
+
         sr = parse_optimizer_columns(enriched)
         sr["store"] = row.get("store", "Unknown")
         sr["company"] = company
         sr["pack_price"] = float(row.get("price", 0)) if row.get("price") else 0
-        
-        if search_term not in pivoted:
-            pivoted[search_term] = {}
-        
-        pivoted[search_term][sr["store"]] = sr
+
+        if search_term not in candidates:
+            candidates[search_term] = {}
+        if sr["store"] not in candidates[search_term]:
+            candidates[search_term][sr["store"]] = []
+        candidates[search_term][sr["store"]].append(sr)
         all_stores.add(sr["store"])
 
-    if not pivoted:
+    if not candidates:
         print("  No matching rows found for this dish today.")
         return
+
+    # Pick the best per (search_term, store): prefer valid-cost candidates,
+    # then pick lowest pack_price (cheapest product, consistent with Step 5).
+    # Exclude incompatible-unit products (used_price = None).
+    pivoted = {}
+    for term, stores_data in candidates.items():
+        pivoted[term] = {}
+        for store, sr_list in stores_data.items():
+            valid = [sr for sr in sr_list if sr["used_price"] is not None]
+            if valid:
+                best = min(valid, key=lambda s: s["pack_price"])
+            else:
+                best = min(sr_list, key=lambda s: (s["used_price"] is None, s["used_price"] if s["used_price"] is not None else float('inf')))
+            pivoted[term][store] = best
 
     sorted_stores = sorted(list(all_stores))
     
     # Print Table
     # Column widths
     ing_width = 25
-    store_width = 20
-    
+    store_width = 25
+
     header = f"{'Ingredient (Need)':{ing_width}s} "
     for s in sorted_stores:
         header += f"{s:{store_width}s} "
-    header += f"{'Qty Purch':>10s} {'Qty Used':>10s} {'Cost Used':>10s} {'Purch Cost':>10s}"
-    
+    header += f"{'Qty Purch':>10s} {'Qty Needed':>10s} {'Cost Used':>10s} {'Purch Cost':>10s}"
+
     print(f"\n{header}")
     print("-" * len(header))
-    
+
     store_totals = {s: 0.0 for s in sorted_stores}
-    
+
     for term, stores_data in pivoted.items():
-        # Find best store
+        # Find best store (lowest pack_price = cheapest product, consistent with Step 5)
         best_store = None
         min_cost = float('inf')
         for s in sorted_stores:
             if s in stores_data:
-                cost = stores_data[s]["used_price"]
+                cost = stores_data[s]["pack_price"]
                 if cost < min_cost:
                     min_cost = cost
                     best_store = s
-                    
-        # Row data
+
         row_str = f"{term[:ing_width]:{ing_width}s} "
         for s in sorted_stores:
             if s in stores_data:
                 data = stores_data[s]
-                # Format: $CostUsed ($Price/Unit)
-                cell = f"${data['used_price']:>6.2f} (${data['pack_price']/(data['pack_quantity'] if data['pack_quantity'] else 1):.2f}/{data['pack_unit']})"
+                pack_q = data['pack_quantity']
+                pack_qty_str = str(int(pack_q)) if float(pack_q).is_integer() else str(pack_q)
+                pack_info = f"{pack_qty_str} {data['pack_unit']}".strip()
+                product = data.get('returned_ingredient', '')[:14]
+                if data['used_price'] is None:
+                    cell = f"{'N/A':>6} | {product} ({pack_info})"
+                else:
+                    cell = f"${data['used_price']:>6.2f} | {product} ({pack_info})"
                 if s == best_store:
-                    row_str += f"\033[1m{cell:{store_width}s}\033[0m "
+                    row_str += f"\033[1m{cell:{store_width}}\033[0m "
                 else:
                     row_str += f"{cell:{store_width}s} "
             else:
                 row_str += f"{'N/A':{store_width}s} "
-        
-        # Best store metrics
-        best_data = stores_data[best_store]
-        row_str += f"{best_data['purchase_quantity']:>10d} {best_data['ingredient_quantity']:>6.0f}{best_data['ingredient_measurement']:<4s} ${best_data['used_price']:>9.2f} ${best_data['purchase_price']:>9.2f}"
-        
+
+        # Best store metrics — highlight the store with lowest purchase_price
+        if best_store and best_store in stores_data:
+            best_data = stores_data[best_store]
+            if best_data['used_price'] is not None:
+                row_str += f"{best_data['purchase_quantity']:>10d} {best_data['ingredient_quantity']:>6.1f}{best_data['ingredient_measurement']:<4s} ${best_data['used_price']:>9.2f} ${best_data['purchase_price']:>9.2f}"
+            else:
+                row_str += f"{best_data['purchase_quantity']:>10d} {best_data['ingredient_quantity']:>6.1f}{best_data['ingredient_measurement']:<4s} {'N/A':>9s} {'N/A':>9s}"
+        else:
+            row_str += f"{'':>10s} {'':>10s} {'N/A':>10s} {'N/A':>10s}"
+
         print(row_str)
-        
-        # Add to totals
+
+        # Add to totals (skip incompatible products with None cost)
         for s in sorted_stores:
-            if s in stores_data:
+            if s in stores_data and stores_data[s]["used_price"] is not None:
                 store_totals[s] += stores_data[s]["used_price"]
 
-    # Total Row
+    # Total Row (sum of used_price = proportional ingredient cost per store)
     total_row = f"{'TOTAL USED COST':{ing_width}s} "
     for s in sorted_stores:
-        total_row += f"\033[1m${store_totals[s]:>18.2f}\033[0m "
+        if store_totals[s] == 0:
+            total_row += f"\033[1m{'N/A':>18s}\033[0m "
+        else:
+            total_row += f"\033[1m${store_totals[s]:>18.2f}\033[0m "
     print("-" * len(header))
     print(total_row)
 
@@ -544,14 +632,14 @@ def main():
     # Step 3: Interactive review
     dish_dict = step3_review(dish_dict, args)
 
-    # Step 4: Query optimizers
-    step4_query(address, dish_dict, args.requery, distance, selected)
+    # Step 4: Query optimizers (returns store_ids within distance radius)
+    store_ids = step4_query(address, dish_dict, args.requery, distance, selected)
 
-    # Step 5: Optimise
-    step5_optimise(dish_dict, selected)
+    # Step 5: Optimise & present results (filtered to nearby stores)
+    step5_optimise(dish_dict, selected, store_ids)
 
-    # Step 6: Quantity scaling
-    step6_scaling(dish_dict, selected)
+    # Step 6: Quantity scaling (filtered to nearby stores)
+    step6_scaling(dish_dict, selected, store_ids)
 
     print(f"\n{'='*60}")
     print("  Pipeline complete!")

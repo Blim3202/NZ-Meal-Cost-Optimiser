@@ -25,6 +25,7 @@ Usage:
 import json
 import math
 import os
+import re
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -46,7 +47,7 @@ DISHES_JSON = DATA_DIR / "dishes.json"
 DISHES_FILE = DATA_DIR / "dishes.json"
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Ingredient Parsing & Validation (from ingredient_parser.py)
+# Ingredient Parsing & Validation
 # ──────────────────────────────────────────────────────────────────────────────
 
 
@@ -259,16 +260,19 @@ def resolve_ingredients(dish: str, portions: int = 4, regenerate: bool = False,
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Quantity Scaling (from quantity_scaling_parser.py)
+# Quantity Scaling
 # ──────────────────────────────────────────────────────────────────────────────
 
 # Unit conversion factors to grams (weight) and milliliters (volume)
+# Cooking units (tbsp, tsp, cloves) use approximate conversions.
 _WEIGHT_UNITS_TO_G = {
     "g": 1.0,
     "kg": 1000.0,
     "mg": 0.001,
     "oz": 28.3495,
     "lb": 453.592,
+    "clove": 5.0,        # approximate: 1 garlic clove ≈ 5g
+    "cloves": 5.0,
 }
 
 _VOLUME_UNITS_TO_ML = {
@@ -276,25 +280,67 @@ _VOLUME_UNITS_TO_ML = {
     "l": 1000.0,
     "cl": 10.0,
     "cup": 240.0,
+    "tbsp": 15.0,        # US tablespoon ≈ 15ml
+    "tsp": 5.0,          # teaspoon ≈ 5ml
 }
+
+_COUNT_UNITS = {"ea", "unit", "pk", "pack", "bunch", "each"}
+
+
+def _parse_compound_unit(unit: str) -> tuple[float, str]:
+    """Parse a compound unit like "x 375ml" or "x 25g".
+
+    These units appear in CSV rows where `quantity` is the case/sachet count
+    (e.g. 10) and `measurement_unit` is "x 375ml" (meaning 10 × 375ml bottles).
+
+    Returns (multiplier, base_unit) where:
+        - multiplier is the per-item quantity (e.g. 375 for "x 375ml")
+        - base_unit is the unit after "x" (e.g. "ml", "g")
+    Returns (1.0, unit_lower) if the unit does not match the "x UNIT" pattern.
+    """
+    if unit is None:
+        return 1.0, ""
+    unit_lower = unit.lower().strip()
+
+    if unit_lower.startswith("x "):
+        match = re.match(r"^x\s+(\d+(?:\.\d+)?)\s*([a-zA-Z]+)$", unit_lower)
+        if match:
+            return float(match.group(1)), match.group(2)
+
+    return 1.0, unit_lower
 
 
 def _to_common_quantity(qty: float, unit: str) -> tuple[float, str]:
     """Convert a quantity to a common base unit (g for weight, ml for volume, or original).
 
-    Returns (converted_qty, base_unit) where base_unit is 'g', 'ml', or the
-    original unit if no conversion applies.
+    Handles compound units like "x 375ml" by expanding the multiplier:
+        e.g. qty=10, unit="x 375ml" → (3750.0, "ml")
+
+    Count units ("ea", "unit", "pk", "pack", "bunch") are grouped as "count"
+    so they can be compared against each other.
+
+    Returns (converted_qty, base_unit) where base_unit is 'g', 'ml', 'count',
+    or the original unit if no conversion applies.
     """
     if unit is None:
         return qty, ""
 
     unit_lower = unit.lower().strip()
 
+    # Handle compound units like "x 375ml"
+    multiplier, base_unit = _parse_compound_unit(unit_lower)
+    if multiplier != 1.0:
+        qty *= multiplier
+        unit_lower = base_unit
+
     if unit_lower in _WEIGHT_UNITS_TO_G:
         return qty * _WEIGHT_UNITS_TO_G[unit_lower], "g"
 
     if unit_lower in _VOLUME_UNITS_TO_ML:
         return qty * _VOLUME_UNITS_TO_ML[unit_lower], "ml"
+
+    if unit_lower in _COUNT_UNITS:
+        return qty, "count"
 
     return qty, unit_lower
 
@@ -331,13 +377,14 @@ def parse_optimizer_columns(row: dict) -> dict:
             "returned_ingredient": str,
             "ingredient_quantity": number,          # LLM-generated quantity
             "ingredient_measurement": str,          # LLM-generated unit
-            "per_unit_price": float,                # total pack price (from CSV 'price' column)
+            "per_unit_price": float,                # comparative price per unit, may be 0
             "pack_quantity": number,                # quantity from the supermarket API result
             "pack_unit": str,                       # measurement_unit from the supermarket API result
-            "scaling_ratio": float,                 # LLM quantity / pack quantity (unit-normalized)
-            "used_price": float,                    # proportional cost for the amount the user needs
+            "scaling_ratio": float or None,         # LLM quantity / pack quantity (unit-normalized). None if units incompatible
+            "used_price": float or None,            # proportional cost for the amount the user needs. None if incompatible units
             "purchase_quantity": int,               # number of packs to buy (ceil if ratio > 1)
-            "purchase_price": float,                # total cost for the number of packs purchased
+            "purchase_price": float or None,        # total cost for the number of packs purchased. None if incompatible
+            "status": str,                          # "ok" or "incompatible_units"
         }
 
     Rules:
@@ -346,6 +393,8 @@ def parse_optimizer_columns(row: dict) -> dict:
         - If scaling_ratio > 1: purchase_quantity = ceil(scaling_ratio)
           purchase_price = pack_price * purchase_quantity
           used_price = pack_price * scaling_ratio (proportional cost for what was actually used)
+        - If units are incompatible (e.g. g vs ml): scaling_ratio, used_price,
+          and purchase_price are set to None, status = "incompatible_units"
     """
     # --- Extract CSV fields ---
     search_ingredient = row.get("search_ingredient", "")
@@ -370,21 +419,34 @@ def parse_optimizer_columns(row: dict) -> dict:
     req_qty_base, req_base_unit = _to_common_quantity(ingredient_quantity, ingredient_measurement)
     pack_qty_base, pack_base_unit = _to_common_quantity(pack_quantity, pack_unit)
 
-    if pack_qty_base > 0 and (pack_base_unit == req_base_unit or req_base_unit == ""):
-        scaling_ratio = req_qty_base / pack_qty_base
-    else:
-        # Units don't match or can't convert — use raw values
+    if req_base_unit == "" or pack_base_unit == "":
+        # One or both sides have no recognizable unit — fall back to raw ratio
         scaling_ratio = req_qty_base / pack_qty_base if pack_qty_base > 0 else 0.0
+    elif pack_base_unit == req_base_unit:
+        # Units match (both g, both ml, both count, etc.) — normal ratio
+        scaling_ratio = req_qty_base / pack_qty_base if pack_qty_base > 0 else 0.0
+    else:
+        # Units are incompatible (e.g. weight vs volume: 50g vs 3750ml)
+        # This product can't satisfy the recipe requirement — mark as N/A
+        scaling_ratio = None
 
     # --- Compute purchase decisions ---
-    if scaling_ratio <= 1:
+    if scaling_ratio is None:
+        # Incompatible units — product can't be used
+        used_price = None
+        purchase_quantity = 0
+        purchase_price = None
+        status = "incompatible_units"
+    elif scaling_ratio <= 1:
         used_price = pack_price * scaling_ratio
         purchase_quantity = 1
         purchase_price = pack_price
+        status = "ok"
     else:
         purchase_quantity = math.ceil(scaling_ratio)
         purchase_price = pack_price * purchase_quantity
         used_price = pack_price * scaling_ratio
+        status = "ok"
 
     return {
         "search_ingredient": search_ingredient,
@@ -394,8 +456,9 @@ def parse_optimizer_columns(row: dict) -> dict:
         "per_unit_price": per_unit_price,   # comparative price from supermarket (may be 0)
         "pack_quantity": pack_quantity,     # from CSV
         "pack_unit": pack_unit,             # from CSV
-        "scaling_ratio": round(scaling_ratio, 4),
-        "used_price": round(used_price, 2),
+        "scaling_ratio": None if scaling_ratio is None else round(scaling_ratio, 4),
+        "used_price": None if used_price is None else round(used_price, 2),
         "purchase_quantity": purchase_quantity,
-        "purchase_price": round(purchase_price, 2),
+        "purchase_price": None if purchase_price is None else round(purchase_price, 2),
+        "status": status,
     }
