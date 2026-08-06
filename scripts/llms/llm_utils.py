@@ -380,11 +380,12 @@ def parse_optimizer_columns(row: dict) -> dict:
             "per_unit_price": float,                # comparative price per unit, may be 0
             "pack_quantity": number,                # quantity from the supermarket API result
             "pack_unit": str,                       # measurement_unit from the supermarket API result
-            "scaling_ratio": float or None,         # LLM quantity / pack quantity (unit-normalized). None if units incompatible
+            "scaling_ratio": float or None,         # LLM quantity / pack quantity (unit-normalized). None if genuinely incompatible
             "used_price": float or None,            # proportional cost for the amount the user needs. None if incompatible units
             "purchase_quantity": int,               # number of packs to buy (ceil if ratio > 1)
             "purchase_price": float or None,        # total cost for the number of packs purchased. None if incompatible
-            "status": str,                          # "ok" or "incompatible_units"
+            "status": str,                          # "ok", "approximate", or "incompatible_units"
+            "unit_approximate": bool,               # True if 1ml≈1g approximation applied (volume vs weight cross-category)
         }
 
     Rules:
@@ -393,7 +394,9 @@ def parse_optimizer_columns(row: dict) -> dict:
         - If scaling_ratio > 1: purchase_quantity = ceil(scaling_ratio)
           purchase_price = pack_price * purchase_quantity
           used_price = pack_price * scaling_ratio (proportional cost for what was actually used)
-        - If units are incompatible (e.g. g vs ml): scaling_ratio, used_price,
+        - If units are incompatible across categories (weight vs volume, e.g. g vs ml): applies 1ml ≈ 1g approximation,
+          scaling_ratio computed, unit_approximate=True, status="approximate"
+        - If units are genuinely incompatible (e.g. count vs weight: 1 unit vs 500g): scaling_ratio, used_price,
           and purchase_price are set to None, status = "incompatible_units"
     """
     # --- Extract CSV fields ---
@@ -419,14 +422,27 @@ def parse_optimizer_columns(row: dict) -> dict:
     req_qty_base, req_base_unit = _to_common_quantity(ingredient_quantity, ingredient_measurement)
     pack_qty_base, pack_base_unit = _to_common_quantity(pack_quantity, pack_unit)
 
+    # Cross-category: weight (g) vs volume (ml).
+    # Apply 1ml ≈ 1g approximation so proportional costs can still be computed.
+    # The approximation is flagged so callers can indicate it in output.
+    cross_category = (
+        (pack_base_unit == "g" and req_base_unit == "ml")
+        or (pack_base_unit == "ml" and req_base_unit == "g")
+    )
+    unit_approximate = False
+
     if req_base_unit == "" or pack_base_unit == "":
         # One or both sides have no recognizable unit — fall back to raw ratio
         scaling_ratio = req_qty_base / pack_qty_base if pack_qty_base > 0 else 0.0
     elif pack_base_unit == req_base_unit:
         # Units match (both g, both ml, both count, etc.) — normal ratio
         scaling_ratio = req_qty_base / pack_qty_base if pack_qty_base > 0 else 0.0
+    elif cross_category:
+        # Weight vs volume — apply 1ml ≈ 1g approximation
+        scaling_ratio = req_qty_base / pack_qty_base if pack_qty_base > 0 else 0.0
+        unit_approximate = True
     else:
-        # Units are incompatible (e.g. weight vs volume: 50g vs 3750ml)
+        # Units are incompatible (e.g. count vs weight: 1 unit vs 500g)
         # This product can't satisfy the recipe requirement — mark as N/A
         scaling_ratio = None
 
@@ -441,12 +457,12 @@ def parse_optimizer_columns(row: dict) -> dict:
         used_price = pack_price * scaling_ratio
         purchase_quantity = 1
         purchase_price = pack_price
-        status = "ok"
+        status = "approximate" if unit_approximate else "ok"
     else:
         purchase_quantity = math.ceil(scaling_ratio)
         purchase_price = pack_price * purchase_quantity
         used_price = pack_price * scaling_ratio
-        status = "ok"
+        status = "approximate" if unit_approximate else "ok"
 
     return {
         "search_ingredient": search_ingredient,
@@ -461,4 +477,5 @@ def parse_optimizer_columns(row: dict) -> dict:
         "purchase_quantity": purchase_quantity,
         "purchase_price": None if purchase_price is None else round(purchase_price, 2),
         "status": status,
+        "unit_approximate": unit_approximate,
     }

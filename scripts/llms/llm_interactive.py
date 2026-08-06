@@ -518,6 +518,7 @@ def step6_scaling(dish_dict, selected, store_ids=None):
             pivoted[term][store] = best
 
     sorted_stores = sorted(list(all_stores))
+    all_terms = list(ingredients_dict.keys())
     
     # Print Table
     # Column widths
@@ -534,7 +535,8 @@ def step6_scaling(dish_dict, selected, store_ids=None):
 
     store_totals = {s: 0.0 for s in sorted_stores}
 
-    for term, stores_data in pivoted.items():
+    for term in all_terms:
+        stores_data = pivoted.get(term, {})
         # Find best store (lowest pack_price = cheapest product, consistent with Step 5)
         best_store = None
         min_cost = float('inf')
@@ -556,7 +558,8 @@ def step6_scaling(dish_dict, selected, store_ids=None):
                 if data['used_price'] is None:
                     cell = f"{'N/A':>6} | {product} ({pack_info})"
                 else:
-                    cell = f"${data['used_price']:>6.2f} | {product} ({pack_info})"
+                    prefix = "~" if data.get("unit_approximate", False) else ""
+                    cell = f"{prefix}${data['used_price']:>6.2f} | {product} ({pack_info})"
                 if s == best_store:
                     row_str += f"\033[1m{cell:{store_width}}\033[0m "
                 else:
@@ -568,7 +571,8 @@ def step6_scaling(dish_dict, selected, store_ids=None):
         if best_store and best_store in stores_data:
             best_data = stores_data[best_store]
             if best_data['used_price'] is not None:
-                row_str += f"{best_data['purchase_quantity']:>10d} {best_data['ingredient_quantity']:>6.1f}{best_data['ingredient_measurement']:<4s} ${best_data['used_price']:>9.2f} ${best_data['purchase_price']:>9.2f}"
+                prefix = "~" if best_data.get("unit_approximate", False) else ""
+                row_str += f"{best_data['purchase_quantity']:>10d} {best_data['ingredient_quantity']:>6.1f}{best_data['ingredient_measurement']:<4s} {prefix}${best_data['used_price']:>9.2f} {prefix}${best_data['purchase_price']:>9.2f}"
             else:
                 row_str += f"{best_data['purchase_quantity']:>10d} {best_data['ingredient_quantity']:>6.1f}{best_data['ingredient_measurement']:<4s} {'N/A':>9s} {'N/A':>9s}"
         else:

@@ -935,13 +935,13 @@ def optimise(dish, company=None, store_ids=None):
         return
 
     dish_name, ingredients = _resolve_dish(dish)
-    dish_ings = [i for i in ingredients if i in df_today["search_ingredient"].values]
-
-    if not dish_ings:
-        print(f"No results for dish '{dish_name}' ingredients in today's data")
-        return
+    dish_ings = ingredients
 
     df_dish = df_today[df_today["search_ingredient"].isin(dish_ings)]
+
+    if df_dish.empty:
+        print(f"No results for dish '{dish_name}' ingredients in today's data")
+        return
 
     summary, table = analyze_results(df_dish, dish_ings, dish, company=company, store_ids=store_ids)
 
