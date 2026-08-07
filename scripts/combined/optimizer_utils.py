@@ -37,6 +37,7 @@ CSV_COLUMNS = [
     "datetime_created",
     "date_created",
     "pk_hash",
+    "is_valid",
 ]
 
 DISHES_FILE = DATA_DIR / "dishes.json"

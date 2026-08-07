@@ -35,7 +35,7 @@ opencode/
 ├── scripts/
 │   ├── combined/
 │   │   ├── optimizer_utils.py                  # **Cross-brand helpers**: foodstuffs_optimizer_edge/mobile, build_edge_row/mobile_row, parsing, geocoding, haversine, DISHES, get_ingredients, _resolve_dish, _build_quantity_map, optimise(), append_rows, _compute_pk_hash
-│   │   └── initialize_full_results.py          # Creates data/full_results.csv with 17-column schema + pk_hash
+│   │   └── initialize_full_results.py          # Creates data/full_results.csv with 18-column schema (17 + is_valid) + pk_hash
 │   ├── newworld/
 │   │   ├── newworld_setup.py                   # **Unified store builder pipeline**: Edge API (148 stores), Mobile API (149 stores). Callable module + CLI with `source` param. Mirrors paknsave_setup.py structure.
 │   │   ├── newworld_api.py                     # **Unified API module**: Edge API (two-pass) + Mobile API (single-pass) with shared utilities
@@ -58,6 +58,11 @@ opencode/
 │       │   └── ChangeStore.py                   # Store selection via modal URL
 │   └── test/
 │       └── test_mobile_optimizer_parity.py      # Sanity checks: API/finder parity, shared-function correctness, arg-parser parity
+│   ├── llms/
+│   │   ├── llm_client.py                        # Mistral API client: rate limiting, JSON retries, model aliases
+│   │   ├── llm_utils.py                         # Ingredient resolution (curated JSON → LLM), dish parsing/validation, quantity scaling
+│   │   ├── llm_validate.py                      # Post-run search-result validator (writes is_valid to full_results.csv)
+│   │   └── llm_interactive.py                   # Interactive CLI: ingredients → query → optimise → scale → validate
 ├── AGENTS.md                                   # This file
 ├── NewWorld_API.md                             # Foodstuffs mobile API documentation for New World (banner: MNW)
 ├── PaknSave_API.md                             # Foodstuffs mobile API documentation (full endpoints, auth, pricing)
@@ -65,6 +70,7 @@ opencode/
 ├── design.md                                   # Technical design (API, auth, pipeline)
 ├── decision.md                                 # Key decisions and rationale
 ├── logs.md                                     # Major errors and resolutions
+├── LLM_Pipeline.md                             # LLM ingredient generation, validation, and quantity scaling pipeline
 ├── requirements.txt                            # Pinned dependencies
 └── README.md                                   # Project readme
 ```
@@ -76,7 +82,7 @@ opencode/
 | `NewWorld_API.md` | Foodstuffs New World API docs — shared structure referenced from PaknSave_API.md; New World-specific Edge API, dishes, store data sources |
 | `PaknSave_API.md` | Foodstuffs Pak'nSave API docs — primary reference for shared Foodstuffs mobile API + Edge API structure; New World references this for common content |
 | `scripts/combined/optimizer_utils.py` | **Cross-brand helpers**: foodstuffs_optimizer_edge/mobile, build_edge_row/mobile_row, parsing, geocoding, haversine, DISHES, get_ingredients, _resolve_dish, _build_quantity_map, optimise(), append_rows, _compute_pk_hash |
-| `scripts/combined/initialize_full_results.py` | Creates data/full_results.csv with 17-column schema + pk_hash for deduplication |
+| `scripts/combined/initialize_full_results.py` | Creates data/full_results.csv with 18-column schema (17 + is_valid) + pk_hash for deduplication |
 | `scripts/newworld/newworld_setup.py` | **Unified store builder**: Edge API (148 stores), Mobile API (149 stores). Callable module + CLI with `source` param. Mirrors paknsave_setup.py structure. |
 | `scripts/newworld/newworld_api.py` | **Unified API module**: Edge API (two-pass) + Mobile API (single-pass) with shared utilities |
 | `scripts/newworld/newworld_optimizer_edge.py` | **Edge API optimizer**: CLI with geocoding, 5km radius, two-pass search, unit-price selection. Thin wrapper over shared `foodstuffs_optimizer_edge` in `optimizer_utils.py`. |
@@ -91,6 +97,11 @@ opencode/
 | `notebooks/Woolworths_meal_cost_optimizer.ipynb` | Woolworths pipeline, utilizes `woolworths_optimizer.py` |
 | `data/woolworths_store_data.json` | Store details with `extra1` (=fulfilmentStoreId) and `extra2` (=pickupAddressId) |
 | `requirements.txt` | Pinned deps. Core: `cloudscraper`, `requests`, `pandas`, `numpy`, `beautifulsoup4`, `playwright`, `jupyterlab`. |
+| `LLM_Pipeline.md` | LLM ingredient generation, post-run validation, and quantity scaling pipeline (see `scripts/llms/`). |
+| `scripts/llms/llm_client.py` | Mistral API client: model aliases (small/medium/large), rate limiting, JSON parsing with retries. |
+| `scripts/llms/llm_utils.py` | Ingredient resolution (curated `dishes.json` → LLM → fallback), dish parsing/validation (`parse_and_validate`), quantity scaling (`parse_optimizer_columns`). |
+| `scripts/llms/llm_validate.py` | Post-run validator: batches rows through `ministral-3b-2512`, writes `is_valid` back to `data/full_results.csv`. Skips already-validated rows. |
+| `scripts/llms/llm_interactive.py` | Interactive CLI: Step 1 inputs → Step 2 resolve ingredients → Step 3 review → Step 4 query optimizers → Step 5 optimise → Step 6 scaling. |
 
 ## Key Gotchas
 
@@ -122,7 +133,8 @@ opencode/
 - Search returns first/most-relevant result per query, not cheapest (avoids pet food for "beef mince").
 - 21 dishes are hand-curated in `DISHES` (dict format with quantity/unit/search_term) loaded from `data/dishes.json` via `optimizer_utils.py`. LLM-backed dish generation available via `scripts/llms/llm_utils.py`.
 - **`full_results.csv` is append-only**: New rows are added per run; duplicates detected via `pk_hash` (SHA-256 of `store_id|sku|date_created`). Avoid editing in Excel — blank rows corrupt the file.
-- **`--distance` flag**: `--distance 5` sets search radius in km (default 2).
+- **`-distance` flag**: `--distance 5` sets search radius in km (default 2).
+- **`is_valid` column**: `data/full_results.csv` includes an `is_valid` column (blank for new rows). The `llm_validate.py` script fills it in incrementally — it skips rows already marked True/False and only writes back to rows that are blank. Validation runs **after** optimization as a separate step; it is not integrated into the optimizer at runtime.
 
 ## Woolworths Research Status
 

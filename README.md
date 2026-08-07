@@ -129,6 +129,13 @@ opencode/
 │       └── Playwright/                          # Playwright-based scripts (legacy, not needed at runtime)
 │           ├── woolworths_scrape.py             # Headed scraper for search results
 │           └── ChangeStore.py                   # Store selection via modal URL
+│   ├── llms/
+│       ├── llm_client.py                        # Mistral API client with rate limiting + JSON retries
+│       ├── llm_utils.py                         # Ingredient resolution (curated → LLM), parsing, quantity scaling
+│       ├── llm_validate.py                      # Post-run search-result validation (is_valid column)
+│       └── llm_interactive.py                   # Interactive CLI: ingredients → query → optimise → scale
+├── data/
+│   ├── dishes.json                              # 21 hand-curated dishes with structured ingredients
 ├── AGENTS.md                                   # Agent instructions and project reference
 ├── NewWorld_API.md                             # New World API documentation (cross-references PaknSave_API.md)
 ├── PaknSave_API.md                             # Pak'nSave API documentation (primary reference)
@@ -202,6 +209,7 @@ opencode/
 | `decision.md` | Key design decisions, cross-brand comparison table, CommonApi rationale |
 | `design.md` | Technical design (API, auth, pipeline) |
 | `logs.md` | Major errors and resolutions |
+| `LLM_Pipeline.md` | LLM ingredient generation, validation, and quantity scaling pipeline |
 
 ## Limitations
 
