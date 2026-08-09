@@ -17,8 +17,9 @@ import argparse
 import json
 import sys
 import time
+from datetime import date
 from pathlib import Path
-from typing import Any, List
+from typing import Any, List, Optional, Set
 
 import pandas as pd
 
@@ -28,7 +29,8 @@ if str(_PROJECT_ROOT) not in sys.path:
 
 from scripts.llms.llm_client import LLMClient
 
-DATA_FILE = _PROJECT_ROOT / "data" / "full_results.csv"
+DATA_DIR = _PROJECT_ROOT / "data"
+DATA_FILE = DATA_DIR / "full_results.csv"
 
 VALIDATE_SCHEMA = {
     "type": "object",
@@ -148,7 +150,7 @@ def validate_batch(client: Any, rows_text: str, batch_number: int) -> List[bool]
     raise RuntimeError(f"Batch {batch_number}: failed after {max_retries} attempts.")
 
 
-def validate_rows(df: pd.DataFrame, df_work: pd.DataFrame, unvalidated_full_indices: Any, data_file: Path, batch_size: int = 20) -> List[bool]:
+def validate_rows(df: pd.DataFrame, df_work: pd.DataFrame, unvalidated_full_indices: Any, data_file: Path, batch_size: int = 20, model_alias: str = "small") -> List[bool]:
     """Validate all rows in df_work in batches, saving to CSV after each batch.
 
     After each batch completes, the is_valid values are written back to the
@@ -162,11 +164,12 @@ def validate_rows(df: pd.DataFrame, df_work: pd.DataFrame, unvalidated_full_indi
             rows in df_work, used to map batch results back to the full df.
         data_file: Path to the CSV file for incremental saving.
         batch_size: number of rows to send to the LLM per API call
+        model_alias: model alias for the LLM client ("small", "medium", "large")
 
     Returns:
         list[bool]: one boolean per row in df_work, in order
     """
-    client = LLMClient(model_alias="small")
+    client = LLMClient(model_alias=model_alias)
     all_results = []
 
     for start in range(0, len(df_work), batch_size):
@@ -195,6 +198,91 @@ def validate_rows(df: pd.DataFrame, df_work: pd.DataFrame, unvalidated_full_indi
         print(f"  [SAVED] Batch {batch_number} ({len(results)} rows) written to {data_file}")
 
     return all_results
+
+
+def validate_dish_results(
+    dish_ingredients: Optional[Set[str]] = None,
+    model_alias: str = "small",
+    batch_size: int = 20,
+    data_file: Optional[Path] = None,
+) -> dict:
+    """Validate today's unvalidated rows matching a dish's search ingredients.
+
+    Filters the results CSV to rows where:
+      - date_created == today
+      - search_ingredient is in dish_ingredients (if provided; otherwise all today's rows)
+      - is_valid is blank / NaN
+
+    Validates those rows in batches of ``batch_size`` via the LLM and writes
+    is_valid back to the CSV after each batch (so partial results survive
+    crashes).  Reuses :func:`validate_rows` for the actual batched LLM call.
+
+    Args:
+        dish_ingredients: set of search_term strings to scope validation.
+            If None, all today's unvalidated rows are processed.
+        model_alias: model alias for the LLM client (default "small" → ministral-3b-2512).
+        batch_size: number of rows per LLM API call (default 20).
+        data_file: path to the CSV file (default: DATA_FILE).
+
+    Returns:
+        dict with keys:
+            total       — total rows validated in this call
+            valid       — count of is_valid=True
+            invalid     — count of is_valid=False
+            validated   — True if at least one batch ran; False if nothing to validate
+            error       — error message string if validation failed, else None
+    """
+    if data_file is None:
+        data_file = DATA_FILE
+    today_str = date.today().strftime("%Y-%m-%d")
+
+    if not data_file.exists():
+        return {"total": 0, "valid": 0, "invalid": 0, "validated": False, "error": "CSV file not found"}
+
+    df = pd.read_csv(data_file, encoding="utf-8")
+
+    if "is_valid" not in df.columns:
+        df["is_valid"] = None
+    df["is_valid"] = df["is_valid"].astype(object)
+    df.loc[df["is_valid"].isna() | (df["is_valid"].astype(str).str.strip() == ""), "is_valid"] = None
+
+    # Filter to today's rows
+    mask = df["date_created"].astype(str).str.strip() == today_str
+    if dish_ingredients:
+        mask &= df["search_ingredient"].isin(dish_ingredients)
+    mask &= df["is_valid"].isna()
+
+    unvalidated = df[mask].reset_index(drop=True)
+
+    if len(unvalidated) == 0:
+        return {"total": 0, "valid": 0, "invalid": 0, "validated": False, "error": None}
+
+    unvalidated_full_indices = df[mask].index
+
+    print(f"  Found {len(unvalidated)} unvalidated rows today "
+          f"(ingredients: {', '.join(sorted(dish_ingredients)) if dish_ingredients else 'all'})")
+
+    try:
+        all_results = validate_rows(
+            df, unvalidated, unvalidated_full_indices, data_file,
+            batch_size=batch_size,
+            model_alias=model_alias,
+        )
+    except Exception as e:
+        return {
+            "total": 0, "valid": 0, "invalid": 0,
+            "validated": False, "error": str(e),
+        }
+
+    valid_count = sum(all_results)
+    invalid_count = len(all_results) - valid_count
+    return {
+        "total": len(all_results),
+        "valid": valid_count,
+        "invalid": invalid_count,
+        "validated": True,
+        "error": None,
+    }
 
 
 def main():
@@ -244,6 +332,7 @@ def main():
     results = validate_rows(
         df, df_work, unvalidated_full_indices, args.data_file,
         batch_size=args.batch_size,
+        model_alias="small",
     )
     elapsed = time.time() - start_time
 

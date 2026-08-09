@@ -908,7 +908,7 @@ def foodstuffs_optimizer_mobile(api_class, find_nearby_stores_fn, company_id, co
     return True
 
 
-def optimise(dish, company=None, store_ids=None):
+def optimise(dish, company=None, store_ids=None, require_valid=False):
     """Phase 2: Read today's results from CSV and print comparison table.
 
     Args:
@@ -918,6 +918,10 @@ def optimise(dish, company=None, store_ids=None):
         company: optional retailer name to filter rows (e.g. "PaknSave", "NewWorld", "Woolworths")
         store_ids: optional set of valid store_ids (from distance-radius filtering)
                    to restrict which stores are included
+        require_valid: if True, only rows where is_valid == True are included.
+                       Rows with is_valid == False or blank (NaN) are excluded.
+                       Default False preserves backward compatibility for
+                       standalone CLI callers that don't run validation.
     """
     if not RESULTS_FILE.exists():
         print(f"No results file found: {RESULTS_FILE}")
@@ -930,6 +934,11 @@ def optimise(dish, company=None, store_ids=None):
         df_today = df_today[df_today["company"] == company]
     if store_ids:
         df_today = df_today[df_today["store_id"].isin(store_ids)]
+
+    if require_valid and "is_valid" in df_today.columns:
+        # Only keep rows explicitly validated as True.
+        # NaN / blank / False rows are all excluded.
+        df_today = df_today[df_today["is_valid"].fillna(False) == True]
 
     if df_today.empty:
         print(f"No results found for today ({today_str})")

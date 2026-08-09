@@ -380,6 +380,81 @@ def step4_query(address, dish_dict, requery, distance, selected):
     return store_ids
 
 
+# ─── Step 4b: Validate Query Results ─────────────────────────────────────────────────
+
+def step4b_validate(dish_dict, do_validate, requery):
+    """Validate today's query results via LLM.
+
+    When do_validate and requery are both True, reads full_results.csv,
+    filters to today's unvalidated rows matching the dish's search ingredients,
+    sends them through ministral-3b-2512 in batches of 20, and writes
+    is_valid back to CSV.
+
+    If validation fails (e.g. rate-limited, API error), the function
+    prints a warning and returns False so the caller can continue without
+    is_valid filtering.
+
+    Args:
+        dish_dict: dish dict with ingredients
+        do_validate: whether validation is enabled (--validate flag)
+        requery: whether a fresh API query was performed
+
+    Returns:
+        bool: True if validation completed (or was skipped because no
+              new rows exists).  False if validation failed — caller
+              should fall back to not filtering by is_valid.
+    """
+    if not do_validate:
+        print("\n  [skip validation — --no-validate]")
+        return True
+
+    if not requery:
+        print("\n  [skip validation — requery=false, no new results to validate]")
+        return True
+
+    print(f"\n{'='*60}")
+    print("STEP 4b: Validating query results via LLM")
+    print(f"{'='*60}")
+
+    dish_name, search_terms = _resolve_dish(dish_dict)
+
+    try:
+        from scripts.llms.llm_validate import validate_dish_results
+    except ImportError as e:
+        print(f"  [WARN] Could not import validate_dish_results: {e}")
+        print("  [WARN] Continuing without validation.")
+        return False
+
+    search_term_set = set(search_terms) if search_terms else set()
+
+    result = validate_dish_results(
+        dish_ingredients=search_term_set,
+        model_alias="small",
+        batch_size=20,
+    )
+
+    if result["error"] is not None:
+        print(f"\n  [WARN] Validation failed: {result['error']}")
+        print("  [WARN] Continuing without is_valid filtering.")
+        return False
+
+    if not result["validated"]:
+        if result["total"] == 0:
+            print(f"\n  No unvalidated rows found for today. Either results were")
+            print(f"  already validated, or no query ran for this dish.")
+            print(f"  Results will be shown without is_valid filtering.")
+        return True
+
+    print(f"\n  Validation complete: {result['valid']} valid, "
+          f"{result['invalid']} invalid ({result['total']} total)")
+
+    if result["valid"] == 0:
+        print("  [WARN] Zero rows passed validation. Steps 5 & 6 will show")
+        print("  [WARN] no results (all rows filtered out by is_valid=False).")
+
+    return True
+
+
 def _collect_store_ids(store_ids, sm, address, distance):
     """Call find_nearby_stores / get_nearby_stores to collect store_ids within distance."""
     from optimizer_utils import geocode
@@ -409,7 +484,7 @@ def _collect_store_ids(store_ids, sm, address, distance):
 
 # ─── Step 5: Optimise ─────────────────────────────────────────────────────
 
-def step5_optimise(dish_dict, selected, store_ids=None):
+def step5_optimise(dish_dict, selected, store_ids=None, require_valid=False):
     """Run optimise() for each brand used."""
     print(f"\n{'='*60}")
     print("STEP 5: Optimising & presenting results")
@@ -421,12 +496,12 @@ def step5_optimise(dish_dict, selected, store_ids=None):
 
     for company in sorted(companies):
         print(f"\n--- {company} ---")
-        optimise(dish_dict, company=company, store_ids=store_ids)
+        optimise(dish_dict, company=company, store_ids=store_ids, require_valid=require_valid)
 
 
 # ─── Step 6: Apply Quantity Scaling ───────────────────────────────────────
 
-def step6_scaling(dish_dict, selected, store_ids=None):
+def step6_scaling(dish_dict, selected, store_ids=None, require_valid=False):
     """Apply quantity scaling to today's CSV results and print scaled costs.
 
     Args:
@@ -434,6 +509,8 @@ def step6_scaling(dish_dict, selected, store_ids=None):
         selected: list of supermarket backend keys
         store_ids: optional set of store_ids within the distance radius;
                    if provided, only rows with matching store_id are considered
+        require_valid: if True, only rows where is_valid == True are included.
+                       Rows with is_valid == False or blank are excluded.
     """
     print(f"\n{'='*60}")
     print("STEP 6: Scaled Dish Cost Analysis")
@@ -461,6 +538,14 @@ def step6_scaling(dish_dict, selected, store_ids=None):
     # Filter to store_ids within distance radius (if provided)
     if store_ids:
         rows = [r for r in rows if r.get("store_id", "") in store_ids]
+
+    # Filter by is_valid if require_valid is True
+    if require_valid:
+        rows = [r for r in rows if str(r.get("is_valid", "")).strip().lower() == "true"]
+        if not rows:
+            print(f"  No validated (is_valid=True) results for today ({today_str}).")
+            print(f"  Run with --validate --requery true to query and validate.")
+            return
 
     if not rows:
         print(f"  No results for today ({today_str})")
@@ -610,6 +695,10 @@ def main():
     parser.add_argument("--supermarkets", default=None, help="Numbers and/or names, comma-separated (1-7, default: 7): 1=Pak'nSave(Edge) 2=New World(Edge) 3=Woolworths 4=1+2 5=2+3 6=1+3 7=1+2+3")
     parser.add_argument("--regenerate", action="store_true", help="Force LLM even if dish is in curated set")
     parser.add_argument("--requery", default="true", help="Query the API (true/false, default: true)")
+    parser.add_argument("--validate", dest="validate", action="store_true", default=True,
+                        help="Validate query results via LLM and only use validated rows (default: on)")
+    parser.add_argument("--no-validate", dest="validate", action="store_false",
+                        help="Skip validation — use all query results regardless of is_valid")
     parser.add_argument("--non-interactive", action="store_true", help="Skip review step")
     parser.add_argument("--model", default="medium", choices=["small", "medium", "large"], help="LLM model alias (default: medium)")
     args = parser.parse_args()
@@ -628,7 +717,10 @@ def main():
     print(f"  Supermarkets: {selected}")
     print(f"  Regenerate:  {args.regenerate}")
     print(f"  Requery:     {args.requery}")
+    print(f"  Validate:    {args.validate}")
     print(f"  Model:       {args.model}")
+
+    requery_bool = args.requery.lower() != "false" if isinstance(args.requery, str) else args.requery
 
     # Step 2: Resolve ingredients
     dish_dict, source = step2_resolve(dish_name, portions, args.regenerate, args.model)
@@ -639,11 +731,21 @@ def main():
     # Step 4: Query optimizers (returns store_ids within distance radius)
     store_ids = step4_query(address, dish_dict, args.requery, distance, selected)
 
-    # Step 5: Optimise & present results (filtered to nearby stores)
-    step5_optimise(dish_dict, selected, store_ids)
+    # Step 4b: Validate query results via LLM
+    validation_ok = step4b_validate(dish_dict, args.validate, requery_bool)
 
-    # Step 6: Quantity scaling (filtered to nearby stores)
-    step6_scaling(dish_dict, selected, store_ids)
+    # require_valid is True only when:
+    # 1. args.validate is True (user wants validation)
+    # 2. validation did NOT fail (step4b_validate returned True — either
+    #    it succeeded, or was skipped because no new rows exist)
+    # If validation failed (returned False), fall back to showing all rows.
+    require_valid = args.validate and validation_ok
+
+    # Step 5: Optimise & present results (filtered to nearby stores + is_valid)
+    step5_optimise(dish_dict, selected, store_ids, require_valid=require_valid)
+
+    # Step 6: Quantity scaling (filtered to nearby stores + is_valid)
+    step6_scaling(dish_dict, selected, store_ids, require_valid=require_valid)
 
     print(f"\n{'='*60}")
     print("  Pipeline complete!")
