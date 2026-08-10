@@ -709,3 +709,27 @@ refreshing after manual edits.
 - `llm-dish-pipeline.md` — updated to reflect that `dishes.json` now stores
   full structured format, eliminating the need for `_resolve_dish_dict`
   fallback at lookup time
+
+## 60. New World Test Fixture Capture — Store Count Updated to 150
+
+**Date**: 2026-08-11
+
+**Symptom**: Documentation stated New World Mobile API returns 149 stores; live re-capture returned 150. The New World store-finder page (150) and mobile API (150) now agree on store count.
+
+**Findings**:
+- **Live store counts re-verified**:
+  - Edge API (`GET /v1/edge/store`): 148 stores
+  - Mobile API (`GET /mobile/store/physical`, banner=MNW): 150 stores
+- The 2 stores present in Mobile but absent from Edge are:
+  - `New World Te Atatu` (575 Te Atatū Road, Te Atatū Peninsula, Auckland 0610) — id `2d939bb7-ae26-4cc7-b930-d10e6a4de8a3`
+  - `Foodie Mart` (35 Landing Drive, Mangere, Auckland 2022) — id `e89d6e45-f824-464a-8a69-c8028840c899`
+- Previously documentation (see Log 26) described Te Atatu as "set to open on 11/08/2026" and absent from the API. As of this capture, **Te Atatu IS now present in the Mobile API** (no longer filtered out / not yet populated). Edge API remains at 148 (still missing both Te Atatu and Foodie Mart).
+
+**Actions**:
+- Regenerated `data/newworld_stores.csv`/`.json` with `source="edge"` (148 stores, default) and verified Mobile source captures 150.
+- Added test suite under `scripts/newworld/tests/` (84 tests) with fixtures in `scripts/newworld/fixture/`, mirroring the Pak'nSave test structure. All assertions reference live-captured fixture data; no mock API responses (mock is used only for CLI argument dispatch, matching Pak'nSave's approach).
+- Updated `NewWorld_API.md` store-count tables/notes and `AGENTS.md` New World sections to reflect 150 mobile stores and the Te Atatu/Foodie Mart absence from Edge.
+
+**Resolution**: Documentation corrected. Edge API remains the default/authoritative source (148 stores). Mobile API (150 stores) is the legacy fallback with the most complete store set.
+
+

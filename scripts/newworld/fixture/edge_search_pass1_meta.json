@@ -1,0 +1,8 @@
+{
+  "endpoint": "https://api-prod.newworld.co.nz/v1/edge/search/products/query/index/products-index",
+  "store_id": "ef977d89-f3d8-4e8b-8a48-b895ded38646",
+  "store_name": "New World Papakura",
+  "query": "milk",
+  "hits_count": 40,
+  "notes": "Edge Pass 1 relevance search captured from live New World API."
+}

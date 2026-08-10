@@ -25,6 +25,7 @@ Reference: PaknSave_API.md section 6 (Edge API two-pass pipeline)
 
 import argparse
 import json
+import time
 import requests
 import sys
 
@@ -171,6 +172,8 @@ def main():
     print(f"Store: {STORE_NAME} ({STORE_ID})")
     print()
 
+    start_time = time.time()
+
     # Authenticate
     session = requests.Session()
     session.headers.update({
@@ -192,6 +195,7 @@ def main():
     # Pass 2: Per-store pricing
     print(f"Step 3: Pass 2 — Per-store pricing (PRICE_ASC)")
     products = pass2_per_store_pricing(token, STORE_ID, query, product_ids, hits_per_page=10)
+    elapsed = time.time() - start_time
     print(f"  Products with pricing: {len(products)}")
     print()
 
@@ -230,6 +234,9 @@ def main():
         print("=" * 80)
         print("RAW JSON for first Pass 2 product (with pricing):")
         print(json.dumps(products[0], indent=2))
+        print()
+
+    print(f"[{len(products)} search products for '{query}' at {STORE_NAME} returned in {elapsed:.2f} seconds]")
 
 
 if __name__ == "__main__":

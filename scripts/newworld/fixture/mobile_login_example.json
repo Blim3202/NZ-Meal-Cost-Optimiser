@@ -1,0 +1,7 @@
+{
+  "access_token": "eyJhbGciOiJSUzI1NiJ9.eyJqdGkiOiIzYjhhYmFiZC04MmJkLTQwOWItYWNjNS1mNDJhZDU5ODU1MDgiLCJpc3MiOiJvbmxpbmUtY3VzdG9tZXIiLCJzZXNzaW9uSWQiOiJhMTg2OWVjOC1mODU3LTRjZjAtYWU1Yi1iMGNjZmM4YjUzZGMiLCJiYW5uZXIiOiJNTlciLCJmaXJzdE5hbWUiOiJhbm9ueW1vdXMiLCJlbWFpbCI6ImFub255bW91cyIsInJvbGVzIjpbIkFOT05ZTU9VUyJdLCJleHAiOjE3ODYzNjUwMzl9.MyNyVZ7Nf8YY5L8UgrAVvari-4iQEAd2DjSN2o76OfeH0-f05j6f9V03V7-cbQ0nxul7HaEFRocUMUUtdWwfY93eFMlzGwL_ksnCwotc8MKyETDudlb60WhUkBDV_kenvIbk4dbU6lm496vMY4uxA4iavtOF8-5_PmlT8dnOo7TqKt7QpZibHPO8s4_RUn2FB6NmPEGYahlHQEn_4blKhLbfls0cTSfclCqZZHBnb-wwite8N_mguF9F3n4r-X-Ucm3jq8-do7XyR6cJqWeOUab1Cw2Wk2YBl3m96k3OFKKiNRjAW_kTzqzKJxvJZLwV-zn2hL23aP6f0DDFXWUOPg",
+  "token_type": "password",
+  "refresh_token": "d2600245-7da2-40db-a255-14e7614dc5f4",
+  "expires_in": 1800,
+  "scope": ""
+}

@@ -24,6 +24,7 @@ Reference: PaknSave_API.md section 5.2 (Mobile API ecomm-products search)
 
 import argparse
 import json
+import time
 import cloudscraper
 import sys
 
@@ -111,6 +112,8 @@ def main():
     print(f"Banner: {BANNER}")
     print()
 
+    start_time = time.time()
+
     # Authenticate
     scraper = cloudscraper.create_scraper()
     print("Step 1: Authenticating (guest token)...")
@@ -120,6 +123,7 @@ def main():
     # Single-pass search
     print(f"Step 2: Searching for '{query}' (single-pass, per-store pricing)")
     products, total_hits = search_products(scraper, token, STORE_ID, query)
+    elapsed = time.time() - start_time
     print(f"  Products returned: {len(products)}")
     if total_hits is not None:
         print(f"  Total hits (API):  {total_hits}")
@@ -154,6 +158,9 @@ def main():
         print("=" * 80)
         print("RAW JSON for first product:")
         print(json.dumps(products[0], indent=2))
+        print()
+
+    print(f"[{len(products)} search products for '{query}' at {STORE_NAME} returned in {elapsed:.2f} seconds]")
 
 
 if __name__ == "__main__":
