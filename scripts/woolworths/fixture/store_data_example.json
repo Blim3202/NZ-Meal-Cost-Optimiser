@@ -38,8 +38,8 @@
             "tradingHours": [
                 {
                     "date": {
-                        "startDate": "2026-08-03T00:00:00",
-                        "endDate": "2026-08-09T00:00:00"
+                        "startDate": "2026-08-10T00:00:00",
+                        "endDate": "2026-08-16T00:00:00"
                     },
                     "monday": {
                         "startTime": "07:00:00",
@@ -72,8 +72,8 @@
                 },
                 {
                     "date": {
-                        "startDate": "2026-08-10T00:00:00",
-                        "endDate": "2026-08-16T00:00:00"
+                        "startDate": "2026-08-17T00:00:00",
+                        "endDate": "2026-08-23T00:00:00"
                     },
                     "monday": {
                         "startTime": "07:00:00",
@@ -149,8 +149,8 @@
             "tradingHours": [
                 {
                     "date": {
-                        "startDate": "2026-08-03T00:00:00",
-                        "endDate": "2026-08-09T00:00:00"
+                        "startDate": "2026-08-10T00:00:00",
+                        "endDate": "2026-08-16T00:00:00"
                     },
                     "monday": {
                         "startTime": "08:00:00",
@@ -183,8 +183,8 @@
                 },
                 {
                     "date": {
-                        "startDate": "2026-08-10T00:00:00",
-                        "endDate": "2026-08-16T00:00:00"
+                        "startDate": "2026-08-17T00:00:00",
+                        "endDate": "2026-08-23T00:00:00"
                     },
                     "monday": {
                         "startTime": "08:00:00",
@@ -259,8 +259,8 @@
             "tradingHours": [
                 {
                     "date": {
-                        "startDate": "2026-08-03T00:00:00",
-                        "endDate": "2026-08-09T00:00:00"
+                        "startDate": "2026-08-10T00:00:00",
+                        "endDate": "2026-08-16T00:00:00"
                     },
                     "monday": {
                         "startTime": "07:00:00",
@@ -293,8 +293,8 @@
                 },
                 {
                     "date": {
-                        "startDate": "2026-08-10T00:00:00",
-                        "endDate": "2026-08-16T00:00:00"
+                        "startDate": "2026-08-17T00:00:00",
+                        "endDate": "2026-08-23T00:00:00"
                     },
                     "monday": {
                         "startTime": "07:00:00",
@@ -369,8 +369,8 @@
             "tradingHours": [
                 {
                     "date": {
-                        "startDate": "2026-08-03T00:00:00",
-                        "endDate": "2026-08-09T00:00:00"
+                        "startDate": "2026-08-10T00:00:00",
+                        "endDate": "2026-08-16T00:00:00"
                     },
                     "monday": {
                         "startTime": "07:00:00",
@@ -403,8 +403,8 @@
                 },
                 {
                     "date": {
-                        "startDate": "2026-08-10T00:00:00",
-                        "endDate": "2026-08-16T00:00:00"
+                        "startDate": "2026-08-17T00:00:00",
+                        "endDate": "2026-08-23T00:00:00"
                     },
                     "monday": {
                         "startTime": "07:00:00",
@@ -478,8 +478,8 @@
             "tradingHours": [
                 {
                     "date": {
-                        "startDate": "2026-08-03T00:00:00",
-                        "endDate": "2026-08-09T00:00:00"
+                        "startDate": "2026-08-10T00:00:00",
+                        "endDate": "2026-08-16T00:00:00"
                     },
                     "monday": {
                         "startTime": "07:00:00",
@@ -512,8 +512,8 @@
                 },
                 {
                     "date": {
-                        "startDate": "2026-08-10T00:00:00",
-                        "endDate": "2026-08-16T00:00:00"
+                        "startDate": "2026-08-17T00:00:00",
+                        "endDate": "2026-08-23T00:00:00"
                     },
                     "monday": {
                         "startTime": "07:00:00",

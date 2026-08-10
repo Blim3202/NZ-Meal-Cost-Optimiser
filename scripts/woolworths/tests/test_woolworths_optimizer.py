@@ -6,17 +6,21 @@ search result into a CSV row dict that matches the full_results.csv schema.
 
     - build_row() is tested with the normalized milk product from
       fixture/product_normalized.json (captured from the live Woolworths API).
+    - build_row() is tested with a sale item from
+      fixture/product_normalized_sale.json (real or synthetic sale product).
     - _compute_pk_hash() is tested with known inputs to verify the
       deterministic SHA-256 hash prefix.
     - parse_woolworths_volume_size() is tested with real volumeSize
       strings extracted from the captured fixture data.
 """
 
+import hashlib
 import json
 import sys
-import unittest
 from datetime import datetime
 from pathlib import Path
+
+import pytest
 
 # Make the woolworths scripts directory and combined helpers importable.
 SCRIPT_DIR = Path(__file__).resolve().parent.parent
@@ -41,22 +45,22 @@ def _load_json(filename):
         return json.load(f)
 
 
-class TestBuildRow(unittest.TestCase):
-    """Tests for build_row() using the real milk product from fixture data.
+class TestBuildRow:
+    """Tests for build_row() using real fixture data.
 
     The fixture (product_normalized.json) was captured from the live
     Woolworths NZ API at Nelson Junction Woolworths (extra1=9290).
-    The product is "anchor milk standard blue" with salePrice=3.76.
+    The product is "woolworths milk standard" with salePrice=7.04,
+    volumeSize="3L", cupMeasure="1L", cupListPrice=2.35.
     """
 
-    def setUp(self):
-        """Load the normalized milk product from the fixture."""
-        # This product dict represents the OUTPUT of search_products(),
-        # i.e. the normalized structure that build_row() consumes.
+    def setup_method(self):
+        """Load the normalized product fixtures."""
         self.milk_product = _load_json("product_normalized.json")
+        self.sale_product = _load_json("product_normalized_sale.json")
         self.now = datetime(2024, 8, 9, 12, 0, 0)
 
-    def _build_test_row(self):
+    def _build_milk_row(self):
         """Helper: build a CSV row for the milk product in the fixture."""
         return build_row(
             company="Woolworths",
@@ -64,6 +68,17 @@ class TestBuildRow(unittest.TestCase):
             store_id="4166071",
             search_ingredient="milk",
             product=self.milk_product,
+            now=self.now,
+        )
+
+    def _build_sale_row(self):
+        """Helper: build a CSV row for the sale product in the fixture."""
+        return build_row(
+            company="Woolworths",
+            store="Nelson Junction Woolworths",
+            store_id="4166071",
+            search_ingredient="milk",
+            product=self.sale_product,
             now=self.now,
         )
 
@@ -77,118 +92,210 @@ class TestBuildRow(unittest.TestCase):
         when the row is written to CSV via csv.DictWriter, which
         backfills missing columns as empty strings.
         """
-        row = self._build_test_row()
+        row = self._build_milk_row()
         expected = set(CSV_COLUMNS) - {"is_valid"}
-        self.assertEqual(set(row.keys()), expected)
+        assert set(row.keys()) == expected
 
     def test_company_value(self):
         """The 'company' field must be 'Woolworths'."""
-        self.assertEqual(self._build_test_row()["company"], "Woolworths")
+        assert self._build_milk_row()["company"] == "Woolworths"
 
     def test_store_and_store_id_values(self):
         """store and store_id must match the inputs passed to build_row()."""
-        row = self._build_test_row()
-        self.assertEqual(row["store"], "Nelson Junction Woolworths")
-        self.assertEqual(row["store_id"], "4166071")
+        row = self._build_milk_row()
+        assert row["store"] == "Nelson Junction Woolworths"
+        assert row["store_id"] == "4166071"
 
     def test_search_ingredient_value(self):
         """search_ingredient must be 'milk' (the term we searched for)."""
-        self.assertEqual(self._build_test_row()["search_ingredient"], "milk")
+        assert self._build_milk_row()["search_ingredient"] == "milk"
 
     def test_returned_ingredient_value(self):
         """returned_ingredient must be the product name from the fixture."""
-        row = self._build_test_row()
-        self.assertEqual(row["returned_ingredient"], "anchor milk standard blue")
+        row = self._build_milk_row()
+        assert row["returned_ingredient"] == "woolworths milk standard"
 
     def test_price_value(self):
-        """price must match salePrice from the fixture (3.76)."""
-        row = self._build_test_row()
-        self.assertEqual(row["price"], 3.76)
+        """price must match salePrice from the fixture (7.04)."""
+        assert self._build_milk_row()["price"] == 7.04
 
     def test_quantity_value(self):
-        """quantity must be parsed from volumeSize '1L' -> 1.
+        """quantity must be parsed from volumeSize '3L' -> 3.
 
         Note: parse_woolworths_volume_size lowercases the unit, so
-        '1L' returns quantity 1 (as int) and measurement_unit 'l'.
+        '3L' returns quantity 3 (as int) and measurement_unit 'l'.
         """
-        row = self._build_test_row()
-        self.assertEqual(row["quantity"], 1)
+        assert self._build_milk_row()["quantity"] == 3
 
     def test_measurement_unit_value(self):
-        """measurement_unit must be 'l' (from volumeSize '1L', lowercased).
-
-        parse_woolworths_volume_size lowercases units, so '1L' -> 'l'.
-        """
-        row = self._build_test_row()
-        self.assertEqual(row["measurement_unit"], "l")
+        """measurement_unit must be 'l' (from volumeSize '3L', lowercased)."""
+        assert self._build_milk_row()["measurement_unit"] == "l"
 
     def test_per_unit_quantity_value(self):
         """per_unit_quantity must be cupMeasure '1L' from the fixture."""
-        row = self._build_test_row()
-        self.assertEqual(row["per_unit_quantity"], "1L")
+        assert self._build_milk_row()["per_unit_quantity"] == "1L"
 
     def test_per_unit_price_value(self):
-        """per_unit_price must be cupListPrice from the fixture (3.76)."""
-        row = self._build_test_row()
-        self.assertEqual(row["per_unit_price"], 3.76)
+        """per_unit_price must be cupListPrice from the fixture (2.35)."""
+        assert self._build_milk_row()["per_unit_price"] == 2.35
 
     def test_is_sale_value(self):
         """is_sale must reflect isSpecial=False from the fixture."""
-        row = self._build_test_row()
-        self.assertFalse(row["is_sale"])
+        assert self._build_milk_row()["is_sale"] is False
 
     def test_sku_value(self):
-        """sku must match the fixture value '282848'."""
-        row = self._build_test_row()
-        self.assertEqual(row["sku"], "282848")
+        """sku must match the fixture value '282768'."""
+        assert self._build_milk_row()["sku"] == "282768"
 
     def test_department_value(self):
         """department must be 'Fridge & Deli' from the fixture."""
-        row = self._build_test_row()
-        self.assertEqual(row["department"], "Fridge & Deli")
+        assert self._build_milk_row()["department"] == "Fridge & Deli"
 
     def test_sub_department_is_empty(self):
         """sub_department must be an empty string (Woolworths doesn't set it)."""
-        row = self._build_test_row()
-        self.assertEqual(row["sub_department"], "")
+        assert self._build_milk_row()["sub_department"] == ""
 
     def test_date_created_value(self):
         """date_created must be YYYY-MM-DD derived from the 'now' timestamp."""
-        row = self._build_test_row()
-        self.assertEqual(row["date_created"], "2024-08-09")
+        assert self._build_milk_row()["date_created"] == "2024-08-09"
 
     def test_datetime_created_value(self):
         """datetime_created must be YYYY-MM-DD HH:MM:SS from 'now'."""
-        row = self._build_test_row()
-        self.assertEqual(row["datetime_created"], "2024-08-09 12:00:00")
+        assert self._build_milk_row()["datetime_created"] == "2024-08-09 12:00:00"
 
     def test_pk_hash_correct(self):
         """pk_hash must be the hash of store_id|sku|date_created."""
-        row = self._build_test_row()
-        expected_hash = _compute_pk_hash("4166071", "282848", "2024-08-09")
-        self.assertEqual(row["pk_hash"], expected_hash)
+        row = self._build_milk_row()
+        expected_hash = _compute_pk_hash("4166071", "282768", "2024-08-09")
+        assert row["pk_hash"] == expected_hash
 
-    def test_quantity_500ml_from_fixture(self):
-        """A volumeSize like '500mL' (from primo milk in the fixture) must parse correctly.
+    def test_sale_item_is_sale_true(self):
+        """build_row with a sale product must set is_sale=True."""
+        row = self._build_sale_row()
+        assert row["is_sale"] is True
 
-        The captured response contains items with volumeSize='500mL'.
-        This tests that parse_woolworths_volume_size handles uppercase 'mL'.
+    def test_sale_item_price_matches_sale_price(self):
+        """build_row must use salePrice (not originalPrice) for the price field."""
+        row = self._build_sale_row()
+        assert row["price"] == self.sale_product["salePrice"]
+        assert row["price"] < self.sale_product["originalPrice"]
+
+    def test_sale_item_returned_ingredient(self):
+        """The sale item's product name must be correctly set."""
+        row = self._build_sale_row()
+        assert row["returned_ingredient"] == self.sale_product["name"]
+
+    def test_sale_item_sku(self):
+        """The sale item's SKU must be correctly set."""
+        row = self._build_sale_row()
+        assert row["sku"] == self.sale_product["sku"]
+
+    def test_sale_item_per_unit_price(self):
+        """The sale item's per_unit_price must be correctly set."""
+        row = self._build_sale_row()
+        assert row["per_unit_price"] == self.sale_product["cupListPrice"]
+
+    def test_missing_optional_fields_handled(self):
+        """build_row must handle products with missing optional fields.
+
+        If cupMeasure, cupListPrice, volumeSize are missing/None, build_row
+        should still produce a valid row without crashing.
         """
-        qty, unit = parse_woolworths_volume_size("500mL", "")
-        self.assertEqual((qty, unit), (500, "ml"))
+        product = {
+            "sku": "999999",
+            "name": "test product",
+            "salePrice": 2.50,
+            "originalPrice": 3.00,
+            "isSpecial": False,
+            "unitPrice": "",
+            "volumeSize": "",
+            "cupMeasure": "",
+            "cupListPrice": "",
+            "url": "",
+            "imageUrl": "",
+            "department": "",
+        }
+        row = build_row(
+            company="Woolworths",
+            store="Test Store",
+            store_id="9999999",
+            search_ingredient="test",
+            product=product,
+            now=self.now,
+        )
+        assert row["returned_ingredient"] == "test product"
+        assert row["price"] == 2.50
+        assert row["quantity"] == ""  # build_row converts None to ""
+        assert row["measurement_unit"] == ""
+        assert row["per_unit_quantity"] == ""
+        assert row["per_unit_price"] == ""
 
-    def test_quantity_3L_from_fixture(self):
-        """A volumeSize like '3L' (from woolworths milk standard in the fixture)
-        must parse to (3, 'l')."""
-        qty, unit = parse_woolworths_volume_size("3L", "")
-        self.assertEqual((qty, unit), (3, "l"))
+    def test_none_sku_handled(self):
+        """build_row must handle products with sku=None."""
+        product = {
+            "sku": None,
+            "name": "no sku product",
+            "salePrice": 1.00,
+            "originalPrice": 1.00,
+            "isSpecial": False,
+            "unitPrice": 1.00,
+            "volumeSize": "1L",
+            "cupMeasure": "1L",
+            "cupListPrice": 1.00,
+            "url": "",
+            "imageUrl": "",
+            "department": "Pantry",
+        }
+        row = build_row(
+            company="Woolworths",
+            store="Test Store",
+            store_id="9999999",
+            search_ingredient="test",
+            product=product,
+            now=self.now,
+        )
+        assert row["returned_ingredient"] == "no sku product"
+        assert row["sku"] is None
+
+    def test_none_sale_price_handled(self):
+        """build_row must handle products with salePrice=None."""
+        product = {
+            "sku": "888888",
+            "name": "no price product",
+            "salePrice": None,
+            "originalPrice": None,
+            "isSpecial": False,
+            "unitPrice": "",
+            "volumeSize": "1L",
+            "cupMeasure": "1L",
+            "cupListPrice": "",
+            "url": "",
+            "imageUrl": "",
+            "department": "Pantry",
+        }
+        row = build_row(
+            company="Woolworths",
+            store="Test Store",
+            store_id="9999999",
+            search_ingredient="test",
+            product=product,
+            now=self.now,
+        )
+        assert row["returned_ingredient"] == "no price product"
+        assert row["price"] is None
+
+    def test_pk_hash_consistency_between_calls(self):
+        """build_row should produce the same pk_hash for identical inputs."""
+        row1 = self._build_milk_row()
+        row2 = self._build_milk_row()
+        assert row1["pk_hash"] == row2["pk_hash"]
 
 
-class TestParseWoolworthsVolumeSize(unittest.TestCase):
+class TestParseWoolworthsVolumeSize:
     """Tests for the shared parse_woolworths_volume_size() helper.
 
     Uses real volumeSize strings extracted from the captured product search
-    response (fixture/response_example1.json).
+    response (fixture/response_example1.json) and from full_results.csv.
 
     NOTE: per the implementation in optimizer_utils.py, the returned unit
     is always lowercased. The regex patterns require a digit prefix —
@@ -196,25 +303,29 @@ class TestParseWoolworthsVolumeSize(unittest.TestCase):
     fallback or return (None, "").
     """
 
-    def test_number_adjacent_unit_lowercased(self):
-        """'500g' should parse to (500, 'g') — unit lowercased."""
-        qty, unit = parse_woolworths_volume_size("500g", "")
-        self.assertEqual((qty, unit), (500, "g"))
-
-    def test_number_adjacent_unit_uppercase_lowercased(self):
-        """'2L' should parse to (2, 'l') — unit lowercased from 'L'."""
-        qty, unit = parse_woolworths_volume_size("2L", "")
-        self.assertEqual((qty, unit), (2, "l"))
-
-    def test_number_space_unit(self):
-        """'2 pack' should parse to (2, 'pack')."""
-        qty, unit = parse_woolworths_volume_size("2 pack", "")
-        self.assertEqual((qty, unit), (2, "pack"))
-
-    def test_decimal_quantity(self):
-        """'1.5kg' should parse to (1.5, 'kg')."""
-        qty, unit = parse_woolworths_volume_size("1.5kg", "")
-        self.assertEqual((qty, unit), (1.5, "kg"))
+    @pytest.mark.parametrize("input_str,cup_measure,expected", [
+        # Real volumeSize values from response_example1.json
+        ("1L", "", (1, "l")),
+        ("2L", "", (2, "l")),
+        ("3L", "", (3, "l")),
+        ("", "", (None, "")),
+        # Real volumeSize values from full_results.csv
+        ("100g", "", (100, "g")),
+        ("10g", "", (10, "g")),
+        ("1kg", "", (1, "kg")),
+        ("1ea", "", (1, "ea")),
+        ("500g", "", (500, "g")),
+        ("500mL", "", (500, "ml")),
+        # Decimal quantities
+        ("1.5kg", "", (1.5, "kg")),
+        # Number followed by unit with space
+        ("2 pack", "", (2, "pack")),
+        ("6 pack", "", (6, "pack")),
+    ])
+    def test_parse_various_volume_sizes(self, input_str, cup_measure, expected):
+        """Test parsing of real volumeSize strings from the fixture data."""
+        qty, unit = parse_woolworths_volume_size(input_str, cup_measure)
+        assert (qty, unit) == expected
 
     def test_fallback_to_cup_measure(self):
         """When volumeSize lacks a number, fall back to cup_measure.
@@ -222,12 +333,7 @@ class TestParseWoolworthsVolumeSize(unittest.TestCase):
         From the docstring example: ('for frying', '500ml') -> (500, 'ml').
         """
         qty, unit = parse_woolworths_volume_size("for frying", "500ml")
-        self.assertEqual((qty, unit), (500, "ml"))
-
-    def test_both_empty_returns_none(self):
-        """When both fields are empty, return (None, '')."""
-        qty, unit = parse_woolworths_volume_size("", "")
-        self.assertEqual((qty, unit), (None, ""))
+        assert (qty, unit) == (500, "ml")
 
     def test_null_volume_size_falls_back(self):
         """A 'null' (string) volumeSize should trigger the cup_measure fallback.
@@ -235,12 +341,12 @@ class TestParseWoolworthsVolumeSize(unittest.TestCase):
         From the docstring example: ('null', '1kg') -> (1, 'kg').
         """
         qty, unit = parse_woolworths_volume_size("null", "1kg")
-        self.assertEqual((qty, unit), (1, "kg"))
+        assert (qty, unit) == (1, "kg")
 
     def test_empty_volume_size_falls_back(self):
         """An empty volumeSize should trigger the cup_measure fallback."""
         qty, unit = parse_woolworths_volume_size("", "1L")
-        self.assertEqual((qty, unit), (1, "l"))
+        assert (qty, unit) == (1, "l")
 
     def test_bare_unit_no_cup_measure_falls_through(self):
         """A bare unit 'ea' with no cup_measure returns (None, '').
@@ -249,10 +355,10 @@ class TestParseWoolworthsVolumeSize(unittest.TestCase):
         if a cup_measure fallback is provided AND that fallback has a digit.
         """
         qty, unit = parse_woolworths_volume_size("ea", "")
-        self.assertEqual((qty, unit), (None, ""))
+        assert (qty, unit) == (None, "")
 
 
-class TestComputePkHash(unittest.TestCase):
+class TestComputePkHash:
     """Tests for _compute_pk_hash() deterministic output.
 
     The hash is the first 16 hex chars of SHA-256('{store_id}|{sku}|{date_created}').
@@ -260,38 +366,33 @@ class TestComputePkHash(unittest.TestCase):
     """
 
     def test_known_hash_value(self):
-        """Verify the hash for store_id=4166071, sku=282848, date=2024-08-09.
+        """Verify the hash for store_id=4166071, sku=282768, date=2024-08-09.
 
         This corresponds to the Nelson Junction Woolworths milk product
         in product_normalized.json. The expected value was computed
         independently using hashlib.sha256.
         """
-        result = _compute_pk_hash("4166071", "282848", "2024-08-09")
-        self.assertEqual(len(result), 16)
+        result = _compute_pk_hash("4166071", "282768", "2024-08-09")
+        assert len(result) == 16
         # Independently verified hash for this input
-        import hashlib
-        raw = "4166071|282848|2024-08-09"
+        raw = "4166071|282768|2024-08-09"
         expected = hashlib.sha256(raw.encode()).hexdigest()[:16]
-        self.assertEqual(result, expected)
+        assert result == expected
 
     def test_hash_changes_with_sku(self):
         """Different SKUs must produce different hashes."""
-        h1 = _compute_pk_hash("4166071", "282848", "2024-08-09")
-        h2 = _compute_pk_hash("4166071", "282849", "2024-08-09")
-        self.assertNotEqual(h1, h2)
+        h1 = _compute_pk_hash("4166071", "282768", "2024-08-09")
+        h2 = _compute_pk_hash("4166071", "282769", "2024-08-09")
+        assert h1 != h2
 
     def test_hash_changes_with_store(self):
         """Different store IDs must produce different hashes."""
-        h1 = _compute_pk_hash("4166071", "282848", "2024-08-09")
-        h2 = _compute_pk_hash("1225552", "282848", "2024-08-09")
-        self.assertNotEqual(h1, h2)
+        h1 = _compute_pk_hash("4166071", "282768", "2024-08-09")
+        h2 = _compute_pk_hash("1225552", "282768", "2024-08-09")
+        assert h1 != h2
 
     def test_hash_changes_with_date(self):
         """Different date_created values must produce different hashes."""
-        h1 = _compute_pk_hash("4166071", "282848", "2024-08-09")
-        h2 = _compute_pk_hash("4166071", "282848", "2024-08-10")
-        self.assertNotEqual(h1, h2)
-
-
-if __name__ == "__main__":
-    unittest.main()
+        h1 = _compute_pk_hash("4166071", "282768", "2024-08-09")
+        h2 = _compute_pk_hash("4166071", "282768", "2024-08-10")
+        assert h1 != h2

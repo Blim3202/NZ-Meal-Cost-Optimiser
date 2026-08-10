@@ -3,350 +3,6 @@
     "items": [
       {
         "type": "Product",
-        "name": "anchor milk standard blue",
-        "barcode": "94127317",
-        "variety": "standard blue",
-        "brand": "anchor",
-        "slug": "anchor-milk-standard-blue",
-        "sku": "282848",
-        "unit": "Each",
-        "selectedPurchasingUnit": null,
-        "price": {
-          "originalPrice": 3.76,
-          "salePrice": 3.76,
-          "savePrice": 0.0,
-          "savePercentage": 0.0,
-          "canShowSavings": true,
-          "hasBonusPoints": false,
-          "isClubPrice": false,
-          "isSpecial": false,
-          "isNew": false,
-          "canShowOriginalPrice": true,
-          "discount": null,
-          "total": null,
-          "isTargetedOffer": false,
-          "averagePricePerSingleUnit": null,
-          "isBoostOffer": false,
-          "purchasingUnitPrice": null,
-          "orderedPrice": null,
-          "isUsingOrderedPrice": false,
-          "currentPricingMatchesOrderedPricing": null,
-          "extendedListPrice": null,
-          "originalAveragePricePerSingleUnit": null,
-          "promotionStartDate": null,
-          "promotionEndDate": null
-        },
-        "images": {
-          "small": "https://assets.woolworths.com.au/images/2010/282848.jpg?impolicy=wowcdxwbjbx&w=65&h=65",
-          "big": "https://assets.woolworths.com.au/images/2010/282848.jpg?impolicy=wowcdxwbjbx&w=200&h=200"
-        },
-        "quantity": {
-          "min": 1.0,
-          "max": 36.0,
-          "increment": 1.0,
-          "value": null,
-          "quantityInOrder": null,
-          "purchasingQuantityString": null
-        },
-        "stockLevel": 3,
-        "eachUnitQuantity": null,
-        "averageWeightPerUnit": null,
-        "size": {
-          "cupListPrice": 3.76,
-          "cupPrice": 3.76,
-          "cupMeasure": "1L",
-          "packageType": "bottle",
-          "volumeSize": "1L"
-        },
-        "hasShopperNotes": null,
-        "productTag": null,
-        "departments": [
-          {
-            "id": 4,
-            "name": "Fridge & Deli"
-          }
-        ],
-        "subsAllowed": false,
-        "supportsBothEachAndKgPricing": false,
-        "adId": "display_2PWMILT8BLZHq8J2OtxcopbjMcoKCAoGMjgyODQ4EgAaDAjX1_rTBhCe_azTAyICCAE=",
-        "brandSuggestionId": null,
-        "brandSuggestionName": null,
-        "priceUnitLabel": null,
-        "availabilityStatus": "In Stock",
-        "onlineSample": null,
-        "onlineSampleRealProductMapId": 0,
-        "isAgeRestricted": false,
-        "isTobaccoProduct": false
-      },
-      {
-        "type": "Product",
-        "name": "anchor milk lite 98.5% fat free",
-        "barcode": "94127348",
-        "variety": "lite 98.5% fat free",
-        "brand": "anchor",
-        "slug": "anchor-milk-lite-98-5-fat-free",
-        "sku": "282849",
-        "unit": "Each",
-        "selectedPurchasingUnit": null,
-        "price": {
-          "originalPrice": 3.76,
-          "salePrice": 3.76,
-          "savePrice": 0.0,
-          "savePercentage": 0.0,
-          "canShowSavings": true,
-          "hasBonusPoints": false,
-          "isClubPrice": false,
-          "isSpecial": false,
-          "isNew": false,
-          "canShowOriginalPrice": true,
-          "discount": null,
-          "total": null,
-          "isTargetedOffer": false,
-          "averagePricePerSingleUnit": null,
-          "isBoostOffer": false,
-          "purchasingUnitPrice": null,
-          "orderedPrice": null,
-          "isUsingOrderedPrice": false,
-          "currentPricingMatchesOrderedPricing": null,
-          "extendedListPrice": null,
-          "originalAveragePricePerSingleUnit": null,
-          "promotionStartDate": null,
-          "promotionEndDate": null
-        },
-        "images": {
-          "small": "https://assets.woolworths.com.au/images/2010/282849.jpg?impolicy=wowcdxwbjbx&w=65&h=65",
-          "big": "https://assets.woolworths.com.au/images/2010/282849.jpg?impolicy=wowcdxwbjbx&w=200&h=200"
-        },
-        "quantity": {
-          "min": 1.0,
-          "max": 36.0,
-          "increment": 1.0,
-          "value": null,
-          "quantityInOrder": null,
-          "purchasingQuantityString": null
-        },
-        "stockLevel": 3,
-        "eachUnitQuantity": null,
-        "averageWeightPerUnit": null,
-        "size": {
-          "cupListPrice": 3.76,
-          "cupPrice": 3.76,
-          "cupMeasure": "1L",
-          "packageType": "bottle",
-          "volumeSize": "1L"
-        },
-        "hasShopperNotes": null,
-        "productTag": null,
-        "departments": [
-          {
-            "id": 4,
-            "name": "Fridge & Deli"
-          }
-        ],
-        "subsAllowed": false,
-        "supportsBothEachAndKgPricing": false,
-        "adId": "display_Ah9fDkDVsQm0YVeRNVDDnOm8RS0KCAoGMjgyODQ5EgAaDAjX1_rTBhD8-a7TAyICCAE=",
-        "brandSuggestionId": null,
-        "brandSuggestionName": null,
-        "priceUnitLabel": null,
-        "availabilityStatus": "In Stock",
-        "onlineSample": null,
-        "onlineSampleRealProductMapId": 0,
-        "isAgeRestricted": false,
-        "isTobaccoProduct": false
-      },
-      {
-        "type": "Product",
-        "name": "primo flavoured milk chocolate supremo",
-        "barcode": "9415262645134",
-        "variety": "chocolate supremo",
-        "brand": "primo",
-        "slug": "primo-flavoured-milk-chocolate-supremo",
-        "sku": "74511",
-        "unit": "Each",
-        "selectedPurchasingUnit": null,
-        "price": {
-          "originalPrice": 5.45,
-          "salePrice": 4.0,
-          "savePrice": 1.45,
-          "savePercentage": 25.0,
-          "canShowSavings": true,
-          "hasBonusPoints": false,
-          "isClubPrice": false,
-          "isSpecial": true,
-          "isNew": false,
-          "canShowOriginalPrice": true,
-          "discount": null,
-          "total": null,
-          "isTargetedOffer": false,
-          "averagePricePerSingleUnit": null,
-          "isBoostOffer": false,
-          "purchasingUnitPrice": null,
-          "orderedPrice": null,
-          "isUsingOrderedPrice": false,
-          "currentPricingMatchesOrderedPricing": null,
-          "extendedListPrice": null,
-          "originalAveragePricePerSingleUnit": null,
-          "promotionStartDate": null,
-          "promotionEndDate": null
-        },
-        "images": {
-          "small": "https://assets.woolworths.com.au/images/2010/74511.jpg?impolicy=wowcdxwbjbx&w=65&h=65",
-          "big": "https://assets.woolworths.com.au/images/2010/74511.jpg?impolicy=wowcdxwbjbx&w=200&h=200"
-        },
-        "quantity": {
-          "min": 1.0,
-          "max": 36.0,
-          "increment": 1.0,
-          "value": null,
-          "quantityInOrder": null,
-          "purchasingQuantityString": null
-        },
-        "stockLevel": 3,
-        "eachUnitQuantity": null,
-        "averageWeightPerUnit": null,
-        "size": {
-          "cupListPrice": 10.9,
-          "cupPrice": 8.0,
-          "cupMeasure": "1L",
-          "packageType": "bottle",
-          "volumeSize": "500mL"
-        },
-        "hasShopperNotes": null,
-        "productTag": {
-          "tagType": "IsSpecial",
-          "multiBuy": null,
-          "bonusPoints": null,
-          "additionalTag": null,
-          "targetedOffer": null,
-          "boostOffer": null
-        },
-        "departments": [
-          {
-            "id": 4,
-            "name": "Fridge & Deli"
-          }
-        ],
-        "subsAllowed": false,
-        "supportsBothEachAndKgPricing": false,
-        "adId": "display_qmNRue2ZBWsJRX_aCIjKUWyzRkQKBwoFNzQ1MTESABoMCNfX-tMGEL6br9MDIgIIAQ==",
-        "brandSuggestionId": null,
-        "brandSuggestionName": null,
-        "priceUnitLabel": null,
-        "availabilityStatus": "In Stock",
-        "onlineSample": null,
-        "onlineSampleRealProductMapId": 0,
-        "isAgeRestricted": false,
-        "isTobaccoProduct": false
-      },
-      {
-        "type": "Product",
-        "name": "primo flavoured milk banana blast",
-        "barcode": "9415262003842",
-        "variety": "banana blast",
-        "brand": "primo",
-        "slug": "primo-flavoured-milk-banana-blast",
-        "sku": "74474",
-        "unit": "Each",
-        "selectedPurchasingUnit": null,
-        "price": {
-          "originalPrice": 5.45,
-          "salePrice": 4.0,
-          "savePrice": 1.45,
-          "savePercentage": 25.0,
-          "canShowSavings": true,
-          "hasBonusPoints": false,
-          "isClubPrice": false,
-          "isSpecial": true,
-          "isNew": false,
-          "canShowOriginalPrice": true,
-          "discount": null,
-          "total": null,
-          "isTargetedOffer": false,
-          "averagePricePerSingleUnit": null,
-          "isBoostOffer": false,
-          "purchasingUnitPrice": null,
-          "orderedPrice": null,
-          "isUsingOrderedPrice": false,
-          "currentPricingMatchesOrderedPricing": null,
-          "extendedListPrice": null,
-          "originalAveragePricePerSingleUnit": null,
-          "promotionStartDate": null,
-          "promotionEndDate": null
-        },
-        "images": {
-          "small": "https://assets.woolworths.com.au/images/2010/74474.jpg?impolicy=wowcdxwbjbx&w=65&h=65",
-          "big": "https://assets.woolworths.com.au/images/2010/74474.jpg?impolicy=wowcdxwbjbx&w=200&h=200"
-        },
-        "quantity": {
-          "min": 1.0,
-          "max": 36.0,
-          "increment": 1.0,
-          "value": null,
-          "quantityInOrder": null,
-          "purchasingQuantityString": null
-        },
-        "stockLevel": 3,
-        "eachUnitQuantity": null,
-        "averageWeightPerUnit": null,
-        "size": {
-          "cupListPrice": 10.9,
-          "cupPrice": 8.0,
-          "cupMeasure": "1L",
-          "packageType": "bottle",
-          "volumeSize": "500mL"
-        },
-        "hasShopperNotes": null,
-        "productTag": {
-          "tagType": "IsSpecial",
-          "multiBuy": null,
-          "bonusPoints": null,
-          "additionalTag": null,
-          "targetedOffer": null,
-          "boostOffer": null
-        },
-        "departments": [
-          {
-            "id": 4,
-            "name": "Fridge & Deli"
-          }
-        ],
-        "subsAllowed": false,
-        "supportsBothEachAndKgPricing": false,
-        "adId": "display_f1KCck7jKEAcZxgyGfnqQ7CNOUEKBwoFNzQ0NzQSABoMCNfX-tMGEKK1r9MDIgIIAQ==",
-        "brandSuggestionId": null,
-        "brandSuggestionName": null,
-        "priceUnitLabel": null,
-        "availabilityStatus": "In Stock",
-        "onlineSample": null,
-        "onlineSampleRealProductMapId": 0,
-        "isAgeRestricted": false,
-        "isTobaccoProduct": false
-      },
-      {
-        "type": "PromoTile",
-        "id": 3242,
-        "name": "Cartology-Default Content-Search CIG",
-        "image": {
-          "src": "/Content/F27-CIGD-DisneyOoshies.jpg",
-          "alt": "FREE OOSHIE with every $30 you spend*"
-        },
-        "secondaryImage": {
-          "src": "/Content/F27-CIGM-DisneyOoshies.jpg",
-          "alt": "FREE OOSHIE with every $30 you spend*"
-        },
-        "action": {
-          "title": "Shop now",
-          "link": "shop/content/disney-ooshies",
-          "underlay": false,
-          "class": null
-        },
-        "content": "FREE OOSHIE, With every $30 you spend*",
-        "positionIndex": 5,
-        "additionalClassNames": "cartology-product-cig-tile cartology-gam-ad"
-      },
-      {
-        "type": "Product",
         "name": "woolworths milk standard",
         "barcode": "9414742036509",
         "variety": "standard",
@@ -360,7 +16,7 @@
           "salePrice": 7.04,
           "savePrice": 0.0,
           "savePercentage": 0.0,
-          "canShowSavings": true,
+          "canShowSavings": false,
           "hasBonusPoints": false,
           "isClubPrice": false,
           "isSpecial": false,
@@ -404,16 +60,10 @@
         },
         "hasShopperNotes": null,
         "productTag": {
-          "tagType": "Other",
+          "tagType": "IsGreatPrice",
           "multiBuy": null,
           "bonusPoints": null,
-          "additionalTag": {
-            "name": "Countdown's Own",
-            "link": "/shop/productgroup/80842",
-            "imagePath": "/Content/PromotionTags/F24_Own_brand.png",
-            "linkTarget": "_self",
-            "altText": null
-          },
+          "additionalTag": null,
           "targetedOffer": null,
           "boostOffer": null
         },
@@ -429,7 +79,7 @@
         "brandSuggestionId": null,
         "brandSuggestionName": null,
         "priceUnitLabel": null,
-        "availabilityStatus": "In Stock",
+        "availabilityStatus": "Out of Stock",
         "onlineSample": null,
         "onlineSampleRealProductMapId": 0,
         "isAgeRestricted": false,
@@ -450,7 +100,7 @@
           "salePrice": 4.87,
           "savePrice": 0.0,
           "savePercentage": 0.0,
-          "canShowSavings": true,
+          "canShowSavings": false,
           "hasBonusPoints": false,
           "isClubPrice": false,
           "isSpecial": false,
@@ -494,16 +144,10 @@
         },
         "hasShopperNotes": null,
         "productTag": {
-          "tagType": "Other",
+          "tagType": "IsGreatPrice",
           "multiBuy": null,
           "bonusPoints": null,
-          "additionalTag": {
-            "name": "Countdown's Own",
-            "link": "/shop/productgroup/80842",
-            "imagePath": "/Content/PromotionTags/F24_Own_brand.png",
-            "linkTarget": "_self",
-            "altText": null
-          },
+          "additionalTag": null,
           "targetedOffer": null,
           "boostOffer": null
         },
@@ -540,7 +184,7 @@
           "salePrice": 3.16,
           "savePrice": 0.0,
           "savePercentage": 0.0,
-          "canShowSavings": true,
+          "canShowSavings": false,
           "hasBonusPoints": false,
           "isClubPrice": false,
           "isSpecial": false,
@@ -584,16 +228,10 @@
         },
         "hasShopperNotes": null,
         "productTag": {
-          "tagType": "Other",
+          "tagType": "IsGreatPrice",
           "multiBuy": null,
           "bonusPoints": null,
-          "additionalTag": {
-            "name": "Countdown's Own",
-            "link": "/shop/productgroup/80842",
-            "imagePath": "/Content/PromotionTags/F24_Own_brand.png",
-            "linkTarget": "_self",
-            "altText": null
-          },
+          "additionalTag": null,
           "targetedOffer": null,
           "boostOffer": null
         },
@@ -693,6 +331,28 @@
         "isTobaccoProduct": false
       },
       {
+        "type": "PromoTile",
+        "id": 3242,
+        "name": "Cartology-Default Content-Search CIG",
+        "image": {
+          "src": "/Content/F27-CIGD-DisneyOoshies.jpg",
+          "alt": "FREE OOSHIE with every $30 you spend*"
+        },
+        "secondaryImage": {
+          "src": "/Content/F27-CIGM-DisneyOoshies.jpg",
+          "alt": "FREE OOSHIE with every $30 you spend*"
+        },
+        "action": {
+          "title": "Shop now",
+          "link": "shop/content/disney-ooshies",
+          "underlay": false,
+          "class": null
+        },
+        "content": "FREE OOSHIE, With every $30 you spend*",
+        "positionIndex": 5,
+        "additionalClassNames": "cartology-product-cig-tile cartology-gam-ad"
+      },
+      {
         "type": "Product",
         "name": "woolworths milk lite",
         "barcode": "9414742036516",
@@ -707,7 +367,7 @@
           "salePrice": 7.04,
           "savePrice": 0.0,
           "savePercentage": 0.0,
-          "canShowSavings": true,
+          "canShowSavings": false,
           "hasBonusPoints": false,
           "isClubPrice": false,
           "isSpecial": false,
@@ -751,16 +411,10 @@
         },
         "hasShopperNotes": null,
         "productTag": {
-          "tagType": "Other",
+          "tagType": "IsGreatPrice",
           "multiBuy": null,
           "bonusPoints": null,
-          "additionalTag": {
-            "name": "Countdown's Own",
-            "link": "/shop/productgroup/80842",
-            "imagePath": "/Content/PromotionTags/F24_Own_brand.png",
-            "linkTarget": "_self",
-            "altText": null
-          },
+          "additionalTag": null,
           "targetedOffer": null,
           "boostOffer": null
         },
@@ -887,7 +541,7 @@
           "salePrice": 4.87,
           "savePrice": 0.0,
           "savePercentage": 0.0,
-          "canShowSavings": true,
+          "canShowSavings": false,
           "hasBonusPoints": false,
           "isClubPrice": false,
           "isSpecial": false,
@@ -931,19 +585,167 @@
         },
         "hasShopperNotes": null,
         "productTag": {
-          "tagType": "Other",
+          "tagType": "IsGreatPrice",
           "multiBuy": null,
           "bonusPoints": null,
-          "additionalTag": {
-            "name": "Countdown's Own",
-            "link": "/shop/productgroup/80842",
-            "imagePath": "/Content/PromotionTags/F24_Own_brand.png",
-            "linkTarget": "_self",
-            "altText": null
-          },
+          "additionalTag": null,
           "targetedOffer": null,
           "boostOffer": null
         },
+        "departments": [
+          {
+            "id": 4,
+            "name": "Fridge & Deli"
+          }
+        ],
+        "subsAllowed": false,
+        "supportsBothEachAndKgPricing": false,
+        "adId": null,
+        "brandSuggestionId": null,
+        "brandSuggestionName": null,
+        "priceUnitLabel": null,
+        "availabilityStatus": "In Stock",
+        "onlineSample": null,
+        "onlineSampleRealProductMapId": 0,
+        "isAgeRestricted": false,
+        "isTobaccoProduct": false
+      },
+      {
+        "type": "Product",
+        "name": "anchor milk standard blue",
+        "barcode": "94154672",
+        "variety": "standard blue",
+        "brand": "anchor",
+        "slug": "anchor-milk-standard-blue",
+        "sku": "705692",
+        "unit": "Each",
+        "selectedPurchasingUnit": null,
+        "price": {
+          "originalPrice": 9.07,
+          "salePrice": 9.07,
+          "savePrice": 0.0,
+          "savePercentage": 0.0,
+          "canShowSavings": true,
+          "hasBonusPoints": false,
+          "isClubPrice": false,
+          "isSpecial": false,
+          "isNew": false,
+          "canShowOriginalPrice": true,
+          "discount": null,
+          "total": null,
+          "isTargetedOffer": false,
+          "averagePricePerSingleUnit": null,
+          "isBoostOffer": false,
+          "purchasingUnitPrice": null,
+          "orderedPrice": null,
+          "isUsingOrderedPrice": false,
+          "currentPricingMatchesOrderedPricing": null,
+          "extendedListPrice": null,
+          "originalAveragePricePerSingleUnit": null,
+          "promotionStartDate": null,
+          "promotionEndDate": null
+        },
+        "images": {
+          "small": "https://assets.woolworths.com.au/images/2010/705692.jpg?impolicy=wowcdxwbjbx&w=65&h=65",
+          "big": "https://assets.woolworths.com.au/images/2010/705692.jpg?impolicy=wowcdxwbjbx&w=200&h=200"
+        },
+        "quantity": {
+          "min": 1.0,
+          "max": 36.0,
+          "increment": 1.0,
+          "value": null,
+          "quantityInOrder": null,
+          "purchasingQuantityString": null
+        },
+        "stockLevel": 3,
+        "eachUnitQuantity": null,
+        "averageWeightPerUnit": null,
+        "size": {
+          "cupListPrice": 3.02,
+          "cupPrice": 3.02,
+          "cupMeasure": "1L",
+          "packageType": "bottle",
+          "volumeSize": "3L"
+        },
+        "hasShopperNotes": null,
+        "productTag": null,
+        "departments": [
+          {
+            "id": 4,
+            "name": "Fridge & Deli"
+          }
+        ],
+        "subsAllowed": false,
+        "supportsBothEachAndKgPricing": false,
+        "adId": null,
+        "brandSuggestionId": null,
+        "brandSuggestionName": null,
+        "priceUnitLabel": null,
+        "availabilityStatus": "In Stock",
+        "onlineSample": null,
+        "onlineSampleRealProductMapId": 0,
+        "isAgeRestricted": false,
+        "isTobaccoProduct": false
+      },
+      {
+        "type": "Product",
+        "name": "anchor milk standard blue",
+        "barcode": "94127317",
+        "variety": "standard blue",
+        "brand": "anchor",
+        "slug": "anchor-milk-standard-blue",
+        "sku": "282848",
+        "unit": "Each",
+        "selectedPurchasingUnit": null,
+        "price": {
+          "originalPrice": 3.76,
+          "salePrice": 3.76,
+          "savePrice": 0.0,
+          "savePercentage": 0.0,
+          "canShowSavings": true,
+          "hasBonusPoints": false,
+          "isClubPrice": false,
+          "isSpecial": false,
+          "isNew": false,
+          "canShowOriginalPrice": true,
+          "discount": null,
+          "total": null,
+          "isTargetedOffer": false,
+          "averagePricePerSingleUnit": null,
+          "isBoostOffer": false,
+          "purchasingUnitPrice": null,
+          "orderedPrice": null,
+          "isUsingOrderedPrice": false,
+          "currentPricingMatchesOrderedPricing": null,
+          "extendedListPrice": null,
+          "originalAveragePricePerSingleUnit": null,
+          "promotionStartDate": null,
+          "promotionEndDate": null
+        },
+        "images": {
+          "small": "https://assets.woolworths.com.au/images/2010/282848.jpg?impolicy=wowcdxwbjbx&w=65&h=65",
+          "big": "https://assets.woolworths.com.au/images/2010/282848.jpg?impolicy=wowcdxwbjbx&w=200&h=200"
+        },
+        "quantity": {
+          "min": 1.0,
+          "max": 36.0,
+          "increment": 1.0,
+          "value": null,
+          "quantityInOrder": null,
+          "purchasingQuantityString": null
+        },
+        "stockLevel": 3,
+        "eachUnitQuantity": null,
+        "averageWeightPerUnit": null,
+        "size": {
+          "cupListPrice": 3.76,
+          "cupPrice": 3.76,
+          "cupMeasure": "1L",
+          "packageType": "bottle",
+          "volumeSize": "1L"
+        },
+        "hasShopperNotes": null,
+        "productTag": null,
         "departments": [
           {
             "id": 4,
@@ -977,7 +779,7 @@
           "salePrice": 3.16,
           "savePrice": 0.0,
           "savePercentage": 0.0,
-          "canShowSavings": true,
+          "canShowSavings": false,
           "hasBonusPoints": false,
           "isClubPrice": false,
           "isSpecial": false,
@@ -1021,16 +823,10 @@
         },
         "hasShopperNotes": null,
         "productTag": {
-          "tagType": "Other",
+          "tagType": "IsGreatPrice",
           "multiBuy": null,
           "bonusPoints": null,
-          "additionalTag": {
-            "name": "Countdown's Own",
-            "link": "/shop/productgroup/80842",
-            "imagePath": "/Content/PromotionTags/F24_Own_brand.png",
-            "linkTarget": "_self",
-            "altText": null
-          },
+          "additionalTag": null,
           "targetedOffer": null,
           "boostOffer": null
         },
@@ -1051,86 +847,9 @@
         "onlineSampleRealProductMapId": 0,
         "isAgeRestricted": false,
         "isTobaccoProduct": false
-      },
-      {
-        "type": "Product",
-        "name": "anchor milk lite 98.5% fat free",
-        "barcode": "94160512",
-        "variety": "lite 98.5% fat free",
-        "brand": "anchor",
-        "slug": "anchor-milk-lite-98-5-fat-free",
-        "sku": "282843",
-        "unit": "Each",
-        "selectedPurchasingUnit": null,
-        "price": {
-          "originalPrice": 6.06,
-          "salePrice": 6.06,
-          "savePrice": 0.0,
-          "savePercentage": 0.0,
-          "canShowSavings": true,
-          "hasBonusPoints": false,
-          "isClubPrice": false,
-          "isSpecial": false,
-          "isNew": false,
-          "canShowOriginalPrice": true,
-          "discount": null,
-          "total": null,
-          "isTargetedOffer": false,
-          "averagePricePerSingleUnit": null,
-          "isBoostOffer": false,
-          "purchasingUnitPrice": null,
-          "orderedPrice": null,
-          "isUsingOrderedPrice": false,
-          "currentPricingMatchesOrderedPricing": null,
-          "extendedListPrice": null,
-          "originalAveragePricePerSingleUnit": null,
-          "promotionStartDate": null,
-          "promotionEndDate": null
-        },
-        "images": {
-          "small": "https://assets.woolworths.com.au/images/2010/282843.jpg?impolicy=wowcdxwbjbx&w=65&h=65",
-          "big": "https://assets.woolworths.com.au/images/2010/282843.jpg?impolicy=wowcdxwbjbx&w=200&h=200"
-        },
-        "quantity": {
-          "min": 1.0,
-          "max": 36.0,
-          "increment": 1.0,
-          "value": null,
-          "quantityInOrder": null,
-          "purchasingQuantityString": null
-        },
-        "stockLevel": 3,
-        "eachUnitQuantity": null,
-        "averageWeightPerUnit": null,
-        "size": {
-          "cupListPrice": 3.03,
-          "cupPrice": 3.03,
-          "cupMeasure": "1L",
-          "packageType": "bottle",
-          "volumeSize": "2L"
-        },
-        "hasShopperNotes": null,
-        "productTag": null,
-        "departments": [
-          {
-            "id": 4,
-            "name": "Fridge & Deli"
-          }
-        ],
-        "subsAllowed": false,
-        "supportsBothEachAndKgPricing": false,
-        "adId": null,
-        "brandSuggestionId": null,
-        "brandSuggestionName": null,
-        "priceUnitLabel": null,
-        "availabilityStatus": "In Stock",
-        "onlineSample": null,
-        "onlineSampleRealProductMapId": 0,
-        "isAgeRestricted": false,
-        "isTobaccoProduct": false
       }
     ],
-    "totalItems": 481
+    "totalItems": 406
   },
   "dasFacets": [
     {
@@ -1138,7 +857,7 @@
       "value": "4",
       "isBooleanValue": false,
       "name": "Fridge & Deli",
-      "productCount": 234,
+      "productCount": 231,
       "shelfResponses": null,
       "group": "Department"
     },
@@ -1165,7 +884,7 @@
       "value": "7",
       "isBooleanValue": false,
       "name": "Pantry",
-      "productCount": 380,
+      "productCount": 312,
       "shelfResponses": null,
       "group": "Department"
     },
@@ -1183,7 +902,7 @@
       "value": "9",
       "isBooleanValue": false,
       "name": "Drinks",
-      "productCount": 16,
+      "productCount": 9,
       "shelfResponses": null,
       "group": "Department"
     },
@@ -1224,17 +943,8 @@
       "group": "Department"
     },
     {
-      "key": "Department",
-      "value": "15",
-      "isBooleanValue": false,
-      "name": "Back to School",
-      "productCount": 146,
-      "shelfResponses": null,
-      "group": "Department"
-    },
-    {
       "key": "Aisle",
-      "value": "27",
+      "value": "26",
       "isBooleanValue": false,
       "name": "Milk",
       "productCount": 202,
@@ -1243,16 +953,7 @@
     },
     {
       "key": "Aisle",
-      "value": "148",
-      "isBooleanValue": false,
-      "name": "Breakfast Ideas",
-      "productCount": 104,
-      "shelfResponses": null,
-      "group": "Aisle"
-    },
-    {
-      "key": "Aisle",
-      "value": "72",
+      "value": "71",
       "isBooleanValue": false,
       "name": "Long Life Milk",
       "productCount": 87,
@@ -1260,17 +961,8 @@
       "group": "Aisle"
     },
     {
-      "key": "Aisle",
-      "value": "149",
-      "isBooleanValue": false,
-      "name": "Lunchbox Ideas",
-      "productCount": 34,
-      "shelfResponses": null,
-      "group": "Aisle"
-    },
-    {
       "key": "Shelf",
-      "value": "661",
+      "value": "655",
       "isBooleanValue": false,
       "name": "Full Cream Milk",
       "productCount": 26,
@@ -1279,16 +971,7 @@
     },
     {
       "key": "Shelf",
-      "value": "838",
-      "isBooleanValue": false,
-      "name": "Kids Cereals & Milk",
-      "productCount": 102,
-      "shelfResponses": null,
-      "group": "Shelf"
-    },
-    {
-      "key": "Shelf",
-      "value": "662",
+      "value": "656",
       "isBooleanValue": false,
       "name": "Trim & Light Milk",
       "productCount": 29,
@@ -1297,7 +980,7 @@
     },
     {
       "key": "Shelf",
-      "value": "663",
+      "value": "657",
       "isBooleanValue": false,
       "name": "Long Life Milk",
       "productCount": 60,
@@ -1306,7 +989,7 @@
     },
     {
       "key": "Shelf",
-      "value": "819",
+      "value": "802",
       "isBooleanValue": false,
       "name": "UHT Milk & Cream",
       "productCount": 18,
@@ -1315,7 +998,7 @@
     },
     {
       "key": "Shelf",
-      "value": "666",
+      "value": "660",
       "isBooleanValue": false,
       "name": "Enriched Milk",
       "productCount": 8,
@@ -1324,7 +1007,7 @@
     },
     {
       "key": "Shelf",
-      "value": "664",
+      "value": "658",
       "isBooleanValue": false,
       "name": "Flavoured Milk & Iced Coffee",
       "productCount": 58,
@@ -1338,7 +1021,7 @@
       "value": "All",
       "isBooleanValue": true,
       "name": "All",
-      "productCount": 124,
+      "productCount": 98,
       "shelfResponses": null,
       "group": "Specials & Great Prices"
     },
@@ -1347,7 +1030,16 @@
       "value": "Specials",
       "isBooleanValue": true,
       "name": "Specials",
-      "productCount": 124,
+      "productCount": 85,
+      "shelfResponses": null,
+      "group": "Specials & Great Prices"
+    },
+    {
+      "key": "Great Price",
+      "value": "Great Price",
+      "isBooleanValue": true,
+      "name": "Great Price",
+      "productCount": 13,
       "shelfResponses": null,
       "group": "Specials & Great Prices"
     },
@@ -1356,7 +1048,7 @@
       "value": "Onecard Club",
       "isBooleanValue": true,
       "name": "Onecard Club",
-      "productCount": 35,
+      "productCount": 33,
       "shelfResponses": null,
       "group": "Specials & Great Prices"
     },
@@ -1365,7 +1057,7 @@
       "value": "Dairy Free",
       "isBooleanValue": false,
       "name": "Dairy Free",
-      "productCount": 95,
+      "productCount": 71,
       "shelfResponses": null,
       "group": "Dietary & Lifestyle"
     },
@@ -1374,7 +1066,7 @@
       "value": "Gluten Free",
       "isBooleanValue": false,
       "name": "Gluten Free",
-      "productCount": 211,
+      "productCount": 208,
       "shelfResponses": null,
       "group": "Dietary & Lifestyle"
     },
@@ -1383,7 +1075,7 @@
       "value": "Low Salt",
       "isBooleanValue": false,
       "name": "Low Salt",
-      "productCount": 289,
+      "productCount": 249,
       "shelfResponses": null,
       "group": "Dietary & Lifestyle"
     },
@@ -1392,7 +1084,7 @@
       "value": "Low Sugar",
       "isBooleanValue": false,
       "name": "Low Sugar",
-      "productCount": 148,
+      "productCount": 136,
       "shelfResponses": null,
       "group": "Dietary & Lifestyle"
     },
@@ -1410,7 +1102,7 @@
       "value": "Vegan",
       "isBooleanValue": false,
       "name": "Vegan",
-      "productCount": 83,
+      "productCount": 53,
       "shelfResponses": null,
       "group": "Dietary & Lifestyle"
     },
@@ -1419,7 +1111,7 @@
       "value": "Vegetarian",
       "isBooleanValue": false,
       "name": "Vegetarian",
-      "productCount": 251,
+      "productCount": 197,
       "shelfResponses": null,
       "group": "Dietary & Lifestyle"
     }

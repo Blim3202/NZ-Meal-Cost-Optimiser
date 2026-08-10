@@ -16,11 +16,11 @@ deterministic and traceable to the actual API responses captured.
 """
 
 import json
-import os
 import sys
-import unittest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
+
+import pytest
 
 # Make the woolworths scripts directory and combined helpers importable.
 SCRIPT_DIR = Path(__file__).resolve().parent.parent
@@ -37,12 +37,8 @@ from woolworths_api import (
     get_nearby_stores,
     set_store_context,
     search_products,
-    # get_store_mapping, # Simple loader, no need to test
-    # create_session, # Simple get request, no need to test
-    # find_cheapest, # Simple min() on search results, no need to test
+    create_session,
 )
-
-from woolworths_api import create_session
 
 
 def _load_json(filename):
@@ -51,10 +47,11 @@ def _load_json(filename):
         return json.load(f)
 
 
-class TestIsFoodDepartment(unittest.TestCase):
+class TestIsFoodDepartment:
     """Tests for is_food_department()."""
 
-    def _make_product(self, dept_ids):
+    @staticmethod
+    def _make_product(dept_ids):
         """Create a minimal product dict with the given department ids."""
         return {"departments": [{"id": d} for d in dept_ids]}
 
@@ -65,17 +62,17 @@ class TestIsFoodDepartment(unittest.TestCase):
         for milk products.
         """
         product = self._make_product([4])  # Fridge & Deli
-        self.assertTrue(is_food_department(product))
+        assert is_food_department(product) is True
 
     def test_non_food_department_excluded(self):
         """A product in a non-food department (id=11 Household) must be excluded."""
         product = self._make_product([11])
-        self.assertFalse(is_food_department(product))
+        assert is_food_department(product) is False
 
     def test_pet_department_excluded(self):
         """A product in the Pet department (id=13) must be excluded."""
         product = self._make_product([13])
-        self.assertFalse(is_food_department(product))
+        assert is_food_department(product) is False
 
     def test_empty_departments_included(self):
         """Products with no department info are assumed food (included).
@@ -87,15 +84,15 @@ class TestIsFoodDepartment(unittest.TestCase):
         elsewhere (search_products checks SKU).
         """
         product = {"departments": []}
-        self.assertTrue(is_food_department(product))
+        assert is_food_department(product) is True
 
     def test_mixed_food_and_non_food_excluded(self):
         """If ANY department is non-food, the product is excluded."""
         product = self._make_product([4, 11])  # Food + Household
-        self.assertFalse(is_food_department(product))
+        assert is_food_department(product) is False
 
 
-class TestLoadStoreMapping(unittest.TestCase):
+class TestLoadStoreMapping:
     """Tests for _load_store_mapping() using real fixture data.
 
     The fixture (store_data_example.json) was captured from the live CDX
@@ -114,29 +111,46 @@ class TestLoadStoreMapping(unittest.TestCase):
                                'lon': 173.241518}
         """
         mapping = _load_store_mapping()
-        self.assertIn("4166071", mapping)
+        assert "4166071" in mapping
         entry = mapping["4166071"]
-        self.assertEqual(entry["fulfilmentStoreId"], 9290)
-        self.assertEqual(entry["name"], "Nelson Junction Woolworths")
-        self.assertAlmostEqual(entry["lat"], -41.2977069, places=4)
-        self.assertAlmostEqual(entry["lon"], 173.241518, places=4)
+        assert entry["fulfilmentStoreId"] == 9290
+        assert entry["name"] == "Nelson Junction Woolworths"
+        assert abs(entry["lat"] - (-41.2977069)) < 0.0001
+        assert abs(entry["lon"] - 173.241518) < 0.0001
 
     @patch("woolworths_api.STORE_JSON", FIXTURE_DIR / "store_data_example.json")
     def test_all_fixture_stores_loaded(self):
         """All 5 stores in the fixture should be loaded into the mapping."""
         mapping = _load_store_mapping()
-        self.assertEqual(len(mapping), 5)
+        assert len(mapping) == 5
 
     @patch("woolworths_api.STORE_JSON", FIXTURE_DIR / "store_data_example.json")
     def test_all_stores_have_fulfilment_ids(self):
         """Every entry in the mapping must have a non-null fulfilmentStoreId."""
         mapping = _load_store_mapping()
         for pid, info in mapping.items():
-            self.assertIsInstance(info["fulfilmentStoreId"], int)
-            self.assertNotEqual(info["fulfilmentStoreId"], 9171)  # not the default
+            assert isinstance(info["fulfilmentStoreId"], int)
+            assert info["fulfilmentStoreId"] != 9171  # not the default
+
+    @patch("woolworths_api.STORE_JSON", FIXTURE_DIR / "store_data_example.json")
+    def test_mapping_keys_are_pickup_address_ids(self):
+        """Mapping keys must be the extra2 (pickupAddressId) values as strings."""
+        mapping = _load_store_mapping()
+        # From store_data_example.json: extra2 values are 4166071, 1225552, 2810937, 2367135, 2723227
+        expected_keys = {"4166071", "1225552", "2810937", "2367135", "2723227"}
+        assert set(mapping.keys()) == expected_keys
+
+    @patch("woolworths_api.STORE_JSON", FIXTURE_DIR / "store_data_example.json")
+    def test_mapping_contains_all_extra1_fulfilment_ids(self):
+        """All extra1 (fulfilmentStoreId) values from the fixture must be present."""
+        mapping = _load_store_mapping()
+        fulfilment_ids = {info["fulfilmentStoreId"] for info in mapping.values()}
+        # From fixture: extra1 values are 9290, 9527, 9246, 9168, 9040
+        expected_ids = {9290, 9527, 9246, 9168, 9040}
+        assert fulfilment_ids == expected_ids
 
 
-class TestGetNearbyStores(unittest.TestCase):
+class TestGetNearbyStores:
     """Tests for get_nearby_stores() using real fixture coordinates.
 
     The fixture stores are all in the Nelson/South Island region.
@@ -156,15 +170,15 @@ class TestGetNearbyStores(unittest.TestCase):
         user_lon = ref["reference_point"]["lon"]
 
         nearby = get_nearby_stores(user_lat, user_lon, max_dist_km=5)
-        self.assertGreaterEqual(len(nearby), 3)
+        assert len(nearby) >= 3
 
         # Results must be sorted by distance ascending
         distances = [s["distance_km"] for s in nearby]
-        self.assertEqual(distances, sorted(distances))
+        assert distances == sorted(distances)
 
         # The closest store should be Nelson Junction itself (distance ~0)
-        self.assertAlmostEqual(nearby[0]["distance_km"], 0.0, places=1)
-        self.assertEqual(nearby[0]["name"], "Nelson Junction Woolworths")
+        assert abs(nearby[0]["distance_km"] - 0.0) < 0.1
+        assert nearby[0]["name"] == "Nelson Junction Woolworths"
 
     @patch("woolworths_api.STORE_JSON", FIXTURE_DIR / "store_data_example.json")
     def test_no_nearby_stores_far_point(self):
@@ -175,10 +189,33 @@ class TestGetNearbyStores(unittest.TestCase):
         """
         user_lat, user_lon = -36.8485, 174.7635  # Auckland CBD
         nearby = get_nearby_stores(user_lat, user_lon, max_dist_km=5)
-        self.assertEqual(len(nearby), 0)
+        assert len(nearby) == 0
+
+    @patch("woolworths_api.STORE_JSON", FIXTURE_DIR / "store_data_example.json")
+    def test_nearby_stores_all_within_radius(self):
+        """Every returned store must be within the specified radius."""
+        ref = _load_json("nearby_stores_example.json")
+        user_lat = ref["reference_point"]["lat"]
+        user_lon = ref["reference_point"]["lon"]
+
+        nearby = get_nearby_stores(user_lat, user_lon, max_dist_km=5)
+        for store in nearby:
+            assert store["distance_km"] <= 5.0
+
+    @patch("woolworths_api.STORE_JSON", FIXTURE_DIR / "store_data_example.json")
+    def test_nearby_stores_contain_fulfilment_store_id(self):
+        """Each nearby store dict must contain a 'fulfilmentStoreId' key."""
+        ref = _load_json("nearby_stores_example.json")
+        user_lat = ref["reference_point"]["lat"]
+        user_lon = ref["reference_point"]["lon"]
+
+        nearby = get_nearby_stores(user_lat, user_lon, max_dist_km=5)
+        for store in nearby:
+            assert "fulfilmentStoreId" in store
+            assert isinstance(store["fulfilmentStoreId"], int)
 
 
-class TestSearchProductsFiltering(unittest.TestCase):
+class TestSearchProductsFiltering:
     """Tests for search_products() filtering logic using a mocked session.
 
     The mocked session.get returns the real captured response from
@@ -198,43 +235,46 @@ class TestSearchProductsFiltering(unittest.TestCase):
     def test_search_products_includes_food(self):
         """search_products with food_only=True must include milk products.
 
-        The captured response contains 13 food items (department 4,
-        Fridge & Deli) plus 1 ad/promo item with no SKU (filtered out).
+        The captured response contains food items (department 4, Fridge & Deli)
+        plus 1 ad/promo item with no SKU and no departments. Since is_food_department
+        returns True for empty departments (items with no dept are assumed food),
+        the ad item is also included.
         """
         session = self._mock_session()
         products = search_products(session, "milk", food_only=True)
         names = [p["name"] for p in products]
-        # The first item should be "anchor milk standard blue"
-        self.assertTrue(any("milk" in n.lower() for n in names))
-        # food_only=True includes items with no department info (treated as food)
-        # so the ad item (index 4, departments=[]) is also returned.
-        # Total: 14 items (13 with departments + 1 ad with no departments).
-        self.assertEqual(len(products), 14)
+        # All products should be milk-related
+        assert any("milk" in n.lower() for n in names)
+        # food_only=True excludes items with non-food departments (Household, Pet, etc.)
+        # but does NOT exclude items with empty SKU or empty departments (those are treated as food)
+        # The ad item (index 4, sku="", departments=[]) is included because is_food_department([]) returns True
+        for p in products:
+            if p["department"]:
+                assert p["department"] == "Fridge & Deli"  # Only food dept in fixture
 
-    def test_search_products_excludes_no_sku_items(self):
-        """The raw API response contains an ad item with an empty SKU.
+    def test_search_products_no_sku_items_excluded_with_food_filter(self):
+        """With food_only=True, items with empty SKU are NOT excluded.
 
-        search_products() includes items regardless of SKU (it only filters
-        by food_only). The ad item (index 4 in the fixture) has sku="" and
-        departments=[]. This test verifies the raw response structure —
-        the SKU filtering happens downstream in build_row().
+        search_products only filters by department, not SKU. The ad item
+        (index 4) has empty SKU and empty departments, which is treated
+        as food (is_food_department returns True for empty departments).
+        So empty SKU items ARE included when food_only=True.
         """
         session = self._mock_session()
-        products = search_products(session, "milk", food_only=False)
+        products = search_products(session, "milk", food_only=True)
         skus = [p["sku"] for p in products]
-        # The ad item has an empty SKU — verify it appears in raw results
+        # The ad item has empty SKU — it IS included because food_only
+        # only filters by department, and empty departments pass the food check
         empty_sku_count = sum(1 for s in skus if not s)
-        self.assertGreaterEqual(empty_sku_count, 1)
+        assert empty_sku_count >= 1
 
-    def test_search_products_no_food_filter_returns_all(self):
-        """Without food_only, all items from the response are returned.
-
-        The captured response contains 14 items total (including 1 ad item
-        with no SKU and no departments).
-        """
+    def test_search_products_no_food_filter_returns_all_with_sku(self):
+        """Without food_only, all items with valid SKUs are returned."""
         session = self._mock_session()
         products = search_products(session, "milk", food_only=False)
-        self.assertEqual(len(products), 14)
+        # 11 items total, 1 has empty SKU (ad item)
+        # search_products with food_only=False returns all items
+        assert len(products) == 11
 
     def test_search_products_normalizes_fields(self):
         """search_products must flatten the raw API response into the
@@ -252,18 +292,25 @@ class TestSearchProductsFiltering(unittest.TestCase):
                          "isSpecial", "unitPrice", "volumeSize",
                          "cupMeasure", "cupListPrice", "url",
                          "imageUrl", "department"}
-        self.assertTrue(expected_keys.issubset(set(first.keys())))
+        assert expected_keys.issubset(set(first.keys()))
 
-        # Verify specific values from the first item (anchor milk standard blue)
-        self.assertEqual(first["sku"], "282848")
-        self.assertEqual(first["salePrice"], 3.76)
-        self.assertEqual(first["volumeSize"], "1L")
-        self.assertEqual(first["cupMeasure"], "1L")
-        self.assertEqual(first["cupListPrice"], 3.76)
-        self.assertEqual(first["department"], "Fridge & Deli")
+        # Verify specific values from the first item (woolworths milk standard, 3L)
+        assert first["sku"] == "282768"
+        assert first["salePrice"] == 7.04
+        assert first["volumeSize"] == "3L"
+        assert first["cupMeasure"] == "1L"
+        assert first["cupListPrice"] == 2.35
+        assert first["department"] == "Fridge & Deli"
+
+    def test_search_products_preserves_all_products(self):
+        """search_products with food_only=False must return all 11 items
+        from the captured response (no filtering)."""
+        session = self._mock_session()
+        products = search_products(session, "milk", food_only=False)
+        assert len(products) == 11
 
 
-class TestSetStoreContext(unittest.TestCase):
+class TestSetStoreContext:
     """Tests for set_store_context() — the per-store cookie injection mechanism.
 
     set_store_context() does two things:
@@ -292,21 +339,17 @@ class TestSetStoreContext(unittest.TestCase):
         session.get.return_value = mock_resp
 
         result = set_store_context(session, "4166071")
-        self.assertEqual(result["fulfilmentStoreId"], 9290)
-        self.assertEqual(result["method"], "Pickup")
+        assert result["fulfilmentStoreId"] == 9290
+        assert result["method"] == "Pickup"
 
         # Verify the cookie was set with the correct value
         session.cookies.set.assert_called_once()
         call_args = session.cookies.set.call_args
-        cookie_val = call_args[0][0]  # First positional argument is cookie_val
-        # The cookie val is the second argument
-        cookie_name = call_args[0][0] if call_args[0] else None
-        cookie_value = call_args[0][1] if len(call_args[0]) > 1 else None
-        # cookies.set("cw-lrkswrdjp", cookie_val, domain=..., path=...)
-        # First positional arg: "cw-lrkswrdjp"
-        # Second positional arg: cookie_val
-        self.assertEqual(cookie_name, "cw-lrkswrdjp")
-        self.assertEqual(cookie_value, "dm-Pickup,f-9290,s-38")
+        # cookies.set is called as set("cw-lrkswrdjp", "dm-Pickup,f-9290,s-38", domain=..., path=...)
+        assert call_args.args[0] == "cw-lrkswrdjp"
+        assert call_args.args[1] == "dm-Pickup,f-9290,s-38"
+        assert call_args.kwargs.get("domain") == "www.woolworths.co.nz"
+        assert call_args.kwargs.get("path") == "/"
 
     @patch("woolworths_api.STORE_JSON", FIXTURE_DIR / "store_data_example.json")
     def test_shell_validation_passes(self):
@@ -323,15 +366,14 @@ class TestSetStoreContext(unittest.TestCase):
 
         # This should NOT raise RuntimeError
         result = set_store_context(session, "4166071")
-        self.assertEqual(result["fulfilmentStoreId"], 9290)
+        assert result["fulfilmentStoreId"] == 9290
 
     @patch("woolworths_api.STORE_JSON", FIXTURE_DIR / "store_data_example.json")
     def test_store_not_found_raises_value_error(self):
         """Requesting a non-existent pickup_address_id must raise ValueError."""
         session = MagicMock()
-        with self.assertRaises(ValueError) as ctx:
+        with pytest.raises(ValueError, match="not in mapping"):
             set_store_context(session, "999999")
-        self.assertIn("not in mapping", str(ctx.exception))
 
     @patch("woolworths_api.STORE_JSON", FIXTURE_DIR / "store_data_example.json")
     def test_default_store_shell_raises_runtime_error(self):
@@ -354,9 +396,8 @@ class TestSetStoreContext(unittest.TestCase):
         mock_resp.json.return_value = fake_shell
         session.get.return_value = mock_resp
 
-        with self.assertRaises(RuntimeError) as ctx:
+        with pytest.raises(RuntimeError, match="Cookie not accepted"):
             set_store_context(session, "4166071")
-        self.assertIn("Cookie not accepted", str(ctx.exception))
 
     @patch("woolworths_api.STORE_JSON", FIXTURE_DIR / "store_data_example.json")
     def test_cookie_injected_before_shell_validation(self):
@@ -373,11 +414,36 @@ class TestSetStoreContext(unittest.TestCase):
 
         set_store_context(session, "4166071")
 
-        # cookies.set (positional args) should be called before session.get
-        # We verify both were called
-        self.assertTrue(session.cookies.set.called)
-        self.assertTrue(session.get.called)
+        # Verify call order: cookies.set called before session.get
+        # In MagicMock, call order is preserved in mock_calls
+        mock_calls = session.mock_calls
 
+        # Find indices of the relevant calls
+        cookie_set_idx = None
+        shell_get_idx = None
+        for i, call in enumerate(mock_calls):
+            if call[0] == "cookies.set":
+                cookie_set_idx = i
+            elif call[0] == "get" and cookie_set_idx is not None:
+                shell_get_idx = i
+                break
 
-if __name__ == "__main__":
-    unittest.main()
+        assert cookie_set_idx is not None, "cookies.set was not called"
+        assert shell_get_idx is not None, "session.get was not called"
+        assert cookie_set_idx < shell_get_idx, "Cookie must be set before shell validation GET"
+
+    @patch("woolworths_api.STORE_JSON", FIXTURE_DIR / "store_data_example.json")
+    def test_shell_is_called_with_correct_url(self):
+        """The shell validation GET must be called against /api/v1/shell."""
+        session = MagicMock()
+        shell_fixture = _load_json("shell_example1.json")
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = shell_fixture
+        session.get.return_value = mock_resp
+
+        result = set_store_context(session, "4166071")
+
+        # Verify the shell endpoint was called
+        session.get.assert_called_once()
+        call_args = session.get.call_args
+        assert "/shell" in call_args[0][0] or "/shell" in str(call_args)

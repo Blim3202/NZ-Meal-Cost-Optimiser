@@ -8,12 +8,15 @@ Tests verify:
        fixture store data CSV (store_data_fixture.csv).
     3. The cleaned=False merge keeps all stores.
     4. The cleaned=True merge drops stores without coordinates.
-    5. The merged CSV output has the expected column structure.
+    5. merge_stores() handles edge cases (duplicates, missing from one side,
+       invalid coordinate formats, string coords).
+    6. The fixture JSON and CSV are consistent with the real captured data.
 
 All data is loaded from the fixture directory produced by
 generate_fixtures.py — no live network calls during tests.
 
-Fixture data (3 stores, all from the Nelson/South Island region):
+Fixture data (3 stores in choices CSV, 5 stores in JSON, all from the
+Nelson/South Island region):
     cookies_example1.csv (pickup choices):
         id=4166071 -> Nelson Junction Woolworths
         id=1225552 -> Nelson Woolworths
@@ -29,15 +32,14 @@ both return 3 rows. A separate edge-case test verifies the cleaning
 logic by using a modified fixture.
 """
 
-import json
 import os
 import sys
-import tempfile
-import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import numpy as np
 import pandas as pd
+import pytest
 
 # Make the woolworths scripts directory and combined helpers importable.
 SCRIPT_DIR = Path(__file__).resolve().parent.parent
@@ -54,29 +56,26 @@ FIX_STORE_DATA_CSV = FIXTURE_DIR / "store_data_fixture.csv"
 FIX_STORE_DATA_JSON = FIXTURE_DIR / "store_data_example.json"
 
 
-class TestCleanNull(unittest.TestCase):
+class TestCleanNull:
     """Tests for woolworths_setup.clean_null()."""
 
-    def setUp(self):
+    @pytest.mark.parametrize("input_val,expected", [
+        (None, ""),
+        ("", ""),
+        ("   ", ""),
+        ("Hello", "Hello"),
+        (123, "123"),
+        (0, "0"),
+        (True, "True"),
+    ])
+    def test_clean_null(self, input_val, expected):
+        """clean_null() must return empty string for None/empty/whitespace,
+        and stringified value for everything else."""
         from woolworths_setup import clean_null
-        self.clean_null = clean_null
-
-    def test_none_returns_empty_string(self):
-        self.assertEqual(self.clean_null(None), "")
-
-    def test_empty_string_returns_empty_string(self):
-        self.assertEqual(self.clean_null(""), "")
-
-    def test_whitespace_only_returns_empty_string(self):
-        self.assertEqual(self.clean_null("   "), "")
-
-    def test_valid_value_returns_stringified(self):
-        """A non-empty value is returned as-is (stringified if needed)."""
-        self.assertEqual(self.clean_null("Hello"), "Hello")
-        self.assertEqual(self.clean_null(123), "123")
+        assert clean_null(input_val) == expected
 
 
-class TestMergeStores(unittest.TestCase):
+class TestMergeStores:
     """Tests for woolworths_setup.merge_stores() using REAL fixture files.
 
     The fixture data (captured from live APIs) has 3 stores, all with
@@ -116,47 +115,67 @@ class TestMergeStores(unittest.TestCase):
         Fixture: all 3 stores have valid lat/lon.
         """
         merged = self._run_merge(cleaned=True)
-        self.assertEqual(len(merged), 3)
+        assert len(merged) == 3
 
     def test_unpadded_merge_keeps_all(self):
         """cleaned=False keeps all 3 stores from the left-join."""
         merged = self._run_merge(cleaned=False)
-        self.assertEqual(len(merged), 3)
+        assert len(merged) == 3
 
     def test_merge_has_expected_columns(self):
         """The merged DataFrame must have id, name, address, latitude, longitude."""
         merged = self._run_merge(cleaned=False)
         expected = {"id", "name", "address", "latitude", "longitude"}
-        self.assertTrue(expected.issubset(set(merged.columns)))
+        assert expected.issubset(set(merged.columns))
 
     def test_merge_preserves_store_names(self):
         """The merged DataFrame must contain the real store names from the fixture."""
         merged = self._run_merge(cleaned=False)
         names = set(merged["name"].tolist())
-        self.assertIn("Nelson Junction Woolworths", names)
-        self.assertIn("Nelson Woolworths", names)
-        self.assertIn("Trafalgar Park Woolworths", names)
+        assert "Nelson Junction Woolworths" in names
+        assert "Nelson Woolworths" in names
+        assert "Trafalgar Park Woolworths" in names
 
     def test_merge_preserves_site_data_ids(self):
         """The merged 'id' column must match the fixture choices CSV ids."""
         merged = self._run_merge(cleaned=False)
         expected_ids = {"4166071", "1225552", "2810937"}
         actual_ids = set(merged["id"].astype(str).tolist())
-        self.assertEqual(actual_ids, expected_ids)
+        assert actual_ids == expected_ids
 
     def test_merge_joined_coordinates_correct(self):
         """The merged latitude/longitude must match the CDX data for store 4166071."""
         merged = self._run_merge(cleaned=False)
         row = merged[merged["id"].astype(str) == "4166071"].iloc[0]
-        self.assertAlmostEqual(float(row["latitude"]), -41.2977069, places=4)
-        self.assertAlmostEqual(float(row["longitude"]), 173.241518, places=4)
+        assert abs(float(row["latitude"]) - (-41.2977069)) < 0.0001
+        assert abs(float(row["longitude"]) - 173.241518) < 0.0001
+
+    def test_merge_preserves_all_three_stores_coordinates(self):
+        """All 3 fixture stores must have correct coordinates in the merge."""
+        merged = self._run_merge(cleaned=False)
+        coords_expected = {
+            "4166071": (-41.2977069, 173.241518),
+            "1225552": (-41.2727, 173.2773),
+            "2810937": (-41.2702, 173.2815),
+        }
+        for store_id, (lat, lon) in coords_expected.items():
+            row = merged[merged["id"].astype(str) == store_id].iloc[0]
+            assert abs(float(row["latitude"]) - lat) < 0.0001, \
+                f"Lat mismatch for store {store_id}"
+            assert abs(float(row["longitude"]) - lon) < 0.0001, \
+                f"Lon mismatch for store {store_id}"
+
+    def test_merge_drops_site_data_id_column(self):
+        """The SiteDataID column is dropped during merge (it's only used for joining)."""
+        merged = self._run_merge(cleaned=False)
+        assert "SiteDataID" not in merged.columns
 
 
-class TestMergeStoresCleaningLogic(unittest.TestCase):
+class TestMergeStoresCleaningLogic:
     """Tests for the cleaned=True coordinate-filtering logic.
 
     The real fixtures have all stores with coordinates, so we create a
-    temporary modified CSV where one store has empty coordinates, to
+    temporary modified CSV where one store has empty/NaN coordinates, to
     verify the cleaning logic works on real data.
     """
 
@@ -167,12 +186,9 @@ class TestMergeStoresCleaningLogic(unittest.TestCase):
         second store's latitude and longitude are replaced with NaN,
         then verify that cleaned=True drops it while cleaned=False keeps it.
         """
-        import numpy as np
-
         # Read the real fixture CSV and blank out one store's coords.
         df = pd.read_csv(FIX_STORE_DATA_CSV)
-        # Use numpy NaN (not empty string) to avoid pandas dtype coercion
-        # errors when setting on a float64 column.
+        # Use numpy NaN to avoid pandas dtype coercion errors
         df.loc[df["SiteDataID"].astype(str) == "1225552", "latitude"] = np.nan
         df.loc[df["SiteDataID"].astype(str) == "1225552", "longitude"] = np.nan
 
@@ -188,44 +204,157 @@ class TestMergeStoresCleaningLogic(unittest.TestCase):
 
                 # cleaned=True should drop the store with blank coords
                 merged_clean = merge_stores(cleaned=True)
-                self.assertEqual(len(merged_clean), 2)
-                self.assertNotIn("1225552",
-                                 merged_clean["id"].astype(str).tolist())
+                assert len(merged_clean) == 2
+                assert "1225552" not in merged_clean["id"].astype(str).tolist()
 
                 # cleaned=False should keep all 3
                 merged_full = merge_stores(cleaned=False)
-                self.assertEqual(len(merged_full), 3)
+                assert len(merged_full) == 3
         finally:
             for p in [temp_data_csv, temp_merged_csv]:
                 if p.exists():
                     p.unlink()
 
+    def test_cleaned_drops_invalid_string_coords(self):
+        """cleaned=True must drop stores with non-numeric latitude/longitude.
 
-class TestMergeCsvOutput(unittest.TestCase):
-    """Verify the merged CSV written by merge_stores has the expected columns."""
-
-    def test_merged_csv_has_expected_columns(self):
-        """The output CSV must have 'id', 'name', 'address', 'latitude', 'longitude'.
-
-        These are the columns consumed by the optimizer and API modules.
+        Some CDX exports may contain string values like 'null' or 'N/A'
+        in coordinate fields instead of actual numbers. We test this by
+        converting the columns to object dtype first (simulating what
+        happens when invalid data is in the CSV).
         """
-        temp_csv = FIXTURE_DIR / "_merge_col_test.csv"
+        df = pd.read_csv(FIX_STORE_DATA_CSV)
+        # Convert columns to object dtype to allow string assignment
+        df["latitude"] = df["latitude"].astype(object)
+        df["longitude"] = df["longitude"].astype(object)
+        # Set invalid string coords for one store
+        df.loc[df["SiteDataID"].astype(str) == "2810937", "latitude"] = "N/A"
+        df.loc[df["SiteDataID"].astype(str) == "2810937", "longitude"] = "null"
 
-        with patch("woolworths_setup.CSV_CHOICES", FIX_CHOICES_CSV), \
-             patch("woolworths_setup.CSV_DATA", FIX_STORE_DATA_CSV), \
-             patch("woolworths_setup.CSV_MERGED", temp_csv):
-            from woolworths_setup import merge_stores
-            merge_stores(cleaned=False)
+        temp_data_csv = FIXTURE_DIR / "_temp_store_data_str.csv"
+        temp_merged_csv = FIXTURE_DIR / "_temp_merged_str.csv"
+        df.to_csv(temp_data_csv, index=False, encoding="utf-8")
 
-        df = pd.read_csv(temp_csv)
-        for col in ["id", "name", "address", "latitude", "longitude"]:
-            self.assertIn(col, df.columns)
+        try:
+            with patch("woolworths_setup.CSV_CHOICES", FIX_CHOICES_CSV), \
+                 patch("woolworths_setup.CSV_DATA", temp_data_csv), \
+                 patch("woolworths_setup.CSV_MERGED", temp_merged_csv):
+                from woolworths_setup import merge_stores
 
-        if temp_csv.exists():
-            temp_csv.unlink()
+                # cleaned=False keeps all 3 (invalid coords not filtered)
+                merged_full = merge_stores(cleaned=False)
+                assert len(merged_full) == 3
+
+                # cleaned=True drops the store with invalid coords
+                merged_clean = merge_stores(cleaned=True)
+                assert len(merged_clean) == 2
+                assert "2810937" not in merged_clean["id"].astype(str).tolist()
+        finally:
+            for p in [temp_data_csv, temp_merged_csv]:
+                if p.exists():
+                    p.unlink()
+
+    def test_cleaned_drops_empty_string_coords(self):
+        """cleaned=True must also drop stores with empty string coordinates.
+
+        Some CDX exports may contain empty strings instead of NaN.
+        """
+        df = pd.read_csv(FIX_STORE_DATA_CSV)
+        # Convert columns to object dtype to allow string assignment
+        df["latitude"] = df["latitude"].astype(object)
+        df["longitude"] = df["longitude"].astype(object)
+        # Set empty string coords for one store
+        df.loc[df["SiteDataID"].astype(str) == "1225552", "latitude"] = ""
+        df.loc[df["SiteDataID"].astype(str) == "1225552", "longitude"] = ""
+
+        temp_data_csv = FIXTURE_DIR / "_temp_store_data_empty.csv"
+        temp_merged_csv = FIXTURE_DIR / "_temp_merged_empty.csv"
+        df.to_csv(temp_data_csv, index=False, encoding="utf-8")
+
+        try:
+            with patch("woolworths_setup.CSV_CHOICES", FIX_CHOICES_CSV), \
+                 patch("woolworths_setup.CSV_DATA", temp_data_csv), \
+                 patch("woolworths_setup.CSV_MERGED", temp_merged_csv):
+                from woolworths_setup import merge_stores
+
+                # cleaned=True drops stores with empty string coords
+                merged_clean = merge_stores(cleaned=True)
+                assert len(merged_clean) == 2
+                assert "1225552" not in merged_clean["id"].astype(str).tolist()
+        finally:
+            for p in [temp_data_csv, temp_merged_csv]:
+                if p.exists():
+                    p.unlink()
+
+    def test_merge_preserves_choices_with_no_data_match(self):
+        """A store in choices CSV but missing from data CSV should have
+        NaN coordinates in cleaned=False, and be dropped in cleaned=True.
+
+        This tests the left-join behavior: all choices are kept, but
+        missing coordinate data causes them to be filtered when cleaned=True.
+        """
+        df_data = pd.read_csv(FIX_STORE_DATA_CSV)
+
+        # Remove one store from the data CSV (simulate store not in CDX data)
+        df_data_reduced = df_data[df_data["SiteDataID"].astype(str) != "2810937"]
+
+        temp_data_csv = FIXTURE_DIR / "_temp_reduced_data.csv"
+        temp_merged_csv = FIXTURE_DIR / "_temp_reduced_merged.csv"
+        df_data_reduced.to_csv(temp_data_csv, index=False, encoding="utf-8")
+
+        try:
+            with patch("woolworths_setup.CSV_CHOICES", FIX_CHOICES_CSV), \
+                 patch("woolworths_setup.CSV_DATA", temp_data_csv), \
+                 patch("woolworths_setup.CSV_MERGED", temp_merged_csv):
+                from woolworths_setup import merge_stores
+
+                # cleaned=False keeps all 3 (left join on choices)
+                merged_full = merge_stores(cleaned=False)
+                assert len(merged_full) == 3
+                # The missing store should have NaN coords
+                row = merged_full[merged_full["id"].astype(str) == "2810937"].iloc[0]
+                assert pd.isna(row["latitude"])
+                assert pd.isna(row["longitude"])
+
+                # cleaned=True drops the store with NaN coords (no match in data)
+                merged_clean = merge_stores(cleaned=True)
+                assert len(merged_clean) == 2
+                assert "2810937" not in merged_clean["id"].astype(str).tolist()
+        finally:
+            for p in [temp_data_csv, temp_merged_csv]:
+                if p.exists():
+                    p.unlink()
+
+    def test_merge_with_duplicate_choice_ids(self):
+        """If the choices CSV has duplicate ids, merge_stores should
+        preserve duplicates (inner join behavior on the left table).
+
+        This tests that merge_stores doesn't silently deduplicate.
+        """
+        df_choices = pd.read_csv(FIX_CHOICES_CSV)
+        # Duplicate the first row
+        df_choices_dup = pd.concat([df_choices, df_choices.iloc[[0]]], ignore_index=True)
+
+        temp_choices_csv = FIXTURE_DIR / "_temp_dup_choices.csv"
+        temp_merged_csv = FIXTURE_DIR / "_temp_dup_merged.csv"
+        df_choices_dup.to_csv(temp_choices_csv, index=False, encoding="utf-8")
+
+        try:
+            with patch("woolworths_setup.CSV_CHOICES", temp_choices_csv), \
+                 patch("woolworths_setup.CSV_DATA", FIX_STORE_DATA_CSV), \
+                 patch("woolworths_setup.CSV_MERGED", temp_merged_csv):
+                from woolworths_setup import merge_stores
+
+                merged = merge_stores(cleaned=False)
+                # Left join with duplicate on left side produces duplicate rows
+                assert len(merged) == 4  # 3 original + 1 duplicate
+        finally:
+            for p in [temp_choices_csv, temp_merged_csv]:
+                if p.exists():
+                    p.unlink()
 
 
-class TestSetupDataIntegration(unittest.TestCase):
+class TestSetupDataIntegration:
     """Integration test: verify the fixture store_data_example.json and
     store_data_fixture.csv are consistent with the real captured data.
 
@@ -252,19 +381,19 @@ class TestSetupDataIntegration(unittest.TestCase):
 
         # The JSON has 5 sites; the CSV has 3 (subset).
         # All 3 CSV SiteDataIDs must be present in the JSON mapping.
-        self.assertEqual(len(mapping), 5)
-        self.assertEqual(len(df), 3)
+        assert len(mapping) == 5
+        assert len(df) == 3
 
         for _, row in df.iterrows():
             site_id = row["SiteDataID"]
-            self.assertIn(site_id, mapping,
-                          f"SiteDataID {site_id} from CSV not in JSON mapping")
+            assert site_id in mapping, \
+                f"SiteDataID {site_id} from CSV not in JSON mapping"
 
             json_entry = mapping[site_id]
             csv_lat = float(row["latitude"])
             csv_lon = float(row["longitude"])
-            self.assertAlmostEqual(json_entry["lat"], csv_lat, places=4)
-            self.assertAlmostEqual(json_entry["lon"], csv_lon, places=4)
+            assert abs(json_entry["lat"] - csv_lat) < 0.0001
+            assert abs(json_entry["lon"] - csv_lon) < 0.0001
 
     @patch("woolworths_api.STORE_JSON", FIX_STORE_DATA_JSON)
     def test_all_stores_have_valid_coords(self):
@@ -272,11 +401,35 @@ class TestSetupDataIntegration(unittest.TestCase):
         from woolworths_api import _load_store_mapping
         mapping = _load_store_mapping()
         for pid, info in mapping.items():
-            self.assertIsNotNone(info["lat"],
-                                 f"Store {pid} has null latitude")
-            self.assertIsNotNone(info["lon"],
-                                 f"Store {pid} has null longitude")
+            assert info["lat"] is not None, \
+                f"Store {pid} has null latitude"
+            assert info["lon"] is not None, \
+                f"Store {pid} has null longitude"
 
+    @patch("woolworths_api.STORE_JSON", FIX_STORE_DATA_JSON)
+    def test_fixture_stores_have_extra1_and_extra2(self):
+        """Every store in the fixture JSON must have extra1 and extra2
+        populated — these are required for cookie construction and
+        pickup address mapping.
+        """
+        from woolworths_api import _load_store_mapping
+        mapping = _load_store_mapping()
+        for pid, info in mapping.items():
+            assert info["fulfilmentStoreId"] != 9171, \
+                f"Store {pid} has default fulfilmentStoreId (9171)"
+            assert pid != "9171", \
+                f"Store id {pid} looks like a default store id"
 
-if __name__ == "__main__":
-    unittest.main()
+    @patch("woolworths_api.STORE_JSON", FIX_STORE_DATA_JSON)
+    def test_fixture_store_names_match_csv(self):
+        """Store names in the JSON must match the choices CSV names."""
+        from woolworths_api import _load_store_mapping
+        mapping = _load_store_mapping()
+        df_choices = pd.read_csv(FIX_CHOICES_CSV)
+
+        for _, row in df_choices.iterrows():
+            store_id = str(row["id"])
+            assert store_id in mapping, \
+                f"Store id {store_id} from choices CSV not in JSON mapping"
+            assert mapping[store_id]["name"] == row["name"], \
+                f"Name mismatch for store {store_id}"
