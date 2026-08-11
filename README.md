@@ -125,9 +125,10 @@ opencode/
 │   │   └── tests/                               # Unit tests (legacy)
 │   └── llms/
 │       ├── llm_client.py                        # Mistral API client with rate limiting + JSON retries
-│       ├── llm_utils.py                         # Ingredient resolution (curated → LLM), parsing, quantity scaling
+│       ├── llm_utils.py                         # Ingredient resolution (curated → LLM), parsing, quantity scaling (incl. approx_unit fallback)
 │       ├── llm_validate.py                      # Post-run search-result validation (is_valid column)
-│       └── llm_interactive.py                   # Interactive CLI: ingredients → query → optimise → scale
+│       └── llm_interactive.py                   # Interactive CLI: ingredients → query → optimise → scale → validate
+├── LLM_Pipeline.md                             # LLM ingredient generation, validation, and quantity scaling pipeline
 ├── AGENTS.md                                   # Agent instructions and project reference
 ├── NewWorld_API.md                             # New World API documentation (cross-references PaknSave_API.md)
 ├── PaknSave_API.md                             # Pak'nSave API documentation (primary reference)
@@ -201,7 +202,7 @@ opencode/
 | `decision.md` | Key design decisions, cross-brand comparison table, CommonApi rationale |
 | `design.md` | Technical design (API, auth, pipeline) |
 | `logs.md` | Major errors and resolutions |
-| `LLM_Pipeline.md` | LLM ingredient generation, validation, and quantity scaling pipeline |
+| `LLM_Pipeline.md` | LLM ingredient generation, validation, and quantity scaling pipeline (incl. approx-unit fallback for non-standard recipe units) |
 
 ## Limitations
 
@@ -210,6 +211,7 @@ opencode/
 - **Store density**: Auckland CBD has 1 store within 5 km; East Auckland has 3
 - **Woolworths sessions**: Each store requires a fresh `requests.Session` (Set-Cookie overwrites injected cookies)
 - **Search relevance**: Generic terms may return unrelated products; be specific with ingredient names
+- **Approx-unit scaling**: Non-standard recipe units ("1 medium onion", "1 can") use approximate weights/volumes stored in `dishes.json` (e.g. 1 medium onion ≈ 150g). These provide proportional cost estimates but may not match exact product weights — indicated by `status="approximate"` in scaling output.
 - **Pak'nSave Nominatim rate limit**: 1 request/second
 - **Pak'nSave store_finder**: Only valid for Pak'nSave (New World has no `contentstackStores` in `__NEXT_DATA__`)
 - **New World 7 missing URLs**: Name mismatches between API and store-finder page (e.g., "Metro Auckland" vs "Metro Queen Street", macron differences)

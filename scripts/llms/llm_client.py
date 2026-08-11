@@ -69,6 +69,7 @@ Rules:
 - "portion" must be an integer (number of servings), not a string.
 - "quantity" must be a number (int or float).
 - "unit" must be a string (e.g. "g", "ml", "tbsp", "cloves", "unit").
+- For ingredients with non-standard units (e.g. "1 medium onion", "1 can", "1 head of broccoli", "2 medium carrots", "1 bunch"), also include "approx_quantity" (in g or ml) and "approx_unit" ("g" or "ml"). Omit these fields for ingredients with standard weight/volume units (g, kg, mg, ml, l, cl, cup, tbsp, tsp, cloves, etc.).
 - OMIT small or condiment ingredients like "water", "oil", "salt", "pepper" UNLESS the dish is centred around them (e.g. "deep fried chicken" keeps oil for frying, "pepper crab" keeps pepper).
 - Do not include notes or extra fields.
 """

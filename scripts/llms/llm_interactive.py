@@ -213,7 +213,10 @@ def step2_resolve(dish_name, portions, regenerate, model_alias):
             qty = ing.get("quantity", "")
             unit = ing.get("unit", "")
             term = ing.get("search_term", "")
-            print(f"    {i:2d}. {qty} {unit:6s}  [{term}]")
+            approx = ""
+            if ing.get("approx_quantity") and ing.get("approx_unit"):
+                approx = f" (~{ing['approx_quantity']} {ing['approx_unit']})"
+            print(f"    {i:2d}. {qty} {unit:6s}  [{term}]{approx}")
         else:
             print(f"    {i:2d}. {ing}")
 
@@ -268,7 +271,10 @@ def step3_review(dish_dict, args):
             if raw.isdigit() and 1 <= int(raw) <= len(ingredients):
                 idx = int(raw) - 1
                 ing = ingredients[idx]
-                print(f"  Current: {ing['quantity']} {ing['unit']} [{ing['search_term']}]")
+                approx_str = ""
+                if ing.get("approx_quantity") and ing.get("approx_unit"):
+                    approx_str = f" (~{ing['approx_quantity']} {ing['approx_unit']})"
+                print(f"  Current: {ing['quantity']} {ing['unit']} [{ing['search_term']}]{approx_str}")
                 new_qty = input(f"  New quantity [{ing['quantity']}]: ").strip()
                 new_unit = input(f"  New unit [{ing['unit']}]: ").strip()
                 new_term = input(f"  New search term [{ing['search_term']}]: ").strip()
@@ -307,7 +313,10 @@ def _print_ingredient_table(ingredients):
             qty = str(ing.get("quantity", ""))
             unit = ing.get("unit", "")
             term = ing.get("search_term", "")
-            print(f"  {i:>3d}  {qty:>8s} {unit:>6s}  {term}")
+            approx = ""
+            if ing.get("approx_quantity") and ing.get("approx_unit"):
+                approx = f" (~{ing['approx_quantity']} {ing['approx_unit']})"
+            print(f"  {i:>3d}  {qty:>8s} {unit:>6s}  {term}{approx}")
         else:
             print(f"  {i:>3d}  {ing}")
 
@@ -571,6 +580,8 @@ def step6_scaling(dish_dict, selected, store_ids=None, require_valid=False):
         enriched = dict(row)
         enriched["ingredient_quantity"] = llm_info.get("quantity", 0)
         enriched["ingredient_measurement"] = llm_info.get("unit", "")
+        enriched["ingredient_approx_quantity"] = llm_info.get("approx_quantity")
+        enriched["ingredient_approx_unit"] = llm_info.get("approx_unit")
 
         sr = parse_optimizer_columns(enriched)
         sr["store"] = row.get("store", "Unknown")
@@ -588,8 +599,9 @@ def step6_scaling(dish_dict, selected, store_ids=None, require_valid=False):
         print("  No matching rows found for this dish today.")
         return
 
-    # Pick the best per (search_term, store): prefer valid-cost candidates,
-    # then pick lowest pack_price (cheapest product, consistent with Step 5).
+    # Pick the best per (search_term, store): prefer candidates with valid cost,
+    # then pick lowest used_price (proportional cost for what the recipe needs).
+    # Tie-break: prefer units_match=True (exact unit match over approximation).
     # Exclude incompatible-unit products (used_price = None).
     pivoted = {}
     for term, stores_data in candidates.items():
@@ -597,7 +609,7 @@ def step6_scaling(dish_dict, selected, store_ids=None, require_valid=False):
         for store, sr_list in stores_data.items():
             valid = [sr for sr in sr_list if sr["used_price"] is not None]
             if valid:
-                best = min(valid, key=lambda s: s["pack_price"])
+                best = min(valid, key=lambda s: (s["used_price"], 0 if s.get("units_match", False) else 1))
             else:
                 best = min(sr_list, key=lambda s: (s["used_price"] is None, s["used_price"] if s["used_price"] is not None else float('inf')))
             pivoted[term][store] = best
@@ -622,14 +634,17 @@ def step6_scaling(dish_dict, selected, store_ids=None, require_valid=False):
 
     for term in all_terms:
         stores_data = pivoted.get(term, {})
-        # Find best store (lowest pack_price = cheapest product, consistent with Step 5)
+        # Find best store (lowest used_price = cheapest per-unit-of-recipe-amount)
+        # Tie-break: prefer units_match=True (exact unit match over approximation)
         best_store = None
-        min_cost = float('inf')
+        min_key = float('inf')
         for s in sorted_stores:
             if s in stores_data:
-                cost = stores_data[s]["pack_price"]
-                if cost < min_cost:
-                    min_cost = cost
+                data = stores_data[s]
+                cost = data["used_price"] if data["used_price"] is not None else float('inf')
+                tie_break = 0 if data.get("units_match", False) else 1
+                if (cost, tie_break) < (min_key, 0 if best_store is None else 1):
+                    min_key = cost
                     best_store = s
 
         row_str = f"{term[:ing_width]:{ing_width}s} "

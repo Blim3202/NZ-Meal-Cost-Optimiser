@@ -150,7 +150,7 @@ When units are in different physical categories (weight vs volume), a **1ml ≈ 
 
 ### Incompatible units
 
-If units are fundamentally incompatible (e.g., a "count" item vs a weight requirement like "500g"), the row is marked `status="incompatible_units"` with `used_price=None`.
+If units are fundamentally incompatible (e.g., a "count" item vs a weight requirement like "500g"), the row is marked `status="incompatible_units"` with `used_price=None`. However, if the LLM provided `approx_quantity` and `approx_unit` for that ingredient (e.g. "1 medium onion" → approx 150g), the function falls back to those values to compute a proportional cost with `status="approximate"`. This handles common recipe phrasing like "1 can", "1 medium", "2 fillets", "1 head" where the supermarket sells the item by weight.
 
 ### Cost math
 
@@ -175,7 +175,7 @@ If units are fundamentally incompatible (e.g., a "count" item vs a weight requir
 
 ### `data/dishes.json`
 
-21 hand-curated dishes, mapping dish name → `{"dish_name", "portion", "ingredients": [...]}`. Each ingredient has `quantity`, `unit`, and `search_term`.
+21 hand-curated dishes, mapping dish name → `{"dish_name", "portion", "ingredients": [...]}`. Each ingredient has `quantity`, `unit`, and `search_term`. Ingredients with non-standard units (e.g. "1 can", "1 medium", "2 fillets") also include optional `approx_quantity` and `approx_unit` (in g or ml) for use as a fallback when supermarket packs are sold by weight/volume.
 
 ### `data/full_results.csv`
 

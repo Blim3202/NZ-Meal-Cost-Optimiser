@@ -100,9 +100,9 @@ opencode/
 | `requirements.txt` | Pinned deps. Core: `cloudscraper`, `requests`, `pandas`, `numpy`, `beautifulsoup4`, `playwright`, `jupyterlab`. |
 | `LLM_Pipeline.md` | LLM ingredient generation, post-run validation, and quantity scaling pipeline (see `scripts/llms/`). |
 | `scripts/llms/llm_client.py` | Mistral API client: model aliases (small/medium/large), rate limiting, JSON parsing with retries. |
-| `scripts/llms/llm_utils.py` | Ingredient resolution (curated `dishes.json` → LLM → fallback), dish parsing/validation (`parse_and_validate`), quantity scaling (`parse_optimizer_columns`). |
+| `scripts/llms/llm_utils.py` | Ingredient resolution (curated `dishes.json` → LLM → fallback), dish parsing/validation (`parse_and_validate`), and quantity scaling (`parse_optimizer_columns` with `approx_quantity`/`approx_unit` fallback for non-standard units). |
 | `scripts/llms/llm_validate.py` | Post-run validator: batches rows through `ministral-3b-2512`, writes `is_valid` back to `data/full_results.csv`. Skips already-validated rows. |
-| `scripts/llms/llm_interactive.py` | Interactive CLI: Step 1 inputs → Step 2 resolve ingredients → Step 3 review → Step 4 query optimizers → Step 5 optimise → Step 6 scaling. |
+| `scripts/llms/llm_interactive.py` | Interactive CLI: Step 1 inputs → Step 2 resolve ingredients → Step 3 review → Step 4 query optimizers → Step 5 optimise → Step 6 scaling (enriches CSV rows with `ingredient_approx_*` fields). |
 
 ## Key Gotchas
 
@@ -132,7 +132,8 @@ opencode/
 - **Session seeding**: A single `GET /` with browser-like headers establishes cookies. No login needed for public endpoints.
 - **Playwright headless=False required**: If you do use Playwright, the site blocks headless Chromium.
 - Search returns first/most-relevant result per query, not cheapest (avoids pet food for "beef mince").
-- 21 dishes are hand-curated in `DISHES` (dict format with quantity/unit/search_term) loaded from `data/dishes.json` via `optimizer_utils.py`. LLM-backed dish generation available via `scripts/llms/llm_utils.py`.
+  - 21 dishes are hand-curated in `DISHES` (dict format with quantity/unit/search_term) loaded from `data/dishes.json` via `optimizer_utils.py`. LLM-backed dish generation available via `scripts/llms/llm_utils.py`.
+  - Ingredients with non-standard units (`can`, `medium`, `fillets`, `bag`, `head`, etc.) carry `approx_quantity`/`approx_unit` (in g or ml) for fallback scaling in `parse_optimizer_columns` when the pack is sold by weight/volume.
 - **`full_results.csv` is append-only**: New rows are added per run; duplicates detected via `pk_hash` (SHA-256 of `store_id|sku|date_created`). Avoid editing in Excel — blank rows corrupt the file.
 - **`-distance` flag**: `--distance 5` sets search radius in km (default 2).
 - **`is_valid` column**: `data/full_results.csv` includes an `is_valid` column (blank for new rows). The `llm_validate.py` script fills it in incrementally — it skips rows already marked True/False and only writes back to rows that are blank. Validation runs **after** optimization as a separate step; it is not integrated into the optimizer at runtime.

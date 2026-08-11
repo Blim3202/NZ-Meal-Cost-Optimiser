@@ -81,7 +81,13 @@ def _build_quantity_map(dish):
             qty = ing.get("quantity", "")
             unit = ing.get("unit", "")
             if term:
-                quantities[term] = f"{qty} {unit}".strip()
+                base = f"{qty} {unit}".strip()
+                approx_q = ing.get("approx_quantity")
+                approx_u = ing.get("approx_unit")
+                if approx_q and approx_u:
+                    approx = f"{approx_q} {approx_u}".strip()
+                    base = f"{base} (~{approx})" if base else f"~{approx}"
+                quantities[term] = base
     return quantities
 
 

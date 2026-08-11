@@ -30,7 +30,7 @@ import sys
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from dotenv import load_dotenv
 
@@ -62,13 +62,20 @@ class ParsedIngredient:
     quantity: float
     unit: str
     search_term: str
+    approx_quantity: Optional[float] = None
+    approx_unit: Optional[str] = None
 
     def to_dict(self) -> dict:
-        return {
+        d = {
             "quantity": self.quantity,
             "unit": self.unit,
             "search_term": self.search_term,
         }
+        if self.approx_quantity is not None:
+            d["approx_quantity"] = self.approx_quantity
+        if self.approx_unit is not None:
+            d["approx_unit"] = self.approx_unit
+        return d
 
 
 @dataclass
@@ -156,6 +163,8 @@ def parse_and_validate(raw_json: dict) -> ParsedDish:
             "quantity": None,
             "unit": "",
             "search_term": "",
+            "approx_quantity": None,
+            "approx_unit": None,
         }
 
         # quantity
@@ -181,6 +190,19 @@ def parse_and_validate(raw_json: dict) -> ParsedDish:
         normalized["search_term"] = term_raw.strip()
         if not normalized["search_term"]:
             print(f"  [WARN] Ingredient #{i}: empty search_term")
+
+        # approx_quantity (optional)
+        approx_qty_raw = ing.get("approx_quantity")
+        if approx_qty_raw is not None:
+            normalized["approx_quantity"] = _coerce_to_float(approx_qty_raw, "approx_quantity")
+
+        # approx_unit (optional)
+        approx_unit_raw = ing.get("approx_unit")
+        if approx_unit_raw is not None:
+            if not isinstance(approx_unit_raw, str):
+                print(f"  [WARN] Ingredient #{i}: 'approx_unit' must be a string, ignoring")
+            else:
+                normalized["approx_unit"] = approx_unit_raw.strip()
 
         normalized_ingredients.append(normalized)
 
@@ -243,9 +265,14 @@ def resolve_ingredients(dish: str, portions: int = 4, regenerate: bool = False,
         client = LLMClient(model_alias=model_alias)
         raw = client.generate_ingredients(dish, portion=portions)
         parsed = parse_and_validate(raw)
+        # Strip None approx fields so output matches curated format (keys only when present)
+        cleaned = []
+        for ing in parsed.ingredients:
+            c = {k: v for k, v in ing.items() if v is not None or k in ("quantity", "unit", "search_term")}
+            cleaned.append(c)
         return (
             {"dish_name": parsed.dish_name, "portion": parsed.portion,
-             "ingredients": parsed.ingredients},
+             "ingredients": cleaned},
             "LLM",
         )
     except (LLMGenerationError, LLMParseError) as e:
@@ -280,6 +307,7 @@ _VOLUME_UNITS_TO_ML = {
     "l": 1000.0,
     "cl": 10.0,
     "cup": 240.0,
+    "cups": 240.0,
     "tbsp": 15.0,        # US tablespoon ≈ 15ml
     "tsp": 5.0,          # teaspoon ≈ 5ml
 }
@@ -375,18 +403,21 @@ def parse_optimizer_columns(row: dict) -> dict:
         {
             "search_ingredient": str,
             "returned_ingredient": str,
-            "ingredient_quantity": number,          # LLM-generated quantity
-            "ingredient_measurement": str,          # LLM-generated unit
-            "per_unit_price": float,                # comparative price per unit, may be 0
-            "pack_quantity": number,                # quantity from the supermarket API result
-            "pack_unit": str,                       # measurement_unit from the supermarket API result
-            "scaling_ratio": float or None,         # LLM quantity / pack quantity (unit-normalized). None if genuinely incompatible
-            "used_price": float or None,            # proportional cost for the amount the user needs. None if incompatible units
-            "purchase_quantity": int,               # number of packs to buy (ceil if ratio > 1)
-            "purchase_price": float or None,        # total cost for the number of packs purchased. None if incompatible
-            "status": str,                          # "ok", "approximate", or "incompatible_units"
-            "unit_approximate": bool,               # True if 1ml≈1g approximation applied (volume vs weight cross-category)
-        }
+        "ingredient_quantity": number,          # LLM-generated quantity
+        "ingredient_measurement": str,          # LLM-generated unit
+        "ingredient_approx_quantity": number | None,  # LLM approx quantity (optional, for non-standard units)
+        "ingredient_approx_unit": str | None,   # LLM approx unit (optional)
+        "per_unit_price": float,                # comparative price per unit, may be 0
+        "pack_quantity": number,                # quantity from the supermarket API result
+        "pack_unit": str,                       # measurement_unit from the supermarket API result
+        "scaling_ratio": float or None,         # LLM quantity / pack quantity (unit-normalized). None if genuinely incompatible
+        "used_price": float or None,            # proportional cost for the amount the user needs. None if incompatible
+        "purchase_quantity": int,               # number of packs to buy (ceil if ratio > 1)
+        "purchase_price": float or None,        # total cost for the number of packs purchased. None if incompatible
+        "status": str,                          # "ok", "approximate", or "incompatible_units"
+        "unit_approximate": bool,               # True if 1ml≈1g approximation applied (volume vs weight cross-category)
+        "units_match": bool,                    # True if recipe and pack units are in the same base category (no approximation needed)
+    }
 
     Rules:
         - If scaling_ratio <= 1: used_price = pack_price * scaling_ratio
@@ -396,8 +427,15 @@ def parse_optimizer_columns(row: dict) -> dict:
           used_price = pack_price * scaling_ratio (proportional cost for what was actually used)
         - If units are incompatible across categories (weight vs volume, e.g. g vs ml): applies 1ml ≈ 1g approximation,
           scaling_ratio computed, unit_approximate=True, status="approximate"
-        - If units are genuinely incompatible (e.g. count vs weight: 1 unit vs 500g): scaling_ratio, used_price,
-          and purchase_price are set to None, status = "incompatible_units"
+        - If units are genuinely incompatible (e.g. count vs weight: 1 unit vs 500g):
+          falls back to ingredient_approx_quantity/ingredient_approx_unit if available
+          (e.g. "1 medium onion" ≈ 150g vs a 500g pack). If the approx unit is in a
+          compatible category with the pack unit, scaling_ratio is computed with
+          unit_approximate=True (or True if cross-category 1ml≈1g was applied),
+          status="approximate".
+          If no approx fallback is available, or the approx unit is also incompatible,
+          scaling_ratio, used_price, and purchase_price are set to None,
+          status = "incompatible_units".
     """
     # --- Extract CSV fields ---
     search_ingredient = row.get("search_ingredient", "")
@@ -416,6 +454,10 @@ def parse_optimizer_columns(row: dict) -> dict:
     ingredient_quantity = _safe_float(row.get("ingredient_quantity", row.get("quantity", 0)))
     ingredient_measurement = row.get("ingredient_measurement", row.get("measurement_unit", ""))
 
+    # Optional approx fields for non-standard units ("1 medium onion", "1 can", etc.)
+    ingredient_approx_quantity = _safe_float(row.get("ingredient_approx_quantity", 0)) if row.get("ingredient_approx_quantity") else None
+    ingredient_approx_unit = row.get("ingredient_approx_unit", "") if row.get("ingredient_approx_unit") else None
+
     # --- Compute scaling ratio with unit normalization ---
     # Convert both quantities to a common base to handle unit mismatches
     # (e.g., LLM says 1000g, pack says 1kg → ratio = 1.0)
@@ -430,6 +472,7 @@ def parse_optimizer_columns(row: dict) -> dict:
         or (pack_base_unit == "ml" and req_base_unit == "g")
     )
     unit_approximate = False
+    used_approx_fallback = False
 
     if req_base_unit == "" or pack_base_unit == "":
         # One or both sides have no recognizable unit — fall back to raw ratio
@@ -443,8 +486,24 @@ def parse_optimizer_columns(row: dict) -> dict:
         unit_approximate = True
     else:
         # Units are incompatible (e.g. count vs weight: 1 unit vs 500g)
-        # This product can't satisfy the recipe requirement — mark as N/A
-        scaling_ratio = None
+        # Try falling back to approx_quantity/approx_unit if the LLM provided them.
+        if ingredient_approx_quantity and ingredient_approx_unit:
+            approx_qty_base, approx_base_unit = _to_common_quantity(
+                ingredient_approx_quantity, ingredient_approx_unit
+            )
+            if (pack_base_unit == approx_base_unit
+                or (pack_base_unit == "g" and approx_base_unit == "ml")
+                or (pack_base_unit == "ml" and approx_base_unit == "g")):
+                # Approx values are in a compatible category (or cross-category) with the pack
+                scaling_ratio = approx_qty_base / pack_qty_base if pack_qty_base > 0 else 0.0
+                used_approx_fallback = True
+                if pack_base_unit != approx_base_unit:
+                    unit_approximate = True  # 1ml ≈ 1g cross-category approximation
+            else:
+                scaling_ratio = None
+        else:
+            # Genuinely incompatible — no approx fallback available
+            scaling_ratio = None
 
     # --- Compute purchase decisions ---
     if scaling_ratio is None:
@@ -457,18 +516,20 @@ def parse_optimizer_columns(row: dict) -> dict:
         used_price = pack_price * scaling_ratio
         purchase_quantity = 1
         purchase_price = pack_price
-        status = "approximate" if unit_approximate else "ok"
+        status = "approximate" if (unit_approximate or used_approx_fallback) else "ok"
     else:
         purchase_quantity = math.ceil(scaling_ratio)
         purchase_price = pack_price * purchase_quantity
         used_price = pack_price * scaling_ratio
-        status = "approximate" if unit_approximate else "ok"
+        status = "approximate" if (unit_approximate or used_approx_fallback) else "ok"
 
     return {
         "search_ingredient": search_ingredient,
         "returned_ingredient": returned_ingredient,
         "ingredient_quantity": ingredient_quantity,          # LLM-generated
         "ingredient_measurement": ingredient_measurement,       # LLM-generated
+        "ingredient_approx_quantity": ingredient_approx_quantity,  # LLM approx (optional)
+        "ingredient_approx_unit": ingredient_approx_unit,       # LLM approx (optional)
         "per_unit_price": per_unit_price,   # comparative price from supermarket (may be 0)
         "pack_quantity": pack_quantity,     # from CSV
         "pack_unit": pack_unit,             # from CSV
@@ -478,4 +539,5 @@ def parse_optimizer_columns(row: dict) -> dict:
         "purchase_price": None if purchase_price is None else round(purchase_price, 2),
         "status": status,
         "unit_approximate": unit_approximate,
+        "units_match": (not unit_approximate and not used_approx_fallback),
     }

@@ -732,4 +732,23 @@ refreshing after manual edits.
 
 **Resolution**: Documentation corrected. Edge API remains the default/authoritative source (148 stores). Mobile API (150 stores) is the legacy fallback with the most complete store set.
 
+---
+
+## 61. LLM Approx-Unit Fallback for Non-Standard Recipe Units
+
+**Date**: 2026-08-11
+
+**Symptom**: Ingredients with non-standard recipe units (`"1 can"`, `"1 medium onion"`, `"2 fillets"`) caused `parse_optimizer_columns` to return `status="incompatible_units"` with `used_price=None` whenever the supermarket pack was sold by weight/volume (e.g. `"500g"`), because `"can"`/`"medium"`/`"fillets"` normalize to unrecognized categories that don't match `"g"` or `"ml"`.
+
+**Resolution**: Added `approx_quantity`/`approx_unit` metadata to recipe ingredients. When the incompatible-units branch fires, `parse_optimizer_columns` now falls back to the approx values (e.g. `"1 medium onion"` → approx `150g`) to compute a proportional cost:
+
+1. **`llm_client.py`**: Updated `INGREDIENT_PROMPT` — instructs the LLM to include `approx_quantity` (in g or ml) and `approx_unit` for non-standard units ("1 can", "medium", "fillet", "bag", "head", etc.).
+2. **`llm_utils.py`**: `ParsedIngredient` dataclass and `parse_and_validate` now normalize and pass through optional `approx_quantity`/`approx_unit` fields. `parse_optimizer_columns` reads them from the enriched row and uses them as a fallback in the incompatible-units branch — converting to a common base and checking category compatibility (including 1ml≈1g cross-category). Status is set to `"approximate"` and `used_price` computed normally.
+3. **`llm_utils.py`**: Fixed `_VOLUME_UNITS_TO_ML` to include `"cups"` (plural) — previously only `"cup"` was recognized, causing "2 cups" to be incompatible.
+4. **`llm_interactive.py`**: Step 6 enrichment now copies `ingredient_approx_quantity`/`ingredient_approx_unit` from the dish dict onto each CSV row before calling `parse_optimizer_columns`.
+5. **`data/dishes.json`**: Populated approx values for all 21 dishes — every ingredient with a non-standard unit (can: 400g/400ml, medium onion: 150g, medium carrot: 60g, etc.) now carries approximate weight/volume metadata.
+6. **`check_unit_approximation.py`**: Added 5 test cases covering approx fallback (matching category, cross-category, no-approx → incompatible, wrong-category → still incompatible).
+
+**Key insight**: This is backward-compatible — ingredients without approx fields behave exactly as before (`status="incompatible_units"`, `used_price=None`). The approx fallback only activates when both the primary unit comparison fails AND approx fields are present.
+
 

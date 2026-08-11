@@ -16,16 +16,22 @@
       {
         "quantity": 1,
         "unit": "can",
+        "approx_quantity": 400,
+        "approx_unit": "g",
         "search_term": "canned tomatoes"
       },
       {
         "quantity": 1,
         "unit": "medium",
+        "approx_quantity": 150,
+        "approx_unit": "g",
         "search_term": "onion"
       },
       {
         "quantity": 2,
         "unit": "medium",
+        "approx_quantity": 120,
+        "approx_unit": "g",
         "search_term": "carrot"
       },
       {
@@ -47,11 +53,15 @@
       {
         "quantity": 2,
         "unit": "fillets",
+        "approx_quantity": 300,
+        "approx_unit": "g",
         "search_term": "chicken breast"
       },
       {
         "quantity": 1,
         "unit": "bag",
+        "approx_quantity": 500,
+        "approx_unit": "g",
         "search_term": "stir fry vegetables"
       },
       {
@@ -78,6 +88,8 @@
       {
         "quantity": 1,
         "unit": "bag",
+        "approx_quantity": 500,
+        "approx_unit": "g",
         "search_term": "stir fry vegetables"
       },
       {
@@ -104,16 +116,22 @@
       {
         "quantity": 4,
         "unit": "medium",
+        "approx_quantity": 600,
+        "approx_unit": "g",
         "search_term": "potato"
       },
       {
         "quantity": 3,
         "unit": "medium",
+        "approx_quantity": 180,
+        "approx_unit": "g",
         "search_term": "carrot"
       },
       {
         "quantity": 1,
         "unit": "head",
+        "approx_quantity": 300,
+        "approx_unit": "g",
         "search_term": "broccoli"
       },
       {
@@ -140,6 +158,8 @@
       {
         "quantity": 1,
         "unit": "can",
+        "approx_quantity": 400,
+        "approx_unit": "ml",
         "search_term": "coconut milk"
       },
       {
@@ -150,6 +170,8 @@
       {
         "quantity": 1,
         "unit": "medium",
+        "approx_quantity": 150,
+        "approx_unit": "g",
         "search_term": "onion"
       }
     ]
@@ -171,6 +193,8 @@
       {
         "quantity": 1,
         "unit": "can",
+        "approx_quantity": 400,
+        "approx_unit": "ml",
         "search_term": "coconut milk"
       },
       {
@@ -181,6 +205,8 @@
       {
         "quantity": 1,
         "unit": "medium",
+        "approx_quantity": 150,
+        "approx_unit": "g",
         "search_term": "onion"
       }
     ]
@@ -192,16 +218,22 @@
       {
         "quantity": 2,
         "unit": "fillets",
+        "approx_quantity": 300,
+        "approx_unit": "g",
         "search_term": "fish fillet"
       },
       {
         "quantity": 4,
         "unit": "medium",
+        "approx_quantity": 600,
+        "approx_unit": "g",
         "search_term": "potato"
       },
       {
         "quantity": 1,
         "unit": "bottle",
+        "approx_quantity": 750,
+        "approx_unit": "ml",
         "search_term": "oil"
       }
     ]
@@ -218,6 +250,8 @@
       {
         "quantity": 1,
         "unit": "bag",
+        "approx_quantity": 200,
+        "approx_unit": "g",
         "search_term": "tortilla chips"
       },
       {
@@ -228,6 +262,8 @@
       {
         "quantity": 1,
         "unit": "can",
+        "approx_quantity": 400,
+        "approx_unit": "g",
         "search_term": "beans"
       },
       {
@@ -249,6 +285,8 @@
       {
         "quantity": 1,
         "unit": "medium",
+        "approx_quantity": 150,
+        "approx_unit": "g",
         "search_term": "onion"
       },
       {
@@ -264,6 +302,8 @@
       {
         "quantity": 4,
         "unit": "slices",
+        "approx_quantity": 120,
+        "approx_unit": "g",
         "search_term": "bread"
       }
     ]
@@ -280,16 +320,22 @@
       {
         "quantity": 1,
         "unit": "pack",
+        "approx_quantity": 200,
+        "approx_unit": "g",
         "search_term": "taco shells"
       },
       {
         "quantity": 0.5,
         "unit": "head",
+        "approx_quantity": 300,
+        "approx_unit": "g",
         "search_term": "lettuce"
       },
       {
         "quantity": 2,
         "unit": "medium",
+        "approx_quantity": 240,
+        "approx_unit": "g",
         "search_term": "tomato"
       },
       {
@@ -311,11 +357,15 @@
       {
         "quantity": 4,
         "unit": "chops",
+        "approx_quantity": 400,
+        "approx_unit": "g",
         "search_term": "lamb chops"
       },
       {
         "quantity": 4,
         "unit": "medium",
+        "approx_quantity": 600,
+        "approx_unit": "g",
         "search_term": "potato"
       },
       {
@@ -337,6 +387,8 @@
       {
         "quantity": 1,
         "unit": "jar",
+        "approx_quantity": 350,
+        "approx_unit": "g",
         "search_term": "butter chicken sauce"
       },
       {
@@ -363,6 +415,8 @@
       {
         "quantity": 1,
         "unit": "pack",
+        "approx_quantity": 250,
+        "approx_unit": "g",
         "search_term": "lasagne sheets"
       },
       {
@@ -373,6 +427,8 @@
       {
         "quantity": 1,
         "unit": "can",
+        "approx_quantity": 400,
+        "approx_unit": "g",
         "search_term": "canned tomatoes"
       },
       {
@@ -404,11 +460,15 @@
       {
         "quantity": 4,
         "unit": "medium",
+        "approx_quantity": 600,
+        "approx_unit": "g",
         "search_term": "potato"
       },
       {
         "quantity": 2,
         "unit": "medium",
+        "approx_quantity": 120,
+        "approx_unit": "g",
         "search_term": "carrot"
       },
       {
@@ -430,6 +490,8 @@
       {
         "quantity": 1,
         "unit": "base",
+        "approx_quantity": 250,
+        "approx_unit": "g",
         "search_term": "pizza base"
       },
       {
@@ -445,6 +507,8 @@
       {
         "quantity": 1,
         "unit": "pack",
+        "approx_quantity": 100,
+        "approx_unit": "g",
         "search_term": "pepperoni"
       }
     ]
@@ -456,11 +520,15 @@
       {
         "quantity": 1,
         "unit": "bag",
+        "approx_quantity": 500,
+        "approx_unit": "g",
         "search_term": "stir fry vegetables"
       },
       {
         "quantity": 1,
         "unit": "block",
+        "approx_quantity": 300,
+        "approx_unit": "g",
         "search_term": "tofu"
       },
       {
@@ -487,16 +555,22 @@
       {
         "quantity": 6,
         "unit": "eggs",
+        "approx_quantity": 300,
+        "approx_unit": "g",
         "search_term": "eggs"
       },
       {
         "quantity": 2,
         "unit": "medium",
+        "approx_quantity": 300,
+        "approx_unit": "g",
         "search_term": "potato"
       },
       {
         "quantity": 1,
         "unit": "medium",
+        "approx_quantity": 150,
+        "approx_unit": "g",
         "search_term": "onion"
       },
       {
@@ -523,6 +597,8 @@
       {
         "quantity": 1,
         "unit": "egg",
+        "approx_quantity": 50,
+        "approx_unit": "g",
         "search_term": "eggs"
       },
       {
@@ -549,21 +625,29 @@
       {
         "quantity": 2,
         "unit": "fillets",
+        "approx_quantity": 300,
+        "approx_unit": "g",
         "search_term": "chicken breast"
       },
       {
         "quantity": 2,
         "unit": "medium",
+        "approx_quantity": 120,
+        "approx_unit": "g",
         "search_term": "carrot"
       },
       {
         "quantity": 1,
         "unit": "medium",
+        "approx_quantity": 150,
+        "approx_unit": "g",
         "search_term": "onion"
       },
       {
         "quantity": 2,
         "unit": "stalks",
+        "approx_quantity": 80,
+        "approx_unit": "g",
         "search_term": "celery"
       },
       {
@@ -590,6 +674,8 @@
       {
         "quantity": 1,
         "unit": "can",
+        "approx_quantity": 400,
+        "approx_unit": "g",
         "search_term": "canned tomatoes"
       },
       {
@@ -621,6 +707,8 @@
       {
         "quantity": 2,
         "unit": "fillets",
+        "approx_quantity": 300,
+        "approx_unit": "g",
         "search_term": "chicken breast"
       },
       {
@@ -631,12 +719,16 @@
       {
         "quantity": 2,
         "unit": "eggs",
+        "approx_quantity": 100,
+        "approx_unit": "g",
         "search_term": "eggs"
       },
       {
         "quantity": 1,
-        "unit": "cup",
-        "search_term": "bread"
+        "unit": "pack",
+        "approx_quantity": 100,
+        "approx_unit": "g",
+        "search_term": "bread crumbs"
       },
       {
         "quantity": 1.5,
