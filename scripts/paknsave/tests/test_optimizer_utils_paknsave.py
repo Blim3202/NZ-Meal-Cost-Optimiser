@@ -147,9 +147,9 @@ class TestDishResolution:
         assert len(qty_map) == 5
         # Verify specific quantity strings from the fixture
         assert qty_map["lamb roast"] == "1.2 kg"
-        assert qty_map["potato"] == "4 medium"
-        assert qty_map["carrot"] == "3 medium"
-        assert qty_map["broccoli"] == "1 head"
+        assert qty_map["potato"] == "4 medium (~600 g)"
+        assert qty_map["carrot"] == "3 medium (~180 g)"
+        assert qty_map["broccoli"] == "1 head (~300 g)"
         assert qty_map["stock"] == "2 cups"
 
     def test_resolve_dish_dict_from_registry(self):
