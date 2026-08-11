@@ -27,6 +27,7 @@ Reference: Woolworths_API.md sections 3, 4, 5.2, 8.
 
 import argparse
 import json
+import time
 import requests
 import sys
 from pathlib import Path
@@ -137,6 +138,8 @@ def main():
     print(f"Store: {STORE_NAME} (pickupAddressId={PICKUP_ADDRESS_ID})")
     print()
 
+    start_time = time.time()
+
     # Create session and set store context
     session = create_session()
     set_store_context(session, PICKUP_ADDRESS_ID)
@@ -147,6 +150,7 @@ def main():
     print("=" * 80)
 
     items, total = search_products(session, query, size=10)
+    elapsed = time.time() - start_time
     print(f"Total results: {total}")
     print()
 
@@ -175,6 +179,9 @@ def main():
     print("=" * 80)
     print("RAW JSON for first product:")
     print(json.dumps(items[0], indent=2))
+    print()
+
+    print(f"[{len(items)} search products for '{query}' at {STORE_NAME} returned in {elapsed:.2f} seconds]")
 
 
 if __name__ == "__main__":

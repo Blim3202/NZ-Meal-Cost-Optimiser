@@ -1,0 +1,620 @@
+{
+  "tobaccoFiltered": false,
+  "totalHits": 97,
+  "hitsPerPage": 20,
+  "numberOfPages": 5,
+  "page": 0,
+  "products": [
+    {
+      "productId": "5201479-EA-000",
+      "brand": "Pams Value",
+      "name": "Standard Milk",
+      "units": "2l",
+      "categories": [
+        "Milk",
+        "Fresh Milk"
+      ],
+      "price": 483,
+      "unitPrice": "$2.42/1L",
+      "productImageUrls": {
+        "100": "https://a.fsimg.co.nz/prod/product/retail/fan/image/100x100/5201479.png",
+        "200": "https://a.fsimg.co.nz/prod/product/retail/fan/image/200x200/5201479.png",
+        "400": "https://a.fsimg.co.nz/prod/product/retail/fan/image/400x400/5201479.png",
+        "500": "https://a.fsimg.co.nz/prod/product/retail/fan/image/500x500/5201479.png"
+      },
+      "availableInStore": true,
+      "availableInOnline": true,
+      "tobaccoFlag": false,
+      "liquorFlag": false,
+      "saleType": "UNITS",
+      "algoliaAnalytics": {
+        "searchQueryID": "447c3ca07d2ba52aa27874141ba81f5c",
+        "searchPosition": 1
+      },
+      "boughtBefore": false
+    },
+    {
+      "productId": "5201490-EA-000",
+      "brand": "Pams Value",
+      "name": "Standard Milk",
+      "units": "3l",
+      "categories": [
+        "Milk",
+        "Fresh Milk"
+      ],
+      "price": 720,
+      "unitPrice": "$2.40/1L",
+      "productImageUrls": {
+        "100": "https://a.fsimg.co.nz/prod/product/retail/fan/image/100x100/5201490.png",
+        "200": "https://a.fsimg.co.nz/prod/product/retail/fan/image/200x200/5201490.png",
+        "400": "https://a.fsimg.co.nz/prod/product/retail/fan/image/400x400/5201490.png",
+        "500": "https://a.fsimg.co.nz/prod/product/retail/fan/image/500x500/5201490.png"
+      },
+      "availableInStore": true,
+      "availableInOnline": true,
+      "tobaccoFlag": false,
+      "liquorFlag": false,
+      "saleType": "UNITS",
+      "algoliaAnalytics": {
+        "searchQueryID": "447c3ca07d2ba52aa27874141ba81f5c",
+        "searchPosition": 2
+      },
+      "boughtBefore": false
+    },
+    {
+      "productId": "5201487-EA-000",
+      "brand": "Pams Value",
+      "name": "Lite Milk",
+      "units": "2l",
+      "categories": [
+        "Milk",
+        "Fresh Milk"
+      ],
+      "price": 483,
+      "unitPrice": "$2.42/1L",
+      "productImageUrls": {
+        "100": "https://a.fsimg.co.nz/prod/product/retail/fan/image/100x100/5201487.png",
+        "200": "https://a.fsimg.co.nz/prod/product/retail/fan/image/200x200/5201487.png",
+        "400": "https://a.fsimg.co.nz/prod/product/retail/fan/image/400x400/5201487.png",
+        "500": "https://a.fsimg.co.nz/prod/product/retail/fan/image/500x500/5201487.png"
+      },
+      "availableInStore": true,
+      "availableInOnline": true,
+      "tobaccoFlag": false,
+      "liquorFlag": false,
+      "saleType": "UNITS",
+      "algoliaAnalytics": {
+        "searchQueryID": "447c3ca07d2ba52aa27874141ba81f5c",
+        "searchPosition": 3
+      },
+      "boughtBefore": false
+    },
+    {
+      "productId": "5000527-EA-000",
+      "brand": "Anchor",
+      "name": "Blue Milk",
+      "units": "2l",
+      "categories": [
+        "Milk",
+        "Fresh Milk"
+      ],
+      "price": 604,
+      "unitPrice": "$3.02/1L",
+      "productImageUrls": {
+        "100": "https://a.fsimg.co.nz/prod/product/retail/fan/image/100x100/5000527.png",
+        "200": "https://a.fsimg.co.nz/prod/product/retail/fan/image/200x200/5000527.png",
+        "400": "https://a.fsimg.co.nz/prod/product/retail/fan/image/400x400/5000527.png",
+        "500": "https://a.fsimg.co.nz/prod/product/retail/fan/image/500x500/5000527.png"
+      },
+      "availableInStore": true,
+      "availableInOnline": true,
+      "tobaccoFlag": false,
+      "liquorFlag": false,
+      "saleType": "UNITS",
+      "algoliaAnalytics": {
+        "searchQueryID": "447c3ca07d2ba52aa27874141ba81f5c",
+        "searchPosition": 4
+      },
+      "boughtBefore": false
+    },
+    {
+      "productId": "5201800-EA-000",
+      "brand": "Pams Value",
+      "name": "Standard Milk",
+      "units": "1l",
+      "categories": [
+        "Milk",
+        "Fresh Milk"
+      ],
+      "price": 317,
+      "unitPrice": "$3.17/1L",
+      "productImageUrls": {
+        "100": "https://a.fsimg.co.nz/prod/product/retail/fan/image/100x100/5201800.png",
+        "200": "https://a.fsimg.co.nz/prod/product/retail/fan/image/200x200/5201800.png",
+        "400": "https://a.fsimg.co.nz/prod/product/retail/fan/image/400x400/5201800.png",
+        "500": "https://a.fsimg.co.nz/prod/product/retail/fan/image/500x500/5201800.png"
+      },
+      "availableInStore": true,
+      "availableInOnline": true,
+      "tobaccoFlag": false,
+      "liquorFlag": false,
+      "saleType": "UNITS",
+      "algoliaAnalytics": {
+        "searchQueryID": "447c3ca07d2ba52aa27874141ba81f5c",
+        "searchPosition": 5
+      },
+      "boughtBefore": false
+    },
+    {
+      "productId": "5201489-EA-000",
+      "brand": "Pams Value",
+      "name": "Lite Milk",
+      "units": "3l",
+      "categories": [
+        "Milk",
+        "Fresh Milk"
+      ],
+      "price": 720,
+      "unitPrice": "$2.40/1L",
+      "productImageUrls": {
+        "100": "https://a.fsimg.co.nz/prod/product/retail/fan/image/100x100/5201489.png",
+        "200": "https://a.fsimg.co.nz/prod/product/retail/fan/image/200x200/5201489.png",
+        "400": "https://a.fsimg.co.nz/prod/product/retail/fan/image/400x400/5201489.png",
+        "500": "https://a.fsimg.co.nz/prod/product/retail/fan/image/500x500/5201489.png"
+      },
+      "availableInStore": true,
+      "availableInOnline": true,
+      "tobaccoFlag": false,
+      "liquorFlag": false,
+      "saleType": "UNITS",
+      "algoliaAnalytics": {
+        "searchQueryID": "447c3ca07d2ba52aa27874141ba81f5c",
+        "searchPosition": 6
+      },
+      "boughtBefore": false
+    },
+    {
+      "productId": "5000518-EA-000",
+      "brand": "Anchor",
+      "name": "Blue Milk",
+      "units": "1l",
+      "categories": [
+        "Milk",
+        "Fresh Milk"
+      ],
+      "price": 374,
+      "unitPrice": "$3.74/1L",
+      "productImageUrls": {
+        "100": "https://a.fsimg.co.nz/prod/product/retail/fan/image/100x100/5000518.png",
+        "200": "https://a.fsimg.co.nz/prod/product/retail/fan/image/200x200/5000518.png",
+        "400": "https://a.fsimg.co.nz/prod/product/retail/fan/image/400x400/5000518.png",
+        "500": "https://a.fsimg.co.nz/prod/product/retail/fan/image/500x500/5000518.png"
+      },
+      "availableInStore": true,
+      "availableInOnline": true,
+      "tobaccoFlag": false,
+      "liquorFlag": false,
+      "saleType": "UNITS",
+      "algoliaAnalytics": {
+        "searchQueryID": "447c3ca07d2ba52aa27874141ba81f5c",
+        "searchPosition": 7
+      },
+      "boughtBefore": false
+    },
+    {
+      "productId": "5201801-EA-000",
+      "brand": "Pams Value",
+      "name": "Lite Milk",
+      "units": "1l",
+      "categories": [
+        "Milk",
+        "Fresh Milk"
+      ],
+      "price": 317,
+      "unitPrice": "$3.17/1L",
+      "productImageUrls": {
+        "100": "https://a.fsimg.co.nz/prod/product/retail/fan/image/100x100/5201801.png",
+        "200": "https://a.fsimg.co.nz/prod/product/retail/fan/image/200x200/5201801.png",
+        "400": "https://a.fsimg.co.nz/prod/product/retail/fan/image/400x400/5201801.png",
+        "500": "https://a.fsimg.co.nz/prod/product/retail/fan/image/500x500/5201801.png"
+      },
+      "availableInStore": true,
+      "availableInOnline": true,
+      "tobaccoFlag": false,
+      "liquorFlag": false,
+      "saleType": "UNITS",
+      "algoliaAnalytics": {
+        "searchQueryID": "447c3ca07d2ba52aa27874141ba81f5c",
+        "searchPosition": 8
+      },
+      "boughtBefore": false
+    },
+    {
+      "productId": "5016750-EA-000",
+      "brand": "Anchor",
+      "name": "Blue Milk",
+      "units": "3l",
+      "categories": [
+        "Milk",
+        "Fresh Milk"
+      ],
+      "price": 893,
+      "unitPrice": "$2.98/1L",
+      "productImageUrls": {
+        "100": "https://a.fsimg.co.nz/prod/product/retail/fan/image/100x100/5016750.png",
+        "200": "https://a.fsimg.co.nz/prod/product/retail/fan/image/200x200/5016750.png",
+        "400": "https://a.fsimg.co.nz/prod/product/retail/fan/image/400x400/5016750.png",
+        "500": "https://a.fsimg.co.nz/prod/product/retail/fan/image/500x500/5016750.png"
+      },
+      "availableInStore": true,
+      "availableInOnline": true,
+      "tobaccoFlag": false,
+      "liquorFlag": false,
+      "saleType": "UNITS",
+      "algoliaAnalytics": {
+        "searchQueryID": "447c3ca07d2ba52aa27874141ba81f5c",
+        "searchPosition": 9
+      },
+      "boughtBefore": false
+    },
+    {
+      "productId": "5000523-EA-000",
+      "brand": "Anchor",
+      "name": "Lite Milk",
+      "units": "2l",
+      "categories": [
+        "Milk",
+        "Fresh Milk"
+      ],
+      "price": 604,
+      "unitPrice": "$3.02/1L",
+      "productImageUrls": {
+        "100": "https://a.fsimg.co.nz/prod/product/retail/fan/image/100x100/5000523.png",
+        "200": "https://a.fsimg.co.nz/prod/product/retail/fan/image/200x200/5000523.png",
+        "400": "https://a.fsimg.co.nz/prod/product/retail/fan/image/400x400/5000523.png",
+        "500": "https://a.fsimg.co.nz/prod/product/retail/fan/image/500x500/5000523.png"
+      },
+      "availableInStore": true,
+      "availableInOnline": true,
+      "tobaccoFlag": false,
+      "liquorFlag": false,
+      "saleType": "UNITS",
+      "algoliaAnalytics": {
+        "searchQueryID": "447c3ca07d2ba52aa27874141ba81f5c",
+        "searchPosition": 10
+      },
+      "boughtBefore": false
+    },
+    {
+      "productId": "5004752-EA-000",
+      "brand": "Pams",
+      "name": "Standard UHT Milk",
+      "units": "1l",
+      "categories": [
+        "Milk",
+        "UHT Milk & Milk Powder"
+      ],
+      "price": 239,
+      "unitPrice": "$2.39/1L",
+      "productImageUrls": {
+        "100": "https://a.fsimg.co.nz/prod/product/retail/fan/image/100x100/5004752.png",
+        "200": "https://a.fsimg.co.nz/prod/product/retail/fan/image/200x200/5004752.png",
+        "400": "https://a.fsimg.co.nz/prod/product/retail/fan/image/400x400/5004752.png",
+        "500": "https://a.fsimg.co.nz/prod/product/retail/fan/image/500x500/5004752.png"
+      },
+      "availableInStore": true,
+      "availableInOnline": true,
+      "tobaccoFlag": false,
+      "liquorFlag": false,
+      "saleType": "UNITS",
+      "algoliaAnalytics": {
+        "searchQueryID": "447c3ca07d2ba52aa27874141ba81f5c",
+        "searchPosition": 11
+      },
+      "boughtBefore": false
+    },
+    {
+      "productId": "5201486-EA-000",
+      "brand": "Pams Value",
+      "name": "Trim Milk",
+      "units": "2l",
+      "categories": [
+        "Milk",
+        "Fresh Milk"
+      ],
+      "price": 483,
+      "unitPrice": "$2.42/1L",
+      "productImageUrls": {
+        "100": "https://a.fsimg.co.nz/prod/product/retail/fan/image/100x100/5201486.png",
+        "200": "https://a.fsimg.co.nz/prod/product/retail/fan/image/200x200/5201486.png",
+        "400": "https://a.fsimg.co.nz/prod/product/retail/fan/image/400x400/5201486.png",
+        "500": "https://a.fsimg.co.nz/prod/product/retail/fan/image/500x500/5201486.png"
+      },
+      "availableInStore": true,
+      "availableInOnline": true,
+      "tobaccoFlag": false,
+      "liquorFlag": false,
+      "saleType": "UNITS",
+      "algoliaAnalytics": {
+        "searchQueryID": "447c3ca07d2ba52aa27874141ba81f5c",
+        "searchPosition": 12
+      },
+      "boughtBefore": false
+    },
+    {
+      "productId": "5025424-EA-000",
+      "brand": "Anchor",
+      "name": "Calci + Trim Milk",
+      "units": "1l",
+      "categories": [
+        "Milk",
+        "Fresh Milk"
+      ],
+      "price": 389,
+      "unitPrice": "$3.89/1L",
+      "productImageUrls": {
+        "100": "https://a.fsimg.co.nz/prod/product/retail/fan/image/100x100/5025424.png",
+        "200": "https://a.fsimg.co.nz/prod/product/retail/fan/image/200x200/5025424.png",
+        "400": "https://a.fsimg.co.nz/prod/product/retail/fan/image/400x400/5025424.png",
+        "500": "https://a.fsimg.co.nz/prod/product/retail/fan/image/500x500/5025424.png"
+      },
+      "availableInStore": true,
+      "availableInOnline": true,
+      "tobaccoFlag": false,
+      "liquorFlag": false,
+      "saleType": "UNITS",
+      "algoliaAnalytics": {
+        "searchQueryID": "447c3ca07d2ba52aa27874141ba81f5c",
+        "searchPosition": 13
+      },
+      "boughtBefore": false
+    },
+    {
+      "productId": "5000522-EA-000",
+      "brand": "Anchor",
+      "name": "Lite Milk",
+      "units": "1l",
+      "categories": [
+        "Milk",
+        "Fresh Milk"
+      ],
+      "price": 374,
+      "unitPrice": "$3.74/1L",
+      "productImageUrls": {
+        "100": "https://a.fsimg.co.nz/prod/product/retail/fan/image/100x100/5000522.png",
+        "200": "https://a.fsimg.co.nz/prod/product/retail/fan/image/200x200/5000522.png",
+        "400": "https://a.fsimg.co.nz/prod/product/retail/fan/image/400x400/5000522.png",
+        "500": "https://a.fsimg.co.nz/prod/product/retail/fan/image/500x500/5000522.png"
+      },
+      "availableInStore": true,
+      "availableInOnline": true,
+      "tobaccoFlag": false,
+      "liquorFlag": false,
+      "saleType": "UNITS",
+      "algoliaAnalytics": {
+        "searchQueryID": "447c3ca07d2ba52aa27874141ba81f5c",
+        "searchPosition": 14
+      },
+      "boughtBefore": false
+    },
+    {
+      "productId": "5000519-EA-000",
+      "brand": "Anchor",
+      "name": "Calci + Trim Milk",
+      "units": "2l",
+      "categories": [
+        "Milk",
+        "Fresh Milk"
+      ],
+      "price": 711,
+      "unitPrice": "$3.56/1L",
+      "productImageUrls": {
+        "100": "https://a.fsimg.co.nz/prod/product/retail/fan/image/100x100/5000519.png",
+        "200": "https://a.fsimg.co.nz/prod/product/retail/fan/image/200x200/5000519.png",
+        "400": "https://a.fsimg.co.nz/prod/product/retail/fan/image/400x400/5000519.png",
+        "500": "https://a.fsimg.co.nz/prod/product/retail/fan/image/500x500/5000519.png"
+      },
+      "availableInStore": true,
+      "availableInOnline": true,
+      "tobaccoFlag": false,
+      "liquorFlag": false,
+      "saleType": "UNITS",
+      "algoliaAnalytics": {
+        "searchQueryID": "447c3ca07d2ba52aa27874141ba81f5c",
+        "searchPosition": 15
+      },
+      "boughtBefore": false
+    },
+    {
+      "productId": "5090710-EA-000",
+      "brand": "Anchor",
+      "name": "Blue Milk",
+      "units": "300ml",
+      "categories": [
+        "Milk",
+        "Fresh Milk"
+      ],
+      "price": 185,
+      "unitPrice": "$6.17/1L",
+      "productImageUrls": {
+        "100": "https://a.fsimg.co.nz/prod/product/retail/fan/image/100x100/5090710.png",
+        "200": "https://a.fsimg.co.nz/prod/product/retail/fan/image/200x200/5090710.png",
+        "400": "https://a.fsimg.co.nz/prod/product/retail/fan/image/400x400/5090710.png",
+        "500": "https://a.fsimg.co.nz/prod/product/retail/fan/image/500x500/5090710.png"
+      },
+      "availableInStore": true,
+      "availableInOnline": true,
+      "tobaccoFlag": false,
+      "liquorFlag": false,
+      "saleType": "UNITS",
+      "algoliaAnalytics": {
+        "searchQueryID": "447c3ca07d2ba52aa27874141ba81f5c",
+        "searchPosition": 16
+      },
+      "boughtBefore": false
+    },
+    {
+      "productId": "5337881-EA-000",
+      "brand": "Anchor",
+      "name": "Zero Lacto Blue Milk",
+      "units": "2l",
+      "categories": [
+        "Milk",
+        "Fresh Milk"
+      ],
+      "price": 840,
+      "unitPrice": "$4.20/1L",
+      "productImageUrls": {
+        "100": "https://a.fsimg.co.nz/prod/product/retail/fan/image/100x100/5337881.png",
+        "200": "https://a.fsimg.co.nz/prod/product/retail/fan/image/200x200/5337881.png",
+        "400": "https://a.fsimg.co.nz/prod/product/retail/fan/image/400x400/5337881.png",
+        "500": "https://a.fsimg.co.nz/prod/product/retail/fan/image/500x500/5337881.png"
+      },
+      "availableInStore": true,
+      "availableInOnline": true,
+      "tobaccoFlag": false,
+      "liquorFlag": false,
+      "saleType": "UNITS",
+      "algoliaAnalytics": {
+        "searchQueryID": "447c3ca07d2ba52aa27874141ba81f5c",
+        "searchPosition": 17
+      },
+      "boughtBefore": false
+    },
+    {
+      "productId": "5007415-EA-000",
+      "brand": "Anchor",
+      "name": "Zero Lacto Blue Milk",
+      "units": "1l",
+      "categories": [
+        "Milk",
+        "Fresh Milk"
+      ],
+      "price": 528,
+      "unitPrice": "$5.28/1L",
+      "productImageUrls": {
+        "100": "https://a.fsimg.co.nz/prod/product/retail/fan/image/100x100/5007415.png",
+        "200": "https://a.fsimg.co.nz/prod/product/retail/fan/image/200x200/5007415.png",
+        "400": "https://a.fsimg.co.nz/prod/product/retail/fan/image/400x400/5007415.png",
+        "500": "https://a.fsimg.co.nz/prod/product/retail/fan/image/500x500/5007415.png"
+      },
+      "availableInStore": true,
+      "availableInOnline": true,
+      "tobaccoFlag": false,
+      "liquorFlag": false,
+      "saleType": "UNITS",
+      "algoliaAnalytics": {
+        "searchQueryID": "447c3ca07d2ba52aa27874141ba81f5c",
+        "searchPosition": 18
+      },
+      "boughtBefore": false
+    },
+    {
+      "productId": "5266784-EA-000",
+      "brand": "Simply Milk",
+      "name": "Standard Milk",
+      "units": "2l",
+      "categories": [
+        "Milk",
+        "Fresh Milk"
+      ],
+      "price": 539,
+      "unitPrice": "$2.70/1L",
+      "productImageUrls": {
+        "100": "https://a.fsimg.co.nz/prod/product/retail/fan/image/100x100/5266784.png",
+        "200": "https://a.fsimg.co.nz/prod/product/retail/fan/image/200x200/5266784.png",
+        "400": "https://a.fsimg.co.nz/prod/product/retail/fan/image/400x400/5266784.png",
+        "500": "https://a.fsimg.co.nz/prod/product/retail/fan/image/500x500/5266784.png"
+      },
+      "availableInStore": true,
+      "availableInOnline": true,
+      "tobaccoFlag": false,
+      "liquorFlag": false,
+      "saleType": "UNITS",
+      "algoliaAnalytics": {
+        "searchQueryID": "447c3ca07d2ba52aa27874141ba81f5c",
+        "searchPosition": 19
+      },
+      "boughtBefore": false
+    },
+    {
+      "productId": "5027208-EA-000",
+      "brand": "Anchor",
+      "name": "Protein+ Lite Milk",
+      "units": "2l",
+      "categories": [
+        "Milk",
+        "Fresh Milk"
+      ],
+      "price": 711,
+      "unitPrice": "$3.56/1L",
+      "productImageUrls": {
+        "100": "https://a.fsimg.co.nz/prod/product/retail/fan/image/100x100/5027208.png",
+        "200": "https://a.fsimg.co.nz/prod/product/retail/fan/image/200x200/5027208.png",
+        "400": "https://a.fsimg.co.nz/prod/product/retail/fan/image/400x400/5027208.png",
+        "500": "https://a.fsimg.co.nz/prod/product/retail/fan/image/500x500/5027208.png"
+      },
+      "availableInStore": true,
+      "availableInOnline": true,
+      "tobaccoFlag": false,
+      "liquorFlag": false,
+      "saleType": "UNITS",
+      "algoliaAnalytics": {
+        "searchQueryID": "447c3ca07d2ba52aa27874141ba81f5c",
+        "searchPosition": 20
+      },
+      "boughtBefore": false
+    }
+  ],
+  "filters": {
+    "Deals": {
+      "Specials": 10,
+      "Everyday Low Price": 2
+    },
+    "Dietary & lifestyle": {
+      "Dairy Free": 2,
+      "Gluten Free": 10,
+      "Halal": 2,
+      "Low Fat": 20,
+      "Non-GMO": 68,
+      "Organic": 7,
+      "Vegan": 2,
+      "Vegetarian": 4
+    },
+    "Categories": {
+      "Dairy Free Milk": 5,
+      "Flavoured Milk": 25,
+      "Flavoured Milk & Iced Coffee": 36,
+      "Fresh Milk": 42,
+      "Iced Coffee & Cold Brew": 8,
+      "Oat & Rice Milk": 1,
+      "Protein Bars & Snacks": 1,
+      "UHT Milk & Milk Powder": 14
+    },
+    "Brands": {
+      "Anchor": 24,
+      "Australia's Own Organic": 1,
+      "Bickford's": 1,
+      "Boss": 5,
+      "Jersey Girl Organics": 1,
+      "Kirin": 1,
+      "Lewis Road Creamery": 20,
+      "Liddells": 2,
+      "Little River Estate": 1,
+      "Living Planet": 1,
+      "Mammoth Supply Co.": 1,
+      "Meadow Fresh": 6,
+      "Nestle": 1,
+      "Nippy's": 3,
+      "Otis Oat Milk": 1,
+      "Pams": 6,
+      "Pams Value": 7,
+      "Primo": 6,
+      "Puhoi Valley": 2,
+      "Sanitarium So Good": 1,
+      "Simply Milk": 4,
+      "Symbiotics": 1,
+      "The Coco Company": 1
+    }
+  }
+}

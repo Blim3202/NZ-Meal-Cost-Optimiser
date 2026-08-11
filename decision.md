@@ -238,9 +238,9 @@ The New World store-finder page (`https://www.newworld.co.nz/store-finder`) `__N
 
 7 stores have name mismatches between the mobile API and the store-finder page (e.g., "Metro Auckland" vs "Metro Queen Street", macron differences for Tūrangi/Wanaka). Fuzzy string matching could resolve these but is not needed — URLs are only for linking to the website, not for the API-based optimizer. The 142 stores with URLs are sufficient.
 
-## 30. New World `DISH_INGREDIENTS` map reuses Pak'nSave's
+## 30. New World `DISHES` dict reuses Pak'nSave's
 
-The 21 dishes and their ingredient lists are identical between Pak'nSave and New World (both are NZ supermarkets with similar product ranges). The `NewWorld_prototype.py` will reuse the same `DISH_INGREDIENTS` map from `PaknSave_prototype.py`, only changing the banner and User-Agent.
+The 21 dishes and their ingredient lists (now in dict format with quantity/unit/search_term) are identical between Pak'nSave and New World (both are NZ supermarkets with similar product ranges). The `DISHES` dict in `scripts/combined/optimizer_utils.py` is shared by both — no duplicate definitions needed.
 
 ## 31. Playwright not needed for New World at runtime
 

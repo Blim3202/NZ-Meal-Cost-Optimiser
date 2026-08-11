@@ -1,0 +1,43 @@
+{
+  "reference_point": {
+    "lat": -41.2977069,
+    "lon": 173.241518
+  },
+  "stores": [
+    {
+      "name": "Nelson Junction Woolworths",
+      "pickupAddressId": "4166071",
+      "fulfilmentStoreId": 9290,
+      "lat": -41.2977069,
+      "lon": 173.241518
+    },
+    {
+      "name": "Nelson Woolworths",
+      "pickupAddressId": "1225552",
+      "fulfilmentStoreId": 9527,
+      "lat": -41.2727,
+      "lon": 173.2773
+    },
+    {
+      "name": "Trafalgar Park Woolworths",
+      "pickupAddressId": "2810937",
+      "fulfilmentStoreId": 9246,
+      "lat": -41.2702,
+      "lon": 173.2815
+    },
+    {
+      "name": "Stoke Woolworths",
+      "pickupAddressId": "2367135",
+      "fulfilmentStoreId": 9168,
+      "lat": -41.3117,
+      "lon": 173.2338
+    },
+    {
+      "name": "Richmond Woolworths",
+      "pickupAddressId": "2723227",
+      "fulfilmentStoreId": 9040,
+      "lat": -41.3342,
+      "lon": 173.2018
+    }
+  ]
+}

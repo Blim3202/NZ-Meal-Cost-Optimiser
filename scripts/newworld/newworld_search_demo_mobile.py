@@ -24,6 +24,7 @@ Reference: NewWorld_API.md section 5 (Mobile API ecomm-products search)
 
 import argparse
 import json
+import time
 import sys
 
 import cloudscraper
@@ -126,6 +127,8 @@ def main():
     print(f"Banner: {BANNER}")
     print()
 
+    start_time = time.time()
+
     scraper = cloudscraper.create_scraper()
     print("Step 1: Authenticating (guest token)...")
     token = authenticate(scraper)
@@ -133,6 +136,7 @@ def main():
 
     print(f"Step 2: Searching for '{query}' (single-pass, per-store pricing)")
     products = search_products(scraper, token, STORE_ID, query, hits_per_page=20)
+    elapsed = time.time() - start_time
     print(f"  Products returned: {len(products)}")
     print()
 
@@ -167,6 +171,9 @@ def main():
         print("=" * 80)
         print("RAW JSON for first product:")
         print(json.dumps(products[1], indent=2))
+        print()
+
+    print(f"[{len(products)} search products for '{query}' at {STORE_NAME} returned in {elapsed:.2f} seconds]")
 
 
 if __name__ == "__main__":

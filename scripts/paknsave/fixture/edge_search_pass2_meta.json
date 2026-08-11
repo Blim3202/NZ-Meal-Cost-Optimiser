@@ -1,0 +1,8 @@
+{
+  "endpoint": "https://api-prod.paknsave.co.nz/v1/edge/search/paginated/products",
+  "store_id": "3bb30799-82ce-4648-8c02-5113228963ed",
+  "store_name": "PAK'nSAVE Te Awamutu",
+  "filters": "productID:5201479-EA-000 OR productID:5201490-EA-000 OR productID:5201487-EA-000 OR productID:5000527-EA-000 OR productID:5201489-EA-000 OR productID:5201800-EA-000 OR productID:5004752-EA-000 OR productID:5016750-EA-000 OR productID:5000518-EA-000 OR productID:5266784-EA-000",
+  "products_count": 10,
+  "notes": "Edge Pass 2 per-store pricing captured from live API."
+}

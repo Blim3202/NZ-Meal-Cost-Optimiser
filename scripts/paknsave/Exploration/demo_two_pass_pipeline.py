@@ -164,10 +164,8 @@ def find_nearby(user_lat, user_lon, stores, radius_km=5):
     return nearby
 
 
-DISH_INGREDIENTS = {
-    "spaghetti bolognese": ["beef mince", "spaghetti pasta", "canned tomatoes", "onion", "carrot", "garlic", "mixed herbs"],
-    "chicken stir fry": ["chicken breast", "stir fry vegetables", "soy sauce", "rice noodles"],
-}
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "combined"))
+from optimizer_utils import DISHES, get_ingredients
 
 
 def main():
@@ -200,7 +198,7 @@ def main():
 
     # Test dish
     dish = "spaghetti bolognese"
-    ingredients = DISH_INGREDIENTS[dish]
+    ingredients = get_ingredients(dish)
     print(f"\n[5] Optimizing dish: {dish}")
     print(f"    Ingredients: {ingredients}")
 

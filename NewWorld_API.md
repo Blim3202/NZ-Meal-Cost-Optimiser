@@ -225,8 +225,10 @@ Returns an object with a single `"stores"` key containing an array:
 
 #### Store count
 
-149 stores are returned for `banner="MNW"` via the mobile endpoint (148 via Edge).
-Each store has a UUID-style `id` (e.g., `773ad0a0-024e-46c5-a94b-df1cf86d25cc`).
+150 stores are returned for `banner="MNW"` via the mobile endpoint (148 via Edge).
+The mobile-only stores are `Foodie Mart` (35 Landing Drive, Mangere) and
+`New World Te Atatu` (575 Te Atatū Road, Te Atatū Peninsula) — both absent from
+the Edge API. Each store has a UUID-style `id` (e.g., `773ad0a0-024e-46c5-a94b-df1cf86d25cc`).
 
 #### Usage in this project
 
@@ -594,7 +596,10 @@ Region:        NI  (or SI for South Island)
 
 **Returns**: 148 stores with full details (id, name, address, coordinates, opening hours, services).
 
-**Note**: Returns 148 stores vs 149 from mobile API (missing "Foodie Mart" which relates to an in-house location at Foodstuffs main office on 35 Landing Drive).
+**Note**: Returns 148 stores vs 150 from mobile API. The two stores missing from
+Edge are `Foodie Mart` (35 Landing Drive, Mangere — an in-house Foodstuffs location)
+and `New World Te Atatu` (575 Te Atatū Road, Te Atatū Peninsula). Both appear in
+the mobile API response but not the Edge API, so Edge is the smaller set.
 
 ---
 
@@ -804,7 +809,7 @@ Supports: `OR`, `AND`, field:value syntax. Full Algolia filter syntax works.
 | Feature | Mobile API | Edge API (Two-Pass) |
 |---------|------------|---------------------|
 | Auth | Guest login POST | Website session OR mobile token |
-| Store listing | [OK] 149 stores | [OK] 148 stores |
+| Store listing | [OK] 150 stores | [OK] 148 stores |
 | Product search | [OK] Single call | [OK] Two-pass (relevance + pricing) |
 | Relevance matching | Implicit (relevance ordering) | [OK] Explicit `_highlightResult.matchedWords` |
 | Per-store pricing | [OK] Native (storeId in URL) | [OK] Via cookies + Algolia filters |
@@ -1025,7 +1030,7 @@ Pak'nSave).
 from scripts.newworld.newworld_setup import fetch_stores, clean_stores, run_full_setup
 run_full_setup()                  # default: edge → 148 stores
 run_full_setup(source="edge")     # 148 stores
-run_full_setup(source="mobile")   # 149 stores (legacy fallback)
+run_full_setup(source="mobile")   # 150 stores (legacy fallback)
 
 df = fetch_stores(source="edge")
 df = clean_stores(df, cleaned=True)   # drop stores without coordinates (no-op for NW)
@@ -1033,12 +1038,12 @@ df = clean_stores(df, cleaned=True)   # drop stores without coordinates (no-op f
 
 | Source | Stores | Method | Auth | Notes |
 |--------|--------|--------|------|-------|
-| **Edge API** (default) | 148 | `GET /v1/edge/store` | `fs-user-token` from `get-current-user` | 1 store missing (Foodie Mart) |
-| **Mobile API** (legacy fallback) | 149 | guest login + `GET /mobile/store/physical` | guest token + `NewWorldApp/4.32.0` UA | Most complete set |
+| **Edge API** (default) | 148 | `GET /v1/edge/store` | `fs-user-token` from `get-current-user` | 2 stores missing from mobile (Foodie Mart, Te Atatu) |
+| **Mobile API** (legacy fallback) | 150 | guest login + `GET /mobile/store/physical` | guest token + `NewWorldApp/4.32.0` UA | Most complete set |
 
 **No geocoding required** — all sources provide lat/lon directly.
 
-**Output schema** — `data/newworld_stores.csv` / `.json` (148 or 149 rows) with 10
+**Output schema** — `data/newworld_stores.csv` / `.json` (148 or 150 rows) with 10
 columns (`store_id, name, address, city, region, latitude, longitude, banner,
 click_and_collect, delivery`). The old store-builder flow joined website store-finder
 URL slugs onto store rows; the URL column is **no longer produced** — per-store
@@ -1056,8 +1061,9 @@ point.
 
 ### 9.2 Mobile API (legacy)
 
-149 stores via guest login + `GET /mobile/store/physical`. Returns the same 10-column
-schema (filtered to `banner="MNW"`). Use only as a fallback.
+150 stores via guest login + `GET /mobile/store/physical`. Returns the same 10-column
+schema (filtered to `banner="MNW"`). Use only as a fallback. The 2 extra stores
+(Foodie Mart and New World Te Atatu) are not available via Edge.
 
 ### 9.3 CSV (`data/newworld_stores.csv`)
 
@@ -1075,8 +1081,8 @@ store_id,name,address,city,region,latitude,longitude,banner,click_and_collect,de
 newworld_setup.py
   → source="edge" (default): POST /api/user/get-current-user → fs-user-token cookie
                              → GET /v1/edge/store → 148 stores with UUID, name, address, lat/lon, banner, services
-  → (or source="mobile"): POST /mobile/user/login/guest (banner: "MNW")
-                          → GET /mobile/store/physical → 149 stores, filter banner=MNW
+   → (or source="mobile"): POST /mobile/user/login/guest (banner: "MNW")
+                           → GET /mobile/store/physical → 150 stores, filter banner=MNW
   → clean_stores(df) drop NaN coords
   → DataFrame → data/newworld_stores.csv / newworld_stores.json
 ```
@@ -1108,7 +1114,7 @@ for p in products:
 ### 10.2 How to Find Nearby Stores and Compare Prices
 
 ```python
-from scripts.combined.optimizer_utils import geocode, find_nearby_stores, get_ingredients
+from scripts.combined.optimizer_utils import geocode, find_nearby_stores, DISHES
 from scripts.newworld.newworld_setup import load_stores
 from scripts.newworld.newworld_api import NewWorldMobileAPI
 
@@ -1117,15 +1123,16 @@ user_lat, user_lon = geocode("Botany Town Centre, Auckland")
 nearby = find_nearby_stores(user_lat, user_lon, stores, radius_km=5)
 
 api = NewWorldMobileAPI()
+dish_dict = DISHES["spaghetti bolognese"]
 for _, store in nearby.iterrows():
     total = 0.0
     print(f"--- {store['name']} ---")
-    for ing in get_ingredients("spaghetti bolognese"):
-        products = api.search_products(store["store_id"], ing) or []
+    for ing in dish_dict["ingredients"]:
+        products = api.search_products(store["store_id"], ing["search_term"]) or []
         if products:
             price = NewWorldMobileAPI.extract_price(products[0])
             if price is not None:
-                print(f"  {ing:25s} ${price:.2f}")
+                print(f"  {ing['search_term']:25s} ${price:.2f}")
                 total += price
         else:
             print(f"  {ing:25s}  NOT FOUND")
@@ -1193,14 +1200,16 @@ Shared flags: `--requery true|false` (default true), `--distance N` (default 5 k
 
 The optimizer takes the **first (most relevant)** result per query. This avoids
 irrelevant bulk items that might appear at lower prices (e.g., pet food for
-"beef mince"). 21 dishes are hand-curated in `DISH_INGREDIENTS` in
-`scripts/combined/optimizer_utils.py` — no NLP/LLM parsing.
+"beef mince"). 21 dishes are hand-curated in `DISHES` (dict format with
+quantity/unit/search_term) loaded from `data/dishes.json` via
+`scripts/combined/optimizer_utils.py`. LLM-backed dish generation available
+via `scripts/llms/llm_utils.py`.
 
 ### 10.7 Architecture Diagrams
 
 **Mobile API pipeline:**
 ```
-newworld_stores.csv  (148/149 stores with store_id, name, lat, lon, ...)
+newworld_stores.csv  (148/150 stores with store_id, name, lat, lon, ...)
    |
    +---> haversine filter (user address → lat/lon → nearby stores within 5 km)
    |
@@ -1265,8 +1274,10 @@ and `scripts/newworld/newworld_optimizer_mobile.py`.
 | tomato pasta | pasta, canned tomatoes, garlic, olive oil, mixed herbs, cheese |
 | chicken katsu | chicken breast, flour, eggs, bread, rice, katsu sauce |
 
-Dishes are defined in `DISH_INGREDIENTS` in `scripts/combined/optimizer_utils.py` (via
-`get_ingredients()`; identical ingredient lists for both Pak'nSave and New World).
+Dishes are defined in `DISHES` (dict format with quantity/unit/search_term) loaded
+from `data/dishes.json` via `scripts/combined/optimizer_utils.py` (via `get_ingredients()`; identical
+ingredient lists for both Pak'nSave and New World).
+`newworld_api.py` no longer re-exports — use the shared module directly.
 Unknown dish names fall through — the dish name itself becomes the single search query.
 
 ---

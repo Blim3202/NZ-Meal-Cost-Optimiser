@@ -8,41 +8,8 @@ import time
 WEB_BASE = "https://www.newworld.co.nz"
 EDGE_BASE = "https://api-prod.newworld.co.nz/v1/edge"
 
-DISH_INGREDIENTS = {
-    "Spaghetti Bolognese": [
-        "beef mince 500g",
-        "spaghetti pasta 500g", 
-        "tomato paste",
-        "onion",
-        "garlic",
-    ],
-    "Butter Chicken": [
-        "chicken breast 500g",
-        "butter chicken sauce",
-        "rice 1kg",
-        "cream",
-    ],
-    "Fish and Chips": [
-        "fish fillets 500g",
-        "potatoes 2kg",
-        "flour",
-        "oil",
-    ],
-    "Roast Chicken": [
-        "whole chicken",
-        "potatoes 2kg",
-        "pumpkin",
-        "carrots",
-        "onion",
-    ],
-    "Stir Fry": [
-        "beef stir fry strips 500g",
-        "stir fry vegetables",
-        "soy sauce",
-        "rice 1kg",
-        "noodles",
-    ],
-}
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "combined"))
+from optimizer_utils import DISHES, get_ingredients
 
 def get_website_jwt():
     session = requests.Session()
@@ -140,8 +107,8 @@ def main():
     print(f"   Found {len(stores)} stores")
     
     # 3. Test price comparison for a dish
-    dish = "Spaghetti Bolognese"
-    ingredients = DISH_INGREDIENTS[dish]
+    dish = "spaghetti bolognese"
+    ingredients = get_ingredients(dish)
     
     print(f"\n3. Testing '{dish}' across stores...")
     

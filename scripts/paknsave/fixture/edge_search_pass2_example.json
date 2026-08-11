@@ -1,0 +1,454 @@
+{
+  "tobaccoProducts": false,
+  "products": [
+    {
+      "productId": "5004752-EA-000",
+      "brand": "Pams",
+      "name": "Standard UHT Milk",
+      "displayName": "1l",
+      "availability": [
+        "IN_STORE",
+        "ONLINE"
+      ],
+      "saleType": "UNITS",
+      "restrictedFlag": false,
+      "liquorFlag": false,
+      "tobaccoFlag": false,
+      "originRegulated": false,
+      "singlePrice": {
+        "price": 209,
+        "comparativePrice": {
+          "pricePerUnit": 209,
+          "unitQuantity": 1,
+          "unitQuantityUom": "L",
+          "measureDescription": "1L"
+        }
+      },
+      "facets": [
+        {
+          "itemCode": "00020002",
+          "itemDescription": "Halal"
+        },
+        {
+          "itemCode": "00020012",
+          "itemDescription": "Non-GMO"
+        }
+      ],
+      "categoryTrees": [
+        {
+          "level0": "Fridge, Deli & Eggs",
+          "level1": "Milk",
+          "level2": "UHT Milk & Milk Powder"
+        },
+        {
+          "level0": "Pantry",
+          "level1": "Long Life & Dairy Free Milk",
+          "level2": "UHT Milk & Milk Powder"
+        },
+        {
+          "level0": "Featured",
+          "level1": "Pams",
+          "level2": "Long Life & Dairy Free Milk"
+        }
+      ],
+      "cateredFlag": false,
+      "algoliaAnalytics": {
+        "searchQueryID": "ce22e87a7caf9e3f58c9da7e6859d25d",
+        "searchPosition": 1
+      },
+      "boughtBefore": false
+    },
+    {
+      "productId": "5201800-EA-000",
+      "brand": "Pams Value",
+      "name": "Standard Milk",
+      "displayName": "1l",
+      "availability": [
+        "IN_STORE",
+        "ONLINE"
+      ],
+      "saleType": "UNITS",
+      "restrictedFlag": false,
+      "liquorFlag": false,
+      "tobaccoFlag": false,
+      "originRegulated": false,
+      "singlePrice": {
+        "price": 259,
+        "comparativePrice": {
+          "pricePerUnit": 259,
+          "unitQuantity": 1,
+          "unitQuantityUom": "L",
+          "measureDescription": "1L"
+        }
+      },
+      "facets": [
+        {
+          "itemCode": "00020012",
+          "itemDescription": "Non-GMO"
+        }
+      ],
+      "categoryTrees": [
+        {
+          "level0": "Fridge, Deli & Eggs",
+          "level1": "Milk",
+          "level2": "Fresh Milk"
+        }
+      ],
+      "cateredFlag": false,
+      "algoliaAnalytics": {
+        "searchQueryID": "ce22e87a7caf9e3f58c9da7e6859d25d",
+        "searchPosition": 2
+      },
+      "boughtBefore": false
+    },
+    {
+      "productId": "5000518-EA-000",
+      "brand": "Anchor",
+      "name": "Blue Milk",
+      "displayName": "1l",
+      "availability": [
+        "IN_STORE",
+        "ONLINE"
+      ],
+      "saleType": "UNITS",
+      "restrictedFlag": false,
+      "liquorFlag": false,
+      "tobaccoFlag": false,
+      "originRegulated": false,
+      "singlePrice": {
+        "price": 357,
+        "comparativePrice": {
+          "pricePerUnit": 357,
+          "unitQuantity": 1,
+          "unitQuantityUom": "L",
+          "measureDescription": "1L"
+        }
+      },
+      "facets": [
+        {
+          "itemCode": "00020012",
+          "itemDescription": "Non-GMO"
+        }
+      ],
+      "categoryTrees": [
+        {
+          "level0": "Fridge, Deli & Eggs",
+          "level1": "Milk",
+          "level2": "Fresh Milk"
+        }
+      ],
+      "cateredFlag": false,
+      "algoliaAnalytics": {
+        "searchQueryID": "ce22e87a7caf9e3f58c9da7e6859d25d",
+        "searchPosition": 3
+      },
+      "boughtBefore": false
+    },
+    {
+      "productId": "5201479-EA-000",
+      "brand": "Pams Value",
+      "name": "Standard Milk",
+      "displayName": "2l",
+      "availability": [
+        "IN_STORE",
+        "ONLINE"
+      ],
+      "saleType": "UNITS",
+      "restrictedFlag": false,
+      "liquorFlag": false,
+      "tobaccoFlag": false,
+      "originRegulated": false,
+      "singlePrice": {
+        "price": 479,
+        "comparativePrice": {
+          "pricePerUnit": 240,
+          "unitQuantity": 1,
+          "unitQuantityUom": "L",
+          "measureDescription": "1L"
+        }
+      },
+      "facets": [
+        {
+          "itemCode": "00020012",
+          "itemDescription": "Non-GMO"
+        }
+      ],
+      "categoryTrees": [
+        {
+          "level0": "Fridge, Deli & Eggs",
+          "level1": "Milk",
+          "level2": "Fresh Milk"
+        }
+      ],
+      "cateredFlag": false,
+      "algoliaAnalytics": {
+        "searchQueryID": "ce22e87a7caf9e3f58c9da7e6859d25d",
+        "searchPosition": 4
+      },
+      "boughtBefore": false
+    },
+    {
+      "productId": "5201487-EA-000",
+      "brand": "Pams Value",
+      "name": "Lite Milk",
+      "displayName": "2l",
+      "availability": [
+        "IN_STORE",
+        "ONLINE"
+      ],
+      "saleType": "UNITS",
+      "restrictedFlag": false,
+      "liquorFlag": false,
+      "tobaccoFlag": false,
+      "originRegulated": false,
+      "singlePrice": {
+        "price": 479,
+        "comparativePrice": {
+          "pricePerUnit": 240,
+          "unitQuantity": 1,
+          "unitQuantityUom": "L",
+          "measureDescription": "1L"
+        }
+      },
+      "facets": [
+        {
+          "itemCode": "00020012",
+          "itemDescription": "Non-GMO"
+        }
+      ],
+      "categoryTrees": [
+        {
+          "level0": "Fridge, Deli & Eggs",
+          "level1": "Milk",
+          "level2": "Fresh Milk"
+        }
+      ],
+      "cateredFlag": false,
+      "algoliaAnalytics": {
+        "searchQueryID": "ce22e87a7caf9e3f58c9da7e6859d25d",
+        "searchPosition": 5
+      },
+      "boughtBefore": false
+    },
+    {
+      "productId": "5266784-EA-000",
+      "brand": "Simply Milk",
+      "name": "Standard Milk",
+      "displayName": "2l",
+      "availability": [
+        "IN_STORE",
+        "ONLINE"
+      ],
+      "saleType": "UNITS",
+      "restrictedFlag": false,
+      "liquorFlag": false,
+      "tobaccoFlag": false,
+      "originRegulated": false,
+      "singlePrice": {
+        "price": 522,
+        "comparativePrice": {
+          "pricePerUnit": 261,
+          "unitQuantity": 1,
+          "unitQuantityUom": "L",
+          "measureDescription": "1L"
+        }
+      },
+      "facets": [
+        {
+          "itemCode": "00020012",
+          "itemDescription": "Non-GMO"
+        }
+      ],
+      "categoryTrees": [
+        {
+          "level0": "Fridge, Deli & Eggs",
+          "level1": "Milk",
+          "level2": "Fresh Milk"
+        }
+      ],
+      "cateredFlag": false,
+      "algoliaAnalytics": {
+        "searchQueryID": "ce22e87a7caf9e3f58c9da7e6859d25d",
+        "searchPosition": 6
+      },
+      "boughtBefore": false
+    },
+    {
+      "productId": "5000527-EA-000",
+      "brand": "Anchor",
+      "name": "Blue Milk",
+      "displayName": "2l",
+      "availability": [
+        "IN_STORE",
+        "ONLINE"
+      ],
+      "saleType": "UNITS",
+      "restrictedFlag": false,
+      "liquorFlag": false,
+      "tobaccoFlag": false,
+      "originRegulated": false,
+      "singlePrice": {
+        "price": 585,
+        "comparativePrice": {
+          "pricePerUnit": 293,
+          "unitQuantity": 1,
+          "unitQuantityUom": "L",
+          "measureDescription": "1L"
+        }
+      },
+      "facets": [
+        {
+          "itemCode": "00020012",
+          "itemDescription": "Non-GMO"
+        }
+      ],
+      "categoryTrees": [
+        {
+          "level0": "Fridge, Deli & Eggs",
+          "level1": "Milk",
+          "level2": "Fresh Milk"
+        }
+      ],
+      "cateredFlag": false,
+      "algoliaAnalytics": {
+        "searchQueryID": "ce22e87a7caf9e3f58c9da7e6859d25d",
+        "searchPosition": 7
+      },
+      "boughtBefore": false
+    },
+    {
+      "productId": "5201490-EA-000",
+      "brand": "Pams Value",
+      "name": "Standard Milk",
+      "displayName": "3l",
+      "availability": [
+        "IN_STORE",
+        "ONLINE"
+      ],
+      "saleType": "UNITS",
+      "restrictedFlag": false,
+      "liquorFlag": false,
+      "tobaccoFlag": false,
+      "originRegulated": false,
+      "singlePrice": {
+        "price": 711,
+        "comparativePrice": {
+          "pricePerUnit": 237,
+          "unitQuantity": 1,
+          "unitQuantityUom": "L",
+          "measureDescription": "1L"
+        }
+      },
+      "facets": [
+        {
+          "itemCode": "00020012",
+          "itemDescription": "Non-GMO"
+        }
+      ],
+      "categoryTrees": [
+        {
+          "level0": "Fridge, Deli & Eggs",
+          "level1": "Milk",
+          "level2": "Fresh Milk"
+        }
+      ],
+      "cateredFlag": false,
+      "algoliaAnalytics": {
+        "searchQueryID": "ce22e87a7caf9e3f58c9da7e6859d25d",
+        "searchPosition": 8
+      },
+      "boughtBefore": false
+    },
+    {
+      "productId": "5201489-EA-000",
+      "brand": "Pams Value",
+      "name": "Lite Milk",
+      "displayName": "3l",
+      "availability": [
+        "IN_STORE",
+        "ONLINE"
+      ],
+      "saleType": "UNITS",
+      "restrictedFlag": false,
+      "liquorFlag": false,
+      "tobaccoFlag": false,
+      "originRegulated": false,
+      "singlePrice": {
+        "price": 711,
+        "comparativePrice": {
+          "pricePerUnit": 237,
+          "unitQuantity": 1,
+          "unitQuantityUom": "L",
+          "measureDescription": "1L"
+        }
+      },
+      "facets": [
+        {
+          "itemCode": "00020012",
+          "itemDescription": "Non-GMO"
+        }
+      ],
+      "categoryTrees": [
+        {
+          "level0": "Fridge, Deli & Eggs",
+          "level1": "Milk",
+          "level2": "Fresh Milk"
+        }
+      ],
+      "cateredFlag": false,
+      "algoliaAnalytics": {
+        "searchQueryID": "ce22e87a7caf9e3f58c9da7e6859d25d",
+        "searchPosition": 9
+      },
+      "boughtBefore": false
+    },
+    {
+      "productId": "5016750-EA-000",
+      "brand": "Anchor",
+      "name": "Blue Milk",
+      "displayName": "3l",
+      "availability": [
+        "IN_STORE",
+        "ONLINE"
+      ],
+      "saleType": "UNITS",
+      "restrictedFlag": false,
+      "liquorFlag": false,
+      "tobaccoFlag": false,
+      "originRegulated": false,
+      "singlePrice": {
+        "price": 871,
+        "comparativePrice": {
+          "pricePerUnit": 290,
+          "unitQuantity": 1,
+          "unitQuantityUom": "L",
+          "measureDescription": "1L"
+        }
+      },
+      "facets": [
+        {
+          "itemCode": "00020012",
+          "itemDescription": "Non-GMO"
+        }
+      ],
+      "categoryTrees": [
+        {
+          "level0": "Fridge, Deli & Eggs",
+          "level1": "Milk",
+          "level2": "Fresh Milk"
+        }
+      ],
+      "cateredFlag": false,
+      "algoliaAnalytics": {
+        "searchQueryID": "ce22e87a7caf9e3f58c9da7e6859d25d",
+        "searchPosition": 10
+      },
+      "boughtBefore": false
+    }
+  ],
+  "algoliaSearchResult": {},
+  "totalHits": 10,
+  "page": 0,
+  "totalPages": 1,
+  "hitsPerPage": 50
+}

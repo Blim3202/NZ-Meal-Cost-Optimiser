@@ -1,0 +1,5 @@
+{
+  "endpoint": "https://api-prod.prod.fsniwaikato.kiwi/prod/mobile/user/login/guest",
+  "banner": "MNW",
+  "notes": "Mobile guest token authentication captured from live New World API."
+}

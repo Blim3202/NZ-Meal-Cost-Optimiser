@@ -1,0 +1,7 @@
+{
+  "endpoint": "https://api-prod.newworld.co.nz/v1/edge/store",
+  "store_count": 148,
+  "first_store_id": "ef977d89-f3d8-4e8b-8a48-b895ded38646",
+  "first_store_name": "New World Papakura",
+  "notes": "Edge API store list captured from live New World API."
+}

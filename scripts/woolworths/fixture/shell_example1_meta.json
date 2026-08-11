@@ -1,0 +1,10 @@
+{
+  "store_name": "Nelson Junction Woolworths",
+  "fulfilment_store_id": 9290,
+  "pickup_address_id": "4166071",
+  "cookie_value": "dm-Pickup,f-9290,s-38",
+  "shell_fulfilment_store_id": 9290,
+  "shell_method": "Pickup",
+  "endpoint": "https://www.woolworths.co.nz/api/v1/shell",
+  "capture_note": "Captured from the live Woolworths NZ API after injecting the cw-lrkswrdjp cookie for per-store pricing. Used by set_store_context() tests to verify the shell validation logic."
+}

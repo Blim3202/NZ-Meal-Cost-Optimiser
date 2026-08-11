@@ -141,6 +141,7 @@ def fetch_store_data() -> list[dict]:
     SiteDataID, latitude, longitude, Key Facilities
     """
     WOOLWORTHS_API_BASE_URL = "https://api.cdx.nz/site-location/api/v1/sites"
+    # Apprx default coordinates for NZ when viewing https://www.woolworths.co.nz/store-finder/search in incognito
     DEFAULT_LATITUDE = -41.24564052749397
     DEFAULT_LONGITUDE = 173.1994906580824
 

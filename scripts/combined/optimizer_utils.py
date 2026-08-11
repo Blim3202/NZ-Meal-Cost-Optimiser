@@ -37,191 +37,111 @@ CSV_COLUMNS = [
     "datetime_created",
     "date_created",
     "pk_hash",
+    "is_valid",
 ]
 
-DISH_INGREDIENTS = {
-    "spaghetti bolognese": ["beef mince", "spaghetti pasta", "canned tomatoes", "onion", "carrot", "garlic", "mixed herbs"],
-    "chicken stir fry": ["chicken breast", "stir fry vegetables", "soy sauce", "rice noodles"],
-    "beef stir fry": ["beef strips", "stir fry vegetables", "soy sauce", "rice noodles"],
-    "roast lamb": ["lamb roast", "potato", "carrot", "broccoli", "stock"],
-    "chicken curry": ["chicken thigh", "curry paste", "coconut milk", "rice", "onion"],
-    "beef curry": ["diced beef", "curry paste", "coconut milk", "rice", "onion"],
-    "fish and chips": ["fish fillet", "potato", "oil"],
-    "nachos": ["beef mince", "tortilla chips", "cheese", "beans", "sour cream"],
-    "pumpkin soup": ["pumpkin", "onion", "cream", "stock", "bread"],
-    "tacos": ["beef mince", "taco shells", "lettuce", "tomato", "cheese", "sour cream"],
-    "lamb chops": ["lamb chops", "potato", "mint sauce", "mixed vegetables"],
-    "butter chicken": ["chicken thigh", "butter chicken sauce", "rice", "cream"],
-    "lasagne": ["beef mince", "lasagne sheets", "cheese", "canned tomatoes", "milk", "butter", "flour"],
-    "shepherd's pie": ["beef mince", "potato", "carrot", "peas", "stock"],
-    "pizza": ["pizza base", "pizza sauce", "cheese", "pepperoni"],
-    "vegie stir fry": ["stir fry vegetables", "tofu", "soy sauce", "rice noodles", "garlic"],
-    "frittata": ["eggs", "potato", "onion", "cheese", "milk"],
-    "pancakes": ["flour", "eggs", "milk", "sugar", "butter"],
-    "chicken soup": ["chicken breast", "carrot", "onion", "celery", "stock", "pasta"],
-    "tomato pasta": ["pasta", "canned tomatoes", "garlic", "olive oil", "mixed herbs", "cheese"],
-    "chicken katsu": ["chicken breast", "flour", "eggs", "bread", "rice", "katsu sauce"],
-}
+DISHES_FILE = DATA_DIR / "dishes.json"
 
-DISH_QUANTITIES = {
-    "spaghetti bolognese": {
-        "beef mince": "500g",
-        "spaghetti pasta": "400g",
-        "canned tomatoes": "1 can (400g)",
-        "onion": "1 medium",
-        "carrot": "2 medium",
-        "garlic": "2 cloves",
-        "mixed herbs": "1 tsp",
-    },
-    "chicken stir fry": {
-        "chicken breast": "2 fillets (~400g)",
-        "stir fry vegetables": "1 bag (500g)",
-        "soy sauce": "2 tbsp",
-        "rice noodles": "250g",
-    },
-    "beef stir fry": {
-        "beef strips": "400g",
-        "stir fry vegetables": "1 bag (500g)",
-        "soy sauce": "2 tbsp",
-        "rice noodles": "250g",
-    },
-    "roast lamb": {
-        "lamb roast": "1.2kg",
-        "potato": "4 medium",
-        "carrot": "3 medium",
-        "broccoli": "1 head",
-        "stock": "2 cups",
-    },
-    "chicken curry": {
-        "chicken thigh": "500g",
-        "curry paste": "2 tbsp",
-        "coconut milk": "1 can (400ml)",
-        "rice": "1.5 cups",
-        "onion": "1 medium",
-    },
-    "beef curry": {
-        "diced beef": "500g",
-        "curry paste": "2 tbsp",
-        "coconut milk": "1 can (400ml)",
-        "rice": "1.5 cups",
-        "onion": "1 medium",
-    },
-    "fish and chips": {
-        "fish fillet": "2 fillets (~400g)",
-        "potato": "4 medium",
-        "oil": "for frying",
-    },
-    "nachos": {
-        "beef mince": "300g",
-        "tortilla chips": "1 bag (200g)",
-        "cheese": "1 cup shredded",
-        "beans": "1 can (400g)",
-        "sour cream": "1/2 cup",
-    },
-    "pumpkin soup": {
-        "pumpkin": "1kg",
-        "onion": "1 medium",
-        "cream": "1/2 cup",
-        "stock": "2 cups",
-        "bread": "4 slices",
-    },
-    "tacos": {
-        "beef mince": "400g",
-        "taco shells": "1 pack (12 shells)",
-        "lettuce": "1/2 head",
-        "tomato": "2 medium",
-        "cheese": "1 cup shredded",
-        "sour cream": "1/2 cup",
-    },
-    "lamb chops": {
-        "lamb chops": "4 chops (~600g)",
-        "potato": "4 medium",
-        "mint sauce": "2 tbsp",
-    },
-    "butter chicken": {
-        "chicken thigh": "500g",
-        "butter chicken sauce": "1 jar",
-        "rice": "1.5 cups",
-        "cream": "1/2 cup",
-    },
-    "lasagne": {
-        "beef mince": "500g",
-        "lasagne sheets": "1 pack",
-        "cheese": "1 cup shredded",
-        "canned tomatoes": "1 can (400g)",
-        "milk": "1 cup",
-        "butter": "2 tbsp",
-        "flour": "2 tbsp",
-    },
-    "shepherd's pie": {
-        "beef mince": "500g",
-        "potato": "4 medium",
-        "carrot": "2 medium",
-        "peas": "1 cup",
-        "stock": "1/2 cup",
-    },
-    "pizza": {
-        "pizza base": "1 base",
-        "pizza sauce": "1/2 cup",
-        "cheese": "1.5 cups shredded",
-        "pepperoni": "1 pack",
-    },
-    "vegie stir fry": {
-        "stir fry vegetables": "1 bag (500g)",
-        "tofu": "1 block (400g)",
-        "soy sauce": "2 tbsp",
-        "rice noodles": "250g",
-        "garlic": "2 cloves",
-    },
-    "frittata": {
-        "eggs": "6 eggs",
-        "potato": "2 medium",
-        "onion": "1 medium",
-        "cheese": "1 cup shredded",
-        "milk": "1/4 cup",
-    },
-    "pancakes": {
-        "flour": "1.5 cups",
-        "eggs": "1 egg",
-        "milk": "1 cup",
-        "sugar": "2 tbsp",
-        "butter": "2 tbsp",
-    },
-    "chicken soup": {
-        "chicken breast": "2 fillets (~400g)",
-        "carrot": "2 medium",
-        "onion": "1 medium",
-        "celery": "2 stalks",
-        "stock": "4 cups",
-        "pasta": "1 cup",
-    },
-    "tomato pasta": {
-        "pasta": "400g",
-        "canned tomatoes": "1 can (400g)",
-        "garlic": "2 cloves",
-        "olive oil": "2 tbsp",
-        "mixed herbs": "1 tsp",
-        "cheese": "1/4 cup grated",
-    },
-    "chicken katsu": {
-        "chicken breast": "2 fillets (~400g)",
-        "flour": "1/2 cup",
-        "eggs": "2 eggs",
-        "bread": "1 cup breadcrumbs",
-        "rice": "1.5 cups",
-        "katsu sauce": "1/3 cup",
-    },
-}
+
+def _load_dishes() -> dict:
+    import json
+    with open(DISHES_FILE, "r") as f:
+        return json.load(f)
+
+
+DISHES = _load_dishes()
 
 
 def get_ingredients(dish_name):
-    """Return the ingredient list for a dish, or [dish_name] if unknown."""
-    return DISH_INGREDIENTS.get(dish_name.lower().strip(), [dish_name])
+    """Get search-term ingredient list for a dish from the DISHES dict.
+
+    Returns a list of search_term strings for the dish, or [dish_name]
+    if the dish is not in the curated DISHES set.
+    """
+    dish_dict = DISHES.get(dish_name.lower().strip())
+    if dish_dict:
+        return [ing["search_term"] for ing in dish_dict["ingredients"]]
+    return [dish_name]
 
 
-def get_quantities(dish_name):
-    """Return the quantity dict for a dish, or {} if unknown."""
-    return DISH_QUANTITIES.get(dish_name.lower().strip(), {})
+def _build_quantity_map(dish):
+    """Build a {search_term: quantity_string} map from a dish dict's ingredients.
+
+    Args:
+        dish: a string (dish name) or a dict with 'ingredients' list.
+
+    Returns:
+        dict mapping search_term -> "quantity unit" string (e.g. "500 g")
+    """
+    dish_dict = _resolve_dish_dict(dish)
+    quantities = {}
+    for ing in dish_dict.get("ingredients", []):
+        if isinstance(ing, dict):
+            term = ing.get("search_term", "")
+            qty = ing.get("quantity", "")
+            unit = ing.get("unit", "")
+            if term:
+                base = f"{qty} {unit}".strip()
+                approx_q = ing.get("approx_quantity")
+                approx_u = ing.get("approx_unit")
+                if approx_q and approx_u:
+                    approx = f"{approx_q} {approx_u}".strip()
+                    base = f"{base} (~{approx})" if base else f"~{approx}"
+                quantities[term] = base
+    return quantities
+
+
+def _resolve_dish_dict(dish):
+    """Resolve a dish name (string) to a full dish dict from DISHES.
+
+    Args:
+        dish: a string (dish name) or a dict with 'dish_name' and 'ingredients'.
+
+    Returns:
+        A dish dict with keys: dish_name, portion, ingredients (list of
+        {quantity, unit, search_term} dicts). If a string is passed and
+        the dish is in DISHES, returns the curated dict. Otherwise wraps
+        the string into a minimal dict.
+    """
+    if isinstance(dish, dict):
+        return dish
+    dish_key = dish.lower().strip() if isinstance(dish, str) else ""
+    if dish_key in DISHES:
+        return DISHES[dish_key]
+    return {"dish_name": dish, "portion": 4, "ingredients": []}
+
+
+def _resolve_dish(dish):
+    """Extract (dish_name, search_terms) from str or dict input.
+
+    Args:
+        dish:   either a string (dish name, resolved from DISHES) 
+                or a dict with keys 'dish_name' and 'ingredients'.
+    Returns:
+        (dish_name: str, search_terms: list[str])
+    Raises:
+        ValueError: if dish input format is invalid.
+    """
+    if isinstance(dish, str):
+        # Lookup string in curated dishes
+        dish_key = dish.lower().strip()
+        if dish_key in DISHES:
+            return DISHES[dish_key]["dish_name"], get_ingredients(dish)
+        raise ValueError(f"Dish string '{dish}' not found in registry.")
+
+    if isinstance(dish, dict):
+        # Validate required keys
+        if "dish_name" not in dish or "ingredients" not in dish:
+            raise ValueError("Dict dish must have 'dish_name' and 'ingredients' keys.")
+        
+        # Validate ingredients structure
+        ingredients = dish["ingredients"]
+        if not isinstance(ingredients, list) or not all(isinstance(i, dict) and "search_term" in i for i in ingredients):
+            raise ValueError("Ingredients must be a list of dicts with a 'search_term' key.")  
+        
+        return dish["dish_name"], [i["search_term"] for i in ingredients]
+
+    raise ValueError("Input must be a dish name (str) or a structured dish (dict).")
 
 
 def parse_woolworths_volume_size(volume_size, cup_measure=""):
@@ -629,14 +549,16 @@ def geocode(address):
     return None, None
 
 
-def analyze_results(df, ingredients, dish_name, company=None):
+def analyze_results(df, ingredients, dish, company=None, store_ids=None):
     """Build per-store cost summary and per-ingredient comparison table.
 
     Args:
         df: DataFrame with columns matching CSV_COLUMNS
         ingredients: list of ingredient search terms for the dish
-        dish_name: dish name used to look up quantities
+        dish: dish name (string) or dict for quantity lookup
         company: optional retailer name to filter rows (e.g. "PaknSave", "NewWorld", "Woolworths")
+        store_ids: optional set of valid store_ids (from distance-radius filtering)
+                   to restrict which stores are included
 
     Returns:
         (summary, table) where:
@@ -646,6 +568,8 @@ def analyze_results(df, ingredients, dish_name, company=None):
     df = df.copy()
     if company:
         df = df[df["company"] == company]
+    if store_ids:
+        df = df[df["store_id"].isin(store_ids)]
     df["price"] = df["price"].astype(float)
 
     cheapest_per_ing_per_store = (
@@ -660,7 +584,7 @@ def analyze_results(df, ingredients, dish_name, company=None):
     summary = summary.set_index("store").sort_values("total_cost")
 
     store_names = sorted(df["store"].unique())
-    quantities = get_quantities(dish_name)
+    quantities = _build_quantity_map(dish)
 
     rows = []
     for ing in ingredients:
@@ -669,7 +593,16 @@ def analyze_results(df, ingredients, dish_name, company=None):
             match = df[(df["search_ingredient"] == ing) & (df["store"] == sn)]
             if not match.empty:
                 best_prod = match.loc[match["price"].idxmin()]
-                row[sn] = f"${best_prod['price']:.2f}"
+                qty = best_prod['quantity']
+                unit = best_prod['measurement_unit']
+                # Clean up float formatting (600.0 -> 600, 1.5 -> 1.5)
+                if isinstance(qty, float) and qty.is_integer():
+                    qty_str = str(int(qty))
+                else:
+                    qty_str = str(qty) if qty else ""
+                unit_str = str(unit) if unit else ""
+                pack_info = f" ({qty_str} {unit_str})".strip() if qty_str and unit_str else ""
+                row[sn] = f"${best_prod['price']:.2f}{pack_info}"
             else:
                 row[sn] = "NOT FOUND"
 
@@ -761,7 +694,7 @@ def foodstuffs_optimizer_edge(api_class, find_nearby_stores, company_id, company
     api.authenticate()
     print("    Authenticated successfully")
 
-    ingredients = get_ingredients(dish_name)
+    dish_name, ingredients = _resolve_dish(dish_name)
     print(f"\nDish: {dish_name}")
     print(f"Ingredients: {', '.join(ingredients)}")
 
@@ -934,7 +867,7 @@ def foodstuffs_optimizer_mobile(api_class, find_nearby_stores_fn, company_id, co
     api._ensure_token()
     print("    Authenticated successfully")
 
-    ingredients = get_ingredients(dish_name)
+    dish_name, ingredients = _resolve_dish(dish_name)
     print(f"\nDish: {dish_name}")
     print(f"Ingredients: {', '.join(ingredients)}")
 
@@ -981,12 +914,20 @@ def foodstuffs_optimizer_mobile(api_class, find_nearby_stores_fn, company_id, co
     return True
 
 
-def optimise(dish_name, company=None):
+def optimise(dish, company=None, store_ids=None, require_valid=False):
     """Phase 2: Read today's results from CSV and print comparison table.
 
     Args:
-        dish_name: dish name to optimise for
+        dish: dish to optimise for — either a string (dish name,
+              resolved from DISHES or used as a single search term) or a dict
+              with keys 'dish_name' and 'ingredients'.
         company: optional retailer name to filter rows (e.g. "PaknSave", "NewWorld", "Woolworths")
+        store_ids: optional set of valid store_ids (from distance-radius filtering)
+                   to restrict which stores are included
+        require_valid: if True, only rows where is_valid == True are included.
+                       Rows with is_valid == False or blank (NaN) are excluded.
+                       Default False preserves backward compatibility for
+                       standalone CLI callers that don't run validation.
     """
     if not RESULTS_FILE.exists():
         print(f"No results file found: {RESULTS_FILE}")
@@ -997,21 +938,28 @@ def optimise(dish_name, company=None):
     df_today = df[df["date_created"] == today_str]
     if company:
         df_today = df_today[df_today["company"] == company]
+    if store_ids:
+        df_today = df_today[df_today["store_id"].isin(store_ids)]
+
+    if require_valid and "is_valid" in df_today.columns:
+        # Only keep rows explicitly validated as True.
+        # NaN / blank / False rows are all excluded.
+        df_today = df_today[df_today["is_valid"].fillna(False) == True]
 
     if df_today.empty:
         print(f"No results found for today ({today_str})")
         return
 
-    ingredients = get_ingredients(dish_name)
-    dish_ings = [i for i in ingredients if i in df_today["search_ingredient"].values]
-
-    if not dish_ings:
-        print(f"No results for dish '{dish_name}' ingredients in today's data")
-        return
+    dish_name, ingredients = _resolve_dish(dish)
+    dish_ings = ingredients
 
     df_dish = df_today[df_today["search_ingredient"].isin(dish_ings)]
 
-    summary, table = analyze_results(df_dish, dish_ings, dish_name, company=company)
+    if df_dish.empty:
+        print(f"No results for dish '{dish_name}' ingredients in today's data")
+        return
+
+    summary, table = analyze_results(df_dish, dish_ings, dish, company=company, store_ids=store_ids)
 
     print("\n" + "=" * 70)
     print(f"TOTAL COST COMPARISON -- {dish_name.upper()}")

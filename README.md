@@ -15,10 +15,10 @@ Finds the cheapest Pak'nSave, New World, or Woolworths for a given dish by compa
 | Store | Backends | Stores | Per-Store Pricing | Status |
 |-------|----------|--------|-------------------|--------|
 | Pak'nSave | Edge API (two-pass), Mobile API (single-pass) | 57 Edge / 60 Mobile / 60 store_finder | Yes | Active |
-| New World | Edge API (two-pass), Mobile API (single-pass) | 148 Edge / 149 Mobile | Yes | Active |
+| New World | Edge API (two-pass), Mobile API (single-pass) | 148 Edge / 150 Mobile | Yes | Active |
 | Woolworths | REST API (cookie injection) | 177 with coords | Yes | Active |
 
-- Pak'nSave and New World share a unified Foodstuffs backend (`scripts/foodstuffs/Foodstuffs_api.py`)
+- Pak'nSave and New World share a unified Foodstuffs backend (`scripts/combined/optimizer_utils.py` + brand-specific API modules)
 - Woolworths uses cookie-based store context injected per-store (no shared backend)
 - New World stores have coordinates from the mobile API — no Nominatim geocoding needed for store lookup
 - Pak'nSave Edge API requires pet food filtering via `category1` (exclude Dog/Cat/Pet) in Pass 1
@@ -38,10 +38,6 @@ python scripts/newworld/newworld_optimizer_edge.py "Botany Town Centre, Auckland
 
 # Run optimizer (Woolworths — cookie-based per-store pricing)
 python scripts/woolworths/woolworths_optimizer.py "Botany Town Centre, Auckland" "spaghetti bolognese"
-
-# Unified optimizer (supports both brands; use `brand` argument)
-python scripts/foodstuffs/Foodstuffs_optimizer_edge.py PaknSave "Botany Town Centre, Auckland" "spaghetti bolognese"
-python scripts/foodstuffs/Foodstuffs_optimizer_edge.py NewWorld "Botany Town Centre, Auckland" "spaghetti bolognese"
 ```
 
 ## Architecture
@@ -85,9 +81,7 @@ GET / → session cookies
 ```
 opencode/
 ├── data/
-│   ├── Exploration/
-│   │   └── woolworths/                         # Exploration data files (part2_cookies.json)
-│   ├── newworld_stores.csv                     # 148 stores (Edge, default) or 149 (Mobile): store_id, name, address, city, region, lat, lon, banner, click_and_collect, delivery
+│   ├── newworld_stores.csv                     # 148 stores (Edge, default) or 150 (Mobile): store_id, name, address, city, region, lat, lon, banner, click_and_collect, delivery
 │   ├── paknsave_stores.csv                     # 57 stores (Edge, default) / 60 (store_finder): store_id, name, address, city, region, lat, lon, banner, click_and_collect, delivery
 │   ├── paknsave_stores.json                    # Same data as CSV, JSON format
 │   ├── woolworths_stores.csv                   # Merged Woolworths store list with lat/lon
@@ -96,21 +90,21 @@ opencode/
 │   ├── woolworths_store_data.csv               # Woolworths store details from CDX API
 │   ├── woolworths_store_data.json              # Store details with extra1 (fulfilmentStoreId), extra2 (pickupAddressId)
 │   ├── woolworths_latest_results.csv           # Last optimizer output for Woolworths
-│   ├── paknsave_latest_results.csv              # Last Edge optimizer output
-│   ├── paknsave_mobile_latest_results.csv       # Last Mobile optimizer output
+│   ├── paknsave_latest_results.csv             # Last Edge optimizer output
+│   ├── paknsave_mobile_latest_results.csv      # Last Mobile optimizer output
 │   ├── observed_category1_newworld.json         # Category1 values from New World Algolia index
-│   └── observed_category1_paknsave.json         # Category1 values from Pak'nSave Algolia index
+│   ├── observed_category1_paknsave.json         # Category1 values from Pak'nSave Algolia index
+│   ├── dishes.json                              # 21 hand-curated dishes with structured ingredients
+│   └── full_results.csv                         # Append-only results with pk_hash deduplication + is_valid column
 ├── notebooks/
 │   ├── PaknSave_meal_cost_optimizer.ipynb      # Pak'nSave Jupyter prototype (8 cells, run cell 6 with inputs)
 │   └── Woolworths_meal_cost_optimizer.ipynb    # Woolworths Jupyter pipeline
 ├── scripts/
-│   ├── foodstuffs/
-│   │   ├── Foodstuffs_api.py                   # **Unified API module** for both brands (Pak'nSave + New World)
-│   │   ├── Foodstuffs_optimizer_edge.py         # **Edge API optimizer**: CLI with geocoding, 5km radius, two-pass search, unit-price selection
-│   │   ├── Foodstuffs_optimizer_mobile.py       # **Mobile API optimizer**: CLI with geocoding, 5km radius, single-pass search, unit-price selection
-│   │   └── Foodstuffs_setup.py                  # **Unified store builder pipeline**: Edge + Mobile + store_finder (Pak'nSave only). Callable module + CLI with `source` param.
+│   ├── combined/
+│   │   ├── optimizer_utils.py                  # **Cross-brand helpers**: foodstuffs_optimizer_edge/mobile, build_edge_row/mobile_row, parsing, geocoding, haversine, DISHES, get_ingredients, _resolve_dish, _build_quantity_map, optimise(), append_rows, _compute_pk_hash
+│   │   └── initialize_full_results.py          # Creates data/full_results.csv with 18-column schema (17 + is_valid) + pk_hash
 │   ├── newworld/
-│   │   ├── newworld_setup.py                   # **Unified store builder**: Edge API (148 stores), Mobile API (149 stores). Callable module + CLI with `source` param.
+│   │   ├── newworld_setup.py                   # **Unified store builder**: Edge API (148 stores), Mobile API (150 stores). Callable module + CLI with `source` param.
 │   │   ├── newworld_api.py                     # **Unified API module**: Edge API (two-pass) + Mobile API (single-pass) with shared utilities
 │   │   ├── newworld_optimizer_edge.py           # **Edge API optimizer**: CLI with geocoding, 5km radius, two-pass search, unit-price selection
 │   │   ├── newworld_optimizer_mobile.py         # **Mobile API optimizer**: CLI with geocoding, 5km radius, single-pass search, unit-price selection
@@ -121,14 +115,20 @@ opencode/
 │   │   ├── paknsave_optimizer_mobile.py         # **Mobile API optimizer**: CLI with geocoding, 5km radius, single-pass search, unit-price selection
 │   │   ├── paknsave_setup.py                    # **Unified store builder**: Edge (57 stores) + Mobile (60 stores) + store_finder (60 stores, Pak'nSave only). Callable module + CLI with `source` param.
 │   │   └── Exploration/                         # API exploration scripts (legacy)
-│   └── woolworths/
-│       ├── woolworths_api.py                    # Cookie-based API module: session, store context, product search
-│       ├── woolworths_optimizer.py              # API-based optimizer: geocode, stores, pricing, cost comparison
-│       ├── woolworths_setup.py                  # **Unified store pipeline**: fetch choices, fetch data, merge (188 stores → 177 with coords). Replaces legacy scripts.
-│       ├── Exploration/                         # API exploration scripts (legacy)
-│       └── Playwright/                          # Playwright-based scripts (legacy, not needed at runtime)
-│           ├── woolworths_scrape.py             # Headed scraper for search results
-│           └── ChangeStore.py                   # Store selection via modal URL
+│   ├── woolworths/
+│   │   ├── woolworths_api.py                    # Cookie-based API module: session, store context, product search
+│   │   ├── woolworths_optimizer.py              # API-based optimizer: geocode, stores, pricing, cost comparison
+│   │   ├── woolworths_setup.py                  # **Unified store pipeline**: fetch choices, fetch data, merge (188 stores → 177 with coords). Replaces legacy scripts.
+│   │   ├── Exploration/                         # API exploration scripts (legacy)
+│   │   ├── Fixture/                             # Test fixtures (legacy)
+│   │   ├── Playwright/                          # Playwright-based scripts (legacy, not needed at runtime)
+│   │   └── tests/                               # Unit tests (legacy)
+│   └── llms/
+│       ├── llm_client.py                        # Mistral API client with rate limiting + JSON retries
+│       ├── llm_utils.py                         # Ingredient resolution (curated → LLM), parsing, quantity scaling (incl. approx_unit fallback)
+│       ├── llm_validate.py                      # Post-run search-result validation (is_valid column)
+│       └── llm_interactive.py                   # Interactive CLI: ingredients → query → optimise → scale → validate
+├── LLM_Pipeline.md                             # LLM ingredient generation, validation, and quantity scaling pipeline
 ├── AGENTS.md                                   # Agent instructions and project reference
 ├── NewWorld_API.md                             # New World API documentation (cross-references PaknSave_API.md)
 ├── PaknSave_API.md                             # Pak'nSave API documentation (primary reference)
@@ -202,6 +202,7 @@ opencode/
 | `decision.md` | Key design decisions, cross-brand comparison table, CommonApi rationale |
 | `design.md` | Technical design (API, auth, pipeline) |
 | `logs.md` | Major errors and resolutions |
+| `LLM_Pipeline.md` | LLM ingredient generation, validation, and quantity scaling pipeline (incl. approx-unit fallback for non-standard recipe units) |
 
 ## Limitations
 
@@ -210,6 +211,7 @@ opencode/
 - **Store density**: Auckland CBD has 1 store within 5 km; East Auckland has 3
 - **Woolworths sessions**: Each store requires a fresh `requests.Session` (Set-Cookie overwrites injected cookies)
 - **Search relevance**: Generic terms may return unrelated products; be specific with ingredient names
+- **Approx-unit scaling**: Non-standard recipe units ("1 medium onion", "1 can") use approximate weights/volumes stored in `dishes.json` (e.g. 1 medium onion ≈ 150g). These provide proportional cost estimates but may not match exact product weights — indicated by `status="approximate"` in scaling output.
 - **Pak'nSave Nominatim rate limit**: 1 request/second
 - **Pak'nSave store_finder**: Only valid for Pak'nSave (New World has no `contentstackStores` in `__NEXT_DATA__`)
 - **New World 7 missing URLs**: Name mismatches between API and store-finder page (e.g., "Metro Auckland" vs "Metro Queen Street", macron differences)

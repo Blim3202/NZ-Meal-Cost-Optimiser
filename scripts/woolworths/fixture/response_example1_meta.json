@@ -1,0 +1,11 @@
+{
+  "store_name": "Nelson Junction Woolworths",
+  "fulfilment_store_id": 9290,
+  "pickup_address_id": "4166071",
+  "latitude": -41.2977069,
+  "longitude": 173.241518,
+  "search_query": "milk",
+  "search_size": 10,
+  "endpoint": "https://www.woolworths.co.nz/api/v1/products",
+  "capture_note": "This response was captured from the live Woolworths NZ API. The product search was performed with a per-store cw-lrkswrdjp cookie injected for per-store pricing."
+}
