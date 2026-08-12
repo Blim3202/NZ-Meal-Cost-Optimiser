@@ -1,0 +1,2 @@
+company,store,store_id,search_ingredient,returned_ingredient,price,quantity,measurement_unit,per_unit_quantity,per_unit_price,is_sale,sku,department,sub_department,datetime_created,date_created,pk_hash,is_valid
+NewWorld,Synth A,uuid-1,beef mince,Beef Mince 500g,5.99,500,g,100g,1.2,False,sku-1,meat,beef,2026-08-12 10:00:00,2026-08-12,3089408220455fb1,

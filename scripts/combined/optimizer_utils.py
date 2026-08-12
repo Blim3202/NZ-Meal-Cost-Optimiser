@@ -817,6 +817,47 @@ def build_mobile_row(company, store, store_id, search_ingredient, product, now):
     }
 
 
+def build_woolworths_row(company, store, store_id, search_ingredient, product, now):
+    """Build a CSV row dict from a Woolworths product search result.
+
+    Args:
+        company: retailer name (e.g. "Woolworths")
+        store: store name
+        store_id: store's pickupAddressId
+        search_ingredient: the ingredient term we searched for
+        product: dict from search_products() (sku, name, salePrice, cupListPrice,
+                 volumeSize, cupMeasure, isSpecial, department)
+        now: datetime object for timestamps
+
+    Returns:
+        dict matching CSV_COLUMNS
+    """
+    quantity, measurement_unit = parse_woolworths_volume_size(
+        product.get("volumeSize", ""), product.get("cupMeasure", "")
+    )
+    date_created = now.strftime("%Y-%m-%d")
+    sku = product.get("sku", "")
+    return {
+        "company": company,
+        "store": store,
+        "store_id": store_id,
+        "search_ingredient": search_ingredient,
+        "returned_ingredient": product.get("name", ""),
+        "price": product.get("salePrice", ""),
+        "quantity": quantity if quantity is not None else "",
+        "measurement_unit": measurement_unit,
+        "per_unit_quantity": product.get("cupMeasure", ""),
+        "per_unit_price": product.get("cupListPrice", ""),
+        "is_sale": product.get("isSpecial", False),
+        "sku": sku,
+        "department": product.get("department", ""),
+        "sub_department": "",
+        "datetime_created": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "date_created": date_created,
+        "pk_hash": _compute_pk_hash(store_id, sku, date_created),
+    }
+
+
 def foodstuffs_optimizer_mobile(api_class, find_nearby_stores_fn, company_id, company_name,
                                 user_address, dish_name, requery, max_dist_km=5.0):
     """Phase 1 (query): shared Mobile API pipeline for Pak'nSave and New World.
@@ -904,6 +945,92 @@ def foodstuffs_optimizer_mobile(api_class, find_nearby_stores_fn, company_id, co
                 print(f"  {ing}: NOT FOUND")
 
             time.sleep(0.08)
+
+    if not new_rows:
+        print("\nNo results collected from API")
+        return False
+
+    appended, skipped = append_rows(new_rows)
+    print(f"\nAppended {appended} rows to {RESULTS_FILE.name} ({skipped} duplicates skipped)")
+    return True
+
+
+def woolworths_optimizer(api, company_id, company_name, user_address, dish_input, requery,
+                         max_dist_km=5.0):
+    """Step 1 (query): shared Woolworths pipeline — geocode, nearby stores, per-store search.
+
+    Mirrors foodstuffs_optimizer_edge/foodstuffs_optimizer_mobile for the other two
+    brands: the shared query code lives here so woolworths_optimizer.py stays a thin
+    CLI, and `optimise()` (Step 2) reads the CSV rows appended here.
+
+    Args:
+        api: the woolworths_api module (create_session, set_store_context,
+             search_products, get_nearby_stores) — injected the same way
+             `api_class` is for the Foodstuffs helpers
+        company_id: CSV company value written to rows (e.g. "Woolworths")
+        company_name: display name for print lines
+        user_address: NZ address to geocode
+        dish_input: dish name (str) or dish dict to search ingredients for
+        requery: if False, skip API and read existing CSV
+        max_dist_km: maximum store search radius in km (default 5)
+
+    Returns True if data is available (newly queried or already in CSV).
+    """
+    if not requery:
+        if RESULTS_FILE.exists():
+            return True
+        print("No existing results file — run with --requery true to query the API")
+        return False
+
+    user_lat, user_lon = geocode(user_address)
+    if user_lat is None:
+        print(f"Error: Could not geocode address '{user_address}'")
+        return False
+
+    print(f"Geocoding: {user_address}")
+    print(f"           lat: {user_lat:.6f}  lon: {user_lon:.6f}")
+    print()
+
+    nearby = api.get_nearby_stores(user_lat, user_lon, max_dist_km=max_dist_km)
+    if not nearby:
+        print(f"Error: No {company_name} stores found within {max_dist_km} km")
+        return False
+
+    print(f"Found {len(nearby)} stores within {max_dist_km} km:")
+    for s in nearby:
+        print(f"  {s['name']} ({s['distance_km']} km)")
+
+    dish_name, ingredients = _resolve_dish(dish_input)
+    print(f"\nDish: {dish_name}")
+    print(f"Ingredients: {', '.join(ingredients)}")
+
+    now = datetime.now()
+    new_rows = []
+
+    for store in nearby:
+        store_name = store["name"]
+        pid = store["pickupAddressId"]
+        print(f"\n--- Store: {store_name} (id={pid}, {store['distance_km']} km) ---")
+
+        session = api.create_session()
+        try:
+            ctx = api.set_store_context(session, pid)
+            print(f"  Context set: {ctx['method']}, fulfilmentStoreId={ctx['fulfilmentStoreId']}")
+        except RuntimeError as e:
+            print(f"  [WARN] {e} -- skipping store")
+            continue
+
+        for ing in ingredients:
+            print(f"  Searching: {ing}")
+            products = api.search_products(session, ing, food_only=True)
+            priced = [p for p in products if p.get("salePrice") is not None]
+            if priced:
+                for prod in priced:
+                    row = build_woolworths_row(company_id, store_name, pid, ing, prod, now)
+                    new_rows.append(row)
+                print(f"    {len(priced)} results (best: ${min(p['salePrice'] for p in priced):.2f})")
+            else:
+                print("    Not found")
 
     if not new_rows:
         print("\nNo results collected from API")
