@@ -50,6 +50,7 @@ STORE_JSON = DATA_DIR / "woolworths_store_data.json"
 NON_FOOD_DEPARTMENT_IDS = {10, 11, 12, 13, 14}
 # 10 = Health & Body, 11 = Household, 12 = Baby & Child,
 # 13 = Pet, 14 = Back to School
+STORE_MAPPING = None
 
 
 def is_food_department(product):
@@ -98,9 +99,6 @@ def _load_store_mapping():
                 "lon": lon,
             }
     return mapping
-
-
-STORE_MAPPING = None
 
 
 def get_store_mapping():

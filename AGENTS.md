@@ -29,12 +29,9 @@ opencode/
 │   ├── observed_category1_paknsave.json         # Category1 values from Pak'nSave Algolia index
 │   ├── dishes.json                              # 21 hand-curated dishes with structured ingredients
 │   └── full_results.csv                         # Append-only results with pk_hash deduplication + is_valid column
-├── notebooks/
-│   ├── PaknSave_meal_cost_optimizer.ipynb      # 8-cell Jupyter prototype (run cell 6 with your inputs)
-│   └── Woolworths_meal_cost_optimizer.ipynb    # Woolworths Jupyter pipeline
 ├── scripts/
 │   ├── combined/
-│   │   ├── optimizer_utils.py                  # **Cross-brand helpers**: foodstuffs_optimizer_edge/mobile, build_edge_row/mobile_row, parsing, geocoding, haversine, DISHES, get_ingredients, _resolve_dish, _build_quantity_map, optimise(), append_rows, _compute_pk_hash
+│   │   ├── optimizer_utils.py                  # **Cross-brand helpers**: foodstuffs_optimizer_edge/mobile, woolworths_optimizer, build_edge_row/mobile_row/build_woolworths_row, parsing, geocoding, haversine, DISHES, get_ingredients, _resolve_dish, _build_quantity_map, optimise(), append_rows, _compute_pk_hash
 │   │   └── initialize_full_results.py          # Creates data/full_results.csv with 18-column schema (17 + is_valid) + pk_hash
 │   ├── newworld/
 │   │   ├── newworld_setup.py                   # **Unified store builder**: Edge API (148 stores), Mobile API (150 stores). Callable module + CLI with `source` param.
@@ -50,7 +47,7 @@ opencode/
 │   │   └── Exploration/                         # Legacy API exploration scripts (collapsed)
 │   ├── woolworths/
 │   │   ├── woolworths_api.py                    # Cookie-based API module: session, store context, product search
-│   │   ├── woolworths_optimizer.py              # Two-phase optimizer: query API → save to full_results.csv → optimise from CSV
+│   │   ├── woolworths_optimizer.py              # **Thin CLI**: Step 1 via shared `woolworths_optimizer` in `optimizer_utils.py`, then Step 2 `optimise()` from CSV
 │   │   ├── woolworths_setup.py                  # Unified store pipeline: fetch choices, fetch data, merge (188 → 177 with coords)
 │   │   ├── Exploration/                         # Legacy API exploration scripts (collapsed)
 │   │   ├── Fixture/                             # Test fixtures (collapsed)
@@ -82,7 +79,7 @@ opencode/
 |---|---|
 | `NewWorld_API.md` | Foodstuffs New World API docs — shared structure referenced from PaknSave_API.md; New World-specific Edge API, dishes, store data sources |
 | `PaknSave_API.md` | Foodstuffs Pak'nSave API docs — primary reference for shared Foodstuffs mobile API + Edge API structure; New World references this for common content |
-| `scripts/combined/optimizer_utils.py` | **Cross-brand helpers**: foodstuffs_optimizer_edge/mobile, build_edge_row/mobile_row, parsing, geocoding, haversine, DISHES, get_ingredients, _resolve_dish, _build_quantity_map, optimise(), append_rows, _compute_pk_hash |
+| `scripts/combined/optimizer_utils.py` | **Cross-brand helpers**: foodstuffs_optimizer_edge/mobile, woolworths_optimizer, build_edge_row/mobile_row/build_woolworths_row, parsing, geocoding, haversine, DISHES, get_ingredients, _resolve_dish, _build_quantity_map, optimise(), append_rows, _compute_pk_hash |
 | `scripts/combined/initialize_full_results.py` | Creates data/full_results.csv with 18-column schema (17 + is_valid) + pk_hash for deduplication |
 | `scripts/newworld/newworld_setup.py` | **Unified store builder**: Edge API (148 stores), Mobile API (150 stores). Callable module + CLI with `source` param. Mirrors paknsave_setup.py structure. |
 | `scripts/newworld/newworld_api.py` | **Unified API module**: Edge API (two-pass) + Mobile API (single-pass) with shared utilities |
@@ -94,8 +91,7 @@ opencode/
 | `scripts/paknsave/paknsave_optimizer_mobile.py` | **Mobile API optimizer**: CLI with geocoding, 5km radius, single-pass search, unit-price selection. Thin wrapper over shared `foodstuffs_optimizer_mobile` in `optimizer_utils.py`. |
 | `scripts/woolworths/woolworths_setup.py` | **Unified store pipeline**: fetch choices, fetch data, merge (188 stores → 177 with coords). Replaces legacy scripts. |
 | `scripts/woolworths/woolworths_api.py` | Cookie-based Woolworths API module. Session, store context, product search. Constructs `cw-lrkswrdjp` cookie from `extra1` in store data. No Playwright needed at runtime. |
-| `notebooks/PaknSave_meal_cost_optimizer.ipynb` | Pak'nSave prototype |
-| `notebooks/Woolworths_meal_cost_optimizer.ipynb` | Woolworths pipeline, utilizes `woolworths_optimizer.py` |
+| `scripts/woolworths/woolworths_optimizer.py` | **Thin CLI**: Step 1 query via shared `woolworths_optimizer` in `optimizer_utils.py`, then Step 2 `optimise()`. `--requery`/`--distance` flags, 5km default. |
 | `data/woolworths_store_data.json` | Store details with `extra1` (=fulfilmentStoreId) and `extra2` (=pickupAddressId) |
 | `requirements.txt` | Pinned deps. Core: `cloudscraper`, `requests`, `pandas`, `numpy`, `beautifulsoup4`, `playwright`, `jupyterlab`. |
 | `LLM_Pipeline.md` | LLM ingredient generation, post-run validation, and quantity scaling pipeline (see `scripts/llms/`). |
@@ -147,7 +143,7 @@ opencode/
 - **All 67 cookies unnecessary**: Only `cw-lrkswrdjp` carries store context. The other 66 cookies (session_state, RT, Akamai, analytics, ads) are not needed for API calls.
 - **`areaId` not in any data source**: The `a-field` in the cookie is optional and would require Playwright to capture per-store. Not needed for per-store pricing.
 - **Full API documentation**: `Woolworths_API.md` (1290+ lines) covers all endpoints, cookie architecture, and production usage.
-- **`full_results.csv` pipeline working**: Two-phase query→optimise with append-only CSV, `pk_hash` dedup, `--requery`/`--distance` flags. See `scripts/woolworths/woolworths_optimizer.py`.
+- **`full_results.csv` pipeline working**: Two-phase query→optimise with append-only CSV, `pk_hash` dedup, `--requery`/`--distance` flags. Step 1 (`woolworths_optimizer`) and `build_woolworths_row` live in `scripts/combined/optimizer_utils.py`; the CLI is `scripts/woolworths/woolworths_optimizer.py`.
 
 ## New World Research Status
 

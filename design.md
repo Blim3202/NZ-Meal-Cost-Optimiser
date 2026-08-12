@@ -633,23 +633,24 @@ dm-Pickup,f-{fulfilmentStoreId},a-{areaId},s-38
 - `areaId` is optional (cookie works without it)
 - `s-38` is constant across all stores
 
-### woolworths_api.py Module
+### Woolworths query pipeline (shared, in `optimizer_utils.py`)
+
+`woolworths_optimizer(api, company_id, company_name, address, dish, requery, max_dist_km=5)` mirrors
+`foodstuffs_optimizer_edge`/`_mobile` for the other brands. `woolworths_api.py` stays a **functional**
+module (session, cookie injection, product search) and is injected as the `api` param. The CLI
+`woolworths_optimizer.py` is a thin wrapper that calls it, then `optimise()`.
 
 ```python
-from woolworths_api import create_session, set_store_context, search_products, find_cheapest, get_nearby_stores, geocode
+import woolworths_api
+from optimizer_utils import woolworths_optimizer, optimise
 
-# Geocode address
-lat, lon = geocode("123 Queen Street, Auckland")
+# Step 1: geocode → nearby stores → per-store pricing (fresh session per store)
+woolworths_optimizer(woolworths_api, "Woolworths", "Woolworths",
+                     "123 Queen Street, Auckland", "spaghetti bolognese",
+                     requery=True, max_dist_km=5)
 
-# Find nearby stores
-stores = get_nearby_stores(lat, lon, max_dist_km=5)
-
-# Search with per-store pricing
-for store in stores:
-    session = create_session()  # fresh session per store (required!)
-    set_store_context(session, store["pickupAddressId"])
-    cheapest = find_cheapest(session, "beef mince")
-    print(f"{store['name']}: ${cheapest['salePrice']}")
+# Step 2: cheapest store from full_results.csv
+optimise("spaghetti bolognese", company="Woolworths")
 ```
 
 ### Key Constraints

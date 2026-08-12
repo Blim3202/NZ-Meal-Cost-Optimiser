@@ -278,7 +278,7 @@ class TestSearchProductsFiltering:
 
     def test_search_products_normalizes_fields(self):
         """search_products must flatten the raw API response into the
-        normalized dict structure expected by build_row().
+        normalized dict structure expected by build_woolworths_row().
 
         Specifically: salePrice, volumeSize, cupMeasure, cupListPrice,
         isSpecial, and department (string name).

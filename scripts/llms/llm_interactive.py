@@ -53,6 +53,7 @@ from optimizer_utils import (
     foodstuffs_optimizer_edge,
     foodstuffs_optimizer_mobile,
     optimise,
+    woolworths_optimizer,
 )
 from scripts.llms.llm_utils import resolve_ingredients, parse_optimizer_columns
 
@@ -135,9 +136,8 @@ def _import_nw_mobile():
 
 
 def _import_woolworths():
-    from woolworths_api import create_session, set_store_context, search_products, get_nearby_stores
-    from woolworths_optimizer import query_and_save
-    return create_session, set_store_context, search_products, get_nearby_stores, query_and_save
+    import woolworths_api
+    return woolworths_api
 
 
 # ─── Step 1: Collect Inputs ───────────────────────────────────────────────
@@ -375,8 +375,12 @@ def step4_query(address, dish_dict, requery, distance, selected):
                 )
                 _collect_store_ids(store_ids, sm, address, distance)
             elif sm == "woolworths":
-                _create_session, _set_ctx, _search, _nearby, _query_save = _import_woolworths()
-                _query_save(address, dish_dict, requery_bool, max_dist_km=distance)
+                api_module = _import_woolworths()
+                woolworths_optimizer(
+                    api_module,
+                    ALL_SUPERMARKETS[sm][0], ALL_SUPERMARKETS[sm][1],
+                    address, dish_dict, requery_bool, max_dist_km=distance,
+                )
                 _collect_store_ids(store_ids, sm, address, distance)
             else:
                 print(f"  Unknown supermarket: {sm}")
@@ -478,8 +482,8 @@ def _collect_store_ids(store_ids, sm, address, distance):
     elif sm in ("nw_edge", "nw_mobile"):
         _api_class, find_nearby = _import_nw_edge()
     elif sm == "woolworths":
-        _create_session, _set_ctx, _search, get_nearby, _query_save = _import_woolworths()
-        nearby = get_nearby(user_lat, user_lon, max_dist_km=distance)
+        api_module = _import_woolworths()
+        nearby = api_module.get_nearby_stores(user_lat, user_lon, max_dist_km=distance)
         for s in nearby:
             store_ids.add(str(s["pickupAddressId"]))
         return

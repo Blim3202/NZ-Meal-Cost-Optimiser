@@ -229,7 +229,7 @@ def capture_response_example1():
     # Fixture 2b: product_normalized_sale.json
     # Captures a sale item (isSpecial=True, salePrice < originalPrice) from the same response
     # if one exists, otherwise creates a synthetic one based on the first food item
-    # for testing build_row() sale logic.
+    # for testing build_woolworths_row() sale logic.
     _capture_product_normalized_sale(search_response)
 
     return test_store, search_response
@@ -303,7 +303,7 @@ def _capture_product_normalized_sale(search_response):
 # Fixture 2: product_normalized.json
 # ---------------------------------------------------------------------------
 # The normalized product dict for the first food item in response_example1.json.
-# This is the structure that search_products() produces and build_row() consumes.
+# This is the structure that search_products() produces and build_woolworths_row() consumes.
 # ---------------------------------------------------------------------------
 
 def _normalize_product(raw_item):

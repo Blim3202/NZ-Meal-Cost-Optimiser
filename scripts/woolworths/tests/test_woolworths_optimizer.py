@@ -1,12 +1,13 @@
 """
-Unit tests for Woolworths NZ Meal Cost Optimizer (woolworths_optimizer.py).
+Unit tests for the shared Woolworths CSV row builder
+(optimizer_utils.build_woolworths_row).
 
-Tests focus on the build_row() function, which transforms a raw product
+Tests focus on build_woolworths_row(), which transforms a raw product
 search result into a CSV row dict that matches the full_results.csv schema.
 
-    - build_row() is tested with the normalized milk product from
+    - build_woolworths_row() is tested with the normalized milk product from
       fixture/product_normalized.json (captured from the live Woolworths API).
-    - build_row() is tested with a sale item from
+    - build_woolworths_row() is tested with a sale item from
       fixture/product_normalized_sale.json (real or synthetic sale product).
     - _compute_pk_hash() is tested with known inputs to verify the
       deterministic SHA-256 hash prefix.
@@ -22,21 +23,18 @@ from pathlib import Path
 
 import pytest
 
-# Make the woolworths scripts directory and combined helpers importable.
-SCRIPT_DIR = Path(__file__).resolve().parent.parent
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent  # project root
 
-sys.path.insert(0, str(SCRIPT_DIR))                         # scripts/woolworths
 sys.path.insert(0, str(PROJECT_ROOT / "scripts" / "combined"))  # shared optimizer_utils
 
-FIXTURE_DIR = SCRIPT_DIR / "fixture"
+FIXTURE_DIR = PROJECT_ROOT / "scripts" / "woolworths" / "fixture"
 
 from optimizer_utils import (
     CSV_COLUMNS,
+    build_woolworths_row,
     parse_woolworths_volume_size,
     _compute_pk_hash,
 )
-from woolworths_optimizer import build_row
 
 
 def _load_json(filename):
@@ -46,7 +44,7 @@ def _load_json(filename):
 
 
 class TestBuildRow:
-    """Tests for build_row() using real fixture data.
+    """Tests for build_woolworths_row() using real fixture data.
 
     The fixture (product_normalized.json) was captured from the live
     Woolworths NZ API at Nelson Junction Woolworths (extra1=9290).
@@ -62,7 +60,7 @@ class TestBuildRow:
 
     def _build_milk_row(self):
         """Helper: build a CSV row for the milk product in the fixture."""
-        return build_row(
+        return build_woolworths_row(
             company="Woolworths",
             store="Nelson Junction Woolworths",
             store_id="4166071",
@@ -73,7 +71,7 @@ class TestBuildRow:
 
     def _build_sale_row(self):
         """Helper: build a CSV row for the sale product in the fixture."""
-        return build_row(
+        return build_woolworths_row(
             company="Woolworths",
             store="Nelson Junction Woolworths",
             store_id="4166071",
@@ -85,8 +83,8 @@ class TestBuildRow:
     def test_row_matches_csv_columns(self):
         """The row dict must contain all CSV_COLUMNS except 'is_valid'.
 
-        build_row() produces 17 of the 18 CSV_COLUMNS keys. The
-        'is_valid' column is intentionally omitted by build_row()
+        build_woolworths_row() produces 17 of the 18 CSV_COLUMNS keys. The
+        'is_valid' column is intentionally omitted by build_woolworths_row()
         because it is managed separately by the validation pipeline
         (llm_validate.py) and the append_rows() function. It is added
         when the row is written to CSV via csv.DictWriter, which
@@ -101,7 +99,7 @@ class TestBuildRow:
         assert self._build_milk_row()["company"] == "Woolworths"
 
     def test_store_and_store_id_values(self):
-        """store and store_id must match the inputs passed to build_row()."""
+        """store and store_id must match the inputs passed to build_woolworths_row()."""
         row = self._build_milk_row()
         assert row["store"] == "Nelson Junction Woolworths"
         assert row["store_id"] == "4166071"
@@ -170,12 +168,12 @@ class TestBuildRow:
         assert row["pk_hash"] == expected_hash
 
     def test_sale_item_is_sale_true(self):
-        """build_row with a sale product must set is_sale=True."""
+        """build_woolworths_row with a sale product must set is_sale=True."""
         row = self._build_sale_row()
         assert row["is_sale"] is True
 
     def test_sale_item_price_matches_sale_price(self):
-        """build_row must use salePrice (not originalPrice) for the price field."""
+        """build_woolworths_row must use salePrice (not originalPrice) for the price field."""
         row = self._build_sale_row()
         assert row["price"] == self.sale_product["salePrice"]
         assert row["price"] < self.sale_product["originalPrice"]
@@ -196,9 +194,9 @@ class TestBuildRow:
         assert row["per_unit_price"] == self.sale_product["cupListPrice"]
 
     def test_missing_optional_fields_handled(self):
-        """build_row must handle products with missing optional fields.
+        """build_woolworths_row must handle products with missing optional fields.
 
-        If cupMeasure, cupListPrice, volumeSize are missing/None, build_row
+        If cupMeasure, cupListPrice, volumeSize are missing/None, build_woolworths_row
         should still produce a valid row without crashing.
         """
         product = {
@@ -215,7 +213,7 @@ class TestBuildRow:
             "imageUrl": "",
             "department": "",
         }
-        row = build_row(
+        row = build_woolworths_row(
             company="Woolworths",
             store="Test Store",
             store_id="9999999",
@@ -225,13 +223,13 @@ class TestBuildRow:
         )
         assert row["returned_ingredient"] == "test product"
         assert row["price"] == 2.50
-        assert row["quantity"] == ""  # build_row converts None to ""
+        assert row["quantity"] == ""  # build_woolworths_row converts None to ""
         assert row["measurement_unit"] == ""
         assert row["per_unit_quantity"] == ""
         assert row["per_unit_price"] == ""
 
     def test_none_sku_handled(self):
-        """build_row must handle products with sku=None."""
+        """build_woolworths_row must handle products with sku=None."""
         product = {
             "sku": None,
             "name": "no sku product",
@@ -246,7 +244,7 @@ class TestBuildRow:
             "imageUrl": "",
             "department": "Pantry",
         }
-        row = build_row(
+        row = build_woolworths_row(
             company="Woolworths",
             store="Test Store",
             store_id="9999999",
@@ -258,7 +256,7 @@ class TestBuildRow:
         assert row["sku"] is None
 
     def test_none_sale_price_handled(self):
-        """build_row must handle products with salePrice=None."""
+        """build_woolworths_row must handle products with salePrice=None."""
         product = {
             "sku": "888888",
             "name": "no price product",
@@ -273,7 +271,7 @@ class TestBuildRow:
             "imageUrl": "",
             "department": "Pantry",
         }
-        row = build_row(
+        row = build_woolworths_row(
             company="Woolworths",
             store="Test Store",
             store_id="9999999",
@@ -285,7 +283,7 @@ class TestBuildRow:
         assert row["price"] is None
 
     def test_pk_hash_consistency_between_calls(self):
-        """build_row should produce the same pk_hash for identical inputs."""
+        """build_woolworths_row should produce the same pk_hash for identical inputs."""
         row1 = self._build_milk_row()
         row2 = self._build_milk_row()
         assert row1["pk_hash"] == row2["pk_hash"]

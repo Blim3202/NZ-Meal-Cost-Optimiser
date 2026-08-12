@@ -1226,15 +1226,16 @@ For the meal cost optimizer, the API + constructed cookies are sufficient.
 (9250, 9045, 9500 for Auckland stores). Reused sessions always return the first
 store's ID.
 
-**Implementation in `woolworths_optimizer.py`:**
+**Implementation in `optimizer_utils.woolworths_optimizer`** (the CLI
+`woolworths_optimizer.py` passes the `woolworths_api` module as the `api` param):
 ```python
 for store in nearby:
     store_name = store["name"]
     pid = store["pickupAddressId"]
-    session = create_session()       # fresh session per store
+    session = api.create_session()       # fresh session per store
     try:
-        ctx = set_store_context(session, pid)
-        products = search_products(session, ing, food_only=True)
+        ctx = api.set_store_context(session, pid)
+        products = api.search_products(session, ing, food_only=True)
     except RuntimeError as e:
         print(f"  [WARN] {e} -- skipping store")
         continue
@@ -1471,7 +1472,7 @@ python -c "from scripts.woolworths.woolworths_setup import merge_stores; merge_s
 | Woolworths_API.md | This document |
 | AGENTS.md | Project overview and file structure |
 | scripts/woolworths/woolworths_api.py | Cookie-based API module: session creation, store context injection, product search, nearby stores |
-| scripts/woolworths/woolworths_optimizer.py | Two-phase optimizer: query API → save to full_results.csv → optimise from CSV. Supports `--requery`, `--distance` flags |
+| scripts/woolworths/woolworths_optimizer.py | **Thin CLI**: Step 1 query via shared `woolworths_optimizer` in `optimizer_utils.py`, then Step 2 `optimise()`. Supports `--requery`, `--distance` flags, 5km default |
 | scripts/woolworths/woolworths_setup.py | Unified store pipeline: fetch choices (all 19 areas, 188 stores), fetch data (CDX API, 183 stores), merge (177 cleaned) |
 | scripts/combined/initialize_full_results.py | Creates `data/full_results.csv` with 17-column structure including `pk_hash` for deduplication |
 | scripts/woolworths/Exploration/explore_woolworths_api_part1.py | Phase 1: black-box API probing, endpoint enumeration, dasFilter taxonomy |

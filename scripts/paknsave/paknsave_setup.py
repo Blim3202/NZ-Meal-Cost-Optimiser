@@ -35,6 +35,7 @@ OUTPUT_JSON = os.path.join(DATA_DIR, "paknsave_stores.json")
 WEB_BASE = "https://www.paknsave.co.nz"
 EDGE_BASE = "https://api-prod.paknsave.co.nz/v1/edge"
 MOBILE_BASE = "https://api-prod.prod.fsniwaikato.kiwi/prod"
+EXPECTED_COLUMNS = ["store_id", "name", "address", "city", "region", "latitude", "longitude", "banner", "click_and_collect", "delivery"]
 
 
 def _configure_stdout_utf8() -> None:
@@ -150,7 +151,7 @@ def fetch_stores_from_store_finder(verbose: bool = True) -> pd.DataFrame:
                 })
 
     df = pd.DataFrame(store_entries)
-    df = df[["store_id", "name", "address", "city", "region", "latitude", "longitude", "banner", "click_and_collect", "delivery"]]
+    df = df[EXPECTED_COLUMNS]
 
     if verbose:
         print(f"Found {len(df)} stores from regionStoreGroupings")
@@ -201,7 +202,7 @@ def fetch_stores_from_edge_api(verbose: bool = True) -> pd.DataFrame:
         })
 
     df = pd.DataFrame(store_entries)
-    df = df[["store_id", "name", "address", "city", "region", "latitude", "longitude", "banner", "click_and_collect", "delivery"]]
+    df = df[EXPECTED_COLUMNS]
 
     if verbose:
         print(f"Found {len(df)} stores from Edge API")
@@ -255,12 +256,9 @@ def fetch_stores_from_mobile_api(verbose: bool = True) -> pd.DataFrame:
         })
 
     df = pd.DataFrame(store_entries)
-    df = df[["store_id", "name", "address", "city", "region", "latitude", "longitude", "banner", "click_and_collect", "delivery"]]
+    df = df[EXPECTED_COLUMNS]
 
     return df
-
-
-EXPECTED_COLUMNS = ["store_id", "name", "address", "city", "region", "latitude", "longitude", "banner", "click_and_collect", "delivery"]
 
 
 def _enforce_schema(df: pd.DataFrame) -> pd.DataFrame:
