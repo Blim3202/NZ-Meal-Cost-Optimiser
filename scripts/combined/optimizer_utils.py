@@ -823,7 +823,8 @@ def build_woolworths_row(company, store, store_id, search_ingredient, product, n
     Args:
         company: retailer name (e.g. "Woolworths")
         store: store name
-        store_id: store's pickupAddressId
+        store_id: store's canonical id = extra1 (fulfilmentStoreId), the same
+                  value baked into the cw-lrkswrdjp cookie (`f-{store_id}`)
         search_ingredient: the ingredient term we searched for
         product: dict from search_products() (sku, name, salePrice, cupListPrice,
                  volumeSize, cupMeasure, isSpecial, department)
@@ -963,6 +964,12 @@ def woolworths_optimizer(api, company_id, company_name, user_address, dish_input
     brands: the shared query code lives here so woolworths_optimizer.py stays a thin
     CLI, and `optimise()` (Step 2) reads the CSV rows appended here.
 
+    Store identity keys directly on extra1 (fulfilmentStoreId): get_nearby_stores()
+    returns store_id=extra1, set_store_context(session, store_id) builds the
+    cw-lrkswrdjp cookie as `dm-Pickup,f-{store_id},s-38`, and build_woolworths_row
+    writes store_id=extra1 to full_results.csv. The legacy pickupAddressId(extra2)
+    -> extra1 mapping indirection (get_store_mapping) has been removed.
+
     Args:
         api: the woolworths_api module (create_session, set_store_context,
              search_products, get_nearby_stores) — injected the same way
@@ -970,7 +977,7 @@ def woolworths_optimizer(api, company_id, company_name, user_address, dish_input
         company_id: CSV company value written to rows (e.g. "Woolworths")
         company_name: display name for print lines
         user_address: NZ address to geocode
-        dish_input: dish name (str) or dish dict to search ingredients for
+        dish_input: dish name (str) or dict to search ingredients for
         requery: if False, skip API and read existing CSV
         max_dist_km: maximum store search radius in km (default 5)
 
@@ -1009,12 +1016,12 @@ def woolworths_optimizer(api, company_id, company_name, user_address, dish_input
 
     for store in nearby:
         store_name = store["name"]
-        pid = store["pickupAddressId"]
-        print(f"\n--- Store: {store_name} (id={pid}, {store['distance_km']} km) ---")
+        store_id = store["store_id"]
+        print(f"\n--- Store: {store_name} (id={store_id}, {store['distance_km']} km) ---")
 
         session = api.create_session()
         try:
-            ctx = api.set_store_context(session, pid)
+            ctx = api.set_store_context(session, store_id)
             print(f"  Context set: {ctx['method']}, fulfilmentStoreId={ctx['fulfilmentStoreId']}")
         except RuntimeError as e:
             print(f"  [WARN] {e} -- skipping store")
@@ -1026,7 +1033,7 @@ def woolworths_optimizer(api, company_id, company_name, user_address, dish_input
             priced = [p for p in products if p.get("salePrice") is not None]
             if priced:
                 for prod in priced:
-                    row = build_woolworths_row(company_id, store_name, pid, ing, prod, now)
+                    row = build_woolworths_row(company_id, store_name, store_id, ing, prod, now)
                     new_rows.append(row)
                 print(f"    {len(priced)} results (best: ${min(p['salePrice'] for p in priced):.2f})")
             else:

@@ -47,9 +47,10 @@ class TestBuildRow:
     """Tests for build_woolworths_row() using real fixture data.
 
     The fixture (product_normalized.json) was captured from the live
-    Woolworths NZ API at Nelson Junction Woolworths (extra1=9290).
-    The product is "woolworths milk standard" with salePrice=7.04,
-    volumeSize="3L", cupMeasure="1L", cupListPrice=2.35.
+    Woolworths NZ API at Nelson Junction Woolworths (extra1=9290;
+    canonical store_id keyed directly on extra1/fulfilmentStoreId).
+    The product is "anchor milk standard blue" with salePrice=9.07,
+    volumeSize="3L", cupMeasure="1L", cupListPrice=3.02.
     """
 
     def setup_method(self):
@@ -59,22 +60,28 @@ class TestBuildRow:
         self.now = datetime(2024, 8, 9, 12, 0, 0)
 
     def _build_milk_row(self):
-        """Helper: build a CSV row for the milk product in the fixture."""
+        """Helper: build a CSV row for the milk product in the fixture.
+
+        Uses store_id=9290 (extra1/fulfilmentStoreId, the canonical id).
+        """
         return build_woolworths_row(
             company="Woolworths",
             store="Nelson Junction Woolworths",
-            store_id="4166071",
+            store_id="9290",
             search_ingredient="milk",
             product=self.milk_product,
             now=self.now,
         )
 
     def _build_sale_row(self):
-        """Helper: build a CSV row for the sale product in the fixture."""
+        """Helper: build a CSV row for the sale product in the fixture.
+
+        Uses store_id=9290 (extra1/fulfilmentStoreId, the canonical id).
+        """
         return build_woolworths_row(
             company="Woolworths",
             store="Nelson Junction Woolworths",
-            store_id="4166071",
+            store_id="9290",
             search_ingredient="milk",
             product=self.sale_product,
             now=self.now,
@@ -102,7 +109,7 @@ class TestBuildRow:
         """store and store_id must match the inputs passed to build_woolworths_row()."""
         row = self._build_milk_row()
         assert row["store"] == "Nelson Junction Woolworths"
-        assert row["store_id"] == "4166071"
+        assert row["store_id"] == "9290"
 
     def test_search_ingredient_value(self):
         """search_ingredient must be 'milk' (the term we searched for)."""
@@ -111,11 +118,11 @@ class TestBuildRow:
     def test_returned_ingredient_value(self):
         """returned_ingredient must be the product name from the fixture."""
         row = self._build_milk_row()
-        assert row["returned_ingredient"] == "woolworths milk standard"
+        assert row["returned_ingredient"] == "anchor milk standard blue"
 
     def test_price_value(self):
-        """price must match salePrice from the fixture (7.04)."""
-        assert self._build_milk_row()["price"] == 7.04
+        """price must match salePrice from the fixture (9.07)."""
+        assert self._build_milk_row()["price"] == 9.07
 
     def test_quantity_value(self):
         """quantity must be parsed from volumeSize '3L' -> 3.
@@ -134,16 +141,16 @@ class TestBuildRow:
         assert self._build_milk_row()["per_unit_quantity"] == "1L"
 
     def test_per_unit_price_value(self):
-        """per_unit_price must be cupListPrice from the fixture (2.35)."""
-        assert self._build_milk_row()["per_unit_price"] == 2.35
+        """per_unit_price must be cupListPrice from the fixture (3.02)."""
+        assert self._build_milk_row()["per_unit_price"] == 3.02
 
     def test_is_sale_value(self):
         """is_sale must reflect isSpecial=False from the fixture."""
         assert self._build_milk_row()["is_sale"] is False
 
     def test_sku_value(self):
-        """sku must match the fixture value '282768'."""
-        assert self._build_milk_row()["sku"] == "282768"
+        """sku must match the fixture value '705692'."""
+        assert self._build_milk_row()["sku"] == "705692"
 
     def test_department_value(self):
         """department must be 'Fridge & Deli' from the fixture."""
@@ -162,9 +169,13 @@ class TestBuildRow:
         assert self._build_milk_row()["datetime_created"] == "2024-08-09 12:00:00"
 
     def test_pk_hash_correct(self):
-        """pk_hash must be the hash of store_id|sku|date_created."""
+        """pk_hash must be the hash of store_id|sku|date_created.
+
+        Now hashed over store_id=9290 (extra1/fulfilmentStoreId, the
+        canonical id), not the legacy pickupAddressId 4166071.
+        """
         row = self._build_milk_row()
-        expected_hash = _compute_pk_hash("4166071", "282768", "2024-08-09")
+        expected_hash = _compute_pk_hash("9290", "705692", "2024-08-09")
         assert row["pk_hash"] == expected_hash
 
     def test_sale_item_is_sale_true(self):
@@ -364,33 +375,34 @@ class TestComputePkHash:
     """
 
     def test_known_hash_value(self):
-        """Verify the hash for store_id=4166071, sku=282768, date=2024-08-09.
+        """Verify the hash for store_id=9290, sku=282768, date=2024-08-09.
 
+        Uses store_id=9290 (extra1/fulfilmentStoreId, the canonical id).
         This corresponds to the Nelson Junction Woolworths milk product
         in product_normalized.json. The expected value was computed
         independently using hashlib.sha256.
         """
-        result = _compute_pk_hash("4166071", "282768", "2024-08-09")
+        result = _compute_pk_hash("9290", "282768", "2024-08-09")
         assert len(result) == 16
         # Independently verified hash for this input
-        raw = "4166071|282768|2024-08-09"
+        raw = "9290|282768|2024-08-09"
         expected = hashlib.sha256(raw.encode()).hexdigest()[:16]
         assert result == expected
 
     def test_hash_changes_with_sku(self):
         """Different SKUs must produce different hashes."""
-        h1 = _compute_pk_hash("4166071", "282768", "2024-08-09")
-        h2 = _compute_pk_hash("4166071", "282769", "2024-08-09")
+        h1 = _compute_pk_hash("9290", "282768", "2024-08-09")
+        h2 = _compute_pk_hash("9290", "282769", "2024-08-09")
         assert h1 != h2
 
     def test_hash_changes_with_store(self):
         """Different store IDs must produce different hashes."""
-        h1 = _compute_pk_hash("4166071", "282768", "2024-08-09")
+        h1 = _compute_pk_hash("9290", "282768", "2024-08-09")
         h2 = _compute_pk_hash("1225552", "282768", "2024-08-09")
         assert h1 != h2
 
     def test_hash_changes_with_date(self):
         """Different date_created values must produce different hashes."""
-        h1 = _compute_pk_hash("4166071", "282768", "2024-08-09")
-        h2 = _compute_pk_hash("4166071", "282768", "2024-08-10")
+        h1 = _compute_pk_hash("9290", "282768", "2024-08-09")
+        h2 = _compute_pk_hash("9290", "282768", "2024-08-10")
         assert h1 != h2

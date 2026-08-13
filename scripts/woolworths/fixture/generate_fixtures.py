@@ -21,8 +21,8 @@ Fixtures produced:
     │                                (GET https://api.cdx.nz/site-location/api/v1/sites)
     ├── cookies_example1.csv        Real store pick-up address CSV data
     │                                (derived from CDX site data)
-    ├── store_data_fixture.csv      CSV representation of the CDX sites data
-    │                                (derived from store_data_example.json)
+    ├── stores_fixture.csv      CSV representation of the CDX sites data
+    │                            (derived from store_data_example.json, 5-column: id, name, address, latitude, longitude)
     ├── nearby_stores_example.json  Reference point + coordinates for haversine tests
     │                                (derived from CDX site data)
     ├── shell_example1.json         Real /api/v1/shell response after cookie injection
@@ -433,8 +433,9 @@ def _capture_cookies_example1(raw_store_data, limit=3):
     """Save the first N stores from the CDX response as a CSV that mirrors
     the structure of the pickup-addresses choices CSV.
 
-    This CSV is used by merge_stores() tests — the 'id' column must match
-    the 'extra2' (SiteDataID) values in store_data_example.json.
+    This CSV is for legacy reference only — the 'id' column corresponds
+    to 'extra2' (SiteDataID) values in store_data_example.json. It is
+    not used by the current fetch_store_data() pipeline.
     """
     sites = raw_store_data.get("siteDetail", [])[:limit]
 
@@ -456,55 +457,47 @@ def _capture_cookies_example1(raw_store_data, limit=3):
 
 
 # ---------------------------------------------------------------------------
-# Fixture 5: store_data_fixture.csv
+# Fixture 5: stores_fixture.csv
 # ---------------------------------------------------------------------------
 # CSV version of the store data in store_data_example.json, using the same
-# columns that woolworths_setup.fetch_store_data() writes.
+# 5-column structure that woolworths_setup.fetch_store_data() writes:
+#   id (extra1/filfilmentStoreId), name, address, latitude, longitude.
+# This is the canonical fixture that tests and woolworths_api.get_nearby_stores()
+# read via STORE_CSV.
 # ---------------------------------------------------------------------------
 
 def _capture_store_data_csv(raw_store_data, limit=3):
     """Save the first N stores from the CDX response as a CSV matching
     the fetch_store_data() column structure.
 
-    Columns: Store Name, Suburb, Address, Postcode, State, SiteDataID,
-    latitude, longitude, Key Facilities
+    Columns: id (extra1/fulfilmentStoreId), name, address, latitude, longitude
+    Output filename: stores_fixture.csv
     """
     sites = raw_store_data.get("siteDetail", [])[:limit]
 
     rows = []
     for detail in sites:
         site = detail.get("site", {})
-        name = site.get("name", "")
-        suburb = site.get("suburb", "")
-        address = site.get("addressLine1", "")
-        postcode = site.get("postcode", "")
-        state = site.get("state", "")
-        extra2 = site.get("extra2", "")
+        extra1 = site.get("extra1")
         lat = site.get("latitude")
         lon = site.get("longitude")
-        facilities = site.get("facilityList", {}).get("facility", [])
-        facilities_str = ", ".join(facilities) if facilities else "None listed"
+        # Only include sites with valid extra1 and coordinates
+        if extra1 and str(extra1) != "null" and lat and lon:
+            rows.append({
+                "id": str(extra1),
+                "name": site.get("name", ""),
+                "address": site.get("addressLine1", ""),
+                "latitude": float(lat),
+                "longitude": float(lon),
+            })
 
-        rows.append({
-            "Store Name": name,
-            "Suburb": suburb or "",
-            "Address": address or "",
-            "Postcode": str(postcode) if postcode else "",
-            "State": state or "",
-            "SiteDataID": str(extra2) if extra2 else "",
-            "latitude": lat if lat is not None else "",
-            "longitude": lon if lon is not None else "",
-            "Key Facilities": facilities_str,
-        })
-
-    path = FIXTURE_DIR / "store_data_fixture.csv"
-    fieldnames = ["Store Name", "Suburb", "Address", "Postcode", "State",
-                  "SiteDataID", "latitude", "longitude", "Key Facilities"]
+    path = FIXTURE_DIR / "stores_fixture.csv"
+    fieldnames = ["id", "name", "address", "latitude", "longitude"]
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
-    print(f"      Wrote {len(rows)} row(s) to {path}")
+    print(f"[4/5] Wrote {len(rows)} row(s) to {path}")
 
 
 # ---------------------------------------------------------------------------
@@ -638,13 +631,13 @@ def main():
     print("\n[phase 2] Capturing store data example (CDX slice)...")
     _capture_store_data_example(raw_store_data, limit=5)
 
-    # Fixture 4: Pickup choices CSV (first 3 stores from CDX)
+    # Fixture 4: Pickup choices CSV (first 3 stores from CDX) — legacy reference only
     print("\n[phase 3] Capturing store choices CSV...")
     _capture_cookies_example1(raw_store_data, limit=3)
 
-    # Fixture 5: Store data CSV (first 3 stores from CDX)
+    # Fixture 5: Store data CSV (all 5 stores from CDX fixture with coords)
     print("\n[phase 4] Capturing store data CSV...")
-    _capture_store_data_csv(raw_store_data, limit=3)
+    _capture_store_data_csv(raw_store_data, limit=5)
 
     # Fixture 6: Nearby stores metadata (reference point + coords)
     print("\n[phase 5] Capturing nearby stores metadata...")

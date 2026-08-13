@@ -751,4 +751,118 @@ refreshing after manual edits.
 
 **Key insight**: This is backward-compatible — ingredients without approx fields behave exactly as before (`status="incompatible_units"`, `used_price=None`). The approx fallback only activates when both the primary unit comparison fails AND approx fields are present.
 
+## 62. Woolworths — Retired `pickupAddressId` (extra2) indirection; source stores from CDX extra1
+
+**Date**: 2026-08-12
+
+**Symptom**: The Woolworths optimizer bridged `pickupAddressId` (extra2) to
+`fulfilmentStoreId` (extra1) via a runtime lookup table
+(`get_store_mapping()`). This indirection was unnecessary — extra1 is available
+directly from the CDX store-location API and is the only value the
+`cw-lrkswrdjp` cookie requires (`dm-Pickup,f-{extra1},s-38`). The lookup also
+forced `results.store_id` to be written as extra2 (pickupAddressId), requiring
+extra normalization downstream (e.g. FastAPI worker store-id mapping) and
+creating inconsistent store identity across the data files.
+
+**Resolution**: Retired the extra2->extra1 indirection so the whole pipeline
+keys directly on extra1:
+
+- `woolworths_setup.fetch_store_data()` now builds `data/woolworths_stores.csv`
+  directly from the CDX API, with `id = extra1` and columns `id, name, address,
+  latitude, longitude`. The legacy left join against `woolworths_store_choices.csv`
+  and the `merge_stores()` function are removed. Output is 183 CDX sites
+  (177 after dropping the 4 null-extra1 + 2 shut-down excludes 9285, 9035),
+  keyed on extra1.
+- `woolworths_api.get_nearby_stores()` reads `woolworths_stores.csv` and
+  returns `store_id = extra1` (plus `fulfilmentStoreId`, `lat`, `lon`,
+  `distance_km`).
+- `woolworths_api.set_store_context(session, fulfilment_store_id)` takes extra1
+  directly, builds the cookie as `dm-Pickup,f-{fulfilment_store_id},s-38`, and
+  validates via `/api/v1/shell`. No mapping lookup.
+- `optimizer_utils.woolworths_optimizer()` and `build_woolworths_row()` write
+  `store_id = extra1` to `full_results.csv`.
+- Legacy functions `_load_store_mapping()`, `get_store_mapping()`, and
+  `fetch_store_choices()` have been **removed** from `woolworths_api.py`.
+  `fetch_store_choices()` code is retained in `woolworths_setup.py` (marked
+  legacy) for ad-hoc regeneration only.
+
+**Cookie unchanged**: the `cw-lrkswrdjp` format
+(`dm-Pickup,f-{extra1},s-38`), the fresh-session-per-store requirement, and
+the `areaId`/`s-38` optionality findings (Logs #16-#20) are all unchanged —
+the only change is that extra1 is now read directly from the CDX-derived
+store file rather than indirectly inferred from extra2 via a mapping table.
+
+**Tests / fixtures**: regenerated the `woolworths_stores.csv`-equivalent test
+fixture `fixture/stores_fixture.csv` (schema keyed on extra1, derived from
+`store_data_example.json`); `TestGetNearbyStores` patches `STORE_CSV`;
+`TestSetStoreContext` passes extra1 directly; `build_woolworths_row` tests
+use `store_id="9290"` (extra1) + recompute `pk_hash`. The `TestLoadStoreMapping`
+class (which tested the now-removed `_load_store_mapping`) has been removed.
+
+## 63. Woolworths — extra1 collisions: 3 store pairs share fulfilmentStoreId, 2 stores hardcoded as shut down
+
+**Date**: 2026-08-13
+
+**Symptom**: When building `woolworths_stores.csv` from CDX, `extra1` (fulfilmentStoreId)
+was used as the unique store key. Inspection revealed that **3 pairs of physically
+different stores share the same extra1 value**:
+
+| extra1 (fulfilmentStoreId) | Store A (extra2) | Store B (extra2) | CDX site.id A | CDX site.id B |
+|---|---|---|---|---|
+| 9290 | Nelson Junction Woolworths (4166071) | Motueka Woolworths (767216) | 9290 | 9495 |
+| 9112 | Te Puke Woolworths (913417) | Bureta Park Woolworths (1175393) | 9448 | 9050 |
+| 9511 | Bridge Street Woolworths (1207646) | Matamata Woolworths (911335) | 9033 | 9120 |
+
+**Root cause**: `extra1` is a **fulfilment store ID**, not a unique pickup-location
+identifier. The Woolworths API resolves `f-{extra1}` to a single `pickupAddressId`
+(via the `/api/v1/shell` endpoint's `context.fulfilment.pickupAddressId` field).
+Inspection confirmed:
+
+- `f-9290` → shell returns `pickupAddressId=767216` → resolves to **Motueka** (not Nelson Junction)
+- `f-9112` → shell returns `pickupAddressId=913417` → resolves to **Te Puke** (not Bureta Park)
+- `f-9511` → shell returns `pickupAddressId=911335` → resolves to **Matamata** (not Bridge Street)
+
+The "other" store in each pair (Nelson Junction, Bureta Park, Bridge Street) is
+**not directly addressable via any cookie key**:
+- `f-{extra2}` (pickupAddressId) is rejected by the shell (falls back to default 9171)
+- `f-{site.id}` (CDX internal id) is rejected by the shell (falls back to 9171)
+
+**Consequence**: Only **3 of the 6 stores** are effectively reached via extra1.
+The other 3 (Nelson Junction, Bureta Park, Bridge Street) are **unreachable** —
+they share their extra1 with a different physical store, and the API maps the
+cookie to the first/most-prioritised pickup location for that fulfilment store.
+
+**Live price verification** (search query "milk"):
+- extra1=9290 resolves to Motueka: milk = $2.49
+- extra1=9112 resolves to Te Puke: milk = $2.26
+- extra1=9511 resolves to Matamata: milk = $2.26
+
+All three returned different prices from each other, confirming the API does
+isolate pricing by the cookie key — but only at the fulfilment-store granularity,
+not the site granularity.
+
+**Investigation method**: Scripts in `scripts/woolworths/exploration/`:
+- `explore_extra1_collisions.py` — phases 1-5: CDX metadata dump, shell context
+  inspection for extra1/extra2/site.id, live price queries across all key types
+
+**Resolution**: extra1 remains the correct cookie key — there is no alternative
+that works for all stores. The colliding pairs will continue to return the
+price of whichever store the API maps the shared extra1 to. `fetch_store_data()`
+(dedup by extra1) already drops the duplicates; the remaining store in each
+pair is the one that the API actually resolves to.
+
+**Hardcoded exclusions**: Two stores added to `EXCLUDED_STORE_IDS` in
+`woolworths_setup.py`:
+
+- `9285` (Te Atatu Woolworths, 583 Te Atatu Road): permanently shut down on
+  24/04/2025. CDX still lists it but the physical store no longer exists.
+  Not present in the legacy `store_choices` pipeline either.
+- `9035` (Kaikohe Woolworths, 37 Station Road): permanently shut down on
+  15/02/2026. CDX still lists it but the physical store no longer exists.
+  Not present in the legacy `store_choices` pipeline either.
+
+These are filtered in `fetch_store_data()` before writing `woolworths_stores.csv`,
+so neither store appears in optimizer results.
+
+
 

@@ -1,22 +1,23 @@
 """
 Woolworths NZ Product Search Demo
-==================================
+=================================
 Example script demonstrating per-store product search via the Woolworths API.
 Searches for a given ingredient at a single hardcoded store (Greville Road)
 and prints the top 10 results with pricing details.
 
 What it does:
     1. Creates a fresh session and seeds cookies via GET /
-    2. Injects the cw-lrkswrdjp cookie for Greville Road (pickupAddressId 3105636)
+    2. Injects the cw-lrkswrdjp cookie for Greville Road (dm-Pickup,f-{extra1},s-38)
     3. Validates store context via /api/v1/shell
     4. Searches GET /api/v1/products?target=search&search=<query>&size=10
     5. Filters out ad/promo items (no SKU) and prints results
     6. Dumps raw JSON for the first product
 
+Store identity keys directly on extra1 (fulfilmentStoreId) — no lookup is needed.
+
 Store info (from data/woolworths_store_data.json):
     Name:               Woolworths Greville Road
-    pickupAddressId:    3105636
-    fulfilmentStoreId:   9171 (extra1)
+    fulfillmentStoreId:  9171 (extra1 = canonical store_id)
 
 Usage:
     python scripts/woolworths/woolworths_search_demo.py [ingredient]
@@ -29,10 +30,8 @@ import argparse
 import json
 import time
 import requests
-import sys
 from pathlib import Path
 
-DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 BASE_URL = "https://www.woolworths.co.nz/api/v1"
 SITE_URL = "https://www.woolworths.co.nz/"
 
@@ -45,28 +44,7 @@ HEADERS = {
 }
 
 STORE_NAME = "Woolworths Greville Road"
-PICKUP_ADDRESS_ID = "3105636"
-FULFILMENT_STORE_ID = 9171  # extra1 from woolworths_store_data.json
-
-
-def load_store_mapping():
-    """Load fulfilmentStoreId mapping from woolworths_store_data.json."""
-    store_data_path = DATA_DIR / "woolworths_store_data.json"
-    with open(store_data_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-
-    mapping = {}
-    for detail in data.get("siteDetail", []):
-        site = detail.get("site", {})
-        extra1 = site.get("extra1")
-        extra2 = site.get("extra2")
-        name = site.get("name", "")
-        if extra1 and extra2 and str(extra1) != "null" and str(extra2) != "null":
-            mapping[str(extra2)] = {
-                "fulfilmentStoreId": int(extra1),
-                "name": name,
-            }
-    return mapping
+FULFILMENT_STORE_ID = 9171  # extra1 from data/woolworths_store_data.json (canonical store_id)
 
 
 def create_session():
@@ -77,15 +55,12 @@ def create_session():
     return session
 
 
-def set_store_context(session, pickup_address_id):
-    """Set per-store pricing by injecting the cw-lrkswrdjp cookie."""
-    mapping = load_store_mapping()
-    store = mapping.get(str(pickup_address_id))
-    if not store:
-        print(f"ERROR: Store {pickup_address_id} not in mapping")
-        sys.exit(1)
+def set_store_context(session, fulfilment_store_id):
+    """Set per-store pricing by injecting the cw-lrkswrdjp cookie.
 
-    fsid = store["fulfilmentStoreId"]
+    Keys directly on extra1 (fulfilmentStoreId) — no lookup is needed.
+    """
+    fsid = str(fulfilment_store_id)
     cookie_val = f"dm-Pickup,f-{fsid},s-38"
     session.cookies.set("cw-lrkswrdjp", cookie_val, domain="www.woolworths.co.nz", path="/")
 
@@ -94,10 +69,10 @@ def set_store_context(session, pickup_address_id):
     shell = resp.json()
     fulf = shell.get("context", {}).get("fulfilment", {})
     actual_fsid = fulf.get("fulfilmentStoreId")
-    print(f"Store context set: {store['name']}")
+    print(f"Store context set: {STORE_NAME}")
     print(f"  fulfilmentStoreId: {actual_fsid}")
     print(f"  method: {fulf.get('method')}")
-    if actual_fsid == 9171 and fsid != 9171:
+    if actual_fsid == 9171 and int(fsid) != 9171:
         print("WARNING: Cookie may not have taken effect (showing default store)")
     return fulf
 
@@ -135,14 +110,14 @@ def main():
     query = args.ingredient
 
     print(f"=== Woolworths Product Search Demo ===")
-    print(f"Store: {STORE_NAME} (pickupAddressId={PICKUP_ADDRESS_ID})")
+    print(f"Store: {STORE_NAME} (extra1={FULFILMENT_STORE_ID})")
     print()
 
     start_time = time.time()
 
-    # Create session and set store context
+    # Create session and set store context (keys directly on extra1/fulfilmentStoreId)
     session = create_session()
-    set_store_context(session, PICKUP_ADDRESS_ID)
+    set_store_context(session, FULFILMENT_STORE_ID)
     print()
 
     # Search for the ingredient

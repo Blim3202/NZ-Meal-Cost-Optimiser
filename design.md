@@ -594,11 +594,11 @@ python -m scripts.paknsave.paknsave_setup mobile         # Mobile API (60 stores
 ```
 User input (address + dish)
   → Geocode address to lat/lon (Nominatim)
-  → Haversine filter (stores within 5 km from woolworths_store_data.json)
+  → Haversine filter (stores within 5 km from woolworths_stores.csv, keyed on extra1)
   → Dish name → ingredient list (DISHES dict, resolves via get_ingredients)
-  → FOR EACH nearby store:
+  → FOR EACH nearby store (store_id = extra1/fulfilmentStoreId):
       → Create fresh requests.Session + GET / to seed cookies
-      → Inject cw-lrkswrdjp cookie (constructed from extra1)
+      → Inject cw-lrkswrdjp cookie: dm-Pickup,f-{extra1},s-38  (no mapping lookup)
       → Validate via /api/v1/shell (fulfilmentStoreId != 9171)
       → Search each ingredient via /api/v1/products?target=search
       → Collect per-store prices
@@ -612,7 +612,8 @@ User input (address + dish)
 | `/api/v1/shell` | GET | Navigation taxonomy, session context, fulfilment details |
 | `/api/v1/products?target=search&search=<term>` | GET | Product search with prices |
 | `/api/v1/products?target=browse&dasFilter=Department;;<slug>;false` | GET | Browse by department |
-| `/api/v1/addresses/pickup-addresses` | GET | All pickup stores (id, name, address) |
+| `/api/v1/addresses/pickup-addresses` | GET | [LEGACY] pickup-addresses (extra2). No longer consulted by the optimizer. |
+| CDX `api.cdx.nz/site-location/api/v1/sites` | GET | Source of extra1 (fulfilmentStoreId) + lat/lon for `woolworths_stores.csv` |
 
 ### Required Headers
 
@@ -624,14 +625,17 @@ Accept:            application/json, text/plain, */*
 
 ### Cookie-Based Store Context
 
-The `cw-lrkswrdjp` cookie controls per-store pricing:
+The `cw-lrkswrdjp` cookie controls per-store pricing. Store identity now keys
+directly on `extra1` (fulfilmentStoreId) — no pickupAddressId→extra1 lookup:
 ```
-dm-Pickup,f-{fulfilmentStoreId},a-{areaId},s-38
+dm-Pickup,f-{extra1},s-38
 ```
-
-- `fulfilmentStoreId` = `extra1` from `woolworths_store_data.json` (NOT the same as `pickupAddressId`)
-- `areaId` is optional (cookie works without it)
-- `s-38` is constant across all stores
+- `extra1` = fulfilmentStoreId = canonical store_id (in `woolworths_stores.csv`,
+  `full_results.csv` rows, and the cookie's `f-{extra1}` field).
+- `areaId` is optional (cookie works without it).
+- `s-38` is constant across all stores.
+- The legacy `pickupAddressId` (extra2) and `get_store_mapping()` indirection are
+  retired (see `woolworths_api.py` legacy markers).
 
 ### Woolworths query pipeline (shared, in `optimizer_utils.py`)
 
@@ -664,19 +668,18 @@ optimise("spaghetti bolognese", company="Woolworths")
 
 ```
 woolworths_setup.py (unified)
-  → fetch_store_choices():
-      GET /api/v1/addresses/pickup-addresses
-      → Iterate ALL 19 storeAreas, dedupe by id
-      → Returns 188 unique pickup locations (includes stores only in regional areas, e.g. Chartwell)
-      → Saves woolworths_store_choices.csv/json
-  → fetch_store_data():
-      GET https://api.cdx.nz/site-location/api/v1/sites
-      → 183 stores with lat/lon, extra1 (fulfilmentStoreId), extra2 (pickupAddressId)
-      → Saves woolworths_store_data.csv/json
-  → merge_stores(cleaned=True):
-      Left join choices.id = data.SiteDataID
-      → 188 merged stores (177 with lat/lon, 11 dropped)
-      → Saves woolworths_stores.csv
+   → fetch_store_choices()  [LEGACY — detached, regenerates choices CSV only]:
+       GET /api/v1/addresses/pickup-addresses
+       → Iterate ALL 19 storeAreas, dedupe by id
+       → Returns 188 unique pickup locations (includes stores only in regional areas, e.g. Chartwell)
+       → Saves woolworths_store_choices.csv/json
+   → fetch_store_data(cleaned=True):
+       GET https://api.cdx.nz/site-location/api/v1/sites
+       → 183 stores with lat/lon, extra1 (fulfilmentStoreId), extra2 (pickupAddressId)
+       → Writes raw woolworths_store_data.json
+       → Filters: skip null extra1 (4 sites), skip EXCLUDED_STORE_IDS (9285, 9035)
+       → Builds cleaned store list keyed on extra1
+       → Writes woolworths_stores.csv (177 stores: 183 − 4 null-extra1 − 2 shut-down)
 ```
 
 ## Notebook Usage

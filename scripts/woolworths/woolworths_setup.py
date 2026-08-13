@@ -1,36 +1,38 @@
 """
 Woolworths NZ Store Setup Pipeline
 ===================================
-Builds the unified store listing used by the optimizer and API module.
+Builds the two data files consumed by the optimizer and API module:
 
-Three-step pipeline:
-    Step 1 - fetch_store_choices()
-        GET /api/v1/addresses/pickup-addresses
-        Returns ~188 unique pickup locations across all storeAreas.
-        Area 494 ("All Pick up locations") only has ~171 stores; regional areas
-        contain additional pickup points (e.g., Woolworths Chartwell).
-        Outputs: data/woolworths_store_choices.json, .csv
+    1. data/woolworths_store_data.json  — raw CDX site-location response (183 sites)
+    2. data/woolworths_stores.csv       — cleaned canonical store list keyed on
+                                          extra1 (fulfilmentStoreId), with lat/lon
 
-    Step 2 - fetch_store_data()
+Pipeline (single function):
+    fetch_store_data(cleaned=True)
         GET https://api.cdx.nz/site-location/api/v1/sites
-        Returns store details including lat/lon, extra1 (fulfilmentStoreId),
-        and extra2 (pickupAddressId).
-        Outputs: data/woolworths_store_data.json, .csv
+        Writes the two files above. `cleaned=True` drops stores without valid
+        coordinates or with extra1 == "null" (literal string emitted by CDX
+        for missing values). The resulting woolworths_stores.csv is the
+        canonical store list — its `id` column is the store_id used everywhere
+        downstream (optimizer results, and the cw-lrkswrdjp cookie's
+        `f-{id}` field).
 
-    Step 3 - merge_stores()
-        Joins choices (pickupAddressId) with data (lat/lon) on SiteDataID.
-        With cleaned=True (default), drops stores without coordinates.
-        Outputs: data/woolworths_stores.csv (177 stores with coords)
+Legacy (detached from the main pipeline — kept for historical reference only):
+    fetch_store_choices()
+        GET /api/v1/addresses/pickup-addresses (Woolworths website)
+        Output: data/woolworths_store_choices.json + .csv
+        Deprecated: this API returns pickupAddressId (extra2), which no longer
+        drives store identity. Store identity now comes from CDX extra1.
+        The function is retained so it can be called ad-hoc to regenerate the
+        legacy files, but is NOT called by fetch_store_data() or __main__.
 
 Usage:
-    # Run full pipeline
+    # Run full pipeline (produces both output files)
     python woolworths_setup.py
 
-    # Import individual steps
-    from woolworths_setup import fetch_store_choices, fetch_store_data, merge_stores
-    fetch_store_choices()
-    fetch_store_data()
-    merge_stores(cleaned=True)
+    # Import and call directly
+    from woolworths_setup import fetch_store_data
+    fetch_store_data(cleaned=True)
 
 Reference: Woolworths_API.md section 15 (store setup process)
 """
@@ -38,17 +40,28 @@ Reference: Woolworths_API.md section 15 (store setup process)
 import requests
 import json
 import csv
-import os
 import pandas as pd
 from pathlib import Path
 import sys
 
 DATA_DIR = Path(__file__).parent.parent.parent / "data"
-JSON_CHOICES = DATA_DIR / "woolworths_store_choices.json"
-CSV_CHOICES = DATA_DIR / "woolworths_store_choices.csv"
 JSON_DATA = DATA_DIR / "woolworths_store_data.json"
-CSV_DATA = DATA_DIR / "woolworths_store_data.csv"
-CSV_MERGED = DATA_DIR / "woolworths_stores.csv"
+CSV_STORES = DATA_DIR / "woolworths_stores.csv"
+
+# Legacy (commented out — not used by the current pipeline):
+# JSON_CHOICES = DATA_DIR / "woolworths_store_choices.json"
+# CSV_CHOICES = DATA_DIR / "woolworths_store_choices.csv"
+
+# Hardcoded exclusions — stores that CDX still lists but are permanently
+# closed. CDX has not yet reflected these closures, so we filter them here
+# to prevent the optimizer / API from targeting defunct stores.
+# Format: {extra1: "human-readable reason with shutdown date"}
+EXCLUDED_STORE_IDS = {
+    "9285": "Te Atatu Woolworths — permanently shut down on 24/04/2025; "
+            "CDX listing not yet updated (returned by CDX but not in store_choices pipeline).",
+    "9035": "Kaikohe Woolworths — permanently shut down on 15/02/2026; "
+            "CDX listing not yet updated (returned by CDX but not in store_choices pipeline).",
+}
 
 
 def clean_null(value):
@@ -60,12 +73,128 @@ def clean_null(value):
     return str(value)
 
 
+# ---------------------------------------------------------------------------
+# Current pipeline
+# ---------------------------------------------------------------------------
+
+def fetch_store_data(cleaned: bool = True) -> list[dict]:
+    """
+    Fetch store location data from the CDX API and produce the two canonical
+    Woolworths data files.
+
+    Writes:
+        data/woolworths_store_data.json  — raw CDX response (183 sites, unchanged)
+        data/woolworths_stores.csv       — cleaned 5-column store list keyed on
+                                            extra1 (fulfilmentStoreId)
+
+    Args:
+        cleaned: If True (default), drop stores where:
+            - extra1 is missing or the literal string "null" (invalid store id)
+            - latitude or longitude are missing or non-numeric
+        If False, keep all stores (with blank coords where present).
+    Returns:
+        The cleaned list of store dicts (id, name, address, latitude, longitude).
+    """
+    WOOLWORTHS_API_BASE_URL = "https://api.cdx.nz/site-location/api/v1/sites"
+    DEFAULT_LATITUDE = -41.24564052749397
+    DEFAULT_LONGITUDE = 173.1994906580824
+
+    headers = {
+        "sec-ch-ua": '"Google Chrome";v="149", "Chromium";v="149", "Not)A;Brand";v="24"',
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": '"Windows"',
+        "sec-fetch-dest": "empty",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-site": "cross-site",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    }
+
+    params = {
+        "latitude": DEFAULT_LATITUDE,
+        "longitude": DEFAULT_LONGITUDE,
+    }
+
+    print(f"Fetching data from: {WOOLWORTHS_API_BASE_URL} with parameters {params}")
+    try:
+        response = requests.get(WOOLWORTHS_API_BASE_URL, headers=headers, params=params, timeout=20)
+        response.raise_for_status()
+        stores_data = response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"[ERROR] Error fetching data: {e}")
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"[ERROR] Error decoding JSON response: {e}")
+        sys.exit(1)
+
+    # Write raw CDX JSON (file 1: woolworths_store_data.json)
+    with open(JSON_DATA, "w", encoding="utf-8") as f:
+        json.dump(stores_data, f, indent=4, ensure_ascii=False)
+    print(f"[OK] Saved raw JSON to {JSON_DATA}")
+
+    sites = stores_data.get("siteDetail", [])
+    if not sites:
+        print("[ERROR] No site data found in the response.")
+        return []
+
+    # Build the cleaned 5-column store list (file 2: woolworths_stores.csv)
+    rows = []
+    for item in sites:
+        site = item.get("site", {})
+        extra1 = clean_null(site.get("extra1"))
+        # Skip sites without a usable fulfilmentStoreId (extra1). CDX emits the
+        # literal string "null" for missing values; clean_null keeps it as a
+        # non-empty token, so filter it explicitly.
+        if not extra1 or str(extra1).lower() == "null":
+            continue
+        # Skip hardcoded exclusions (permanently shut-down stores that CDX
+        # still lists).
+        if str(extra1) in EXCLUDED_STORE_IDS:
+            print(f"[INFO] Skipping shut-down store extra1={extra1}: "
+                  f"{EXCLUDED_STORE_IDS[str(extra1)]}")
+            continue
+        rows.append({
+            "id": extra1,
+            "name": clean_null(site.get("name")).lstrip(),
+            "address": clean_null(site.get("addressLine1")),
+            "latitude": clean_null(site.get("latitude")),
+            "longitude": clean_null(site.get("longitude")),
+        })
+
+    if cleaned:
+        original_len = len(rows)
+
+        def _valid_coord(v):
+            if v is None or v == "":
+                return False
+            try:
+                float(v)
+                return True
+            except (ValueError, TypeError):
+                return False
+
+        rows = [r for r in rows if _valid_coord(r["latitude"]) and _valid_coord(r["longitude"])]
+        print(f"[INFO] Dropped {original_len - len(rows)} stores without coordinates (cleaned=True)")
+
+    merged = pd.DataFrame(rows, columns=["id", "name", "address", "latitude", "longitude"])
+    merged.to_csv(CSV_STORES, index=False, encoding="utf-8")
+    print(f"[OK] Saved {len(merged)} woolworths stores (keyed on extra1) at {CSV_STORES}.\n")
+    return merged.to_dict("records")
+
+
+# ---------------------------------------------------------------------------
+# Legacy (detached — kept for reference only)
+# ---------------------------------------------------------------------------
+
 def fetch_store_choices() -> list[dict]:
     """
-    Fetch Woolworths pickup store choices from the API.
-    Returns a list of dicts with keys: id, name, address
-    Dedupes across all storeAreas (area 494 'All Pick up locations' only has ~171 stores;
-    regional areas contain additional pickup points like Woolworths Chartwell).
+    [LEGACY] Fetch Woolworths pickup store choices from the pickup-addresses API.
+
+    NOT called by fetch_store_data() or the main pipeline. Retained so it can
+    be invoked ad-hoc to regenerate the legacy data/woolworths_store_choices.*
+    files for historical reference.
+
+    Returns pickup locations keyed by pickupAddressId (extra2) — deprecated as
+    the store identity source. Store identity now comes from CDX extra1.
     """
     WOOLWORTHS_API_BASE_URL = "https://www.woolworths.co.nz/api/v1/addresses/pickup-addresses"
 
@@ -99,6 +228,10 @@ def fetch_store_choices() -> list[dict]:
     except json.JSONDecodeError as e:
         print(f"[ERROR] Error decoding JSON response: {e}")
         sys.exit(1)
+
+    # Legacy output paths — defined here for the detached legacy function only
+    JSON_CHOICES = DATA_DIR / "woolworths_store_choices.json"
+    CSV_CHOICES = DATA_DIR / "woolworths_store_choices.csv"
 
     DATA_DIR.mkdir(exist_ok=True)
     with open(JSON_CHOICES, "w", encoding="utf-8") as f:
@@ -134,138 +267,21 @@ def fetch_store_choices() -> list[dict]:
     return stores
 
 
-def fetch_store_data() -> list[dict]:
-    """
-    Fetch Woolworths store location data (lat/lon, extra IDs) from CDX API.
-    Returns a list of dicts with keys: Store Name, Suburb, Address, Postcode, State,
-    SiteDataID, latitude, longitude, Key Facilities
-    """
-    WOOLWORTHS_API_BASE_URL = "https://api.cdx.nz/site-location/api/v1/sites"
-    # Apprx default coordinates for NZ when viewing https://www.woolworths.co.nz/store-finder/search in incognito
-    DEFAULT_LATITUDE = -41.24564052749397
-    DEFAULT_LONGITUDE = 173.1994906580824
-
-    headers = {
-        "sec-ch-ua": "\"Google Chrome\";v=\"149\", \"Chromium\";v=\"149\", \"Not)A;Brand\";v=\"24\"",
-        "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-platform": "\"Windows\"",
-        "sec-fetch-dest": "empty",
-        "sec-fetch-mode": "cors",
-        "sec-fetch-site": "cross-site",
-        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"
-    }
-
-    params = {
-        "latitude": DEFAULT_LATITUDE,
-        "longitude": DEFAULT_LONGITUDE,
-    }
-
-    print(f"Fetching data from: {WOOLWORTHS_API_BASE_URL} with parameters {params}")
-    try:
-        response = requests.get(WOOLWORTHS_API_BASE_URL, headers=headers, params=params, timeout=20)
-        response.raise_for_status()
-        stores_data = response.json()
-    except requests.exceptions.RequestException as e:
-        print(f"[ERROR] Error fetching data: {e}")
-        sys.exit(1)
-    except json.JSONDecodeError as e:
-        print(f"[ERROR] Error decoding JSON response: {e}")
-        sys.exit(1)
-
-    with open(JSON_DATA, "w", encoding="utf-8") as f:
-        json.dump(stores_data, f, indent=4, ensure_ascii=False)
-    print(f"[OK] Successfully downloaded and saved store JSON data to {JSON_DATA}")
-
-    sites = stores_data.get('siteDetail', [])
-    if not sites:
-        print("[ERROR] No site data found in the response.")
-        return []
-
-    table_data = []
-    for item in sites:
-        site = item.get('site', {})
-
-        name = clean_null(site.get('name'))
-        suburb = clean_null(site.get('suburb'))
-        address = clean_null(site.get('addressLine1'))
-        postcode = clean_null(site.get('postcode'))
-        state = clean_null(site.get('state'))
-        SiteDataID = clean_null(site.get('extra2'))
-        latitude = clean_null(site.get('latitude'))
-        longitude = clean_null(site.get('longitude'))
-        facilities = site.get('facilityList', {}).get('facility', [])
-        facilities_str = ", ".join(facilities) if facilities else "None listed"
-
-        table_data.append([
-            name, suburb, address, postcode, state,
-            SiteDataID, latitude, longitude, facilities_str
-        ])
-
-    headers = [
-        "Store Name", "Suburb", "Address", "Postcode", "State",
-        "SiteDataID", "latitude", "longitude", "Key Facilities"
-    ]
-
-    with open(CSV_DATA, 'w', newline='', encoding='utf-8') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(headers)
-        writer.writerows(table_data)
-
-    print(f"[OK] Successfully saved structured data for {len(sites)} woolworths stores at {CSV_DATA}.\n")
-    return table_data
-
-
-def merge_stores(cleaned: bool = True) -> pd.DataFrame:
-    """
-    Merge woolworths_store_choices.csv (pickup IDs + names) with
-    woolworths_store_data.csv (lat/lon keyed by SiteDataID).
-    
-    Args:
-        cleaned: If True (default), drop rows where latitude or longitude are NaN.
-                 If False, keep all rows including those without coordinates.
-    Returns the merged DataFrame.
-    """
-    df_choices = pd.read_csv(CSV_CHOICES)
-    df_data = pd.read_csv(CSV_DATA)
-
-    df_data_subset = df_data[['SiteDataID', 'latitude', 'longitude']]
-
-    merged = df_choices.merge(
-        df_data_subset,
-        left_on='id',
-        right_on='SiteDataID',
-        how='left'
-    ).drop('SiteDataID', axis=1)
-
-    if cleaned:
-        original_len = len(merged)
-        merged = merged.dropna(subset=['latitude', 'longitude'])
-        print(f"[INFO] Dropped {original_len - len(merged)} stores without coordinates (cleaned=True)")
-
-    merged.to_csv(CSV_MERGED, index=False, encoding='utf-8')
-    print(f"[OK] Successfully saved merged data for {len(merged)} woolworths stores at {CSV_MERGED}.\n")
-    return merged
-
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
 
 def run_full_setup():
-    """Run the complete pipeline: fetch choices, fetch data, merge."""
+    """Run the full pipeline: fetch CDX data and emit both output files."""
     print("=" * 60)
-    print("Step 1: Fetching Woolworths store choices (pickup locations)...")
+    print("Fetching Woolworths store location data (CDX API)...")
     print("=" * 60)
-    fetch_store_choices()
-
-    print("=" * 60)
-    print("Step 2: Fetching Woolworths store location data (CDX API)...")
-    print("=" * 60)
-    fetch_store_data()
-
-    print("=" * 60)
-    print("Step 3: Merging store choices with location data...")
-    print("=" * 60)
-    merge_stores(cleaned=True)
+    fetch_store_data(cleaned=True)
 
     print("=" * 60)
     print("[OK] Woolworths store setup complete!")
+    print(f"  - {JSON_DATA}")
+    print(f"  - {CSV_STORES}")
     print("=" * 60)
 
 

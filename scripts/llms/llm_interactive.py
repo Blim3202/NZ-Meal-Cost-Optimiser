@@ -485,7 +485,7 @@ def _collect_store_ids(store_ids, sm, address, distance):
         api_module = _import_woolworths()
         nearby = api_module.get_nearby_stores(user_lat, user_lon, max_dist_km=distance)
         for s in nearby:
-            store_ids.add(str(s["pickupAddressId"]))
+            store_ids.add(str(s["store_id"]))
         return
     else:
         return

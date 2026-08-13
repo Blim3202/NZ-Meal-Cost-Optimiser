@@ -10,7 +10,7 @@
           "value": "87",
           "isBooleanValue": false,
           "name": "Beef",
-          "productCount": 97,
+          "productCount": 100,
           "shelfResponses": [
             {
               "id": 535,
@@ -55,7 +55,7 @@
           "value": "88",
           "isBooleanValue": false,
           "name": "Chicken & Poultry",
-          "productCount": 117,
+          "productCount": 124,
           "shelfResponses": [
             {
               "id": 283,
@@ -235,7 +235,7 @@
           "value": "92",
           "isBooleanValue": false,
           "name": "Mince & Patties",
-          "productCount": 24,
+          "productCount": 26,
           "shelfResponses": [
             {
               "id": 571,
@@ -255,7 +255,7 @@
           "value": "93",
           "isBooleanValue": false,
           "name": "Sausages",
-          "productCount": 59,
+          "productCount": 60,
           "shelfResponses": [
             {
               "id": 751,
@@ -295,7 +295,7 @@
           "value": "94",
           "isBooleanValue": false,
           "name": "BBQ Meat",
-          "productCount": 102,
+          "productCount": 105,
           "shelfResponses": [
             {
               "id": 712,
@@ -335,7 +335,7 @@
           "value": "95",
           "isBooleanValue": false,
           "name": "Roast Meat",
-          "productCount": 29,
+          "productCount": 31,
           "shelfResponses": [
             {
               "id": 747,
@@ -385,7 +385,7 @@
           "value": "98",
           "isBooleanValue": false,
           "name": "Plant Based Alternatives",
-          "productCount": 9,
+          "productCount": 10,
           "shelfResponses": [
             {
               "id": 770,
@@ -424,7 +424,7 @@
     },
     {
       "id": 3,
-      "label": "Fish & Seafood (24)",
+      "label": "Fish & Seafood (22)",
       "url": "fish-seafood",
       "dasFacets": [
         {
@@ -432,7 +432,7 @@
           "value": "129",
           "isBooleanValue": false,
           "name": "Fish",
-          "productCount": 8,
+          "productCount": 7,
           "shelfResponses": [
             {
               "id": 762,
@@ -467,7 +467,7 @@
           "value": "131",
           "isBooleanValue": false,
           "name": "Prawns & Seafood",
-          "productCount": 44,
+          "productCount": 45,
           "shelfResponses": [
             {
               "id": 810,
@@ -492,7 +492,7 @@
           "value": "132",
           "isBooleanValue": false,
           "name": "3 for $20",
-          "productCount": 14,
+          "productCount": 15,
           "shelfResponses": [
             {
               "id": 806,
@@ -506,7 +506,7 @@
     },
     {
       "id": 4,
-      "label": "Fridge & Deli (612)",
+      "label": "Fridge & Deli (614)",
       "url": "fridge-deli",
       "dasFacets": [
         {
@@ -514,7 +514,7 @@
           "value": "25",
           "isBooleanValue": false,
           "name": "Eggs, Butter & Spreads",
-          "productCount": 146,
+          "productCount": 143,
           "shelfResponses": [
             {
               "id": 618,
@@ -544,7 +544,7 @@
           "value": "26",
           "isBooleanValue": false,
           "name": "Milk",
-          "productCount": 224,
+          "productCount": 221,
           "shelfResponses": [
             {
               "id": 655,
@@ -589,7 +589,7 @@
           "value": "27",
           "isBooleanValue": false,
           "name": "Cheese",
-          "productCount": 779,
+          "productCount": 775,
           "shelfResponses": [
             {
               "id": 596,
@@ -679,7 +679,7 @@
           "value": "28",
           "isBooleanValue": false,
           "name": "Yoghurt & Desserts",
-          "productCount": 276,
+          "productCount": 275,
           "shelfResponses": [
             {
               "id": 441,
@@ -744,7 +744,7 @@
           "value": "30",
           "isBooleanValue": false,
           "name": "Juice & Drinks",
-          "productCount": 112,
+          "productCount": 111,
           "shelfResponses": [
             {
               "id": 222,
@@ -779,7 +779,7 @@
           "value": "31",
           "isBooleanValue": false,
           "name": "Deli Meats & Seafood",
-          "productCount": 310,
+          "productCount": 315,
           "shelfResponses": [
             {
               "id": 493,
@@ -819,7 +819,7 @@
           "value": "32",
           "isBooleanValue": false,
           "name": "Prepared Meals & Sides",
-          "productCount": 602,
+          "productCount": 591,
           "shelfResponses": [
             {
               "id": 148,
@@ -864,7 +864,7 @@
           "value": "33",
           "isBooleanValue": false,
           "name": "Deli Salads",
-          "productCount": 38,
+          "productCount": 36,
           "shelfResponses": [
             {
               "id": 370,
@@ -924,7 +924,7 @@
           "value": "35",
           "isBooleanValue": false,
           "name": "Dips, Hummus & Nibbles",
-          "productCount": 184,
+          "productCount": 180,
           "shelfResponses": [
             {
               "id": 156,
@@ -969,7 +969,7 @@
           "value": "36",
           "isBooleanValue": false,
           "name": "Vegan & Vegetarian",
-          "productCount": 18,
+          "productCount": 19,
           "shelfResponses": [
             {
               "id": 366,
@@ -999,7 +999,7 @@
           "value": "37",
           "isBooleanValue": false,
           "name": "3 for $12 Deli",
-          "productCount": 10,
+          "productCount": 9,
           "shelfResponses": [
             {
               "id": 718,
@@ -1013,7 +1013,7 @@
     },
     {
       "id": 5,
-      "label": "Bakery (111)",
+      "label": "Bakery (109)",
       "url": "bakery",
       "dasFacets": [
         {
@@ -1021,7 +1021,7 @@
           "value": "15",
           "isBooleanValue": false,
           "name": "Bakery In Store",
-          "productCount": 216,
+          "productCount": 218,
           "shelfResponses": [
             {
               "id": 467,
@@ -1071,7 +1071,7 @@
           "value": "16",
           "isBooleanValue": false,
           "name": "Sliced & Packaged Bread",
-          "productCount": 103,
+          "productCount": 101,
           "shelfResponses": [
             {
               "id": 521,
@@ -1106,7 +1106,7 @@
           "value": "17",
           "isBooleanValue": false,
           "name": "Buns, Rolls & Bread Sticks",
-          "productCount": 61,
+          "productCount": 62,
           "shelfResponses": [
             {
               "id": 406,
@@ -1141,7 +1141,7 @@
           "value": "18",
           "isBooleanValue": false,
           "name": "Wraps, Pita & Pizza Bases",
-          "productCount": 73,
+          "productCount": 74,
           "shelfResponses": [
             {
               "id": 447,
@@ -1171,7 +1171,7 @@
           "value": "19",
           "isBooleanValue": false,
           "name": "Pastries, Croissants & Biscuits",
-          "productCount": 63,
+          "productCount": 65,
           "shelfResponses": [
             {
               "id": 353,
@@ -1271,7 +1271,7 @@
           "value": "22",
           "isBooleanValue": false,
           "name": "Gluten Free",
-          "productCount": 14,
+          "productCount": 13,
           "shelfResponses": [
             {
               "id": 638,
@@ -1305,7 +1305,7 @@
     },
     {
       "id": 6,
-      "label": "Frozen (312)",
+      "label": "Frozen (311)",
       "url": "frozen",
       "dasFacets": [
         {
@@ -1313,7 +1313,7 @@
           "value": "77",
           "isBooleanValue": false,
           "name": "Frozen Vegetables",
-          "productCount": 127,
+          "productCount": 126,
           "shelfResponses": [
             {
               "id": 327,
@@ -1348,7 +1348,7 @@
           "value": "78",
           "isBooleanValue": false,
           "name": "Frozen Meat",
-          "productCount": 66,
+          "productCount": 71,
           "shelfResponses": [
             {
               "id": 547,
@@ -1493,7 +1493,7 @@
           "value": "84",
           "isBooleanValue": false,
           "name": "Ice Cream & Sorbet",
-          "productCount": 324,
+          "productCount": 319,
           "shelfResponses": [
             {
               "id": 401,
@@ -1572,7 +1572,7 @@
     },
     {
       "id": 7,
-      "label": "Pantry (1391)",
+      "label": "Pantry (1366)",
       "url": "pantry",
       "dasFacets": [
         {
@@ -1580,7 +1580,7 @@
           "value": "58",
           "isBooleanValue": false,
           "name": "Snacks & Sweets",
-          "productCount": 1857,
+          "productCount": 1835,
           "shelfResponses": [
             {
               "id": 505,
@@ -1635,7 +1635,7 @@
           "value": "59",
           "isBooleanValue": false,
           "name": "Biscuits & Crackers",
-          "productCount": 496,
+          "productCount": 492,
           "shelfResponses": [
             {
               "id": 438,
@@ -1660,7 +1660,7 @@
           "value": "60",
           "isBooleanValue": false,
           "name": "Tinned Foods & Packets",
-          "productCount": 547,
+          "productCount": 534,
           "shelfResponses": [
             {
               "id": 167,
@@ -1725,7 +1725,7 @@
           "value": "61",
           "isBooleanValue": false,
           "name": "Baking",
-          "productCount": 470,
+          "productCount": 472,
           "shelfResponses": [
             {
               "id": 691,
@@ -1795,7 +1795,7 @@
           "value": "62",
           "isBooleanValue": false,
           "name": "Cereals & Spreads",
-          "productCount": 449,
+          "productCount": 448,
           "shelfResponses": [
             {
               "id": 320,
@@ -1840,7 +1840,7 @@
           "value": "63",
           "isBooleanValue": false,
           "name": "Sauces & Pastes",
-          "productCount": 689,
+          "productCount": 679,
           "shelfResponses": [
             {
               "id": 312,
@@ -1890,7 +1890,7 @@
           "value": "64",
           "isBooleanValue": false,
           "name": "Pasta, Noodles & Grains",
-          "productCount": 399,
+          "productCount": 394,
           "shelfResponses": [
             {
               "id": 384,
@@ -1955,7 +1955,7 @@
           "value": "66",
           "isBooleanValue": false,
           "name": "Oil, Vinegar & Condiments",
-          "productCount": 439,
+          "productCount": 440,
           "shelfResponses": [
             {
               "id": 187,
@@ -2000,7 +2000,7 @@
           "value": "67",
           "isBooleanValue": false,
           "name": "Meal Kits",
-          "productCount": 180,
+          "productCount": 178,
           "shelfResponses": [
             {
               "id": 544,
@@ -2025,7 +2025,7 @@
           "value": "68",
           "isBooleanValue": false,
           "name": "International Foods",
-          "productCount": 334,
+          "productCount": 330,
           "shelfResponses": [
             {
               "id": 734,
@@ -2070,7 +2070,7 @@
           "value": "69",
           "isBooleanValue": false,
           "name": "Eggs",
-          "productCount": 51,
+          "productCount": 53,
           "shelfResponses": [
             {
               "id": 514,
@@ -2090,7 +2090,7 @@
           "value": "70",
           "isBooleanValue": false,
           "name": "Desserts",
-          "productCount": 149,
+          "productCount": 147,
           "shelfResponses": [
             {
               "id": 260,
@@ -2120,7 +2120,7 @@
           "value": "71",
           "isBooleanValue": false,
           "name": "Long Life Milk",
-          "productCount": 88,
+          "productCount": 87,
           "shelfResponses": [
             {
               "id": 802,
@@ -2150,7 +2150,7 @@
           "value": "72",
           "isBooleanValue": false,
           "name": "Bulk Foods",
-          "productCount": 101,
+          "productCount": 37,
           "shelfResponses": [
             {
               "id": 501,
@@ -2174,7 +2174,7 @@
     },
     {
       "id": 8,
-      "label": "Beer & Wine (411)",
+      "label": "Beer & Wine (415)",
       "url": "beer-wine",
       "dasFacets": [
         {
@@ -2182,7 +2182,7 @@
           "value": "133",
           "isBooleanValue": false,
           "name": "Beer",
-          "productCount": 194,
+          "productCount": 195,
           "shelfResponses": [
             {
               "id": 817,
@@ -2207,7 +2207,7 @@
           "value": "134",
           "isBooleanValue": false,
           "name": "Craft Beer",
-          "productCount": 96,
+          "productCount": 98,
           "shelfResponses": [
             {
               "id": 719,
@@ -2252,7 +2252,7 @@
           "value": "135",
           "isBooleanValue": false,
           "name": "Cider",
-          "productCount": 48,
+          "productCount": 49,
           "shelfResponses": [
             {
               "id": 787,
@@ -2277,7 +2277,7 @@
           "value": "136",
           "isBooleanValue": false,
           "name": "Champagne & Sparkling Wine",
-          "productCount": 108,
+          "productCount": 109,
           "shelfResponses": [
             {
               "id": 741,
@@ -2302,7 +2302,7 @@
           "value": "137",
           "isBooleanValue": false,
           "name": "Red Wine",
-          "productCount": 402,
+          "productCount": 400,
           "shelfResponses": [
             {
               "id": 757,
@@ -2337,7 +2337,7 @@
           "value": "138",
           "isBooleanValue": false,
           "name": "White Wine",
-          "productCount": 379,
+          "productCount": 389,
           "shelfResponses": [
             {
               "id": 764,
@@ -2492,7 +2492,7 @@
           "value": "145",
           "isBooleanValue": false,
           "name": "Lower Alcohol",
-          "productCount": 19,
+          "productCount": 18,
           "shelfResponses": [
             {
               "id": 781,
@@ -2512,7 +2512,7 @@
           "value": "146",
           "isBooleanValue": false,
           "name": "Non Alcoholic",
-          "productCount": 45,
+          "productCount": 42,
           "shelfResponses": [
             {
               "id": 807,
@@ -2536,7 +2536,7 @@
     },
     {
       "id": 9,
-      "label": "Drinks (553)",
+      "label": "Drinks (554)",
       "url": "drinks",
       "dasFacets": [
         {
@@ -2544,7 +2544,7 @@
           "value": "38",
           "isBooleanValue": false,
           "name": "Coffee",
-          "productCount": 469,
+          "productCount": 473,
           "shelfResponses": [
             {
               "id": 198,
@@ -2584,7 +2584,7 @@
           "value": "39",
           "isBooleanValue": false,
           "name": "Tea & Milk Drinks",
-          "productCount": 350,
+          "productCount": 344,
           "shelfResponses": [
             {
               "id": 461,
@@ -2624,7 +2624,7 @@
           "value": "40",
           "isBooleanValue": false,
           "name": "Soft Drinks & Sports Drinks",
-          "productCount": 345,
+          "productCount": 342,
           "shelfResponses": [
             {
               "id": 274,
@@ -2654,7 +2654,7 @@
           "value": "41",
           "isBooleanValue": false,
           "name": "Juice & Cordial",
-          "productCount": 332,
+          "productCount": 330,
           "shelfResponses": [
             {
               "id": 293,
@@ -2694,7 +2694,7 @@
           "value": "42",
           "isBooleanValue": false,
           "name": "Water",
-          "productCount": 132,
+          "productCount": 130,
           "shelfResponses": [
             {
               "id": 489,
@@ -2748,7 +2748,7 @@
     },
     {
       "id": 10,
-      "label": "Health & Body (1037)",
+      "label": "Health & Body (1040)",
       "url": "health-body",
       "dasFacets": [
         {
@@ -2756,7 +2756,7 @@
           "value": "100",
           "isBooleanValue": false,
           "name": "Bath, Shower & Soap",
-          "productCount": 250,
+          "productCount": 248,
           "shelfResponses": [
             {
               "id": 194,
@@ -2786,7 +2786,7 @@
           "value": "101",
           "isBooleanValue": false,
           "name": "Hair Care",
-          "productCount": 773,
+          "productCount": 772,
           "shelfResponses": [
             {
               "id": 641,
@@ -2841,7 +2841,7 @@
           "value": "102",
           "isBooleanValue": false,
           "name": "Dental & Oral Care",
-          "productCount": 218,
+          "productCount": 216,
           "shelfResponses": [
             {
               "id": 360,
@@ -2881,7 +2881,7 @@
           "value": "103",
           "isBooleanValue": false,
           "name": "Deodorant & Body Sprays",
-          "productCount": 177,
+          "productCount": 175,
           "shelfResponses": [
             {
               "id": 790,
@@ -2911,7 +2911,7 @@
           "value": "104",
           "isBooleanValue": false,
           "name": "Skin Care & Sun Care",
-          "productCount": 778,
+          "productCount": 771,
           "shelfResponses": [
             {
               "id": 586,
@@ -3001,7 +3001,7 @@
           "value": "106",
           "isBooleanValue": false,
           "name": "Shaving & Hair Removal",
-          "productCount": 143,
+          "productCount": 140,
           "shelfResponses": [
             {
               "id": 332,
@@ -3136,7 +3136,7 @@
           "value": "110",
           "isBooleanValue": false,
           "name": "Medical & First Aid",
-          "productCount": 288,
+          "productCount": 282,
           "shelfResponses": [
             {
               "id": 423,
@@ -3191,7 +3191,7 @@
           "value": "111",
           "isBooleanValue": false,
           "name": "Vitamins & Supplements",
-          "productCount": 429,
+          "productCount": 423,
           "shelfResponses": [
             {
               "id": 204,
@@ -3256,7 +3256,7 @@
           "value": "112",
           "isBooleanValue": false,
           "name": "Sports Nutrition & Weight Management",
-          "productCount": 220,
+          "productCount": 217,
           "shelfResponses": [
             {
               "id": 728,
@@ -3276,7 +3276,7 @@
           "value": "114",
           "isBooleanValue": false,
           "name": "Contraception & Pregnancy",
-          "productCount": 47,
+          "productCount": 48,
           "shelfResponses": [
             {
               "id": 178,
@@ -3305,7 +3305,7 @@
     },
     {
       "id": 11,
-      "label": "Household (379)",
+      "label": "Household (374)",
       "url": "household",
       "dasFacets": [
         {
@@ -3338,7 +3338,7 @@
           "value": "45",
           "isBooleanValue": false,
           "name": "Kitchen",
-          "productCount": 423,
+          "productCount": 420,
           "shelfResponses": [
             {
               "id": 336,
@@ -3393,7 +3393,7 @@
           "value": "46",
           "isBooleanValue": false,
           "name": "Laundry",
-          "productCount": 209,
+          "productCount": 207,
           "shelfResponses": [
             {
               "id": 433,
@@ -3428,7 +3428,7 @@
           "value": "47",
           "isBooleanValue": false,
           "name": "Cleaning",
-          "productCount": 394,
+          "productCount": 390,
           "shelfResponses": [
             {
               "id": 249,
@@ -3493,7 +3493,7 @@
           "value": "48",
           "isBooleanValue": false,
           "name": "Pest Control",
-          "productCount": 69,
+          "productCount": 59,
           "shelfResponses": [
             {
               "id": 485,
@@ -3523,7 +3523,7 @@
           "value": "49",
           "isBooleanValue": false,
           "name": "Homewares",
-          "productCount": 55,
+          "productCount": 56,
           "shelfResponses": [
             {
               "id": 526,
@@ -3558,7 +3558,7 @@
           "value": "50",
           "isBooleanValue": false,
           "name": "Bags",
-          "productCount": 61,
+          "productCount": 60,
           "shelfResponses": [
             {
               "id": 454,
@@ -3569,6 +3569,11 @@
               "id": 455,
               "label": "Rubbish Bags & Tags",
               "url": "rubbish-bags-tags"
+            },
+            {
+              "id": 456,
+              "label": "Cooler Bags",
+              "url": "cooler-bags"
             }
           ],
           "group": "Aisle"
@@ -3578,7 +3583,7 @@
           "value": "51",
           "isBooleanValue": false,
           "name": "Clothing & Accessories",
-          "productCount": 148,
+          "productCount": 146,
           "shelfResponses": [
             {
               "id": 390,
@@ -3618,7 +3623,7 @@
           "value": "53",
           "isBooleanValue": false,
           "name": "Garden & Garage",
-          "productCount": 100,
+          "productCount": 105,
           "shelfResponses": [
             {
               "id": 345,
@@ -3713,7 +3718,7 @@
           "value": "55",
           "isBooleanValue": false,
           "name": "Entertainment & Gifts",
-          "productCount": 190,
+          "productCount": 174,
           "shelfResponses": [
             {
               "id": 215,
@@ -3758,7 +3763,7 @@
           "value": "56",
           "isBooleanValue": false,
           "name": "Magazines & Stationery",
-          "productCount": 180,
+          "productCount": 175,
           "shelfResponses": [
             {
               "id": 550,
@@ -3797,7 +3802,7 @@
     },
     {
       "id": 12,
-      "label": "Baby & Child (93)",
+      "label": "Baby & Child (90)",
       "url": "baby-child",
       "dasFacets": [
         {
@@ -3805,7 +3810,7 @@
           "value": "124",
           "isBooleanValue": false,
           "name": "Nappies & Wipes",
-          "productCount": 183,
+          "productCount": 174,
           "shelfResponses": [
             {
               "id": 681,
@@ -3865,7 +3870,7 @@
           "value": "125",
           "isBooleanValue": false,
           "name": "Baby Food",
-          "productCount": 197,
+          "productCount": 195,
           "shelfResponses": [
             {
               "id": 278,
@@ -3900,7 +3905,7 @@
           "value": "126",
           "isBooleanValue": false,
           "name": "Formula",
-          "productCount": 61,
+          "productCount": 58,
           "shelfResponses": [
             {
               "id": 264,
@@ -3974,7 +3979,7 @@
     },
     {
       "id": 13,
-      "label": "Pet (155)",
+      "label": "Pet (148)",
       "url": "pet",
       "dasFacets": [
         {
@@ -3982,7 +3987,7 @@
           "value": "73",
           "isBooleanValue": false,
           "name": "Cats",
-          "productCount": 279,
+          "productCount": 284,
           "shelfResponses": [
             {
               "id": 475,
@@ -4027,7 +4032,7 @@
           "value": "74",
           "isBooleanValue": false,
           "name": "Dogs",
-          "productCount": 220,
+          "productCount": 206,
           "shelfResponses": [
             {
               "id": 303,
@@ -4092,7 +4097,7 @@
           "value": "76",
           "isBooleanValue": false,
           "name": "Pet Health & Accessories",
-          "productCount": 71,
+          "productCount": 74,
           "shelfResponses": [
             {
               "id": 268,
@@ -4163,7 +4168,7 @@
                   "value": "115",
                   "isBooleanValue": false,
                   "name": "Fruit",
-                  "productCount": 83,
+                  "productCount": 87,
                   "shelfResponses": [
                     {
                       "id": 623,
@@ -4248,7 +4253,7 @@
                   "value": "116",
                   "isBooleanValue": false,
                   "name": "Vegetables",
-                  "productCount": 262,
+                  "productCount": 261,
                   "shelfResponses": [
                     {
                       "id": 662,
@@ -4353,7 +4358,7 @@
                   "value": "117",
                   "isBooleanValue": false,
                   "name": "Prepared Fruit & Veg",
-                  "productCount": 43,
+                  "productCount": 45,
                   "shelfResponses": [
                     {
                       "id": 823,
@@ -4378,7 +4383,7 @@
                   "value": "118",
                   "isBooleanValue": false,
                   "name": "Fresh Salad & Herbs",
-                  "productCount": 152,
+                  "productCount": 153,
                   "shelfResponses": [
                     {
                       "id": 227,
@@ -4473,7 +4478,7 @@
                   "value": "120",
                   "isBooleanValue": false,
                   "name": "Organic",
-                  "productCount": 25,
+                  "productCount": 27,
                   "shelfResponses": [
                     {
                       "id": 616,
@@ -4606,7 +4611,7 @@
                   "value": "87",
                   "isBooleanValue": false,
                   "name": "Beef",
-                  "productCount": 60,
+                  "productCount": 62,
                   "shelfResponses": [
                     {
                       "id": 535,
@@ -4646,7 +4651,7 @@
                   "value": "88",
                   "isBooleanValue": false,
                   "name": "Chicken & Poultry",
-                  "productCount": 97,
+                  "productCount": 95,
                   "shelfResponses": [
                     {
                       "id": 283,
@@ -4706,7 +4711,7 @@
                   "value": "89",
                   "isBooleanValue": false,
                   "name": "Lamb",
-                  "productCount": 38,
+                  "productCount": 37,
                   "shelfResponses": [
                     {
                       "id": 377,
@@ -4751,7 +4756,7 @@
                   "value": "90",
                   "isBooleanValue": false,
                   "name": "Pork",
-                  "productCount": 58,
+                  "productCount": 64,
                   "shelfResponses": [
                     {
                       "id": 239,
@@ -4831,7 +4836,7 @@
                   "value": "93",
                   "isBooleanValue": false,
                   "name": "Sausages",
-                  "productCount": 60,
+                  "productCount": 59,
                   "shelfResponses": [
                     {
                       "id": 751,
@@ -4871,7 +4876,7 @@
                   "value": "94",
                   "isBooleanValue": false,
                   "name": "BBQ Meat",
-                  "productCount": 68,
+                  "productCount": 69,
                   "shelfResponses": [
                     {
                       "id": 712,
@@ -4911,7 +4916,7 @@
                   "value": "95",
                   "isBooleanValue": false,
                   "name": "Roast Meat",
-                  "productCount": 25,
+                  "productCount": 23,
                   "shelfResponses": [
                     {
                       "id": 747,
@@ -4961,7 +4966,7 @@
                   "value": "98",
                   "isBooleanValue": false,
                   "name": "Plant Based Alternatives",
-                  "productCount": 9,
+                  "productCount": 10,
                   "shelfResponses": [
                     {
                       "id": 770,
@@ -4986,7 +4991,7 @@
                   "value": "99",
                   "isBooleanValue": false,
                   "name": "3 for $20",
-                  "productCount": 28,
+                  "productCount": 26,
                   "shelfResponses": [
                     {
                       "id": 794,
@@ -5043,7 +5048,7 @@
                   "value": "129",
                   "isBooleanValue": false,
                   "name": "Fish",
-                  "productCount": 9,
+                  "productCount": 7,
                   "shelfResponses": [
                     {
                       "id": 762,
@@ -5058,7 +5063,7 @@
                   "value": "130",
                   "isBooleanValue": false,
                   "name": "Salmon",
-                  "productCount": 46,
+                  "productCount": 45,
                   "shelfResponses": [
                     {
                       "id": 821,
@@ -5078,7 +5083,7 @@
                   "value": "131",
                   "isBooleanValue": false,
                   "name": "Prawns & Seafood",
-                  "productCount": 39,
+                  "productCount": 34,
                   "shelfResponses": [
                     {
                       "id": 810,
@@ -5103,7 +5108,7 @@
                   "value": "132",
                   "isBooleanValue": false,
                   "name": "3 for $20",
-                  "productCount": 14,
+                  "productCount": 12,
                   "shelfResponses": [
                     {
                       "id": 806,
@@ -5160,7 +5165,7 @@
                   "value": "25",
                   "isBooleanValue": false,
                   "name": "Eggs, Butter & Spreads",
-                  "productCount": 127,
+                  "productCount": 124,
                   "shelfResponses": [
                     {
                       "id": 618,
@@ -5190,7 +5195,7 @@
                   "value": "26",
                   "isBooleanValue": false,
                   "name": "Milk",
-                  "productCount": 202,
+                  "productCount": 199,
                   "shelfResponses": [
                     {
                       "id": 655,
@@ -5235,7 +5240,7 @@
                   "value": "27",
                   "isBooleanValue": false,
                   "name": "Cheese",
-                  "productCount": 616,
+                  "productCount": 618,
                   "shelfResponses": [
                     {
                       "id": 596,
@@ -5325,7 +5330,7 @@
                   "value": "28",
                   "isBooleanValue": false,
                   "name": "Yoghurt & Desserts",
-                  "productCount": 286,
+                  "productCount": 301,
                   "shelfResponses": [
                     {
                       "id": 441,
@@ -5425,7 +5430,7 @@
                   "value": "31",
                   "isBooleanValue": false,
                   "name": "Deli Meats & Seafood",
-                  "productCount": 319,
+                  "productCount": 318,
                   "shelfResponses": [
                     {
                       "id": 493,
@@ -5465,7 +5470,7 @@
                   "value": "32",
                   "isBooleanValue": false,
                   "name": "Prepared Meals & Sides",
-                  "productCount": 484,
+                  "productCount": 488,
                   "shelfResponses": [
                     {
                       "id": 148,
@@ -5510,7 +5515,7 @@
                   "value": "33",
                   "isBooleanValue": false,
                   "name": "Deli Salads",
-                  "productCount": 24,
+                  "productCount": 25,
                   "shelfResponses": [
                     {
                       "id": 370,
@@ -5540,7 +5545,7 @@
                   "value": "34",
                   "isBooleanValue": false,
                   "name": "Pasta, Pizza & Pastry",
-                  "productCount": 58,
+                  "productCount": 61,
                   "shelfResponses": [
                     {
                       "id": 309,
@@ -5565,7 +5570,7 @@
                   "value": "35",
                   "isBooleanValue": false,
                   "name": "Dips, Hummus & Nibbles",
-                  "productCount": 165,
+                  "productCount": 161,
                   "shelfResponses": [
                     {
                       "id": 156,
@@ -5605,7 +5610,7 @@
                   "value": "36",
                   "isBooleanValue": false,
                   "name": "Vegan & Vegetarian",
-                  "productCount": 19,
+                  "productCount": 20,
                   "shelfResponses": [
                     {
                       "id": 366,
@@ -5692,7 +5697,7 @@
                   "value": "15",
                   "isBooleanValue": false,
                   "name": "Bakery In Store",
-                  "productCount": 215,
+                  "productCount": 214,
                   "shelfResponses": [
                     {
                       "id": 467,
@@ -5742,7 +5747,7 @@
                   "value": "16",
                   "isBooleanValue": false,
                   "name": "Sliced & Packaged Bread",
-                  "productCount": 111,
+                  "productCount": 104,
                   "shelfResponses": [
                     {
                       "id": 521,
@@ -5777,7 +5782,7 @@
                   "value": "17",
                   "isBooleanValue": false,
                   "name": "Buns, Rolls & Bread Sticks",
-                  "productCount": 64,
+                  "productCount": 62,
                   "shelfResponses": [
                     {
                       "id": 406,
@@ -5842,7 +5847,7 @@
                   "value": "19",
                   "isBooleanValue": false,
                   "name": "Pastries, Croissants & Biscuits",
-                  "productCount": 60,
+                  "productCount": 63,
                   "shelfResponses": [
                     {
                       "id": 353,
@@ -5867,7 +5872,7 @@
                   "value": "20",
                   "isBooleanValue": false,
                   "name": "Cakes, Muffins & Desserts",
-                  "productCount": 168,
+                  "productCount": 164,
                   "shelfResponses": [
                     {
                       "id": 416,
@@ -5912,7 +5917,7 @@
                   "value": "21",
                   "isBooleanValue": false,
                   "name": "Bagels, Crumpets & Pancakes",
-                  "productCount": 51,
+                  "productCount": 52,
                   "shelfResponses": [
                     {
                       "id": 574,
@@ -5942,7 +5947,7 @@
                   "value": "22",
                   "isBooleanValue": false,
                   "name": "Gluten Free",
-                  "productCount": 14,
+                  "productCount": 13,
                   "shelfResponses": [
                     {
                       "id": 638,
@@ -6019,7 +6024,7 @@
                   "value": "77",
                   "isBooleanValue": false,
                   "name": "Frozen Vegetables",
-                  "productCount": 112,
+                  "productCount": 108,
                   "shelfResponses": [
                     {
                       "id": 327,
@@ -6054,7 +6059,7 @@
                   "value": "78",
                   "isBooleanValue": false,
                   "name": "Frozen Meat",
-                  "productCount": 68,
+                  "productCount": 69,
                   "shelfResponses": [
                     {
                       "id": 547,
@@ -6079,7 +6084,7 @@
                   "value": "79",
                   "isBooleanValue": false,
                   "name": "Frozen Meat Alternatives",
-                  "productCount": 19,
+                  "productCount": 24,
                   "shelfResponses": [
                     {
                       "id": 726,
@@ -6099,7 +6104,7 @@
                   "value": "80",
                   "isBooleanValue": false,
                   "name": "Frozen Seafood",
-                  "productCount": 86,
+                  "productCount": 84,
                   "shelfResponses": [
                     {
                       "id": 357,
@@ -6124,7 +6129,7 @@
                   "value": "81",
                   "isBooleanValue": false,
                   "name": "Frozen Fruit & Drink",
-                  "productCount": 44,
+                  "productCount": 45,
                   "shelfResponses": [
                     {
                       "id": 568,
@@ -6149,7 +6154,7 @@
                   "value": "82",
                   "isBooleanValue": false,
                   "name": "Frozen Meals & Snacks",
-                  "productCount": 248,
+                  "productCount": 250,
                   "shelfResponses": [
                     {
                       "id": 411,
@@ -6199,7 +6204,7 @@
                   "value": "84",
                   "isBooleanValue": false,
                   "name": "Ice Cream & Sorbet",
-                  "productCount": 329,
+                  "productCount": 324,
                   "shelfResponses": [
                     {
                       "id": 401,
@@ -6321,7 +6326,7 @@
                   "value": "58",
                   "isBooleanValue": false,
                   "name": "Snacks & Sweets",
-                  "productCount": 1829,
+                  "productCount": 1804,
                   "shelfResponses": [
                     {
                       "id": 505,
@@ -6376,7 +6381,7 @@
                   "value": "59",
                   "isBooleanValue": false,
                   "name": "Biscuits & Crackers",
-                  "productCount": 492,
+                  "productCount": 484,
                   "shelfResponses": [
                     {
                       "id": 438,
@@ -6401,7 +6406,7 @@
                   "value": "60",
                   "isBooleanValue": false,
                   "name": "Tinned Foods & Packets",
-                  "productCount": 535,
+                  "productCount": 526,
                   "shelfResponses": [
                     {
                       "id": 167,
@@ -6466,7 +6471,7 @@
                   "value": "61",
                   "isBooleanValue": false,
                   "name": "Baking",
-                  "productCount": 466,
+                  "productCount": 469,
                   "shelfResponses": [
                     {
                       "id": 691,
@@ -6536,7 +6541,7 @@
                   "value": "62",
                   "isBooleanValue": false,
                   "name": "Cereals & Spreads",
-                  "productCount": 430,
+                  "productCount": 437,
                   "shelfResponses": [
                     {
                       "id": 320,
@@ -6581,7 +6586,7 @@
                   "value": "63",
                   "isBooleanValue": false,
                   "name": "Sauces & Pastes",
-                  "productCount": 663,
+                  "productCount": 656,
                   "shelfResponses": [
                     {
                       "id": 312,
@@ -6631,7 +6636,7 @@
                   "value": "64",
                   "isBooleanValue": false,
                   "name": "Pasta, Noodles & Grains",
-                  "productCount": 400,
+                  "productCount": 392,
                   "shelfResponses": [
                     {
                       "id": 384,
@@ -6696,7 +6701,7 @@
                   "value": "66",
                   "isBooleanValue": false,
                   "name": "Oil, Vinegar & Condiments",
-                  "productCount": 417,
+                  "productCount": 411,
                   "shelfResponses": [
                     {
                       "id": 187,
@@ -6741,7 +6746,7 @@
                   "value": "67",
                   "isBooleanValue": false,
                   "name": "Meal Kits",
-                  "productCount": 180,
+                  "productCount": 176,
                   "shelfResponses": [
                     {
                       "id": 544,
@@ -6766,7 +6771,7 @@
                   "value": "68",
                   "isBooleanValue": false,
                   "name": "International Foods",
-                  "productCount": 331,
+                  "productCount": 324,
                   "shelfResponses": [
                     {
                       "id": 734,
@@ -6811,7 +6816,7 @@
                   "value": "69",
                   "isBooleanValue": false,
                   "name": "Eggs",
-                  "productCount": 39,
+                  "productCount": 37,
                   "shelfResponses": [
                     {
                       "id": 514,
@@ -6831,7 +6836,7 @@
                   "value": "70",
                   "isBooleanValue": false,
                   "name": "Desserts",
-                  "productCount": 148,
+                  "productCount": 146,
                   "shelfResponses": [
                     {
                       "id": 260,
@@ -6891,7 +6896,7 @@
                   "value": "72",
                   "isBooleanValue": false,
                   "name": "Bulk Foods",
-                  "productCount": 65,
+                  "productCount": 30,
                   "shelfResponses": [
                     {
                       "id": 501,
@@ -6969,7 +6974,7 @@
                   "value": "133",
                   "isBooleanValue": false,
                   "name": "Beer",
-                  "productCount": 169,
+                  "productCount": 167,
                   "shelfResponses": [
                     {
                       "id": 817,
@@ -6994,7 +6999,7 @@
                   "value": "134",
                   "isBooleanValue": false,
                   "name": "Craft Beer",
-                  "productCount": 76,
+                  "productCount": 75,
                   "shelfResponses": [
                     {
                       "id": 719,
@@ -7089,7 +7094,7 @@
                   "value": "137",
                   "isBooleanValue": false,
                   "name": "Red Wine",
-                  "productCount": 341,
+                  "productCount": 337,
                   "shelfResponses": [
                     {
                       "id": 757,
@@ -7124,7 +7129,7 @@
                   "value": "138",
                   "isBooleanValue": false,
                   "name": "White Wine",
-                  "productCount": 324,
+                  "productCount": 333,
                   "shelfResponses": [
                     {
                       "id": 764,
@@ -7184,7 +7189,7 @@
                   "value": "140",
                   "isBooleanValue": false,
                   "name": "Moscato & Sweet Wine",
-                  "productCount": 18,
+                  "productCount": 17,
                   "shelfResponses": [
                     {
                       "id": 813,
@@ -7299,7 +7304,7 @@
                   "value": "146",
                   "isBooleanValue": false,
                   "name": "Non Alcoholic",
-                  "productCount": 85,
+                  "productCount": 83,
                   "shelfResponses": [
                     {
                       "id": 807,
@@ -7366,7 +7371,7 @@
                   "value": "38",
                   "isBooleanValue": false,
                   "name": "Coffee",
-                  "productCount": 442,
+                  "productCount": 446,
                   "shelfResponses": [
                     {
                       "id": 198,
@@ -7406,7 +7411,7 @@
                   "value": "39",
                   "isBooleanValue": false,
                   "name": "Tea & Milk Drinks",
-                  "productCount": 354,
+                  "productCount": 351,
                   "shelfResponses": [
                     {
                       "id": 461,
@@ -7446,7 +7451,7 @@
                   "value": "40",
                   "isBooleanValue": false,
                   "name": "Soft Drinks & Sports Drinks",
-                  "productCount": 364,
+                  "productCount": 362,
                   "shelfResponses": [
                     {
                       "id": 274,
@@ -7476,7 +7481,7 @@
                   "value": "41",
                   "isBooleanValue": false,
                   "name": "Juice & Cordial",
-                  "productCount": 319,
+                  "productCount": 315,
                   "shelfResponses": [
                     {
                       "id": 293,
@@ -7643,7 +7648,7 @@
                   "value": "101",
                   "isBooleanValue": false,
                   "name": "Hair Care",
-                  "productCount": 832,
+                  "productCount": 830,
                   "shelfResponses": [
                     {
                       "id": 641,
@@ -7698,7 +7703,7 @@
                   "value": "102",
                   "isBooleanValue": false,
                   "name": "Dental & Oral Care",
-                  "productCount": 241,
+                  "productCount": 244,
                   "shelfResponses": [
                     {
                       "id": 360,
@@ -7738,7 +7743,7 @@
                   "value": "103",
                   "isBooleanValue": false,
                   "name": "Deodorant & Body Sprays",
-                  "productCount": 174,
+                  "productCount": 166,
                   "shelfResponses": [
                     {
                       "id": 790,
@@ -7768,7 +7773,7 @@
                   "value": "104",
                   "isBooleanValue": false,
                   "name": "Skin Care & Sun Care",
-                  "productCount": 823,
+                  "productCount": 808,
                   "shelfResponses": [
                     {
                       "id": 586,
@@ -7828,7 +7833,7 @@
                   "value": "105",
                   "isBooleanValue": false,
                   "name": "Eye & Ear Care",
-                  "productCount": 52,
+                  "productCount": 51,
                   "shelfResponses": [
                     {
                       "id": 397,
@@ -7858,7 +7863,7 @@
                   "value": "106",
                   "isBooleanValue": false,
                   "name": "Shaving & Hair Removal",
-                  "productCount": 145,
+                  "productCount": 138,
                   "shelfResponses": [
                     {
                       "id": 332,
@@ -7888,7 +7893,7 @@
                   "value": "107",
                   "isBooleanValue": false,
                   "name": "Make Up & Nail Care",
-                  "productCount": 323,
+                  "productCount": 319,
                   "shelfResponses": [
                     {
                       "id": 650,
@@ -7923,7 +7928,7 @@
                   "value": "108",
                   "isBooleanValue": false,
                   "name": "Tissues & Cotton Wool",
-                  "productCount": 50,
+                  "productCount": 49,
                   "shelfResponses": [
                     {
                       "id": 703,
@@ -7953,7 +7958,7 @@
                   "value": "109",
                   "isBooleanValue": false,
                   "name": "Period & Continence Care",
-                  "productCount": 202,
+                  "productCount": 206,
                   "shelfResponses": [
                     {
                       "id": 561,
@@ -7998,7 +8003,7 @@
                   "value": "110",
                   "isBooleanValue": false,
                   "name": "Medical & First Aid",
-                  "productCount": 290,
+                  "productCount": 286,
                   "shelfResponses": [
                     {
                       "id": 423,
@@ -8053,7 +8058,7 @@
                   "value": "111",
                   "isBooleanValue": false,
                   "name": "Vitamins & Supplements",
-                  "productCount": 438,
+                  "productCount": 437,
                   "shelfResponses": [
                     {
                       "id": 204,
@@ -8138,7 +8143,7 @@
                   "value": "114",
                   "isBooleanValue": false,
                   "name": "Contraception & Pregnancy",
-                  "productCount": 49,
+                  "productCount": 48,
                   "shelfResponses": [
                     {
                       "id": 178,
@@ -8210,7 +8215,7 @@
                   "value": "44",
                   "isBooleanValue": false,
                   "name": "Bathroom",
-                  "productCount": 105,
+                  "productCount": 103,
                   "shelfResponses": [
                     {
                       "id": 163,
@@ -8290,7 +8295,7 @@
                   "value": "46",
                   "isBooleanValue": false,
                   "name": "Laundry",
-                  "productCount": 216,
+                  "productCount": 212,
                   "shelfResponses": [
                     {
                       "id": 433,
@@ -8325,7 +8330,7 @@
                   "value": "47",
                   "isBooleanValue": false,
                   "name": "Cleaning",
-                  "productCount": 394,
+                  "productCount": 386,
                   "shelfResponses": [
                     {
                       "id": 249,
@@ -8390,7 +8395,7 @@
                   "value": "48",
                   "isBooleanValue": false,
                   "name": "Pest Control",
-                  "productCount": 71,
+                  "productCount": 58,
                   "shelfResponses": [
                     {
                       "id": 485,
@@ -8420,7 +8425,7 @@
                   "value": "49",
                   "isBooleanValue": false,
                   "name": "Homewares",
-                  "productCount": 109,
+                  "productCount": 107,
                   "shelfResponses": [
                     {
                       "id": 526,
@@ -8480,7 +8485,7 @@
                   "value": "51",
                   "isBooleanValue": false,
                   "name": "Clothing & Accessories",
-                  "productCount": 181,
+                  "productCount": 179,
                   "shelfResponses": [
                     {
                       "id": 390,
@@ -8520,7 +8525,7 @@
                   "value": "53",
                   "isBooleanValue": false,
                   "name": "Garden & Garage",
-                  "productCount": 112,
+                  "productCount": 113,
                   "shelfResponses": [
                     {
                       "id": 345,
@@ -8565,7 +8570,7 @@
                   "value": "54",
                   "isBooleanValue": false,
                   "name": "Hardware & Electrical",
-                  "productCount": 283,
+                  "productCount": 285,
                   "shelfResponses": [
                     {
                       "id": 578,
@@ -8615,7 +8620,7 @@
                   "value": "55",
                   "isBooleanValue": false,
                   "name": "Entertainment & Gifts",
-                  "productCount": 260,
+                  "productCount": 239,
                   "shelfResponses": [
                     {
                       "id": 215,
@@ -8660,7 +8665,7 @@
                   "value": "56",
                   "isBooleanValue": false,
                   "name": "Magazines & Stationery",
-                  "productCount": 225,
+                  "productCount": 222,
                   "shelfResponses": [
                     {
                       "id": 550,
@@ -8737,7 +8742,7 @@
                   "value": "124",
                   "isBooleanValue": false,
                   "name": "Nappies & Wipes",
-                  "productCount": 178,
+                  "productCount": 176,
                   "shelfResponses": [
                     {
                       "id": 681,
@@ -8797,7 +8802,7 @@
                   "value": "125",
                   "isBooleanValue": false,
                   "name": "Baby Food",
-                  "productCount": 185,
+                  "productCount": 190,
                   "shelfResponses": [
                     {
                       "id": 278,
@@ -8832,7 +8837,7 @@
                   "value": "126",
                   "isBooleanValue": false,
                   "name": "Formula",
-                  "productCount": 52,
+                  "productCount": 51,
                   "shelfResponses": [
                     {
                       "id": 264,
@@ -8862,7 +8867,7 @@
                   "value": "127",
                   "isBooleanValue": false,
                   "name": "Bottles, Toys & Accessories",
-                  "productCount": 186,
+                  "productCount": 187,
                   "shelfResponses": [
                     {
                       "id": 517,
@@ -9005,7 +9010,7 @@
                   "value": "74",
                   "isBooleanValue": false,
                   "name": "Dogs",
-                  "productCount": 221,
+                  "productCount": 211,
                   "shelfResponses": [
                     {
                       "id": 303,
@@ -9070,7 +9075,7 @@
                   "value": "76",
                   "isBooleanValue": false,
                   "name": "Pet Health & Accessories",
-                  "productCount": 55,
+                  "productCount": 54,
                   "shelfResponses": [
                     {
                       "id": 268,

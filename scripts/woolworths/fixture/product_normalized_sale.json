@@ -1,14 +1,14 @@
 {
-  "sku": "282848",
-  "name": "anchor milk standard blue",
-  "salePrice": 2.99,
-  "originalPrice": 3.76,
+  "sku": "269671",
+  "name": "anchor uht milk blue top",
+  "salePrice": 3.5,
+  "originalPrice": 4.0,
   "isSpecial": true,
-  "unitPrice": 3.76,
+  "unitPrice": 3.5,
   "volumeSize": "1L",
   "cupMeasure": "1L",
-  "cupListPrice": 3.76,
+  "cupListPrice": 4.0,
   "url": "",
   "imageUrl": "",
-  "department": "Fridge & Deli"
+  "department": "Pantry"
 }

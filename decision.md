@@ -377,4 +377,34 @@ The specific CommonApi endpoints that were removed from `PaknSave_API.md` (no lo
 | `/CommonApi/Checkout/GetPreviousProductPurchases` | GET | Previous purchases |
 | `/CommonApi/Checkout/GetAisleOfValueProducts` | GET | Aisle-of-value deals |
 | `/CommonApi/Delivery/GetStoreCollectionPoints?id={id}` | GET | Collection point details |
+
+## 28. Retire `pickupAddressId` (extra2) indirection for Woolworths
+
+Historically the Woolworths optimizer resolved `extra1` (fulfilmentStoreId) from the
+`extra2` (pickupAddressId) returned by `/api/v1/addresses/pickup-addresses`, via a
+lookup table (`get_store_mapping()`, built from `woolworths_store_data.json`).
+
+This indirection is **retired**. Store identity now keys directly on `extra1`
+(fulfilmentStoreId) everywhere in the Woolworths pipeline:
+
+- `woolworths_setup.fetch_store_data()` builds `data/woolworths_stores.csv` directly from
+  CDX (`woolworths_store_data.json`), keyed on `id=extra1` (with `name, address,
+  latitude, longitude`). The legacy `woolworths_store_choices.csv` (pickup-addresses
+  API, keyed on extra2) is no longer consulted for store identity.
+- `woolworths_api.get_nearby_stores()` reads `woolworths_stores.csv` and returns
+  `store_id=extra1`. No extra2→extra1 lookup occurs.
+- `woolworths_api.set_store_context(session, fulfilment_store_id)` takes extra1
+  directly and builds the `cw-lrkswrdjp` cookie as `dm-Pickup,f-{extra1},s-38`.
+- `optimizer_utils.woolworths_optimizer()` and `build_woolworths_row()` write
+  `store_id=extra1` to `full_results.csv`.
+
+`get_store_mapping()` and `_load_store_mapping()` have been **removed** from
+`woolworths_api.py`. The `woolworths_search_demo.py` legacy mapping flow was also
+removed (its `load_store_mapping()` function deleted). `fetch_store_choices()`
+remains in `woolworths_setup.py`, marked legacy in its docstring — it still
+regenerates `data/woolworths_store_choices.*` on ad-hoc invocation, but is not
+called by `fetch_store_data()` or any optimizer code.
+
+See §21 (`extra1` = `fulfilmentStoreId`) for why extra1 is the correct key, and
+§22 (fresh session per store) which is unchanged.
 | `/CommonApi/ShoppingLists/GetLists` | GET | Shopping lists |

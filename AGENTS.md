@@ -119,10 +119,12 @@ opencode/
 - **New World store setup**: `scripts/newworld/newworld_setup.py` defaults to `source="edge"` (148 stores), with `source="mobile"` as the legacy fallback (150 stores). Mirrors `paknsave_setup.py` structure. NW has no `store_finder` source. Output CSV is 10 columns (`store_id, name, address, city, region, lat, lon, banner, click_and_collect, delivery`); the legacy `url` column is no longer produced — store identity is via `store_id` UUIDs.
 
 ### Woolworths
-- **Per-store pricing via cookie injection**: The `cw-lrkswrdjp` cookie controls store context. Construct it as `dm-Pickup,f-{fulfilmentStoreId},s-38` where `fulfilmentStoreId` = `extra1` from `woolworths_store_data.json`. See `Woolworths_API.md` section 8 for full details.
+- **Canonical store_id = extra1 (fulfilmentStoreId)**: Store identity keys directly on `extra1` everywhere — `data/woolworths_stores.csv` (from CDX via `fetch_store_data()`), `full_results.csv` `store_id`, and the `cw-lrkswrdjp` cookie's `f-{extra1}` field. **The legacy `pickupAddressId` (extra2) → `extra1` mapping indirection is retired** (`get_store_mapping()` is marked legacy in `woolworths_api.py`; `fetch_store_data()` now reads CDX directly, filtering null-extra1 sites and shut-down stores). The `cw-lrkswrdjp` cookie therefore builds as `dm-Pickup,f-{extra1},s-38` with no lookup. See `Woolworths_API.md` section 8 for full detail.
+- **extra1 collisions (§63 in logs.md)**: `extra1` is a *fulfilment store ID*, not a unique store identifier. 3 pairs of stores share extra1 (Nelson Junction/Motueka, Te Puke/Bureta Park, Bridge Street/Matamata). Only 3 of those 6 stores are reachable via the cookie.
+- **Hardcoded exclusions**: `fetch_store_data()` skips `9285` (Te Atatu Woolworths, shut down 24/04/2025) and `9035` (Kaikohe Woolworths, shut down 15/02/2026) via `EXCLUDED_STORE_IDS`.
 - **Fresh session required per store**: Reusing a `requests.Session` causes the server's `Set-Cookie` to overwrite the injected `cw-lrkswrdjp`. Create a new session (with `GET /`) for each store.
-- **`fulfilmentStoreId` != `pickupAddressId`**: These are different numbers. Use `extra1` from `woolworths_store_data.json` for the cookie.
-- **`areaId` is optional**: The cookie works with just `dm-Pickup,f-{fulfilmentStoreId}`. The `a-` and `s-` fields are not required.
+- **`extra1` != `extra2`**: `extra1` is the internal `fulfilmentStoreId` (cookie field); `extra2` is the legacy `pickupAddressId` (from the now-legacy `fetch_store_choices()`). Use `extra1` for the cookie and as `store_id`. (`fetch_store_choices()` code is kept but marked legacy in its docstring — it only regenerates `woolworths_store_choices.csv`.)
+- **`areaId` is optional**: The cookie works with just `dm-Pickup,f-{extra1}`. The `a-` and `s-` fields are not required.
 - **`s-38` is constant**: Confirmed across all tested stores. Safe to hardcode.
 - **x-requested-with header mandatory**: Omitting it returns HTTP 400. The literal string `"??"` works.
 - **Session seeding**: A single `GET /` with browser-like headers establishes cookies. No login needed for public endpoints.
