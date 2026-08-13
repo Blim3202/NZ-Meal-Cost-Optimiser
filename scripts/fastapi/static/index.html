@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NZ Meal Cost Optimizer</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 2rem auto; padding: 1rem; }
+    input, button, select { padding: 0.5rem; margin: 0.25rem 0; width: 100%; box-sizing: border-box; }
+    button { background: #f5a623; color: white; border: none; cursor: pointer; }
+    button:hover { background: #e09715; }
+    .result { border: 1px solid #ddd; padding: 1rem; margin: 1rem 0; border-radius: 4px; }
+    .cheapest { background: #e8f5e9; border-left: 4px solid #4caf50; }
+    .store-row { display: flex; justify-content: space-between; padding: 0.25rem 0; border-bottom: 1px solid #eee; }
+    .loading { color: #666; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #ddd; }
+    th { background: #f5f5f5; }
+  </style>
+</head>
+<body>
+  <h1>NZ Meal Cost Optimizer</h1>
+  <p>Find the cheapest supermarket for any meal across Pak'nSave, New World, and Woolworths.</p>
+
+  <div id="form">
+    <input id="dish" placeholder="Dish (e.g. spaghetti bolognese)" value="spaghetti bolognese" />
+    <input id="address" placeholder="NZ Address (e.g. Auckland CBD)" value="Auckland CBD" />
+    <input id="distance" type="number" min="1" max="20" value="5" />
+    <label><input type="checkbox" id="dryRun" /> Dry run (use sample data)</label>
+    <button onclick="runOptimize()">Optimize</button>
+  </div>
+
+  <div id="loading" class="loading" style="display:none">Searching all supermarkets...</div>
+  <div id="results"></div>
+
+  <script>
+    async function runOptimize() {
+      const form = document.getElementById('form');
+      const loading = document.getElementById('loading');
+      const results = document.getElementById('results');
+
+      loading.style.display = 'block';
+      results.innerHTML = '';
+      form.style.display = 'none';
+
+      const payload = {
+        dish: document.getElementById('dish').value,
+        address: document.getElementById('address').value,
+        distance_km: parseFloat(document.getElementById('distance').value) || 5.0,
+        max_stores_per_company: 3
+      };
+
+      try {
+        const resp = await fetch('/optimize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        displayResults(data);
+      } catch (e) {
+        results.innerHTML = '<p style="color:red">Error: ' + e.message + '</p>';
+      } finally {
+        loading.style.display = 'none';
+        form.style.display = 'block';
+      }
+    }
+
+    function displayResults(data) {
+      if (data.detail) {
+        document.getElementById('results').innerHTML = '<p style="color:red">Error: ' + data.detail + '</p>';
+        return;
+      }
+
+      let html = '';
+      html += '<div class="result cheapest">';
+      html += '<h2>Best Option: ' + data.cheapest_store + ' - $' + data.cheapest_total.toFixed(2) + '</h2>';
+      html += '</div>';
+
+      html += '<h3>Store Comparison</h3>';
+      html += '<table><tr><th>Store</th><th>Company</th><th>Total Cost</th></tr>';
+      data.store_breakdown.forEach(s => {
+        html += '<tr><td>' + s.store + '</td><td>' + s.company + '</td><td>$' + s.total_cost.toFixed(2) + '</td></tr>';
+      });
+      html += '</table>';
+
+      html += '<h3>Ingredient Breakdown (Cheapest)</h3>';
+      html += '<table><tr><th>Ingredient</th><th>Price</th><th>Store</th></tr>';
+      // Group by cheapest per ingredient
+      const cheapestPerIng = {};
+      data.ingredient_results.forEach(r => {
+        if (!cheapestPerIng[r.ingredient] || r.price < cheapestPerIng[r.ingredient].price) {
+          cheapestPerIng[r.ingredient] = r;
+        }
+      });
+      Object.values(cheapestPerIng).forEach(r => {
+        html += '<tr><td>' + r.ingredient + '</td><td>$' + r.price.toFixed(2) + '</td><td>' + r.store + '</td></tr>';
+      });
+      html += '</table>';
+
+      html += '<p style="color:#888; font-size:0.8em">Completed at ' + data.timestamp + '</p>';
+      document.getElementById('results').innerHTML = html;
+    }
+  </script>
+</body>
+</html>

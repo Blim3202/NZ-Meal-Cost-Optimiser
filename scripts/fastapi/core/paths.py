@@ -1,10 +1,8 @@
 """Path bootstrap for the FastAPI layer.
 
 Inserts the legacy `scripts/*/` package directories onto `sys.path` so the
-existing optimizer modules (`optimizer_utils`, `woolworths_optimizer`,
-`paknsave_api`, `newworld_api`, etc.) remain importable as top-level modules
-— exactly how their CLI thin-wrappers already load them. No project source
-files are modified; this only reconciles import paths for the FastAPI side.
+existing optimizer modules (`optimizer_utils`, `woolworths_api`,
+`paknsave_api`, `newworld_api`, etc.) remain importable — no source files modified.
 """
 import sys
 from pathlib import Path
@@ -17,15 +15,11 @@ PAKNSAVE_DIR = SCRIPTS_DIR / "paknsave"
 NEWWORLD_DIR = SCRIPTS_DIR / "newworld"
 DATA_DIR = SCRIPTS_DIR.parent / "data"                 # project/data
 
-_PATHS = [FASTAPI_DIR, COMBINED_DIR, WOOLWORTHS_DIR, PAKNSAVE_DIR, NEWWORLD_DIR]
-
+_PATHS = [str(FASTAPI_DIR), str(COMBINED_DIR), str(WOOLWORTHS_DIR), str(PAKNSAVE_DIR), str(NEWWORLD_DIR)]
 
 def bootstrap() -> None:
     for p in _PATHS:
-        s = str(p)
-        if s not in sys.path:
-            sys.path.insert(0, s)
+        if p not in sys.path:
+            sys.path.insert(0, p)
 
-
-# Auto-run on import so any `import core.paths` / `import workers` is sufficient.
 bootstrap()
