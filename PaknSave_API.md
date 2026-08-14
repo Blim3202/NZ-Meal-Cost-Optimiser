@@ -245,7 +245,7 @@ Returns an object with a single `"stores"` key containing an array:
 
 Two API modules are available:
 - **Pak'nSave API client**: `scripts/paknsave/paknsave_api.py` — `PaknSaveAPI(backend="edge"|"mobile")`.
-- **Cross-brand shared logic**: `scripts/combined/optimizer_utils.py` — `foodstuffs_optimizer_edge`, `foodstuffs_optimizer_mobile`, `build_edge_row`, `build_mobile_row`, parsing, geocoding, haversine, dish lookup, Phase 2 CSV readers, and append-only CSV writers.
+- **Cross-brand shared logic**: `scripts/combined/optimizer_utils.py` — `foodstuffs_querier_edge`, `foodstuffs_querier_mobile`, `build_edge_row`, `build_mobile_row`, parsing, geocoding, haversine, dish lookup, Phase 2 CSV readers, and append-only CSV writers.
 
 See **section 10** for the full production module/optimizer usage.
 
@@ -903,7 +903,7 @@ ambiguous ingredient queries like "beef mince".
 - Categories endpoint available for navigation
 - Pet food filtering via `category1` field
 
-**Implementation Reference**: `scripts/paknsave/paknsave_api.py` (`PaknSaveEdgeAPI`) + `scripts/combined/optimizer_utils.py` (`foodstuffs_optimizer_edge`)
+**Implementation Reference**: `scripts/paknsave/paknsave_api.py` (`PaknSaveEdgeAPI`) + `scripts/combined/optimizer_utils.py` (`foodstuffs_querier_edge`)
 **Full Exploration Details**: `scripts/paknsave/Exploration/Exploration.md`
 
 ---
@@ -961,7 +961,7 @@ geocode(address) → find_nearby_stores(lat, lon, radius_km)
 → Phase 2: optimise() reads today's rows → per-store totals + per-ingredient breakdown
 ```
 
-The shared helpers (`foodstuffs_optimizer_edge`, `foodstuffs_optimizer_mobile`,
+The shared helpers (`foodstuffs_querier_edge`, `foodstuffs_querier_mobile`,
 `build_edge_row`, `build_mobile_row`, `parse_foodstuffs_volume_size`,
 `parse_foodstuffs_mobile_unit`, `geocode`, `find_nearby_stores`, `append_rows`,
 `optimise`, etc.) live in `scripts/combined/optimizer_utils.py`. The CLI optimizers
@@ -1088,7 +1088,7 @@ Both optimizers are **two-phase**: Phase 1 queries the API and appends to
 `full_results.csv`; Phase 2 reads today's rows and prints a comparison.
 
 Both are thin wrappers that inject the brand API class and store-finder function
-(`find_nearby_stores`) into the shared helpers `foodstuffs_optimizer_edge` / `foodstuffs_optimizer_mobile` in
+(`find_nearby_stores`) into the shared helpers `foodstuffs_querier_edge` / `foodstuffs_querier_mobile` in
 `scripts/combined/optimizer_utils.py`.
 
 **Edge** (`scripts/paknsave/paknsave_optimizer_edge.py`):

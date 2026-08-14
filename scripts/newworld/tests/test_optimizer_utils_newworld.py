@@ -43,8 +43,8 @@ from optimizer_utils import (
     build_edge_row,
     build_mobile_row,
     _compute_pk_hash,
-    _resolve_dish,
-    _resolve_dish_dict,
+    _resolve_dish_terms,
+    _resolve_dish_data,
     _build_quantity_map,
     get_ingredients,
     _parse_display_name,
@@ -89,7 +89,7 @@ class TestDishResolution:
         self.dishes = _load_dishes()
 
     def test_resolve_dish_from_string(self):
-        dish_name, ingredients = _resolve_dish("spaghetti bolognese")
+        dish_name, ingredients = _resolve_dish_terms("spaghetti bolognese")
         assert dish_name == "spaghetti bolognese"
         assert len(ingredients) == 7
         assert ingredients[0] == "beef mince"
@@ -105,13 +105,13 @@ class TestDishResolution:
                 {"quantity": 100, "unit": "g", "search_term": "test ingredient"},
             ],
         }
-        dish_name, ingredients = _resolve_dish(dish_dict)
+        dish_name, ingredients = _resolve_dish_terms(dish_dict)
         assert dish_name == "test dish"
         assert ingredients == ["test ingredient"]
 
     def test_resolve_dish_unknown_string_raises(self):
         with pytest.raises(ValueError):
-            _resolve_dish("nonexistent dish")
+            _resolve_dish_terms("nonexistent dish")
 
     def test_get_ingredients(self):
         ingredients = get_ingredients("chicken stir fry")
@@ -131,8 +131,8 @@ class TestDishResolution:
         assert qty_map["broccoli"] == "1 head (~300 g)"
         assert qty_map["stock"] == "2 cups"
 
-    def test_resolve_dish_dict_from_registry(self):
-        dish_dict: dict[str, Any] = cast(dict[str, Any], _resolve_dish_dict("beef curry"))
+    def test_resolve_dish_data_from_registry(self):
+        dish_dict: dict[str, Any] = cast(dict[str, Any], _resolve_dish_data("beef curry"))
         assert dish_dict["dish_name"] == "beef curry"
         assert dish_dict["portion"] == 4
         ingredients: list[dict[str, Any]] = dish_dict["ingredients"]

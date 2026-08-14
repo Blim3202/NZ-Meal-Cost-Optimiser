@@ -1255,7 +1255,7 @@ For the meal cost optimizer, the API + constructed cookies are sufficient.
 (9250, 9045, 9500 for Auckland stores). Reused sessions always return the first
 store's ID.
 
-**Implementation in `optimizer_utils.woolworths_optimizer`** (the CLI
+**Implementation in `optimizer_utils.woolworths_querier`** (the CLI
 `woolworths_optimizer.py` passes the `woolworths_api` module as the `api` param):
 ```python
 for store in nearby:
@@ -1526,7 +1526,7 @@ python -c "from scripts.woolworths.woolworths_setup import fetch_store_choices; 
 | Woolworths_API.md | This document |
 | AGENTS.md | Project overview and file structure |
 | scripts/woolworths/woolworths_api.py | Cookie-based API module: session creation, store context injection, product search, nearby stores |
-| scripts/woolworths/woolworths_optimizer.py | **Thin CLI**: Step 1 query via shared `woolworths_optimizer` in `optimizer_utils.py`, then Step 2 `optimise()`. Supports `--requery`, `--distance` flags, 5km default |
+| scripts/woolworths/woolworths_optimizer.py | **Thin CLI**: Step 1 query via shared `woolworths_querier` in `optimizer_utils.py`, then Step 2 `optimise()`. Supports `--requery`, `--distance` flags, 5km default |
  | scripts/woolworths/woolworths_setup.py | Unified store pipeline: `fetch_store_data()` fetches CDX data (177 stores after filtering) and builds `woolworths_stores.csv` keyed on extra1 (fulfilmentStoreId); filters out shut-down stores (9285, 9035) and null-extra1 sites. `fetch_store_choices()` [LEGACY, detached] regenerates `woolworths_store_choices.*`. |
 | scripts/woolworths/exploration/explore_extra1_collisions.py | Phase 7: investigation of extra1 collision pairs (9112, 9290, 9511) — shell context inspection, live price queries across extra1/extra2/site.id keys |
 | scripts/combined/initialize_full_results.py | Creates `data/full_results.csv` with 17-column structure including `pk_hash` for deduplication |

@@ -98,7 +98,7 @@ This means Playwright is NOT needed even for initial mapping capture — the coo
 
 ## 22. Fresh session required per store
 
-The server's `Set-Cookie` response from `GET /` overwrites any injected `cw-lrkswrdjp` cookie when reusing a `requests.Session`. Tested by injecting cookies for 3 Auckland stores into the same session — only the first store's context was respected. Creating a fresh session (new `GET /`) for each store fixes this. This is implemented in `optimizer_utils.woolworths_optimizer` (via `woolworths_api.create_session`, called fresh per store).
+The server's `Set-Cookie` response from `GET /` overwrites any injected `cw-lrkswrdjp` cookie when reusing a `requests.Session`. Tested by injecting cookies for 3 Auckland stores into the same session — only the first store's context was respected. Creating a fresh session (new `GET /`) for each store fixes this. This is implemented in `optimizer_utils.woolworths_querier` (via `woolworths_api.create_session`, called fresh per store).
 
 ## 23. `areaId` is optional in the cookie
 
@@ -395,7 +395,7 @@ This indirection is **retired**. Store identity now keys directly on `extra1`
   `store_id=extra1`. No extra2→extra1 lookup occurs.
 - `woolworths_api.set_store_context(session, fulfilment_store_id)` takes extra1
   directly and builds the `cw-lrkswrdjp` cookie as `dm-Pickup,f-{extra1},s-38`.
-- `optimizer_utils.woolworths_optimizer()` and `build_woolworths_row()` write
+- `optimizer_utils.woolworths_querier()` and `build_woolworths_row()` write
   `store_id=extra1` to `full_results.csv`.
 
 `get_store_mapping()` and `_load_store_mapping()` have been **removed** from

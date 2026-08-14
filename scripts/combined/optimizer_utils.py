@@ -52,6 +52,36 @@ def _load_dishes() -> dict:
 DISHES = _load_dishes()
 
 
+def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Great-circle distance in km between two lat/lon points."""
+    R = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    # Haversine formula: a = sin²(Δlat/2) + cos(lat1)·cos(lat2)·sin²(Δlon/2)
+    a = (math.sin(dlat / 2) ** 2 +
+         math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
+         math.sin(dlon / 2) ** 2)
+    return R * 2 * math.asin(math.sqrt(a))
+
+
+def geocode(address):
+    """Geocode a NZ address via Nominatim. Returns (lat, lon) or (None, None)."""
+    time.sleep(1.1)  # respect Nominatim rate limit (1 req/sec)
+    try:
+        r = requests.get(
+            "https://nominatim.openstreetmap.org/search",
+            headers={"User-Agent": "NZMealCostOptimizer/1.0"},
+            params={"q": address, "format": "json", "limit": 1},
+            timeout=15,
+        )
+        if r.status_code == 200 and r.json():
+            loc = r.json()[0]
+            return float(loc["lat"]), float(loc["lon"])
+    except Exception:
+        pass
+    return None, None
+
+
 def get_ingredients(dish_name):
     """Get search-term ingredient list for a dish from the DISHES dict.
 
@@ -73,7 +103,7 @@ def _build_quantity_map(dish):
     Returns:
         dict mapping search_term -> "quantity unit" string (e.g. "500 g")
     """
-    dish_dict = _resolve_dish_dict(dish)
+    dish_dict = _resolve_dish_data(dish)
     quantities = {}
     for ing in dish_dict.get("ingredients", []):
         if isinstance(ing, dict):
@@ -91,7 +121,7 @@ def _build_quantity_map(dish):
     return quantities
 
 
-def _resolve_dish_dict(dish):
+def _resolve_dish_data(dish):
     """Resolve a dish name (string) to a full dish dict from DISHES.
 
     Args:
@@ -111,7 +141,7 @@ def _resolve_dish_dict(dish):
     return {"dish_name": dish, "portion": 4, "ingredients": []}
 
 
-def _resolve_dish(dish):
+def _resolve_dish_terms(dish):
     """Extract (dish_name, search_terms) from str or dict input.
 
     Args:
@@ -142,59 +172,6 @@ def _resolve_dish(dish):
         return dish["dish_name"], [i["search_term"] for i in ingredients]
 
     raise ValueError("Input must be a dish name (str) or a structured dish (dict).")
-
-
-def parse_woolworths_volume_size(volume_size, cup_measure=""):
-    """Parse a Woolworths volumeSize string into (quantity, measurement_unit).
-
-    Falls back to cup_measure (e.g. "1kg", "1L") when volume_size is missing,
-    null, or doesn't contain a number.
-
-    Examples:
-        ("500g", "")            -> (500, "g")         # volumeSize has number
-        ("", "1kg")             -> (1, "kg")          # fallback to cupMeasure
-        ("null", "1L")          -> (1, "L")           # volumeSize is "null"
-        ("2 pack", "")          -> (2, "pack")        # multi-word unit
-        ("for frying", "500ml") -> (500, "ml")        # no number, use fallback
-        ("", "")                -> (None, "")         # both empty
-    """
-    # --- Try volume_size first ---
-    if volume_size and isinstance(volume_size, str) and volume_size.strip().lower() != "null":
-        raw = volume_size.strip()
-
-        # Pattern 1: "500g", "1L", "250ml" — number directly adjacent to unit
-        match = re.match(r"^(\d+(?:\.\d+)?)\s*([a-zA-Z]+)$", raw)
-        if match:
-            qty = float(match.group(1))
-            unit = match.group(2).lower()
-            return int(qty) if qty == int(qty) else qty, unit
-
-        # Pattern 2: "2 pack", "6 eggs" — number followed by space + unit
-        match = re.match(r"^(\d+(?:\.\d+)?)\s+(.+)$", raw)
-        if match:
-            qty = float(match.group(1))
-            unit = match.group(2).lower()
-            return int(qty) if qty == int(qty) else qty, unit
-
-    # --- Fall back to cup_measure (e.g. "1kg", "1L") Assumes that the price is per 1 cup (Edge case may fail?). ---
-    if cup_measure and isinstance(cup_measure, str):
-        raw = cup_measure.strip()
-
-        # Pattern 1: "1kg", "1L" — number directly adjacent to unit
-        match = re.match(r"^(\d+(?:\.\d+)?)\s*([a-zA-Z]+)$", raw)
-        if match:
-            qty = float(match.group(1))
-            unit = match.group(2).lower()
-            return int(qty) if qty == int(qty) else qty, unit
-
-        # Pattern 2: "1 kg" — number + space + unit
-        match = re.match(r"^(\d+(?:\.\d+)?)\s+(.+)$", raw)
-        if match:
-            qty = float(match.group(1))
-            unit = match.group(2).lower()
-            return int(qty) if qty == int(qty) else qty, unit
-
-    return None, ""
 
 
 def parse_foodstuffs_volume_size(display_name, single_price, promotions):
@@ -354,67 +331,57 @@ def parse_foodstuffs_mobile_unit(units, unit_price, price_cents=None):
     return quantity, measurement_unit, per_unit_qty, per_unit_price
 
 
-def build_edge_row(company, store, store_id, search_ingredient, product, pass1_hit, now):
-    """Build a CSV row dict from an Edge API product (Pak'nSave or New World).
+def parse_woolworths_volume_size(volume_size, cup_measure=""):
+    """Parse a Woolworths volumeSize string into (quantity, measurement_unit).
 
-    Args:
-        company: retailer name (e.g. "PaknSave" or "NewWorld")
-        store: store name
-        store_id: store UUID
-        search_ingredient: the ingredient term we searched for
-        product: dict from Pass 2 (singlePrice, promotions, productId, etc.)
-        pass1_hit: dict from Pass 1 (category0, category1, _highlightResult) or None
-        now: datetime object for timestamps
+    Falls back to cup_measure (e.g. "1kg", "1L") when volume_size is missing,
+    null, or doesn't contain a number.
 
-    Returns:
-        dict matching CSV_COLUMNS
+    Examples:
+        ("500g", "")            -> (500, "g")         # volumeSize has number
+        ("", "1kg")             -> (1, "kg")          # fallback to cupMeasure
+        ("null", "1L")          -> (1, "L")           # volumeSize is "null"
+        ("2 pack", "")          -> (2, "pack")        # multi-word unit
+        ("for frying", "500ml") -> (500, "ml")        # no number, use fallback
+        ("", "")                -> (None, "")         # both empty
     """
-    sp = product.get("singlePrice", {})
-    promotions = product.get("promotions") or []
+    # --- Try volume_size first ---
+    if volume_size and isinstance(volume_size, str) and volume_size.strip().lower() != "null":
+        raw = volume_size.strip()
 
-    quantity, measurement_unit, per_unit_qty, per_unit_price = parse_foodstuffs_volume_size(
-        product.get("displayName", ""),
-        sp,
-        promotions,
-    )
+        # Pattern 1: "500g", "1L", "250ml" — number directly adjacent to unit
+        match = re.match(r"^(\d+(?:\.\d+)?)\s*([a-zA-Z]+)$", raw)
+        if match:
+            qty = float(match.group(1))
+            unit = match.group(2).lower()
+            return int(qty) if qty == int(qty) else qty, unit
 
-    price_cents = sp.get("price")
-    if promotions:
-        best = promotions[0]
-        reward = best.get("rewardValue")
-        threshold = best.get("threshold")
-        if reward is not None and threshold and threshold > 0:
-            price_cents = reward / threshold
+        # Pattern 2: "2 pack", "6 eggs" — number followed by space + unit
+        match = re.match(r"^(\d+(?:\.\d+)?)\s+(.+)$", raw)
+        if match:
+            qty = float(match.group(1))
+            unit = match.group(2).lower()
+            return int(qty) if qty == int(qty) else qty, unit
 
-    price_dollars = round(price_cents / 100.0, 2) if price_cents is not None else ""
+    # --- Fall back to cup_measure (e.g. "1kg", "1L") Assumes that the price is per 1 cup (Edge case may fail?). ---
+    if cup_measure and isinstance(cup_measure, str):
+        raw = cup_measure.strip()
 
-    cat0 = pass1_hit.get("category0", []) if pass1_hit else []
-    cat1 = pass1_hit.get("category1", []) if pass1_hit else []
-    dept_str = "|".join(cat0) if cat0 else ""
-    cat1_str = "|".join(cat1) if cat1 else ""
+        # Pattern 1: "1kg", "1L" — number directly adjacent to unit
+        match = re.match(r"^(\d+(?:\.\d+)?)\s*([a-zA-Z]+)$", raw)
+        if match:
+            qty = float(match.group(1))
+            unit = match.group(2).lower()
+            return int(qty) if qty == int(qty) else qty, unit
 
-    sku = product.get("productId", "")
-    date_str = now.strftime("%Y-%m-%d")
+        # Pattern 2: "1 kg" — number + space + unit
+        match = re.match(r"^(\d+(?:\.\d+)?)\s+(.+)$", raw)
+        if match:
+            qty = float(match.group(1))
+            unit = match.group(2).lower()
+            return int(qty) if qty == int(qty) else qty, unit
 
-    return {
-        "company": company,
-        "store": store,
-        "store_id": store_id,
-        "search_ingredient": search_ingredient,
-        "returned_ingredient": product.get("name", ""),
-        "price": price_dollars,
-        "quantity": quantity if quantity is not None else "",
-        "measurement_unit": measurement_unit,
-        "per_unit_quantity": per_unit_qty,
-        "per_unit_price": per_unit_price if per_unit_price else "",
-        "is_sale": bool(promotions),
-        "sku": sku,
-        "department": dept_str,
-        "sub_department": cat1_str,
-        "datetime_created": now.strftime("%Y-%m-%d %H:%M:%S"),
-        "date_created": date_str,
-        "pk_hash": _compute_pk_hash(store_id, sku, date_str),
-    }
+    return None, ""
 
 
 def _parse_display_name(display_name):
@@ -519,233 +486,67 @@ def append_rows(rows, results_file=None):
     return appended, skipped
 
 
-def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    """Great-circle distance in km between two lat/lon points."""
-    R = 6371.0
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    # Haversine formula: a = sin²(Δlat/2) + cos(lat1)·cos(lat2)·sin²(Δlon/2)
-    a = (math.sin(dlat / 2) ** 2 +
-         math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
-         math.sin(dlon / 2) ** 2)
-    return R * 2 * math.asin(math.sqrt(a))
-
-
-def geocode(address):
-    """Geocode a NZ address via Nominatim. Returns (lat, lon) or (None, None)."""
-    time.sleep(1.1)  # respect Nominatim rate limit (1 req/sec)
-    try:
-        r = requests.get(
-            "https://nominatim.openstreetmap.org/search",
-            headers={"User-Agent": "NZMealCostOptimizer/1.0"},
-            params={"q": address, "format": "json", "limit": 1},
-            timeout=15,
-        )
-        if r.status_code == 200 and r.json():
-            loc = r.json()[0]
-            return float(loc["lat"]), float(loc["lon"])
-    except Exception:
-        pass
-    return None, None
-
-
-def analyze_results(df, ingredients, dish, company=None, store_ids=None):
-    """Build per-store cost summary and per-ingredient comparison table.
+def build_edge_row(company, store, store_id, search_ingredient, product, pass1_hit, now):
+    """Build a CSV row dict from an Edge API product (Pak'nSave or New World).
 
     Args:
-        df: DataFrame with columns matching CSV_COLUMNS
-        ingredients: list of ingredient search terms for the dish
-        dish: dish name (string) or dict for quantity lookup
-        company: optional retailer name to filter rows (e.g. "PaknSave", "NewWorld", "Woolworths")
-        store_ids: optional set of valid store_ids (from distance-radius filtering)
-                   to restrict which stores are included
+        company: retailer name (e.g. "PaknSave" or "NewWorld")
+        store: store name
+        store_id: store UUID
+        search_ingredient: the ingredient term we searched for
+        product: dict from Pass 2 (singlePrice, promotions, productId, etc.)
+        pass1_hit: dict from Pass 1 (category0, category1, _highlightResult) or None
+        now: datetime object for timestamps
 
     Returns:
-        (summary, table) where:
-        - summary: DataFrame indexed by store with total_cost column, sorted cheapest first
-        - table: DataFrame indexed by ingredient with per-store prices, best price/store, and TOTAL row
+        dict matching CSV_COLUMNS
     """
-    df = df.copy()
-    if company:
-        df = df[df["company"] == company]
-    if store_ids:
-        df = df[df["store_id"].isin(store_ids)]
-    df["price"] = df["price"].astype(float)
+    sp = product.get("singlePrice", {})
+    promotions = product.get("promotions") or []
 
-    cheapest_per_ing_per_store = (
-        df.groupby(["store", "search_ingredient"])["price"].min().reset_index()
+    quantity, measurement_unit, per_unit_qty, per_unit_price = parse_foodstuffs_volume_size(
+        product.get("displayName", ""),
+        sp,
+        promotions,
     )
-    summary = (
-        cheapest_per_ing_per_store.groupby("store")["price"]
-        .sum()
-        .reset_index()
-    )
-    summary.columns = ["store", "total_cost"]
-    summary = summary.set_index("store").sort_values("total_cost")
 
-    store_names = sorted(df["store"].unique())
-    quantities = _build_quantity_map(dish)
+    price_cents = sp.get("price")
+    if promotions:
+        best = promotions[0]
+        reward = best.get("rewardValue")
+        threshold = best.get("threshold")
+        if reward is not None and threshold and threshold > 0:
+            price_cents = reward / threshold
 
-    rows = []
-    for ing in ingredients:
-        row = {"Ingredient": ing, "Qty": quantities.get(ing, "-")}
-        for sn in store_names:
-            match = df[(df["search_ingredient"] == ing) & (df["store"] == sn)]
-            if not match.empty:
-                best_prod = match.loc[match["price"].idxmin()]
-                qty = best_prod['quantity']
-                unit = best_prod['measurement_unit']
-                # Clean up float formatting (600.0 -> 600, 1.5 -> 1.5)
-                if isinstance(qty, float) and qty.is_integer():
-                    qty_str = str(int(qty))
-                else:
-                    qty_str = str(qty) if qty else ""
-                unit_str = str(unit) if unit else ""
-                pack_info = f" ({qty_str} {unit_str})".strip() if qty_str and unit_str else ""
-                row[sn] = f"${best_prod['price']:.2f}{pack_info}"
-            else:
-                row[sn] = "NOT FOUND"
+    price_dollars = round(price_cents / 100.0, 2) if price_cents is not None else ""
 
-        prices = []
-        for sn in store_names:
-            match = df[(df["search_ingredient"] == ing) & (df["store"] == sn)]
-            if not match.empty:
-                prices.append(
-                    (sn, match.loc[match["price"].idxmin()]["price"])
-                )
-        if prices:
-            best_sn, best_px = min(prices, key=lambda x: x[1])
-            row["Best Price"] = f"${best_px:.2f}"
-            row["Best Store"] = best_sn
-        else:
-            row["Best Price"] = "-"
-            row["Best Store"] = "-"
-        rows.append(row)
+    cat0 = pass1_hit.get("category0", []) if pass1_hit else []
+    cat1 = pass1_hit.get("category1", []) if pass1_hit else []
+    dept_str = "|".join(cat0) if cat0 else ""
+    cat1_str = "|".join(cat1) if cat1 else ""
 
-    table = pd.DataFrame(rows).set_index("Ingredient")
+    sku = product.get("productId", "")
+    date_str = now.strftime("%Y-%m-%d")
 
-    totals = {"Qty": ""}
-    for sn in store_names:
-        store_total = (
-            df[df["store"] == sn].groupby("search_ingredient")["price"].min().sum()
-        )
-        totals[sn] = f"${store_total:.2f}"
-
-    best_total_mix = 0
-    for ing in ingredients:
-        ing_prices = df[df["search_ingredient"] == ing]["price"]
-        if not ing_prices.empty:
-            best_total_mix += ing_prices.min()
-
-    totals["Best Price"] = f"${best_total_mix:.2f}"
-    totals["Best Store"] = "(mix)"
-    table.loc["TOTAL"] = totals
-
-    return summary, table
-
-
-def foodstuffs_optimizer_edge(api_class, find_nearby_stores, company_id, company_name,
-                              user_address, dish_name, requery, max_dist_km=5.0):
-    """Phase 1 (query): shared Edge API pipeline for Pak'nSave and New World.
-
-    The two brand optimizers (paknsave_optimizer_edge.py, newworld_optimizer_edge.py)
-    are identical except for the API class, store finder, and company label. This
-    single implementation replaces both files' duplicated query_and_save.
-
-    Args:
-        api_class: the Edge API class to instantiate and authenticate
-            (PaknSaveEdgeAPI or NewWorldEdgeAPI)
-        find_nearby_stores: the API module's find_nearby_stores function
-        company_id: CSV company value written to rows (e.g. "PaknSave", "NewWorld")
-        company_name: display name for print lines (e.g. "Pak'nSave", "New World")
-        user_address: NZ address to geocode
-        dish_name: dish to search ingredients for
-        requery: if False, skip API and read existing CSV
-        max_dist_km: maximum store search radius in km (default 5)
-
-    Returns True if data is available (newly queried or already in CSV).
-    """
-    if not requery:
-        if RESULTS_FILE.exists():
-            return True
-        print("No existing results file — run with --requery true to query the API")
-        return False
-
-    user_lat, user_lon = geocode(user_address)
-    if user_lat is None or user_lon is None:
-        print(f"Error: Could not geocode address '{user_address}'")
-        return False
-
-    print(f"Geocoding: {user_address}")
-    print(f"           lat: {user_lat:.6f}  lon: {user_lon:.6f}")
-    print()
-
-    nearby = find_nearby_stores(user_lat, user_lon, radius_km=max_dist_km)
-    if not nearby:
-        print(f"Error: No {company_name} stores found within {max_dist_km} km")
-        return False
-
-    print(f"Found {len(nearby)} stores within {max_dist_km} km:")
-    for s in nearby:
-        print(f"  {s['name']:35s} {s['distance_km']:.1f} km")
-
-    print("\nAuthenticating with Edge API (website JWT)...")
-    api = api_class()
-    api.authenticate()
-    print("    Authenticated successfully")
-
-    dish_name, ingredients = _resolve_dish(dish_name)
-    print(f"\nDish: {dish_name}")
-    print(f"Ingredients: {', '.join(ingredients)}")
-
-    now = datetime.now()
-    new_rows = []
-
-    for store in nearby:
-        store_id = store["store_id"]
-        store_name = store["name"]
-        region = store.get("region", "NI")
-        print(f"\n--- {store_name} ({store['distance_km']:.1f} km, {region}) ---")
-
-        for ing in ingredients:
-            try:
-                products, pass1_hits = api.search_ingredient(
-                    store_id=store_id,
-                    ingredient=ing,
-                    region=region,
-                )
-            except Exception as e:
-                print(f"  {ing}: [ERROR] {e}")
-                time.sleep(0.1)
-                continue
-
-            pass1_by_id = {h["productID"]: h for h in pass1_hits}
-
-            priced = []
-            for prod in products:
-                row = build_edge_row(
-                    company_id, store_name, store_id, ing,
-                    prod, pass1_by_id.get(prod.get("productId", "")), now,
-                )
-                if row["price"] != "":
-                    new_rows.append(row)
-                    priced.append(prod)
-
-            if priced:
-                best_price = min(p.get("singlePrice", {}).get("price", float("inf")) for p in priced)
-                print(f"  {ing}: {len(priced)} results (best: ${best_price / 100:.2f})")
-            else:
-                print(f"  {ing}: NOT FOUND")
-
-            time.sleep(0.08)
-
-    if not new_rows:
-        print("\nNo results collected from API")
-        return False
-
-    appended, skipped = append_rows(new_rows)
-    print(f"\nAppended {appended} rows to {RESULTS_FILE.name} ({skipped} duplicates skipped)")
-    return True
+    return {
+        "company": company,
+        "store": store,
+        "store_id": store_id,
+        "search_ingredient": search_ingredient,
+        "returned_ingredient": product.get("name", ""),
+        "price": price_dollars,
+        "quantity": quantity if quantity is not None else "",
+        "measurement_unit": measurement_unit,
+        "per_unit_quantity": per_unit_qty,
+        "per_unit_price": per_unit_price if per_unit_price else "",
+        "is_sale": bool(promotions),
+        "sku": sku,
+        "department": dept_str,
+        "sub_department": cat1_str,
+        "datetime_created": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "date_created": date_str,
+        "pk_hash": _compute_pk_hash(store_id, sku, date_str),
+    }
 
 
 def build_mobile_row(company, store, store_id, search_ingredient, product, now):
@@ -859,13 +660,119 @@ def build_woolworths_row(company, store, store_id, search_ingredient, product, n
     }
 
 
-def foodstuffs_optimizer_mobile(api_class, find_nearby_stores_fn, company_id, company_name,
-                                user_address, dish_name, requery, max_dist_km=5.0):
+def foodstuffs_querier_edge(api_class, find_nearby_stores, company_id, company_name,
+                            user_address, dish_name, requery, max_dist_km=5.0):
+    """Phase 1 (query): shared Edge API pipeline for Pak'nSave and New World.
+
+    Queries the Foodstuffs Edge API for product pricing across nearby stores and
+    appends results to the CSV. The two brand CLIs (paknsave_optimizer_edge.py,
+    newworld_optimizer_edge.py) are identical except for the API class, store
+    finder, and company label.
+
+    Args:
+        api_class: the Edge API class to instantiate and authenticate
+            (PaknSaveEdgeAPI or NewWorldEdgeAPI)
+        find_nearby_stores: the API module's find_nearby_stores function
+        company_id: CSV company value written to rows (e.g. "PaknSave", "NewWorld")
+        company_name: display name for print lines (e.g. "Pak'nSave", "New World")
+        user_address: NZ address to geocode
+        dish_name: dish to search ingredients for
+        requery: if False, skip API and read existing CSV
+        max_dist_km: maximum store search radius in km (default 5)
+
+    Returns True if data is available (newly queried or already in CSV).
+    """
+    if not requery:
+        if RESULTS_FILE.exists():
+            return True
+        print("No existing results file — run with --requery true to query the API")
+        return False
+
+    user_lat, user_lon = geocode(user_address)
+    if user_lat is None or user_lon is None:
+        print(f"Error: Could not geocode address '{user_address}'")
+        return False
+
+    print(f"Geocoding: {user_address}")
+    print(f"           lat: {user_lat:.6f}  lon: {user_lon:.6f}")
+    print()
+
+    nearby = find_nearby_stores(user_lat, user_lon, radius_km=max_dist_km)
+    if not nearby:
+        print(f"Error: No {company_name} stores found within {max_dist_km} km")
+        return False
+
+    print(f"Found {len(nearby)} stores within {max_dist_km} km:")
+    for s in nearby:
+        print(f"  {s['name']:35s} {s['distance_km']:.1f} km")
+
+    print("\nAuthenticating with Edge API (website JWT)...")
+    api = api_class()
+    api.authenticate()
+    print("    Authenticated successfully")
+
+    dish_name, ingredients = _resolve_dish_terms(dish_name)
+    print(f"\nDish: {dish_name}")
+    print(f"Ingredients: {', '.join(ingredients)}")
+
+    now = datetime.now()
+    new_rows = []
+
+    for store in nearby:
+        store_id = store["store_id"]
+        store_name = store["name"]
+        region = store.get("region", "NI")
+        print(f"\n--- {store_name} ({store['distance_km']:.1f} km, {region}) ---")
+
+        for ing in ingredients:
+            try:
+                products, pass1_hits = api.search_ingredient(
+                    store_id=store_id,
+                    ingredient=ing,
+                    region=region,
+                )
+            except Exception as e:
+                print(f"  {ing}: [ERROR] {e}")
+                time.sleep(0.1)
+                continue
+
+            pass1_by_id = {h["productID"]: h for h in pass1_hits}
+
+            priced = []
+            for prod in products:
+                row = build_edge_row(
+                    company_id, store_name, store_id, ing,
+                    prod, pass1_by_id.get(prod.get("productId", "")), now,
+                )
+                if row["price"] != "":
+                    new_rows.append(row)
+                    priced.append(prod)
+
+            if priced:
+                best_price = min(p.get("singlePrice", {}).get("price", float("inf")) for p in priced)
+                print(f"  {ing}: {len(priced)} results (best: ${best_price / 100:.2f})")
+            else:
+                print(f"  {ing}: NOT FOUND")
+
+            time.sleep(0.08)
+
+    if not new_rows:
+        print("\nNo results collected from API")
+        return False
+
+    appended, skipped = append_rows(new_rows)
+    print(f"\nAppended {appended} rows to {RESULTS_FILE.name} ({skipped} duplicates skipped)")
+    return True
+
+
+def foodstuffs_querier_mobile(api_class, find_nearby_stores_fn, company_id, company_name,
+                              user_address, dish_name, requery, max_dist_km=5.0):
     """Phase 1 (query): shared Mobile API pipeline for Pak'nSave and New World.
 
-    The two brand optimizers (paknsave_optimizer_mobile.py, newworld_optimizer_mobile.py)
-    are identical except for the API class, store finder, and company label. This
-    single implementation replaces both files' duplicated query_and_save.
+    Queries the Foodstuffs Mobile API for product pricing across nearby stores and
+    appends results to the CSV. The two brand CLIs (paknsave_optimizer_mobile.py,
+    newworld_optimizer_mobile.py) are identical except for the API class, store
+    finder, and company label.
 
     Args:
         api_class: the Mobile API class to instantiate and authenticate
@@ -909,7 +816,7 @@ def foodstuffs_optimizer_mobile(api_class, find_nearby_stores_fn, company_id, co
     api._ensure_token()
     print("    Authenticated successfully")
 
-    dish_name, ingredients = _resolve_dish(dish_name)
+    dish_name, ingredients = _resolve_dish_terms(dish_name)
     print(f"\nDish: {dish_name}")
     print(f"Ingredients: {', '.join(ingredients)}")
 
@@ -956,13 +863,15 @@ def foodstuffs_optimizer_mobile(api_class, find_nearby_stores_fn, company_id, co
     return True
 
 
-def woolworths_optimizer(api, company_id, company_name, user_address, dish_input, requery,
-                         max_dist_km=5.0):
-    """Step 1 (query): shared Woolworths pipeline — geocode, nearby stores, per-store search.
+def woolworths_querier(api, company_id, company_name, user_address, dish_input, requery,
+                       max_dist_km=5.0):
+    """Phase 1 (query): shared Woolworths pipeline — geocode, nearby stores, per-store search.
 
-    Mirrors foodstuffs_optimizer_edge/foodstuffs_optimizer_mobile for the other two
-    brands: the shared query code lives here so woolworths_optimizer.py stays a thin
-    CLI, and `optimise()` (Step 2) reads the CSV rows appended here.
+    Queries the Woolworths API for product pricing across nearby stores and appends
+    results to the CSV. Mirrors foodstuffs_querier_edge/foodstuffs_querier_mobile
+    for the other two brands: the shared query code lives here so
+    woolworths_optimizer.py stays a thin CLI, and `optimise()` (Step 2) reads the
+    CSV rows appended here.
 
     Store identity keys directly on extra1 (fulfilmentStoreId): get_nearby_stores()
     returns store_id=extra1, set_store_context(session, store_id) builds the
@@ -1007,7 +916,7 @@ def woolworths_optimizer(api, company_id, company_name, user_address, dish_input
     for s in nearby:
         print(f"  {s['name']} ({s['distance_km']} km)")
 
-    dish_name, ingredients = _resolve_dish(dish_input)
+    dish_name, ingredients = _resolve_dish_terms(dish_input)
     print(f"\nDish: {dish_name}")
     print(f"Ingredients: {', '.join(ingredients)}")
 
@@ -1048,6 +957,101 @@ def woolworths_optimizer(api, company_id, company_name, user_address, dish_input
     return True
 
 
+def analyze_results(df, ingredients, dish, company=None, store_ids=None):
+    """Build per-store cost summary and per-ingredient comparison table.
+
+    Args:
+        df: DataFrame with columns matching CSV_COLUMNS
+        ingredients: list of ingredient search terms for the dish
+        dish: dish name (string) or dict for quantity lookup
+        company: optional retailer name to filter rows (e.g. "PaknSave", "NewWorld", "Woolworths")
+        store_ids: optional set of valid store_ids (from distance-radius filtering)
+                   to restrict which stores are included
+
+    Returns:
+        (summary, table) where:
+        - summary: DataFrame indexed by store with total_cost column, sorted cheapest first
+        - table: DataFrame indexed by ingredient with per-store prices, best price/store, and TOTAL row
+    """
+    df = df.copy()
+    if company:
+        df = df[df["company"] == company]
+    if store_ids:
+        df = df[df["store_id"].isin(store_ids)]
+    df["price"] = df["price"].astype(float)
+
+    cheapest_per_ing_per_store = (
+        df.groupby(["store", "search_ingredient"])["price"].min().reset_index()
+    )
+    summary = (
+        cheapest_per_ing_per_store.groupby("store")["price"]
+        .sum()
+        .reset_index()
+    )
+    summary.columns = ["store", "total_cost"]
+    summary = summary.set_index("store").sort_values("total_cost")
+
+    store_names = sorted(df["store"].unique())
+    quantities = _build_quantity_map(dish)
+
+    rows = []
+    for ing in ingredients:
+        row = {"Ingredient": ing, "Qty": quantities.get(ing, "-")}
+        for sn in store_names:
+            match = df[(df["search_ingredient"] == ing) & (df["store"] == sn)]
+            if not match.empty:
+                best_prod = match.loc[match["price"].idxmin()]
+                qty = best_prod['quantity']
+                unit = best_prod['measurement_unit']
+                # Clean up float formatting (600.0 -> 600, 1.5 -> 1.5)
+                if isinstance(qty, float) and qty.is_integer():
+                    qty_str = str(int(qty))
+                else:
+                    qty_str = str(qty) if qty else ""
+                unit_str = str(unit) if unit else ""
+                pack_info = f" ({qty_str} {unit_str})".strip() if qty_str and unit_str else ""
+                row[sn] = f"${best_prod['price']:.2f}{pack_info}"
+            else:
+                row[sn] = "NOT FOUND"
+
+        prices = []
+        for sn in store_names:
+            match = df[(df["search_ingredient"] == ing) & (df["store"] == sn)]
+            if not match.empty:
+                prices.append(
+                    (sn, match.loc[match["price"].idxmin()]["price"])
+                )
+        if prices:
+            best_sn, best_px = min(prices, key=lambda x: x[1])
+            row["Best Price"] = f"${best_px:.2f}"
+            row["Best Store"] = best_sn
+        else:
+            row["Best Price"] = "-"
+            row["Best Store"] = "-"
+        rows.append(row)
+
+    table = pd.DataFrame(rows).set_index("Ingredient")
+
+    totals = {"Qty": ""}
+    for sn in store_names:
+        store_total = (
+            df[df["store"] == sn].groupby("search_ingredient")["price"].min().sum()
+        )
+        totals[sn] = f"${store_total:.2f}"
+
+    best_total_mix = 0
+    for ing in ingredients:
+        ing_prices = df[df["search_ingredient"] == ing]["price"]
+        if not ing_prices.empty:
+            best_total_mix += ing_prices.min()
+
+    totals["Best Price"] = f"${best_total_mix:.2f}"
+    totals["Best Store"] = "(mix)"
+    table.loc["TOTAL"] = totals
+
+    return summary, table
+
+
 def optimise(dish, company=None, store_ids=None, require_valid=False):
     """Phase 2: Read today's results from CSV and print comparison table.
 
@@ -1084,7 +1088,7 @@ def optimise(dish, company=None, store_ids=None, require_valid=False):
         print(f"No results found for today ({today_str})")
         return
 
-    dish_name, ingredients = _resolve_dish(dish)
+    dish_name, ingredients = _resolve_dish_terms(dish)
     dish_ings = ingredients
 
     df_dish = df_today[df_today["search_ingredient"].isin(dish_ings)]

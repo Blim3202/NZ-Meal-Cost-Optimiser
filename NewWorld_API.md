@@ -837,7 +837,7 @@ PASS 2  POST /v1/edge/search/paginated/products
         → products with per-store singlePrice + promotions
 ```
 The complete production pipeline is implemented by the shared helper
-`foodstuffs_optimizer_edge` in `scripts/combined/optimizer_utils.py`, which the
+`foodstuffs_querier_edge` in `scripts/combined/optimizer_utils.py`, which the
 New World Edge optimizer (`newworld_optimizer_edge.py`) calls with the
 `NewWorldEdgeAPI` class and `find_nearby_stores`. Each brand's API class mirrors the
 same two-pass structure:
@@ -897,7 +897,7 @@ This method seems to be superior to the mobile API in terms of search relevancy 
 - Works with standard browser JWT (same IdP: `online-customer`)
 - Categories endpoint available for navigation
 
-**Implementation Reference**: `scripts/newworld/newworld_api.py` (`NewWorldEdgeAPI`) + `scripts/combined/optimizer_utils.py` (`foodstuffs_optimizer_edge`)
+**Implementation Reference**: `scripts/newworld/newworld_api.py` (`NewWorldEdgeAPI`) + `scripts/combined/optimizer_utils.py` (`foodstuffs_querier_edge`)
 **Full Exploration Details**: `scripts/newworld/Exploration/EDGE_API_FINDINGS.md`
 
 ---
@@ -1142,10 +1142,10 @@ for _, store in nearby.iterrows():
 ### 10.3 Edge API Two-Pass Pipeline (Production — default)
 
 ```python
-from scripts.combined.optimizer_utils import foodstuffs_optimizer_edge
+from scripts.combined.optimizer_utils import foodstuffs_querier_edge
 from scripts.newworld.newworld_api import NewWorldEdgeAPI, find_nearby_stores
 
-foodstuffs_optimizer_edge(
+foodstuffs_querier_edge(
     api_class=NewWorldEdgeAPI,
     find_nearby_stores_fn=find_nearby_stores,
     company_id="NewWorld",
@@ -1158,7 +1158,7 @@ foodstuffs_optimizer_edge(
 This is the full two-phase pipeline: geocode → find stores → Pass 1 (Algolia relevance
 + `category1` non-food filter) → Pass 2 (per-store pricing + `PRICE_ASC`) → build CSV
 rows → Phase 2 (per-ingredient cheapest → totals + breakdown). The shared helper
-`foodstuffs_optimizer_edge` in `scripts/combined/optimizer_utils.py` implements the
+`foodstuffs_querier_edge` in `scripts/combined/optimizer_utils.py` implements the
 complete loop; the CLI wrapper `newworld_optimizer_edge.py` just calls it with brand
 params.
 
@@ -1183,7 +1183,7 @@ products = edge.pass2_per_store_pricing(store_id, "beef mince", pids)
 Both optimizers are **two-phase**: Phase 1 queries the API and appends to
 `full_results.csv`; Phase 2 reads today's rows and prints a comparison. Both are thin
 wrappers that inject the brand API class and store-finder function (`find_nearby_stores`) into the shared helpers
-`foodstuffs_optimizer_edge` / `foodstuffs_optimizer_mobile` in
+`foodstuffs_querier_edge` / `foodstuffs_querier_mobile` in
 `scripts/combined/optimizer_utils.py`.
 
 **Edge** (`scripts/newworld/newworld_optimizer_edge.py` — **production, default**):
@@ -1241,7 +1241,7 @@ FOR EACH nearby store:
 Compare totals → cheapest store
 ```
 
-Shared helpers (`foodstuffs_optimizer_edge`, `foodstuffs_optimizer_mobile`,
+Shared helpers (`foodstuffs_querier_edge`, `foodstuffs_querier_mobile`,
 `build_edge_row`, `build_mobile_row`) live in `scripts/combined/optimizer_utils.py`.
 CLI entry points are thin wrappers: `scripts/newworld/newworld_optimizer_edge.py`
 and `scripts/newworld/newworld_optimizer_mobile.py`.

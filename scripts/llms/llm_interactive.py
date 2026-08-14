@@ -49,11 +49,11 @@ sys.path.insert(0, str(_PROJECT_ROOT / "scripts" / "woolworths"))
 
 from optimizer_utils import (
     RESULTS_FILE,
-    _resolve_dish,
-    foodstuffs_optimizer_edge,
-    foodstuffs_optimizer_mobile,
+    _resolve_dish_terms,
+    foodstuffs_querier_edge,
+    foodstuffs_querier_mobile,
     optimise,
-    woolworths_optimizer,
+    woolworths_querier,
 )
 from scripts.llms.llm_utils import resolve_ingredients, parse_optimizer_columns
 
@@ -330,7 +330,7 @@ def step4_query(address, dish_dict, requery, distance, selected):
         set of store_ids that are within the distance radius (for Steps 5/6 filtering).
         Empty set if requery is false (no filtering will be applied).
     """
-    dish_name, _ = _resolve_dish(dish_dict)
+    dish_name, _ = _resolve_dish_terms(dish_dict)
     requery_bool = requery.lower() != "false" if isinstance(requery, str) else requery
 
     print(f"\n{'='*60}")
@@ -344,7 +344,7 @@ def step4_query(address, dish_dict, requery, distance, selected):
         try:
             if sm == "pns_edge":
                 api_class, find_nearby = _import_pns_edge()
-                foodstuffs_optimizer_edge(
+                foodstuffs_querier_edge(
                     api_class, find_nearby,
                     ALL_SUPERMARKETS[sm][0], ALL_SUPERMARKETS[sm][1],
                     address, dish_dict, requery_bool, max_dist_km=distance,
@@ -352,7 +352,7 @@ def step4_query(address, dish_dict, requery, distance, selected):
                 _collect_store_ids(store_ids, sm, address, distance)
             elif sm == "pns_mobile":
                 api_class, find_nearby = _import_pns_mobile()
-                foodstuffs_optimizer_mobile(
+                foodstuffs_querier_mobile(
                     api_class, find_nearby,
                     ALL_SUPERMARKETS[sm][0], ALL_SUPERMARKETS[sm][1],
                     address, dish_dict, requery_bool, max_dist_km=distance,
@@ -360,7 +360,7 @@ def step4_query(address, dish_dict, requery, distance, selected):
                 _collect_store_ids(store_ids, sm, address, distance)
             elif sm == "nw_edge":
                 api_class, find_nearby = _import_nw_edge()
-                foodstuffs_optimizer_edge(
+                foodstuffs_querier_edge(
                     api_class, find_nearby,
                     ALL_SUPERMARKETS[sm][0], ALL_SUPERMARKETS[sm][1],
                     address, dish_dict, requery_bool, max_dist_km=distance,
@@ -368,7 +368,7 @@ def step4_query(address, dish_dict, requery, distance, selected):
                 _collect_store_ids(store_ids, sm, address, distance)
             elif sm == "nw_mobile":
                 api_class, find_nearby = _import_nw_mobile()
-                foodstuffs_optimizer_mobile(
+                foodstuffs_querier_mobile(
                     api_class, find_nearby,
                     ALL_SUPERMARKETS[sm][0], ALL_SUPERMARKETS[sm][1],
                     address, dish_dict, requery_bool, max_dist_km=distance,
@@ -376,7 +376,7 @@ def step4_query(address, dish_dict, requery, distance, selected):
                 _collect_store_ids(store_ids, sm, address, distance)
             elif sm == "woolworths":
                 api_module = _import_woolworths()
-                woolworths_optimizer(
+                woolworths_querier(
                     api_module,
                     ALL_SUPERMARKETS[sm][0], ALL_SUPERMARKETS[sm][1],
                     address, dish_dict, requery_bool, max_dist_km=distance,
@@ -429,7 +429,7 @@ def step4b_validate(dish_dict, do_validate, requery):
     print("STEP 4b: Validating query results via LLM")
     print(f"{'='*60}")
 
-    dish_name, search_terms = _resolve_dish(dish_dict)
+    dish_name, search_terms = _resolve_dish_terms(dish_dict)
 
     try:
         from scripts.llms.llm_validate import validate_dish_results

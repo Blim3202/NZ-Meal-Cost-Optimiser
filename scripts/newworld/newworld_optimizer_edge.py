@@ -31,7 +31,7 @@ from newworld_api import (
     find_nearby_stores,
 )
 from optimizer_utils import (
-    foodstuffs_optimizer_edge,
+    foodstuffs_querier_edge,
     optimise,
 )
 
@@ -72,7 +72,7 @@ def main():
     if len(positional) >= 2:
         dish = positional[1]
 
-    has_data = foodstuffs_optimizer_edge(
+    has_data = foodstuffs_querier_edge(
         NewWorldEdgeAPI,
         find_nearby_stores,
         "NewWorld",

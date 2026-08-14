@@ -5,7 +5,7 @@ Two-Step meal cost optimizer using the Woolworths NZ API (cookie-based per-store
 
 Step 1 (query):  Geocode address → find nearby stores → search each ingredient at
                  each store → append ALL results to full_results.csv. Shared
-                 implementation in optimizer_utils.woolworths_optimizer().
+                 implementation in optimizer_utils.woolworths_querier().
 Step 2 (optimise): Read today's results from CSV → find best per-store totals
                    and best mix → print comparison table.
 
@@ -30,7 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "combined"))
 
 import woolworths_api
 from optimizer_utils import (
-    woolworths_optimizer,
+    woolworths_querier,
     optimise,
 )
 
@@ -72,7 +72,7 @@ def main():
     if len(positional) >= 2:
         dish = positional[1]
 
-    has_data = woolworths_optimizer(
+    has_data = woolworths_querier(
         woolworths_api,
         "Woolworths",
         "Woolworths",

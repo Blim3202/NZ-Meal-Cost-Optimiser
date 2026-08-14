@@ -14,7 +14,7 @@ llm_interactive.py  (CLI orchestration, 6 steps)
     │       ├── resolve_ingredients  → curated JSON  OR  LLM generation
     │       └── parse_optimizer_columns  → quantity scaling / cost math
     │
-    ├──► optimizer_utils.py / woolworths_optimizer.py
+    ├──► optimizer_utils.py / woolworths_optimizer.py  (woolworths_querier)
     │       └── query + append_rows → data/full_results.csv
     │
     └──► llm_validate.py  (run separately, post-hoc)

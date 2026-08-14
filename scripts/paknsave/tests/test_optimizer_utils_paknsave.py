@@ -37,8 +37,8 @@ from optimizer_utils import (
     build_edge_row,
     build_mobile_row,
     _compute_pk_hash,
-    _resolve_dish,
-    _resolve_dish_dict,
+    _resolve_dish_terms,
+    _resolve_dish_data,
     _build_quantity_map,
     get_ingredients,
     _parse_display_name,
@@ -83,13 +83,13 @@ class TestDishResolution:
         self.dishes = _load_dishes()
 
     def test_resolve_dish_from_string(self):
-        """Verify _resolve_dish resolves a dish name string to (dish_name, search_terms).
+        """Verify _resolve_dish_terms resolves a dish name string to (dish_name, search_terms).
 
         Uses the real "spaghetti bolognese" entry from data/dishes.json — it has
         exactly 7 ingredients (beef mince, spaghetti pasta, canned tomatoes,
         onion, carrot, garlic, mixed herbs).
         """
-        dish_name, ingredients = _resolve_dish("spaghetti bolognese")
+        dish_name, ingredients = _resolve_dish_terms("spaghetti bolognese")
         # Dish name normalized (lowercased in dishes.json)
         assert dish_name == "spaghetti bolognese"
         # 7 ingredients per the fixture
@@ -102,7 +102,7 @@ class TestDishResolution:
         assert ingredients[-1] == "mixed herbs"
 
     def test_resolve_dish_from_dict(self):
-        """Verify _resolve_dish handles structured dict input.
+        """Verify _resolve_dish_terms handles structured dict input.
 
         Constructs a dish dict inline matching the JSON schema shape:
         {dish_name, portion, ingredients: [{quantity, unit, search_term}, ...]}.
@@ -114,14 +114,14 @@ class TestDishResolution:
                 {"quantity": 100, "unit": "g", "search_term": "test ingredient"},
             ],
         }
-        dish_name, ingredients = _resolve_dish(dish_dict)
+        dish_name, ingredients = _resolve_dish_terms(dish_dict)
         assert dish_name == "test dish"
         assert ingredients == ["test ingredient"]
 
     def test_resolve_dish_unknown_string_raises(self):
-        """Verify _resolve_dish raises ValueError for unknown dish names."""
+        """Verify _resolve_dish_terms raises ValueError for unknown dish names."""
         with pytest.raises(ValueError):
-            _resolve_dish("nonexistent dish")
+            _resolve_dish_terms("nonexistent dish")
 
     def test_get_ingredients(self):
         """Verify get_ingredients returns search terms from the dishes registry.
@@ -152,9 +152,9 @@ class TestDishResolution:
         assert qty_map["broccoli"] == "1 head (~300 g)"
         assert qty_map["stock"] == "2 cups"
 
-    def test_resolve_dish_dict_from_registry(self):
-        """Verify _resolve_dish_dict returns the full dish dict from DISHES."""
-        dish_dict: dict[str, Any] = cast(dict[str, Any], _resolve_dish_dict("beef curry"))
+    def test_resolve_dish_data_from_registry(self):
+        """Verify _resolve_dish_data returns the full dish dict from DISHES."""
+        dish_dict: dict[str, Any] = cast(dict[str, Any], _resolve_dish_data("beef curry"))
         assert dish_dict["dish_name"] == "beef curry"
         assert dish_dict["portion"] == 4
         ingredients: list[dict[str, Any]] = dish_dict["ingredients"]  # type: ignore

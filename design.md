@@ -639,17 +639,17 @@ dm-Pickup,f-{extra1},s-38
 
 ### Woolworths query pipeline (shared, in `optimizer_utils.py`)
 
-`woolworths_optimizer(api, company_id, company_name, address, dish, requery, max_dist_km=5)` mirrors
-`foodstuffs_optimizer_edge`/`_mobile` for the other brands. `woolworths_api.py` stays a **functional**
+`woolworths_querier(api, company_id, company_name, address, dish, requery, max_dist_km=5)` mirrors
+`foodstuffs_querier_edge`/`_mobile` for the other brands. `woolworths_api.py` stays a **functional**
 module (session, cookie injection, product search) and is injected as the `api` param. The CLI
 `woolworths_optimizer.py` is a thin wrapper that calls it, then `optimise()`.
 
 ```python
 import woolworths_api
-from optimizer_utils import woolworths_optimizer, optimise
+from optimizer_utils import woolworths_querier, optimise
 
 # Step 1: geocode → nearby stores → per-store pricing (fresh session per store)
-woolworths_optimizer(woolworths_api, "Woolworths", "Woolworths",
+woolworths_querier(woolworths_api, "Woolworths", "Woolworths",
                      "123 Queen Street, Auckland", "spaghetti bolognese",
                      requery=True, max_dist_km=5)
 

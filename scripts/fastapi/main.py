@@ -260,7 +260,7 @@ async def _fetch_ingredient(company: str, store_id: str, ingredient: str) -> Opt
 def _resolve_dish_terms(dish_input: str) -> tuple[str, list[str]]:
     """Resolve dish name and return (display_name, search_terms)."""
     search_terms = get_ingredients(dish_input)
-    dish_dict = optimizer_utils._resolve_dish_dict(dish_input)
+    dish_dict = optimizer_utils._resolve_dish_data(dish_input)
     display_name = dish_dict.get("dish_name", dish_input)
     return display_name, search_terms
 

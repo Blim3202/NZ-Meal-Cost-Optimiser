@@ -98,7 +98,7 @@ opencode/
 │   └── full_results.csv                         # Append-only results with pk_hash deduplication + is_valid column
 ├── scripts/
 │   ├── combined/
-│   │   ├── optimizer_utils.py                  # **Cross-brand helpers**: foodstuffs_optimizer_edge/mobile, woolworths_optimizer, build_edge_row/mobile_row/build_woolworths_row, parsing, geocoding, haversine, DISHES, get_ingredients, _resolve_dish, _build_quantity_map, optimise(), append_rows, _compute_pk_hash
+│   │   ├── optimizer_utils.py                  # **Cross-brand helpers**: foodstuffs_querier_edge/mobile, woolworths_querier, build_edge_row/mobile_row/build_woolworths_row, parsing, geocoding, haversine, DISHES, get_ingredients, _resolve_dish_terms, _resolve_dish_data, _build_quantity_map, optimise(), append_rows, _compute_pk_hash
 │   │   └── initialize_full_results.py          # Creates data/full_results.csv with 18-column schema (17 + is_valid) + pk_hash
 │   ├── newworld/
 │   │   ├── newworld_setup.py                   # **Unified store builder**: Edge API (148 stores), Mobile API (150 stores). Callable module + CLI with `source` param.
@@ -114,7 +114,7 @@ opencode/
 │   │   └── Exploration/                         # API exploration scripts (legacy)
 │   ├── woolworths/
 │   │   ├── woolworths_api.py                    # Cookie-based API module: session, store context, product search
-│   │   ├── woolworths_optimizer.py              # **Thin CLI**: Step 1 via shared `woolworths_optimizer` in `optimizer_utils.py`, then Step 2 `optimise()` from CSV
+│   │   ├── woolworths_optimizer.py              # **Thin CLI**: Step 1 via shared `woolworths_querier` in `optimizer_utils.py`, then Step 2 `optimise()` from CSV
 │   │   ├── woolworths_setup.py                  # **Unified store pipeline**: fetch choices, fetch data, merge (188 stores → 177 with coords). Replaces legacy scripts.
 │   │   ├── Exploration/                         # API exploration scripts (legacy)
 │   │   ├── Fixture/                             # Test fixtures (legacy)
