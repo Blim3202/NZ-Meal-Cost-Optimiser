@@ -5,30 +5,38 @@ Run:
 or:
     .venv\Scripts\uvicorn main:app --app-dir scripts/fastapi --port 8000
 
-The /optimise endpoint runs all retailer searches concurrently — up to 3
-companies x 3 stores x ~6 ingredients = 54 concurrent HTTP requests.
+The /optimise endpoint runs all retailer searches via a thread pool
+(20 workers). Each ingredient search is offloaded to a background thread
+so the event loop stays free. The total number of concurrent searches
+depends on the dish (3-7 ingredients), search radius, and how many stores
+are found nearby. Tasks run in batches of 20, not all at once.
 Woolworths sessions are isolated per-store (fresh session + cookie per store).
 Nominatim geocode runs once per request (not parallelized).
 """
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import logging
-import shutil
 import time
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import JSONResponse, FileResponse
+# Increase asyncio's default thread pool from 5 to 20 workers.
+# Each worker runs one blocking HTTP search in the background while
+# the event loop remains free to schedule other tasks.
+_THREAD_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=20)
+
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import core.paths  # noqa: F401  (bootstrap sys.path for legacy modules)
 import optimiser_utils
 from core.config import settings
-from optimiser_utils import analyse_results, get_ingredients
+from optimiser_utils import _resolve_dish_terms
 from paknsave_api import PaknSaveEdgeAPI, find_nearby_stores as ps_find_nearby
 from newworld_api import NewWorldEdgeAPI, find_nearby_stores as nw_find_nearby
 import woolworths_api
@@ -98,6 +106,12 @@ app = FastAPI(
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
+@app.on_event("startup")
+async def _set_thread_pool():
+    """Set the default executor so asyncio.to_thread uses our 20-worker pool."""
+    asyncio.get_event_loop().set_default_executor(_THREAD_POOL)
+
+
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok", "supabase_enabled": settings.supabase_enabled}
@@ -120,7 +134,10 @@ async def run_optimisation(dish_name: str, address: str, distance_km: float = 5.
     Returns a structured comparison of the cheapest store for the dish.
     """
     start = time.time()
-    dish_name_resolved, search_terms = _resolve_dish_terms(dish_name)
+    try:
+        dish_name_resolved, search_terms = _resolve_dish_terms(dish_name)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if not search_terms:
         raise HTTPException(status_code=400, detail=f"Dish '{dish_name}' not found in dishes.json")
 
@@ -205,33 +222,37 @@ async def run_optimisation(dish_name: str, address: str, distance_km: float = 5.
     )
 
 
-async def _fetch_ingredient(company: str, store_id: str, ingredient: str) -> Optional[dict]:
-    """Fetch a single ingredient for a single store. Runs concurrently.
+def _fetch_woolworths_sync(store_id: str, ingredient: str) -> Optional[dict]:
+    """Synchronous Woolworths search — called from a background thread.
 
-    Each call creates its own session/API instance — no shared state.
+    Creates a fresh session per call (cookie isolation), searches for the
+    ingredient, and returns the cheapest result.
     """
-    if company == "Woolworths":
-        # Fresh session per store (cookie isolation is per-Session object)
-        session = woolworths_api.create_session()
-        try:
-            woolworths_api.set_store_context(session, store_id)
-            products = woolworths_api.search_products(session, ingredient, food_only=True, size=10)
-            priced = [p for p in products if p.get("salePrice") is not None]
-            if not priced:
-                return None
-            best = min(priced, key=lambda p: p["salePrice"])
-            return {
-                "price": best["salePrice"],
-                "unit_price": best.get("cupListPrice", ""),
-                "pack_info": f"{best.get('volumeSize', '')}",
-            }
-        finally:
-            session.close()
+    session = woolworths_api.create_session()
+    try:
+        woolworths_api.set_store_context(session, store_id)
+        products = woolworths_api.search_products(session, ingredient, food_only=True, size=10)
+        priced = [p for p in products if p.get("salePrice") is not None]
+        if not priced:
+            return None
+        best = min(priced, key=lambda p: p["salePrice"])
+        return {
+            "price": best["salePrice"],
+            "unit_price": best.get("cupListPrice", ""),
+            "pack_info": f"{best.get('volumeSize', '')}",
+        }
+    finally:
+        session.close()
 
-    # Foodstuffs (Pak'nSave/NewWorld) — Edge API, JWT auth, no per-store sessions
+
+def _fetch_foodstuffs_sync(company: str, store_id: str, ingredient: str) -> Optional[dict]:
+    """Synchronous Foodstuffs search — called from a background thread.
+
+    Creates a new API instance, authenticates if needed, runs the two-pass
+    search, and returns the cheapest result. Price is in cents.
+    """
     cfg = BRANDS[company]
     api = cfg["api_class"]()
-    await asyncio.sleep(0)  # yield to event loop — auth may block
     if not api.token:
         api.authenticate()
     region = "NI"
@@ -239,7 +260,6 @@ async def _fetch_ingredient(company: str, store_id: str, ingredient: str) -> Opt
         products, pass1_hits = api.search_ingredient(store_id, ingredient, region=region)
         if not products:
             return None
-        # Pick cheapest by unit price
         priced = [p for p in products if p.get("singlePrice", {}).get("price") is not None]
         if not priced:
             return None
@@ -253,16 +273,24 @@ async def _fetch_ingredient(company: str, store_id: str, ingredient: str) -> Opt
             "pack_info": best.get("displayName", ""),
         }
     finally:
-        # No session to close for Foodstuffs — token is reusable
         pass
 
 
-def _resolve_dish_terms(dish_input: str) -> tuple[str, list[str]]:
-    """Resolve dish name and return (display_name, search_terms)."""
-    search_terms = get_ingredients(dish_input)
-    dish_dict = optimiser_utils._resolve_dish_data(dish_input)
-    display_name = dish_dict.get("dish_name", dish_input)
-    return display_name, search_terms
+async def _fetch_ingredient(company: str, store_id: str, ingredient: str) -> Optional[dict]:
+    """Offload a blocking ingredient search to a background thread.
+
+    The underlying API libraries (requests, woolworths_api, newworld_api,
+    paknsave_api) are all synchronous. asyncio.to_thread needed to prevent
+    blocking HTTP calls freezing the event loop.
+
+    asyncio.to_thread runs the sync function on a background thread from
+    the pool (20 workers)
+    """
+    if company == "Woolworths":
+        return await asyncio.to_thread(_fetch_woolworths_sync, store_id, ingredient)
+    else:
+        return await asyncio.to_thread(_fetch_foodstuffs_sync, company, store_id, ingredient)
+
 
 
 # --- optional Supabase persistence (not required for core functionality) ---

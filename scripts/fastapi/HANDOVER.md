@@ -5,59 +5,60 @@ A FastAPI backend that finds the cheapest supermarket for a dish by searching **
 
 ## Key Design Decisions
 
-### 1. TRUE Parallelisation — No Queueing
-**We do NOT need queueing** because:
-- **Each `requests.Session()` has its own cookie jar** — Woolworths sessions are isolated automatically
-- **Nominatim geocoding runs once** per request (not during parallel searches)  
-- **All 42-63 searches run concurrently** (3 companies × 3 stores × ~7 ingredients)
+### 1. Parallelisation — Thread Pool
+The underlying API libraries (`woolworths_api`, `newworld_api`, `paknsave_api`) are all **synchronous** — they use `requests.Session` for HTTP calls. If called directly from an `async def`, they block the event loop and all tasks run sequentially.
+
+**Solution:** `asyncio.to_thread()` offloads each blocking search to a background thread from a 20-worker thread pool. The event loop stays free to schedule tasks. With 20 workers, up to 20 searches run in parallel — the rest queue and start as slots free up.
 
 ```python
-# Safe — each gets its own session object with separate cookie jars:
-session1 = woolworths_api.create_session()  # cookie jar A
-set_store_context(session1, store1)        # dm-Pickup,f-123 in jar A
+# Before: blocking the event loop
+async def _fetch_ingredient(company, store_id, ingredient):
+    products = woolworths_api.search_products(...)  # blocks for 2-3s
+    # Event loop frozen. Nothing else can run.
 
-session2 = woolworths_api.create_session()  # cookie jar B
-set_store_context(session2, store2)        # dm-Pickup,f-456 in jar B
-# These run in parallel with zero conflicts
+# After: offloaded to a background thread
+async def _fetch_ingredient(company, store_id, ingredient):
+    return await asyncio.to_thread(_fetch_woolworths_sync, store_id, ingredient)
+    # Event loop free. Other tasks run in parallel.
 ```
 
 ### 2. Session Isolation Pattern
+Each Woolworths search creates its own `requests.Session` (fresh cookie jar). Foodstuffs uses JWT tokens with URL-path store IDs — no session conflicts.
+
 ```python
-async def _fetch_ingredient(company, store_id, ingredient):
-    if company == "Woolworths":
-        session = woolworths_api.create_session()  # Fresh session per store
-        woolworths_api.set_store_context(session, store_id)
-        products = woolworths_api.search_products(session, ingredient)
-        session.close()                             # Explicitly closed
-    else:  # Foodstuffs (Pak'nSave/NewWorld)
-        api = CompanyAPI()                          # JWT auth, reusable
-        products = api.search_ingredient(store_id, ingredient)
+def _fetch_woolworths_sync(store_id, ingredient):
+    session = woolworths_api.create_session()  # fresh cookie jar
+    woolworths_api.set_store_context(session, store_id)
+    products = woolworths_api.search_products(session, ingredient)
+    session.close()
 ```
 
 ### 3. Supabase Persistence — Optional
-- Only for storing historical runs (not required for core flow)
-- API works fully without it; writes are silently skipped if misconfigured
+- `_maybe_persist()` is defined but **not wired in** to `run_optimisation()` — no writes happen at runtime
+- Would need to be called explicitly (e.g. `await _maybe_persist(result)`) after returning the result to enable it
 
 ## Performance Results
 
-**First full test: 42 concurrent searches completed in 61 seconds**
-- Sequential would take ~10 minutes
-- Geocoding: 3s (Nominatim rate limited)
-- 42 API searches: ~56s (parallelized)
-- Result: `$17.10 at New World Newmarket` (spaghetti bolognese, Auckland CBD)
+**Example: spaghetti bolognese (7 ingredients) across 3 companies × 3 stores = 63 total searches**
+- Geocoding: 1-3s (Nominatim rate limited, runs once)
+- 63 API searches via 20-thread pool: tasks queue and run in batches of 20. Wall time ≈ `ceil(63/20) × ~5s ≈ 20-25s`
+- Sequential equivalent: ~5+ minutes (63 × ~5s each)
+- Total wall time: ~22-30s depending on dish, radius, and network
 
 ## File Structure
 
 ```
 scripts/fastapi/
 ├── main.py              # FastAPI app + async /optimise endpoint + frontend serving
+├── Dockerfile           # Container image for Google Cloud Run deployment
+├── HANDOVER.md          # This file
 ├── core/
 │   ├── __init__.py
 │   ├── config.py        # Optional SUPABASE_* settings
 │   └── paths.py         # sys.path bootstrap for legacy modules
 ├── static/
-│   └── index.html       # Frontend dashboard (Vue-style plain HTML/JS)
-├── .env                 # (optional) SUPABASE_URL + SUPABASE_SECRET_KEY
+│   └── index.html       # Frontend dashboard (plain HTML/JS)
+└── tmp/                 # Scratchpad folder (currently unused)
 ```
 
 ## Usage
@@ -82,11 +83,17 @@ curl -X POST "http://127.0.0.1:8000/optimise" \
 | Component | Parallel | Isolation Method |
 |-----------|----------|-----------------|
 | Geocoding (Nominatim) | No (1 req/sec limit) | Single call before searches |
-| Pak'nSave stores | Yes | JWT token, URL-path store IDs |
-| New World stores | Yes | JWT token, URL-path store IDs |
-| Woolworths stores | Yes | Fresh `requests.Session()` per store |
+| Pak'nSave stores | Yes (20-thread pool) | JWT token, URL-path store IDs |
+| New World stores | Yes (20-thread pool) | JWT token, URL-path store IDs |
+| Woolworths stores | Yes (20-thread pool) | Fresh `requests.Session()` per store |
 | All 3 companies | Yes | Independent API clients |
 | Ingredients (per store) | Yes | No shared state between calls |
+
+### Thread Pool Configuration
+
+- **Pool size:** 20 workers (up from Python's default of 5)
+- **Why 20:** With 20 workers, up to 20 searches run in parallel. The rest queue and start as slots free up. Wall time ≈ `ceil(total_tasks / 20) × ~5s`. Going higher (e.g. 63 workers) gives diminishing returns and uses more memory.
+- **Set via:** `concurrent.futures.ThreadPoolExecutor(max_workers=20)` at module import, wired to the event loop at startup via `app.on_event("startup")`.
 
 ## What Was Removed (and Why)
 
@@ -99,14 +106,17 @@ curl -X POST "http://127.0.0.1:8000/optimise" \
 ## Next Steps
 1. ✅ Core FastAPI app with concurrent `/optimise` endpoint — **done**
 2. ✅ Basic frontend at `http://127.0.0.1:8000/` — **done**
-3. Deploy to **Google Cloud Run** (serverless containers):
-   ```dockerfile
-   # Add Dockerfile for easy deployment
-   ```
-4. Optional: Add Supabase persistence + historical price tracking
-5. Optional: Add LLM endpoints for dish generation/filtering
+3. ✅ Dockerfile for Google Cloud Run deployment — **done**
+4. ✅ Thread pool concurrency fix (asyncio.to_thread) — **done**
+5. Optional: Wire in `_maybe_persist()` for Supabase historical price tracking
+6. Optional: Add LLM endpoints for dish generation/filtering
 
 ## Google Cloud Run Deployment
-- Create `Dockerfile` in `scripts/fastapi/`
-- Deploy with: `gcloud run deploy --source .`
-- Serverless scaling handles concurrency; each request is independent
+
+The `Dockerfile` in `scripts/fastapi/` packages the app into a container. To deploy:
+
+```bash
+gcloud run deploy --source scripts/fastapi/
+```
+
+Serverless scaling handles concurrency; each request is independent.
