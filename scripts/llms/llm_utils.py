@@ -219,7 +219,7 @@ def resolve_ingredients(dish: str, portions: int = 4, regenerate: bool = False,
 
     1. dishes.json structured records  ← if dish_key exists and not regenerate → use full ingredient dicts
     2. LLM dish builder  ← generate fresh, no caching
-    3. Fallback [dish_name]  ← legacy single-search-term behavior
+    3. Fallback [dish_name]  ← legacy single-search-term behaviour
 
     Args:
         dish: dish name string
@@ -277,7 +277,7 @@ def resolve_ingredients(dish: str, portions: int = 4, regenerate: bool = False,
         )
     except (LLMGenerationError, LLMParseError) as e:
         print(f"  [WARN] LLM generation failed for '{dish}': {e}")
-        print("  [WARN] Falling back to single-search-term behavior")
+        print("  [WARN] Falling back to single-search-term behaviour")
 
     # --- 4. Last-resort fallback: use dish name itself as search term ---
     return (
@@ -458,7 +458,7 @@ def parse_optimiser_columns(row: dict) -> dict:
     ingredient_approx_quantity = _safe_float(row.get("ingredient_approx_quantity", 0)) if row.get("ingredient_approx_quantity") else None
     ingredient_approx_unit = row.get("ingredient_approx_unit", "") if row.get("ingredient_approx_unit") else None
 
-    # --- Compute scaling ratio with unit normalization ---
+    # --- Compute scaling ratio with unit normalisation ---
     # Convert both quantities to a common base to handle unit mismatches
     # (e.g., LLM says 1000g, pack says 1kg → ratio = 1.0)
     req_qty_base, req_base_unit = _to_common_quantity(ingredient_quantity, ingredient_measurement)

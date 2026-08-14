@@ -258,7 +258,7 @@ Re-run to incrementally fill in more rows — already-validated rows are always 
 - Ingredient generation for common dishes (21 curated + arbitrary LLM generation)
 - Prompt-level control for units, portions, search terms
 - Structured parsing with clear failure modes (`LLMParseError`)
-- Unit normalization across weight/volume/count
+- Unit normalisation across weight/volume/count
 - Incremental validation with no data loss
 
 ### Edge cases & limitations

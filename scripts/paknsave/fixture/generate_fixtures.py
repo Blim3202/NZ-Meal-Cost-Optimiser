@@ -287,7 +287,7 @@ def capture_edge_fixtures():
 # Fixture 6: mobile_search_example.json
 # ---------------------------------------------------------------------------
 # Captures the Mobile API product search response ("milk").
-# Tests search_products() normalization and is_food_product() filtering.
+# Tests search_products() normalisation and is_food_product() filtering.
 # ---------------------------------------------------------------------------
 
 def capture_mobile_fixtures(store_id):

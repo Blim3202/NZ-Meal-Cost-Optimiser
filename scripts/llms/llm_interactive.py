@@ -567,7 +567,7 @@ def step6_scaling(dish_dict, selected, store_ids=None, require_valid=False):
     # Filter to companies used
     company_names = set(ALL_SUPERMARKETS[sm][0] for sm in selected)
     
-    # Organize data: candidates[search_term][store] = [list of scaled_row_dicts]
+    # Organise data: candidates[search_term][store] = [list of scaled_row_dicts]
     candidates = {}
     all_stores = set()
 

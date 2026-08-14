@@ -307,7 +307,7 @@ def _capture_product_normalized_sale(search_response):
 # ---------------------------------------------------------------------------
 
 def _normalize_product(raw_item):
-    """Apply the same normalization that woolworths_api.search_products() does.
+    """Apply the same normalisation that woolworths_api.search_products() does.
 
     Mirrors the logic in woolworths_api.search_products().
     """

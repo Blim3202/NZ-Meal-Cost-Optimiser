@@ -5,7 +5,7 @@ A FastAPI backend that finds the cheapest supermarket for a dish by searching **
 
 ## Key Design Decisions
 
-### 1. TRUE Parallelization — No Queueing
+### 1. TRUE Parallelisation — No Queueing
 **We do NOT need queueing** because:
 - **Each `requests.Session()` has its own cookie jar** — Woolworths sessions are isolated automatically
 - **Nominatim geocoding runs once** per request (not during parallel searches)  
