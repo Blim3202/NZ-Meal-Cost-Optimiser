@@ -110,7 +110,7 @@ and only a new `NewWorldMobileAPI()` recovers. The `/refreshtoken` endpoint (4.2
 confirmed working in `Exploration/explore_edge_api3.py` but **not wired into** the client.
 Edge's `fs-user-token` JWT also expires ~30 min (design.md "Fresh JWT required"), but
 `NewWorldEdgeAPI` reads only the cookie *value* (never its Max-Age) and `authenticate()`
-runs **once per run** (optimizer_utils.py:761, not per store) — no per-store re-auth, no
+runs **once per run** (optimiser_utils.py:761, not per store) — no per-store re-auth, no
 retry on expiry.
 
 ### 4.2 Token Refresh
@@ -268,7 +268,7 @@ specific store, **with per-store pricing**.
 | `disableAdsOverride` | `bool` | `false` | Disable ad insertion in results (not used by production) |
 
 The `sortOrder`, `searchingTobacco`, and `disableAdsOverride` params are *not used* by
-this project (the optimizer always relies on the default relevance ordering and only
+this project (the optimiser always relies on the default relevance ordering and only
 sends `q` + `hitsPerPage`).
 
 #### Request body
@@ -343,7 +343,7 @@ The body is required but can be empty — it's used internally for filter state
 
 The mobile search endpoint returns either a **bare JSON array** of products or a
 **wrapped dict** with a `"products"` key. The production code in
-`newworld_api.py` (and the shared `optimizer_utils.py` helpers) handles both shapes
+`newworld_api.py` (and the shared `optimiser_utils.py` helpers) handles both shapes
 defensively:
 
 ```python
@@ -359,7 +359,7 @@ products = data if isinstance(data, list) else data.get("products", [])
 | `name` | `string` | Product display name |
 | `brand` | `string` | Brand name (e.g. `"Pams"`, `"Value"`) |
 | `price` | `integer` | **Price in cents** — divide by 100 for dollars |
-| `units` | `string` | Unit of sale: `"kg"`, `"L"`, `"400g"`, `"12pk"`, `"each"`, `"1pk"`. When `unitPrice` is missing/null and `units` has a numeric prefix (e.g. `"1pk"`), the optimizer infers per-unit pricing from the item's own `price` — `per_unit_quantity` becomes the `measurement_unit` (e.g. `"pk"`) and `per_unit_price` mirrors the item price. |
+| `units` | `string` | Unit of sale: `"kg"`, `"L"`, `"400g"`, `"12pk"`, `"each"`, `"1pk"`. When `unitPrice` is missing/null and `units` has a numeric prefix (e.g. `"1pk"`), the optimiser infers per-unit pricing from the item's own `price` — `per_unit_quantity` becomes the `measurement_unit` (e.g. `"pk"`) and `per_unit_price` mirrors the item price. |
 | `unitPrice` | `string` | Formatted unit price string, e.g. `"$18.99/kg"` |
 | `categories` | `array[string]` | Hierarchical category path, e.g. `["Meat & Poultry", "Beef", "Mince"]` |
 | `availableInOnline` | `bool` | Can be ordered online |
@@ -381,7 +381,7 @@ price_dollars = product["price"] / 100
 Each `{storeId}` returns independent prices for the same product. For example,
 searching "standard milk" at New World Albany vs New World Newmarket may return
 different `price` values for the same `productId`. This is the foundation of the
-meal cost optimizer.
+meal cost optimiser.
 
 #### `categories` mapping & non-food filtering
 
@@ -401,7 +401,7 @@ Food"]` is filtered out because `categories[0]` is `"Dog"`. A product with an em
 
 #### Mobile parsing (`units` + `unitPrice` → 4-tuple)
 
-The optimizer splits the mobile product into
+The optimiser splits the mobile product into
 `(quantity, measurement_unit, per_unit_quantity, per_unit_price)` in one call via
 `parse_foodstuffs_mobile_unit(units, unitPrice, price_cents)`:
 
@@ -427,7 +427,7 @@ ingredient searches return in a single page).
 
 #### Specifying sort order
 
-The mobile endpoint's sort parameter is not used by this project. The optimizer relies
+The mobile endpoint's sort parameter is not used by this project. The optimiser relies
 on the default relevance ordering (returns the most-relevant results first) and only
 sends `q` + `hitsPerPage`.
 
@@ -837,8 +837,8 @@ PASS 2  POST /v1/edge/search/paginated/products
         → products with per-store singlePrice + promotions
 ```
 The complete production pipeline is implemented by the shared helper
-`foodstuffs_querier_edge` in `scripts/combined/optimizer_utils.py`, which the
-New World Edge optimizer (`newworld_optimizer_edge.py`) calls with the
+`foodstuffs_querier_edge` in `scripts/combined/optimiser_utils.py`, which the
+New World Edge optimiser (`newworld_optimiser_edge.py`) calls with the
 `NewWorldEdgeAPI` class and `find_nearby_stores`. Each brand's API class mirrors the
 same two-pass structure:
 
@@ -847,7 +847,7 @@ Reference implementation: `scripts/newworld/newworld_api.py` —
 
 ---
 
-### 6.9 Why This Matters for the Meal Cost Optimizer
+### 6.9 Why This Matters for the Meal Cost Optimiser
 
 **Without relevance matching**: Searching "beef mince" could return pet food, pies, or unrelated products first.
 
@@ -879,7 +879,7 @@ This method seems to be superior to the mobile API in terms of search relevancy 
 
 ### 6.11 Conclusion
 
-**The Edge API CAN fully replace the mobile API** for the meal cost optimizer:
+**The Edge API CAN fully replace the mobile API** for the meal cost optimiser:
 
 1. [OK] Store listing works (148 stores)
 2. [OK] Product search works via two-pass pipeline
@@ -897,7 +897,7 @@ This method seems to be superior to the mobile API in terms of search relevancy 
 - Works with standard browser JWT (same IdP: `online-customer`)
 - Categories endpoint available for navigation
 
-**Implementation Reference**: `scripts/newworld/newworld_api.py` (`NewWorldEdgeAPI`) + `scripts/combined/optimizer_utils.py` (`foodstuffs_querier_edge`)
+**Implementation Reference**: `scripts/newworld/newworld_api.py` (`NewWorldEdgeAPI`) + `scripts/combined/optimiser_utils.py` (`foodstuffs_querier_edge`)
 **Full Exploration Details**: `scripts/newworld/Exploration/EDGE_API_FINDINGS.md`
 
 ---
@@ -943,7 +943,7 @@ Differences of $0.10-$0.50 per item between nearby stores are typical. For examp
 
 ### 7.3 Why This Matters
 
-The meal cost optimizer finds the cheapest total for an entire recipe by searching
+The meal cost optimiser finds the cheapest total for an entire recipe by searching
 each ingredient at each nearby store and comparing totals. Without per-store pricing,
 this comparison would be meaningless.
 
@@ -952,9 +952,9 @@ this comparison would be meaningless.
 ## 8. Data Query & Parsing Pipeline
 
 > **Default backend: Edge API (two-pass).** The unified API client
-> `NewWorldAPI(backend="edge")` and the production CLI optimizer
-> (`newworld_optimizer_edge.py`) default to the Edge backend. The mobile backend
-> (`backend="mobile"`, `newworld_optimizer_mobile.py`) is the legacy fallback.
+> `NewWorldAPI(backend="edge")` and the production CLI optimiser
+> (`newworld_optimiser_edge.py`) default to the Edge backend. The mobile backend
+> (`backend="mobile"`, `newworld_optimiser_mobile.py`) is the legacy fallback.
 
 This section shows how the production code queries the two backends and parses the
 responses into CSV rows. Both backends follow the same skeleton (shared by Pak'nSave;
@@ -1092,7 +1092,7 @@ the Edge/mobile API.
 
 ---
 
-## 10. Production Architecture & Optimizers
+## 10. Production Architecture & Optimisers
 
 ### 10.1 How to Search Products by Store (Mobile API)
 
@@ -1114,7 +1114,7 @@ for p in products:
 ### 10.2 How to Find Nearby Stores and Compare Prices
 
 ```python
-from scripts.combined.optimizer_utils import geocode, find_nearby_stores, DISHES
+from scripts.combined.optimiser_utils import geocode, find_nearby_stores, DISHES
 from scripts.newworld.newworld_setup import load_stores
 from scripts.newworld.newworld_api import NewWorldMobileAPI
 
@@ -1142,7 +1142,7 @@ for _, store in nearby.iterrows():
 ### 10.3 Edge API Two-Pass Pipeline (Production — default)
 
 ```python
-from scripts.combined.optimizer_utils import foodstuffs_querier_edge
+from scripts.combined.optimiser_utils import foodstuffs_querier_edge
 from scripts.newworld.newworld_api import NewWorldEdgeAPI, find_nearby_stores
 
 foodstuffs_querier_edge(
@@ -1158,8 +1158,8 @@ foodstuffs_querier_edge(
 This is the full two-phase pipeline: geocode → find stores → Pass 1 (Algolia relevance
 + `category1` non-food filter) → Pass 2 (per-store pricing + `PRICE_ASC`) → build CSV
 rows → Phase 2 (per-ingredient cheapest → totals + breakdown). The shared helper
-`foodstuffs_querier_edge` in `scripts/combined/optimizer_utils.py` implements the
-complete loop; the CLI wrapper `newworld_optimizer_edge.py` just calls it with brand
+`foodstuffs_querier_edge` in `scripts/combined/optimiser_utils.py` implements the
+complete loop; the CLI wrapper `newworld_optimiser_edge.py` just calls it with brand
 params.
 
 ### 10.4 Unified API Module (`newworld_api.py`)
@@ -1178,19 +1178,19 @@ pids = edge.pass1_relevance_search(store_id, "beef mince")
 products = edge.pass2_per_store_pricing(store_id, "beef mince", pids)
 ```
 
-### 10.5 Optimizers
+### 10.5 Optimisers
 
-Both optimizers are **two-phase**: Phase 1 queries the API and appends to
+Both optimisers are **two-phase**: Phase 1 queries the API and appends to
 `full_results.csv`; Phase 2 reads today's rows and prints a comparison. Both are thin
 wrappers that inject the brand API class and store-finder function (`find_nearby_stores`) into the shared helpers
 `foodstuffs_querier_edge` / `foodstuffs_querier_mobile` in
-`scripts/combined/optimizer_utils.py`.
+`scripts/combined/optimiser_utils.py`.
 
-**Edge** (`scripts/newworld/newworld_optimizer_edge.py` — **production, default**):
+**Edge** (`scripts/newworld/newworld_optimiser_edge.py` — **production, default**):
 two-pass (relevance + per-store pricing, `PRICE_ASC`), `parse_foodstuffs_volume_size`
 → saves `data/newworld_latest_results.csv`.
 
-**Mobile** (`scripts/newworld/newworld_optimizer_mobile.py` — fallback): single-pass
+**Mobile** (`scripts/newworld/newworld_optimiser_mobile.py` — fallback): single-pass
 (guest token), `_is_food_product()` filter on `categories[0]`,
 `parse_foodstuffs_mobile_unit` → saves `data/newworld_mobile_latest_results.csv`.
 
@@ -1198,11 +1198,11 @@ Shared flags: `--requery true|false` (default true), `--distance N` (default 5 k
 
 ### 10.6 Ingredient Search Strategy
 
-The optimizer takes the **first (most relevant)** result per query. This avoids
+The optimiser takes the **first (most relevant)** result per query. This avoids
 irrelevant bulk items that might appear at lower prices (e.g., pet food for
 "beef mince"). 21 dishes are hand-curated in `DISHES` (dict format with
 quantity/unit/search_term) loaded from `data/dishes.json` via
-`scripts/combined/optimizer_utils.py`. LLM-backed dish generation available
+`scripts/combined/optimiser_utils.py`. LLM-backed dish generation available
 via `scripts/llms/llm_utils.py`.
 
 ### 10.7 Architecture Diagrams
@@ -1242,9 +1242,9 @@ Compare totals → cheapest store
 ```
 
 Shared helpers (`foodstuffs_querier_edge`, `foodstuffs_querier_mobile`,
-`build_edge_row`, `build_mobile_row`) live in `scripts/combined/optimizer_utils.py`.
-CLI entry points are thin wrappers: `scripts/newworld/newworld_optimizer_edge.py`
-and `scripts/newworld/newworld_optimizer_mobile.py`.
+`build_edge_row`, `build_mobile_row`) live in `scripts/combined/optimiser_utils.py`.
+CLI entry points are thin wrappers: `scripts/newworld/newworld_optimiser_edge.py`
+and `scripts/newworld/newworld_optimiser_mobile.py`.
 
 ---
 
@@ -1275,7 +1275,7 @@ and `scripts/newworld/newworld_optimizer_mobile.py`.
 | chicken katsu | chicken breast, flour, eggs, bread, rice, katsu sauce |
 
 Dishes are defined in `DISHES` (dict format with quantity/unit/search_term) loaded
-from `data/dishes.json` via `scripts/combined/optimizer_utils.py` (via `get_ingredients()`; identical
+from `data/dishes.json` via `scripts/combined/optimiser_utils.py` (via `get_ingredients()`; identical
 ingredient lists for both Pak'nSave and New World).
 `newworld_api.py` no longer re-exports — use the shared module directly.
 Unknown dish names fall through — the dish name itself becomes the single search query.
@@ -1284,14 +1284,14 @@ Unknown dish names fall through — the dish name itself becomes the single sear
 
 ## 12. CLI Usage
 
-**Edge API Optimizer (Production — two-pass, default):**
+**Edge API Optimiser (Production — two-pass, default):**
 ```powershell
-python scripts/newworld/newworld_optimizer_edge.py "Botany Town Centre, Auckland" "spaghetti bolognese"
+python scripts/newworld/newworld_optimiser_edge.py "Botany Town Centre, Auckland" "spaghetti bolognese"
 ```
 
-**Mobile API Optimizer (Fallback — single-pass):**
+**Mobile API Optimiser (Fallback — single-pass):**
 ```powershell
-python scripts/newworld/newworld_optimizer_mobile.py "Botany Town Centre, Auckland" "spaghetti bolognese"
+python scripts/newworld/newworld_optimiser_mobile.py "Botany Town Centre, Auckland" "spaghetti bolognese"
 ```
 
 | Argument | Default | Description |
@@ -1301,8 +1301,8 @@ python scripts/newworld/newworld_optimizer_mobile.py "Botany Town Centre, Auckla
 | `--requery` | `true` | `false` to skip API and optimise from existing CSV |
 | `--distance` | `5` | Store search radius in km |
 
-The Edge optimizer is the **production default** (two-pass relevance + per-store
-pricing, pet-food filtering, `PRICE_ASC` sort). Use the mobile optimizer only as a
+The Edge optimiser is the **production default** (two-pass relevance + per-store
+pricing, pet-food filtering, `PRICE_ASC` sort). Use the mobile optimiser only as a
 fallback when the Edge API is unavailable. Raw rows are appended to `data/full_results.csv`;
 per-run results saved to `data/newworld_latest_results.csv` (Edge) or
 `data/newworld_mobile_latest_results.csv` (Mobile).

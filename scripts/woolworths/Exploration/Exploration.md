@@ -151,7 +151,7 @@ The exploration directly enabled these production modules:
 | File | Purpose |
 |------|---------|
 | `../woolworths_api.py` | Cookie-based API module: `create_session()`, `set_store_context()`, `search_products()`, `find_cheapest()`, `get_nearby_stores()`, `geocode()` |
-| `../woolworths_optimizer.py` | Thin CLI: delegates step 1 (geocode → nearby stores → fresh session per store → cookie injection → ingredient search) to `optimizer_utils.woolworths_querier`, then step 2 `optimise()` |
+| `../woolworths_optimiser.py` | Thin CLI: delegates step 1 (geocode → nearby stores → fresh session per store → cookie injection → ingredient search) to `optimiser_utils.woolworths_querier`, then step 2 `optimise()` |
 | `../Get_woolworths_store_API_data.py` | Fetches `woolworths_store_data.json` from CDX API (source of `extra1`/`extra2`) |
 | `../Get_woolworths_store_choices.py` | Fetches pickup store list from `/api/v1/addresses/pickup-addresses` |
 | `../Merge_woolworths_stores.py` | Joins choices + location data → `woolworths_stores.csv` |

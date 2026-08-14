@@ -1,7 +1,7 @@
 """
-New World Edge API Optimizer
+New World Edge API Optimiser
 =============================
-Two-phase meal cost optimizer using the New World Edge API (two-pass pipeline).
+Two-phase meal cost optimiser using the New World Edge API (two-pass pipeline).
 
 Phase 1 (query):  Geocode address → find nearby stores → authenticate → search
                     each ingredient at each store → append ALL results to full_results.csv
@@ -9,7 +9,7 @@ Phase 2 (optimise): Read today's results from CSV → find best per-store totals
                      and best mix → print comparison table
 
 Usage:
-    python -m scripts.newworld.newworld_optimizer_edge "<address>" "<dish>" [--requery false] [--distance 5]
+    python -m scripts.newworld.newworld_optimiser_edge "<address>" "<dish>" [--requery false] [--distance 5]
 
 Flags:
     --requery true   (default) Query the API and append new results
@@ -30,7 +30,7 @@ from newworld_api import (
     NewWorldEdgeAPI,
     find_nearby_stores,
 )
-from optimizer_utils import (
+from optimiser_utils import (
     foodstuffs_querier_edge,
     optimise,
 )
@@ -39,7 +39,7 @@ from optimizer_utils import (
 def main():
     """CLI entrypoint.
 
-    Usage: python newworld_optimizer_edge.py "<address>" "<dish>" [--requery false] [--distance 5]
+    Usage: python newworld_optimiser_edge.py "<address>" "<dish>" [--requery false] [--distance 5]
     Defaults to Botany Town Centre, Auckland / spaghetti bolognese / requery true / distance 5km.
     """
     address = "Botany Town Centre, Auckland"

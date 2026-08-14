@@ -78,7 +78,7 @@ The `GET /api/v1/products?target=search` endpoint requires the literal header `x
 
 ## 19. Woolworths per-store pricing — cookie injection, not query params
 
-`fulfilmentStoreId` and `pickupStoreId` query parameters on `/api/v1/products` are accepted (HTTP 200) but **do not change prices**. Per-store pricing is controlled by the `cw-lrkswrdjp` cookie, which encodes `dm-Pickup,f-{fulfilmentStoreId},a-{areaId},s-{site}`. The cookie can be constructed from `extra1` in `woolworths_store_data.json` (verified 3/3 stores). Different stores return different prices (e.g., Greymouth Milk 3L = $7.15, Glenfield = $7.33). The optimizer must search each ingredient at each nearby store with a fresh session per store.
+`fulfilmentStoreId` and `pickupStoreId` query parameters on `/api/v1/products` are accepted (HTTP 200) but **do not change prices**. Per-store pricing is controlled by the `cw-lrkswrdjp` cookie, which encodes `dm-Pickup,f-{fulfilmentStoreId},a-{areaId},s-{site}`. The cookie can be constructed from `extra1` in `woolworths_store_data.json` (verified 3/3 stores). Different stores return different prices (e.g., Greymouth Milk 3L = $7.15, Glenfield = $7.33). The optimiser must search each ingredient at each nearby store with a fresh session per store.
 
 ## 20. `cw-lrkswrdjp` is the sole per-store cookie
 
@@ -98,7 +98,7 @@ This means Playwright is NOT needed even for initial mapping capture — the coo
 
 ## 22. Fresh session required per store
 
-The server's `Set-Cookie` response from `GET /` overwrites any injected `cw-lrkswrdjp` cookie when reusing a `requests.Session`. Tested by injecting cookies for 3 Auckland stores into the same session — only the first store's context was respected. Creating a fresh session (new `GET /`) for each store fixes this. This is implemented in `optimizer_utils.woolworths_querier` (via `woolworths_api.create_session`, called fresh per store).
+The server's `Set-Cookie` response from `GET /` overwrites any injected `cw-lrkswrdjp` cookie when reusing a `requests.Session`. Tested by injecting cookies for 3 Auckland stores into the same session — only the first store's context was respected. Creating a fresh session (new `GET /`) for each store fixes this. This is implemented in `optimiser_utils.woolworths_querier` (via `woolworths_api.create_session`, called fresh per store).
 
 ## 23. `areaId` is optional in the cookie
 
@@ -123,7 +123,7 @@ The Foodstuffs mobile API (`GET /mobile/store/physical`) returns latitude/longit
 
 ## 27. New World Edge API — FULL product search works (Algolia-based)
 
-The New World Edge API (`api-prod.newworld.co.nz/v1/edge/`) provides **complete functionality** for the meal cost optimizer:
+The New World Edge API (`api-prod.newworld.co.nz/v1/edge/`) provides **complete functionality** for the meal cost optimiser:
 
 ### Store Listing
 `GET /v1/edge/store` — Returns 148 stores with full details (id, name, address, coordinates, opening hours).
@@ -228,7 +228,7 @@ PASS 2 (Pricing): POST /search/paginated/products with filters
 - Promotional pricing included
 - Categories endpoint available for navigation
 
-See `scripts/newworld/Exploration/explore_edge_auth.py`, `edge_full_test.py`, `edge_optimizer_demo.py`, `edge_api_relevance_exploration.py`, `test_milk_metro_relevance.py` for working implementations.
+See `scripts/newworld/Exploration/explore_edge_auth.py`, `edge_full_test.py`, `edge_optimiser_demo.py`, `edge_api_relevance_exploration.py`, `test_milk_metro_relevance.py` for working implementations.
 
 ## 28. New World store-finder page `__NEXT_DATA__` for URL slugs only
 
@@ -236,11 +236,11 @@ The New World store-finder page (`https://www.newworld.co.nz/store-finder`) `__N
 
 ## 29. Accept 7 New World stores without URLs
 
-7 stores have name mismatches between the mobile API and the store-finder page (e.g., "Metro Auckland" vs "Metro Queen Street", macron differences for Tūrangi/Wanaka). Fuzzy string matching could resolve these but is not needed — URLs are only for linking to the website, not for the API-based optimizer. The 142 stores with URLs are sufficient.
+7 stores have name mismatches between the mobile API and the store-finder page (e.g., "Metro Auckland" vs "Metro Queen Street", macron differences for Tūrangi/Wanaka). Fuzzy string matching could resolve these but is not needed — URLs are only for linking to the website, not for the API-based optimiser. The 142 stores with URLs are sufficient.
 
 ## 30. New World `DISHES` dict reuses Pak'nSave's
 
-The 21 dishes and their ingredient lists (now in dict format with quantity/unit/search_term) are identical between Pak'nSave and New World (both are NZ supermarkets with similar product ranges). The `DISHES` dict in `scripts/combined/optimizer_utils.py` is shared by both — no duplicate definitions needed.
+The 21 dishes and their ingredient lists (now in dict format with quantity/unit/search_term) are identical between Pak'nSave and New World (both are NZ supermarkets with similar product ranges). The `DISHES` dict in `scripts/combined/optimiser_utils.py` is shared by both — no duplicate definitions needed.
 
 ## 31. Playwright not needed for New World at runtime
 
@@ -281,7 +281,7 @@ The two-pass pipeline on the Edge API is now the **recommended production archit
 
 **Decision**: Use Edge API two-pass pipeline for new development. Keep mobile API as fallback. Update `PaknSave_prototype.py` to use Edge API in next iteration.
 
-**Implementation**: `scripts/paknsave/Exploration/demo_two_pass_pipeline.py` (full demo), `test_two_pass_optimizer.py` (CLI optimizer)
+**Implementation**: `scripts/paknsave/Exploration/demo_two_pass_pipeline.py` (full demo), `test_two_pass_optimiser.py` (CLI optimiser)
 
 ## 34. Pet Food Filtering via `category1` Field
 
@@ -380,7 +380,7 @@ The specific CommonApi endpoints that were removed from `PaknSave_API.md` (no lo
 
 ## 28. Retire `pickupAddressId` (extra2) indirection for Woolworths
 
-Historically the Woolworths optimizer resolved `extra1` (fulfilmentStoreId) from the
+Historically the Woolworths optimiser resolved `extra1` (fulfilmentStoreId) from the
 `extra2` (pickupAddressId) returned by `/api/v1/addresses/pickup-addresses`, via a
 lookup table (`get_store_mapping()`, built from `woolworths_store_data.json`).
 
@@ -395,7 +395,7 @@ This indirection is **retired**. Store identity now keys directly on `extra1`
   `store_id=extra1`. No extra2→extra1 lookup occurs.
 - `woolworths_api.set_store_context(session, fulfilment_store_id)` takes extra1
   directly and builds the `cw-lrkswrdjp` cookie as `dm-Pickup,f-{extra1},s-38`.
-- `optimizer_utils.woolworths_querier()` and `build_woolworths_row()` write
+- `optimiser_utils.woolworths_querier()` and `build_woolworths_row()` write
   `store_id=extra1` to `full_results.csv`.
 
 `get_store_mapping()` and `_load_store_mapping()` have been **removed** from
@@ -403,7 +403,7 @@ This indirection is **retired**. Store identity now keys directly on `extra1`
 removed (its `load_store_mapping()` function deleted). `fetch_store_choices()`
 remains in `woolworths_setup.py`, marked legacy in its docstring — it still
 regenerates `data/woolworths_store_choices.*` on ad-hoc invocation, but is not
-called by `fetch_store_data()` or any optimizer code.
+called by `fetch_store_data()` or any optimiser code.
 
 See §21 (`extra1` = `fulfilmentStoreId`) for why extra1 is the correct key, and
 §22 (fresh session per store) which is unchanged.

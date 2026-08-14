@@ -1,5 +1,5 @@
 """
-Complete Edge API flow for meal cost optimizer using website JWT
+Complete Edge API flow for meal cost optimiser using website JWT
 """
 
 import requests
@@ -9,7 +9,7 @@ WEB_BASE = "https://www.newworld.co.nz"
 EDGE_BASE = "https://api-prod.newworld.co.nz/v1/edge"
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "combined"))
-from optimizer_utils import DISHES, get_ingredients
+from optimiser_utils import DISHES, get_ingredients
 
 def get_website_jwt():
     session = requests.Session()
@@ -93,7 +93,7 @@ def find_cheapest_product(products):
 
 def main():
     print("=" * 60)
-    print("New World Edge API - Complete Meal Cost Optimizer")
+    print("New World Edge API - Complete Meal Cost Optimiser")
     print("=" * 60)
     
     # 1. Get JWT

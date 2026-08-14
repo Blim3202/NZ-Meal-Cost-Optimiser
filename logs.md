@@ -98,11 +98,11 @@
 
 ## 13. Jupyter `NotImplementedError` on Windows
 **Symptom**: Playwright `async_playwright` failed in Jupyter notebook on Windows with `NotImplementedError` regarding subprocesses.
-**Resolution**: Refactored the pipeline to offload the scraping to a standalone script (`scripts/woolworths/woolworths_optimizer.py`), triggered via `subprocess.Popen` from the notebook.
+**Resolution**: Refactored the pipeline to offload the scraping to a standalone script (`scripts/woolworths/woolworths_optimiser.py`), triggered via `subprocess.Popen` from the notebook.
 
 ## 14. `FileNotFoundError` in Sub-modules
 **Symptom**: `data/woolworths_stores.csv` wasn't found when running scripts via `subprocess` because the script CWD was different from the notebook CWD.
-**Resolution**: Implemented robust absolute path construction in `woolworths_optimizer.py` using `os.path.abspath(os.path.dirname(__file__))`.
+**Resolution**: Implemented robust absolute path construction in `woolworths_optimiser.py` using `os.path.abspath(os.path.dirname(__file__))`.
 
 ## 15. Woolworths API Exploration — Full `/api/v1` Surface Discovery
 
@@ -167,15 +167,15 @@ Cookie construction: `dm-Pickup,f-{extra1},s-38`. This works for all 183 stores 
 
 **Cause**: The server's `Set-Cookie` response from `GET /` includes a `cw-lrkswrdjp` cookie with the default store. When `session.cookies.set()` is called to inject a different value, the next request triggers the server to overwrite it with its own value. The injected cookie is effectively ignored on reused sessions.
 
-**Resolution**: Create a fresh `requests.Session` for each store. Each session gets its own `GET /` to seed cookies, then the `cw-lrkswrdjp` is injected before the server can overwrite it. Tested with 5 Auckland stores — all returned correct unique `fulfilmentStoreId`s (9250, 9045, 9500, 9405, 9544). Implemented in `woolworths_optimizer.py`.
+**Resolution**: Create a fresh `requests.Session` for each store. Each session gets its own `GET /` to seed cookies, then the `cw-lrkswrdjp` is injected before the server can overwrite it. Tested with 5 Auckland stores — all returned correct unique `fulfilmentStoreId`s (9250, 9045, 9500, 9405, 9544). Implemented in `woolworths_optimiser.py`.
 
-## 20. End-to-End Optimizer Test — Per-Store Pricing Working
+## 20. End-to-End Optimiser Test — Per-Store Pricing Working
 
 **Symptom**: Needed to verify the complete pipeline works: geocode, find stores, inject cookies, search products, compare costs.
 
-**Cause**: After building `woolworths_api.py` and refactoring `woolworths_optimizer.py`, needed end-to-end validation.
+**Cause**: After building `woolworths_api.py` and refactoring `woolworths_optimiser.py`, needed end-to-end validation.
 
-**Resolution**: Ran optimizer with "123 Queen Street, Auckland CBD" and "spaghetti bolognese":
+**Resolution**: Ran optimiser with "123 Queen Street, Auckland CBD" and "spaghetti bolognese":
 - Found 9 stores within 5 km with unique fulfilmentStoreIds
 - Searched 7 ingredients at each store (63 API calls total)
 - Per-store price differences visible:
@@ -207,7 +207,7 @@ The mobile token works because both APIs share the same IdP (`iss: "online-custo
 **However**: The Edge API has **NO product search endpoints** — all tested endpoints return 404:
 - `/v1/edge/products/search`, `/v1/edge/products`, `/v1/edge/ecomm-products/*`, `/v1/edge/search`, `/v1/edge/categories`
 
-**Resolution**: The Edge API cannot replace the mobile API for the meal cost optimizer. Store listing works, but product search (essential for per-store pricing) does not exist. Continue using the Foodstuffs mobile API (`api-prod.prod.fsniwaikato.kiwi/prod`) for all New World operations.
+**Resolution**: The Edge API cannot replace the mobile API for the meal cost optimiser. Store listing works, but product search (essential for per-store pricing) does not exist. Continue using the Foodstuffs mobile API (`api-prod.prod.fsniwaikato.kiwi/prod`) for all New World operations.
 
 **Exploration scripts**: `scripts/newworld/Exploration/explore_edge_api.py`, `explore_edge_api2.py`, `explore_edge_api3.py`, `explore_edge_api4.py`, `explore_edge_api5.py`
 **Documentation**: `scripts/newworld/Exploration/EDGE_API_FINDINGS.md`
@@ -241,7 +241,7 @@ The mobile token works because both APIs share the same IdP (`iss: "online-custo
 - "New World Turangi" (API) vs "Tūrangi" (page — macron difference)
 - "New World Wanaka" (API) vs "Wānaka" (page — macron difference)
 
-**Resolution**: Accepted the 7 missing URLs. URLs are only used for linking to the store page on the website — not needed for the API-based optimizer. Could be fixed with fuzzy string matching (e.g., `fuzzywuzzy`) but is low priority.
+**Resolution**: Accepted the 7 missing URLs. URLs are only used for linking to the store page on the website — not needed for the API-based optimiser. Could be fixed with fuzzy string matching (e.g., `fuzzywuzzy`) but is low priority.
 
 ## 26. New World store count discrepancy (149 API vs 150 page)
 
@@ -274,7 +274,7 @@ The mobile token works because both APIs share the same IdP (`iss: "online-custo
 - Per-store pricing via cookies
 - Promotional pricing included
 
-See `scripts/newworld/Exploration/explore_edge_auth.py`, `edge_full_test.py`, `edge_optimizer_demo.py` for working implementations.
+See `scripts/newworld/Exploration/explore_edge_auth.py`, `edge_full_test.py`, `edge_optimiser_demo.py` for working implementations.
 
 ## 28. New World Edge API — Two-Pass Pipeline for Relevance + Per-Store Pricing
 
@@ -324,7 +324,7 @@ See `scripts/newworld/Exploration/edge_api_relevance_exploration.py` (comprehens
 
 **Documentation**: `NewWorld_API.md` section 6 completely rewritten with full endpoint reference, payloads, and two-pass pipeline implementation.
 
-**Scripts**: `edge_api_relevance_exploration.py`, `test_milk_metro_relevance.py`, `edge_optimizer_demo.py`
+**Scripts**: `edge_api_relevance_exploration.py`, `test_milk_metro_relevance.py`, `edge_optimiser_demo.py`
 
 ## 30. Pak'nSave Edge API — Store Listing Works with Website JWT
 
@@ -377,7 +377,7 @@ All other indices (`price-asc`, `price-desc`, `relevance`, `name-asc`, `name-des
 - Exclude: `{"Dog", "Cat", "Pet"}`
 - Example: "Indulge Beef Mince In Gravy Dog Food" has `category1: ["Dog"]` — filtered out
 
-**Scripts**: `scripts/paknsave/Exploration/demo_two_pass_pipeline.py`, `test_two_pass_optimizer.py`
+**Scripts**: `scripts/paknsave/Exploration/demo_two_pass_pipeline.py`, `test_two_pass_optimiser.py`
 
 ## 33. Pak'nSave Edge API — Pet Food Filtering via Category
 
@@ -405,7 +405,7 @@ All other indices (`price-asc`, `price-desc`, `relevance`, `name-asc`, `name-des
 5040757-EA-000 - Angus Beef Mince (human food - included)
 ```
 
-**Implemented in**: `scripts/paknsave/Exploration/test_two_pass_optimizer.py`, `demo_two_pass_pipeline.py`
+**Implemented in**: `scripts/paknsave/Exploration/test_two_pass_optimiser.py`, `demo_two_pass_pipeline.py`
 
 ## 34. Pak'nSave Edge API — 3 Missing Stores Identified
 
@@ -458,9 +458,9 @@ Output: `data/paknsave_stores.csv` (60 stores from store_finder, 57 from edge, a
 
 ---
 
-## 37. Pak'nSave Edge API — Unified API Module & Optimizers
+## 37. Pak'nSave Edge API — Unified API Module & Optimisers
 
-**Symptom**: The two-pass pipeline worked in exploration scripts (`demo_two_pass_pipeline.py`, `test_two_pass_optimizer.py`) but wasn't packaged as reusable modules. The legacy `PaknSave_prototype.py` used the Mobile API directly without the two-pass relevance matching or unit-price selection.
+**Symptom**: The two-pass pipeline worked in exploration scripts (`demo_two_pass_pipeline.py`, `test_two_pass_optimiser.py`) but wasn't packaged as reusable modules. The legacy `PaknSave_prototype.py` used the Mobile API directly without the two-pass relevance matching or unit-price selection.
 
 **Resolution**: Created three production-ready modules:
 
@@ -470,38 +470,38 @@ Output: `data/paknsave_stores.csv` (60 stores from store_finder, 57 from edge, a
    - `PaknSaveMobileAPI` — legacy single-pass fallback (guest token)
     - Shared utilities: `load_stores()`, `geocode()`, `find_nearby_stores()`, `get_ingredients()`, `haversine()`, `DISHES` (21 dishes, dict format)
 
-2. **`scripts/paknsave/paknsave_optimizer_edge.py`** — Edge API optimizer:
+2. **`scripts/paknsave/paknsave_optimiser_edge.py`** — Edge API optimiser:
    - Geocodes address → finds nearby stores (5km) → authenticates via website JWT
    - Two-pass search per ingredient per store
    - Picks cheapest by **unit price** (falls back to absolute price)
    - Outputs cost comparison table + itemized breakdown → saves `data/paknsave_latest_results.csv`
 
-3. **`scripts/paknsave/paknsave_optimizer_mobile.py`** — Mobile API optimizer:
+3. **`scripts/paknsave/paknsave_optimiser_mobile.py`** — Mobile API optimiser:
    - Same structure but uses Mobile API (single-pass, guest token)
    - Same unit-price selection logic
    - Saves `data/paknsave_mobile_latest_results.csv`
 
-**Testing**: Both optimizers tested with "Botany Town Centre, Auckland" + "spaghetti bolognese":
+**Testing**: Both optimisers tested with "Botany Town Centre, Auckland" + "spaghetti bolognese":
 - Edge API: 3 stores found, 7/7 ingredients matched, Highland Park cheapest at $11.23
 - Mobile API: 3 stores found, 7/7 ingredients matched, Ormiston cheapest at $40.13
 
 **Legacy**: `scripts/paknsave/PaknSave_prototype.py` archived (replaced by unified modules).
 
-**Key files**: `scripts/paknsave/paknsave_api.py`, `paknsave_optimizer_edge.py`, `paknsave_optimizer_mobile.py`
+**Key files**: `scripts/paknsave/paknsave_api.py`, `paknsave_optimiser_edge.py`, `paknsave_optimiser_mobile.py`
 
 ---
 
 ## 38. Unified Foodstuffs API Module Created
 
-**Summary**: Created `scripts/foodstuffs/` as a combined module for both Pak'nSave and New World, consolidating the brand-specific API, optimizer, and setup logic into a single unified package. The shared `Foodstuffs_api.py` handles brand-specific credentials (banner, User-Agent) and stores the two-pass pipeline logic in `Foodstuffs_optimizer_edge.py`.
+**Summary**: Created `scripts/foodstuffs/` as a combined module for both Pak'nSave and New World, consolidating the brand-specific API, optimiser, and setup logic into a single unified package. The shared `Foodstuffs_api.py` handles brand-specific credentials (banner, User-Agent) and stores the two-pass pipeline logic in `Foodstuffs_optimiser_edge.py`.
 
 **Files created**:
 - `scripts/foodstuffs/Foodstuffs_api.py` — Unified API client for both brands. `FoodstuffsEdgeAPI(brand)`, `FoodstuffsMobileAPI(brand)` with brand-specific credentials. Includes shared utilities (`load_stores()`, `geocode()`, `find_nearby_stores()`, `get_ingredients()`, `haversine()`, `BRANDS` dict). [NOTE: `DISH_INGREDIENTS` has since been refactored to `DISHES` dict format]
-- `scripts/foodstuffs/Foodstuffs_optimizer_edge.py` — Edge API two-pass optimizer CLI. Accepts `brand` argument (`paknsave` or `newworld`). Supports both source types.
-- `scripts/foodstuffs/Foodstuffs_optimizer_mobile.py` — Mobile API fallback optimizer. Same CLI structure, single-pass search.
+- `scripts/foodstuffs/Foodstuffs_optimiser_edge.py` — Edge API two-pass optimiser CLI. Accepts `brand` argument (`paknsave` or `newworld`). Supports both source types.
+- `scripts/foodstuffs/Foodstuffs_optimiser_mobile.py` — Mobile API fallback optimiser. Same CLI structure, single-pass search.
 - `scripts/foodstuffs/Foodstuffs_setup.py` — Unified store builder pipeline. Supports `source=edge` (default) or `source=mobile` for both brands. store_finder only available for paknsave.
 
-**Status update 2026-08-04**: `scripts/foodstuffs/` has since been deleted — the cross-brand optimizer and row-builder logic has been migrated to `scripts/combined/optimizer_utils.py`. See entry 44 below.
+**Status update 2026-08-04**: `scripts/foodstuffs/` has since been deleted — the cross-brand optimiser and row-builder logic has been migrated to `scripts/combined/optimiser_utils.py`. See entry 44 below.
 
 ---
 
@@ -525,9 +525,9 @@ The following scripts are now legacy and should not be used for new development:
 | Legacy File | Replaced By |
 |---|---|
 | `scripts/paknsave/fetch_stores.py` | `scripts/paknsave/paknsave_setup.py` |
-| `scripts/paknsave/PaknSave_prototype.py` | `scripts/paknsave/paknsave_api.py`, `paknsave_optimizer_edge.py`, `paknsave_optimizer_mobile.py` |
+| `scripts/paknsave/PaknSave_prototype.py` | `scripts/paknsave/paknsave_api.py`, `paknsave_optimiser_edge.py`, `paknsave_optimiser_mobile.py` |
 | `scripts/newworld/fetch_stores.py` | `scripts/newworld/newworld_setup.py` |
-| `scripts/newworld/NewWorld_prototype.py` | `scripts/newworld/newworld_api.py`, new optimizers |
+| `scripts/newworld/NewWorld_prototype.py` | `scripts/newworld/newworld_api.py`, new optimisers |
 | `scripts/paknsave/PaknSave_prototype.py` | `scripts/paknsave/paknsave_api.py` |
 | All `scripts/woolworths/Playwright/` scripts | `scripts/woolworths/woolworths_api.py` (cookie-based, no Playwright needed) |
 | `scripts/woolworths/woolworths_scrape.py` | `scripts/woolworths/woolworths_api.py` |
@@ -537,13 +537,13 @@ The following scripts are now legacy and should not be used for new development:
 
 **Status update 2026-08-04**: The `foodstuffs/` package referenced in the "Key principle"
 line is no longer present. The same modules remain via the brand-specific packages
-(`scripts/paknsave/`, `scripts/newworld/`) plus `scripts/combined/optimizer_utils.py`.
+(`scripts/paknsave/`, `scripts/newworld/`) plus `scripts/combined/optimiser_utils.py`.
 
 ---
 
 ## 41. Woolworths — Non-Food Department Filtering (Client-Side)
 
-**Symptom**: The meal cost optimizer was returning non-food items (pet food, toiletries, cleaning products) in search results for ingredient queries like "beef mince" or "milk". The `target=search` endpoint ignores `dasFilter` (server-side department filtering is only available on `target=browse`), so there is no API parameter to exclude non-food departments.
+**Symptom**: The meal cost optimiser was returning non-food items (pet food, toiletries, cleaning products) in search results for ingredient queries like "beef mince" or "milk". The `target=search` endpoint ignores `dasFilter` (server-side department filtering is only available on `target=browse`), so there is no API parameter to exclude non-food departments.
 
 **Discovery**: Each product returned by `GET /api/v1/products?target=search` includes a `departments` array with `id` and `name` fields. The 14 Woolworths departments map to these IDs:
 
@@ -566,17 +566,17 @@ line is no longer present. The same modules remain via the brand-specific packag
 
 **Resolution**: Added `NON_FOOD_DEPARTMENT_IDS = {10, 11, 12, 13, 14}` and `is_food_department(product)` function to `woolworths_api.py`. The `search_products()` and `find_cheapest()` functions accept a `food_only=False` parameter. When `True`, products whose `departments[].id` intersects with the non-food set are excluded. Products with no department info are included (assumed food).
 
-The optimizer (`woolworths_optimizer.py`) now calls `find_cheapest(session, ing, food_only=True)` for all ingredient searches.
+The optimiser (`woolworths_optimiser.py`) now calls `find_cheapest(session, ing, food_only=True)` for all ingredient searches.
 
 **Note**: This is client-side filtering — the API itself does not support department filtering on `target=search`. The `dasFilter` parameter only works with `target=browse`.
 
-**Files changed**: `scripts/woolworths/woolworths_api.py` (added constant, function, params), `scripts/woolworths/woolworths_optimizer.py` (pass `food_only=True`)
+**Files changed**: `scripts/woolworths/woolworths_api.py` (added constant, function, params), `scripts/woolworths/woolworths_optimiser.py` (pass `food_only=True`)
 
 ---
 
 ## 42. Foodstuffs — Category1 Non-Food Filtering (Client-Side, Edge API)
 
-**Symptom**: The Pak'nSave and New World Edge API two-pass optimizers were returning non-food items in search results — pet food ("Dog", "Cat"), baby products ("Baby Formula", "Nappies & Changing"), household items ("Cleaning & Accessories", "Laundry"), personal care ("Bath, Shower & Soap", "Hair Care"), and more. These appeared in Pass 1 relevance matches because Algolia returns them for broad queries like "beef mince" or "milk".
+**Symptom**: The Pak'nSave and New World Edge API two-pass optimisers were returning non-food items in search results — pet food ("Dog", "Cat"), baby products ("Baby Formula", "Nappies & Changing"), household items ("Cleaning & Accessories", "Laundry"), personal care ("Bath, Shower & Soap", "Hair Care"), and more. These appeared in Pass 1 relevance matches because Algolia returns them for broad queries like "beef mince" or "milk".
 
 **Discovery**: Ran `explore_categories.py` (637 broad search queries) against the Pak'nSave Edge API to discover all 116 unique `category1` values present in the Algolia products-index. Each value was logged with frequency counts and example products. The full list was saved to `data/observed_category1_paknsave.json`. New World shares the same Foodstuffs category taxonomy (same parent company), so the same blacklist applies to both brands.
 
@@ -604,11 +604,11 @@ Alcoholic drinks (Red Wine, Beer, Cider, etc.) are currently **excluded from the
 
 ---
 
-## 43. Woolworths Optimizer — Shared CSV with Hash-Based Deduplication
+## 43. Woolworths Optimiser — Shared CSV with Hash-Based Deduplication
 
-**Symptom**: Each optimizer run saved results to a per-run CSV (`woolworths_results.csv`), requiring re-querying the API every time. No way to accumulate results across runs or compare prices across different query sessions.
+**Symptom**: Each optimiser run saved results to a per-run CSV (`woolworths_results.csv`), requiring re-querying the API every time. No way to accumulate results across runs or compare prices across different query sessions.
 
-**Resolution**: Restructured `woolworths_optimizer.py` into a two-phase pipeline (query → optimise) writing to a shared `data/full_results.csv`:
+**Resolution**: Restructured `woolworths_optimiser.py` into a two-phase pipeline (query → optimise) writing to a shared `data/full_results.csv`:
 
 **Phase 1 (query)**: Geocode address → find nearby stores → search ingredients at each store → append all results to CSV (not just cheapest). Deduplication via `pk_hash` — a SHA-256 hash of `store_id|sku|date_created` (truncated to 16 hex chars). Duplicate PKs are skipped on insert.
 
@@ -625,30 +625,30 @@ Alcoholic drinks (Red Wine, Beer, Cider, etc.) are currently **excluded from the
 - `search_products()` now returns all results (not just cheapest) with `cupMeasure`, `cupListPrice`, and `department` fields.
 - Geocode results printed before store list: `Geocoding: <address>` / `lat: xxx  lon: xxx`.
 
-**Files changed**: `scripts/woolworths/woolworths_optimizer.py`, `scripts/woolworths/woolworths_api.py`, `scripts/combined/initialize_full_results.py`
+**Files changed**: `scripts/woolworths/woolworths_optimiser.py`, `scripts/woolworths/woolworths_api.py`, `scripts/combined/initialize_full_results.py`
 
 ---
 
-## 44. Foodstuffs folder deleted — cross-brand logic consolidated into optimizer_utils.py
+## 44. Foodstuffs folder deleted — cross-brand logic consolidated into optimiser_utils.py
 
 **Date**: 2026-08-04
 
 **Summary**: Deleted `scripts/foodstuffs/`. The cross-brand logic previously in that
-folder was consolidated into `scripts/combined/optimizer_utils.py`. Brand-specific
-optimizers (`scripts/paknsave/`, `scripts/newworld/`) are now thin CLI wrappers that
+folder was consolidated into `scripts/combined/optimiser_utils.py`. Brand-specific
+optimisers (`scripts/paknsave/`, `scripts/newworld/`) are now thin CLI wrappers that
 inject the brand API class and store-finder into the shared helpers.
 
-**Moved to `scripts/combined/optimizer_utils.py`:**
-- `foodstuffs_optimizer_edge` / `foodstuffs_optimizer_mobile` — full CLI runners
+**Moved to `scripts/combined/optimiser_utils.py`:**
+- `foodstuffs_optimiser_edge` / `foodstuffs_optimiser_mobile` — full CLI runners
 - `build_edge_row` / `build_mobile_row` — per-product CSV row builders
 - `parse_foodstuffs_volume_size` / `parse_foodstuffs_mobile_unit` — size/price parsers
 - `geocode`, `haversine`, `find_nearby_stores` — geo helpers
 - `get_ingredients`, `_build_quantity_map`, `DISHES` — dish lookup (DISHES is dict format with quantity/unit/search_term)
-- `optimise()`, `analyze_results()` — Phase 2 CSV readers
+- `optimise()`, `analyse_results()` — Phase 2 CSV readers
 - `append_rows()`, `_compute_pk_hash()`, `load_existing_hashes()` — append-only CSV with SHA-256 dedup
 
 **Behavioral fix**: The `optimise(dish, company=...)` filter is now correctly applied
-in both brand optimizers (previously could blend PNS+NW rows from `full_results.csv`).
+in both brand optimisers (previously could blend PNS+NW rows from `full_results.csv`).
 The `per_unit_price` field is now blank (not 0.0) when falsy.
 
 ---
@@ -664,7 +664,7 @@ format matching LLM output (`DISHES = {"dish": {"dish_name": str, "portion": int
 
 **Changes:**
 - `DISH_INGREDIENTS` (string list dict) → `DISHES` (structured dict with
-  quantity/unit/search_term per ingredient) in `optimizer_utils.py`
+  quantity/unit/search_term per ingredient) in `optimiser_utils.py`
 - `DISH_QUANTITIES` (separate human-readable quantity dict) → removed;
   quantities now embedded in `DISHES` dict
 - `get_ingredients(dish_name)` — now extracts search_terms from `DISHES` dict
@@ -672,38 +672,38 @@ format matching LLM output (`DISHES = {"dish": {"dish_name": str, "portion": int
   resolves the quantity string from the `DISHES` dict
 - `_resolve_dish_dict(dish)` — new helper that resolves a string dish name to
   its full `DISHES` dict, used by `_build_quantity_map`
-- `analyze_results()` — updated to call `_build_quantity_map(dish)` instead of
+- `analyse_results()` — updated to call `_build_quantity_map(dish)` instead of
   `get_quantities(dish_name)`
 - Removed duplicate `DISH_INGREDIENTS` and `get_ingredients()` from
   `paknsave_api.py` and `newworld_api.py` — both now use the shared version
-  from `optimizer_utils.py`
-- `woolworths_optimizer.py` — removed `get_ingredients`/`get_quantities` imports
+  from `optimiser_utils.py`
+- `woolworths_optimiser.py` — removed `get_ingredients`/`get_quantities` imports
   (no longer needed; uses `_resolve_dish` directly)
 - `ingredient_parser.py` — removed import of `DISH_INGREDIENTS`; legacy fallback
-  now uses `DISHES` dict from `optimizer_utils.py`
+  now uses `DISHES` dict from `optimiser_utils.py`
 - `init_dishes_json.py` — now seeds `dishes.json` from `DISHES` dict
 
 **Backward compatibility**: `_resolve_dish()` still accepts both string dish
-names and dict dishes. CLI optimizers pass strings, LLM pipeline passes dicts.
+names and dict dishes. CLI optimisers pass strings, LLM pipeline passes dicts.
 
 ### Log #59 — Migrated DISHES dict from code to data/dishes.json
 
 **Date**: 2026-08-06
 
-Moved the `DISHES` dict from `scripts/combined/optimizer_utils.py` into
+Moved the `DISHES` dict from `scripts/combined/optimiser_utils.py` into
 `data/dishes.json` (JSON file). The dict is now lazily loaded at module import
 time via `_load_dishes()`. A `_reload_dishes()` helper is available for
 refreshing after manual edits.
 
 **Changes:**
-- `optimizer_utils.py` — replaced hardcoded 275-line `DISHES` dict with
+- `optimiser_utils.py` — replaced hardcoded 275-line `DISHES` dict with
   `_load_dishes()` call + `DISHES = _load_dishes()` + `_reload_dishes()` helper
 - `data/dishes.json` — now stores full structured dish data (dish_name,
   portion, ingredients with quantity/unit/search_term) instead of the old
   lightweight schema (search_terms + default_portions)
 - `ingredient_parser.py` — updated `dish_to_json()` and `json_to_dish()` to
   read/write the new structured schema; `resolve_ingredients()` now checks only
-  `dishes.json` (removed the redundant `DISHES` from `optimizer_utils` fallback)
+  `dishes.json` (removed the redundant `DISHES` from `optimiser_utils` fallback)
 - `init_dishes_json.py` — regenerated to output full structured format from
   the `DISHES` dict; preserved metadata fields (last_generated, generator_model)
 - `llm-dish-pipeline.md` — updated to reflect that `dishes.json` now stores
@@ -738,14 +738,14 @@ refreshing after manual edits.
 
 **Date**: 2026-08-11
 
-**Symptom**: Ingredients with non-standard recipe units (`"1 can"`, `"1 medium onion"`, `"2 fillets"`) caused `parse_optimizer_columns` to return `status="incompatible_units"` with `used_price=None` whenever the supermarket pack was sold by weight/volume (e.g. `"500g"`), because `"can"`/`"medium"`/`"fillets"` normalize to unrecognized categories that don't match `"g"` or `"ml"`.
+**Symptom**: Ingredients with non-standard recipe units (`"1 can"`, `"1 medium onion"`, `"2 fillets"`) caused `parse_optimiser_columns` to return `status="incompatible_units"` with `used_price=None` whenever the supermarket pack was sold by weight/volume (e.g. `"500g"`), because `"can"`/`"medium"`/`"fillets"` normalize to unrecognized categories that don't match `"g"` or `"ml"`.
 
-**Resolution**: Added `approx_quantity`/`approx_unit` metadata to recipe ingredients. When the incompatible-units branch fires, `parse_optimizer_columns` now falls back to the approx values (e.g. `"1 medium onion"` → approx `150g`) to compute a proportional cost:
+**Resolution**: Added `approx_quantity`/`approx_unit` metadata to recipe ingredients. When the incompatible-units branch fires, `parse_optimiser_columns` now falls back to the approx values (e.g. `"1 medium onion"` → approx `150g`) to compute a proportional cost:
 
 1. **`llm_client.py`**: Updated `INGREDIENT_PROMPT` — instructs the LLM to include `approx_quantity` (in g or ml) and `approx_unit` for non-standard units ("1 can", "medium", "fillet", "bag", "head", etc.).
-2. **`llm_utils.py`**: `ParsedIngredient` dataclass and `parse_and_validate` now normalize and pass through optional `approx_quantity`/`approx_unit` fields. `parse_optimizer_columns` reads them from the enriched row and uses them as a fallback in the incompatible-units branch — converting to a common base and checking category compatibility (including 1ml≈1g cross-category). Status is set to `"approximate"` and `used_price` computed normally.
+2. **`llm_utils.py`**: `ParsedIngredient` dataclass and `parse_and_validate` now normalize and pass through optional `approx_quantity`/`approx_unit` fields. `parse_optimiser_columns` reads them from the enriched row and uses them as a fallback in the incompatible-units branch — converting to a common base and checking category compatibility (including 1ml≈1g cross-category). Status is set to `"approximate"` and `used_price` computed normally.
 3. **`llm_utils.py`**: Fixed `_VOLUME_UNITS_TO_ML` to include `"cups"` (plural) — previously only `"cup"` was recognized, causing "2 cups" to be incompatible.
-4. **`llm_interactive.py`**: Step 6 enrichment now copies `ingredient_approx_quantity`/`ingredient_approx_unit` from the dish dict onto each CSV row before calling `parse_optimizer_columns`.
+4. **`llm_interactive.py`**: Step 6 enrichment now copies `ingredient_approx_quantity`/`ingredient_approx_unit` from the dish dict onto each CSV row before calling `parse_optimiser_columns`.
 5. **`data/dishes.json`**: Populated approx values for all 21 dishes — every ingredient with a non-standard unit (can: 400g/400ml, medium onion: 150g, medium carrot: 60g, etc.) now carries approximate weight/volume metadata.
 6. **`check_unit_approximation.py`**: Added 5 test cases covering approx fallback (matching category, cross-category, no-approx → incompatible, wrong-category → still incompatible).
 
@@ -755,7 +755,7 @@ refreshing after manual edits.
 
 **Date**: 2026-08-12
 
-**Symptom**: The Woolworths optimizer bridged `pickupAddressId` (extra2) to
+**Symptom**: The Woolworths optimiser bridged `pickupAddressId` (extra2) to
 `fulfilmentStoreId` (extra1) via a runtime lookup table
 (`get_store_mapping()`). This indirection was unnecessary — extra1 is available
 directly from the CDX store-location API and is the only value the
@@ -779,7 +779,7 @@ keys directly on extra1:
 - `woolworths_api.set_store_context(session, fulfilment_store_id)` takes extra1
   directly, builds the cookie as `dm-Pickup,f-{fulfilment_store_id},s-38`, and
   validates via `/api/v1/shell`. No mapping lookup.
-- `optimizer_utils.woolworths_optimizer()` and `build_woolworths_row()` write
+- `optimiser_utils.woolworths_optimiser()` and `build_woolworths_row()` write
   `store_id = extra1` to `full_results.csv`.
 - Legacy functions `_load_store_mapping()`, `get_store_mapping()`, and
   `fetch_store_choices()` have been **removed** from `woolworths_api.py`.
@@ -862,7 +862,7 @@ pair is the one that the API actually resolves to.
   Not present in the legacy `store_choices` pipeline either.
 
 These are filtered in `fetch_store_data()` before writing `woolworths_stores.csv`,
-so neither store appears in optimizer results.
+so neither store appears in optimiser results.
 
 
 

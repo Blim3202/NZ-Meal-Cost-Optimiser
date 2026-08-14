@@ -4,11 +4,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
-from scripts.llms.llm_utils import parse_optimizer_columns
+from scripts.llms.llm_utils import parse_optimiser_columns
 
 
 def test_volume_vs_weight_is_approximate():
-    r = parse_optimizer_columns({
+    r = parse_optimiser_columns({
         "search_ingredient": "baking soda",
         "returned_ingredient": "Baking Soda",
         "quantity": 500,
@@ -26,7 +26,7 @@ def test_volume_vs_weight_is_approximate():
 
 
 def test_volume_vs_volume_is_not_approximate():
-    r = parse_optimizer_columns({
+    r = parse_optimiser_columns({
         "search_ingredient": "vanilla",
         "returned_ingredient": "Vanilla Extract",
         "quantity": 50,
@@ -42,7 +42,7 @@ def test_volume_vs_volume_is_not_approximate():
 
 
 def test_weight_vs_weight_is_not_approximate():
-    r = parse_optimizer_columns({
+    r = parse_optimiser_columns({
         "search_ingredient": "flour",
         "returned_ingredient": "Plain Flour",
         "quantity": 1500,
@@ -57,7 +57,7 @@ def test_weight_vs_weight_is_not_approximate():
 
 
 def test_count_vs_weight_is_genuinely_incompatible():
-    r = parse_optimizer_columns({
+    r = parse_optimiser_columns({
         "search_ingredient": "egg",
         "quantity": 500,
         "measurement_unit": "g",
@@ -71,7 +71,7 @@ def test_count_vs_weight_is_genuinely_incompatible():
 
 
 def test_weight_vs_volume_is_approximate():
-    r = parse_optimizer_columns({
+    r = parse_optimiser_columns({
         "search_ingredient": "oil",
         "quantity": 500,
         "measurement_unit": "ml",
@@ -86,7 +86,7 @@ def test_weight_vs_volume_is_approximate():
 
 def test_incompatible_falls_back_to_approx():
     """Recipe says '1 medium onion' (approx 150g) vs pack '500g' — should use approx."""
-    r = parse_optimizer_columns({
+    r = parse_optimiser_columns({
         "search_ingredient": "onion",
         "returned_ingredient": "Red Onion",
         "quantity": 500,
@@ -109,7 +109,7 @@ def test_incompatible_falls_back_to_approx():
 
 def test_incompatible_no_approx_returns_none():
     """No approx fields available — should remain incompatible_units."""
-    r = parse_optimizer_columns({
+    r = parse_optimiser_columns({
         "search_ingredient": "onion",
         "quantity": 500,
         "measurement_unit": "g",
@@ -124,7 +124,7 @@ def test_incompatible_no_approx_returns_none():
 
 def test_incompatible_approx_cross_category():
     """'1 can' → approx 400ml, pack is 500ml — should be ok (matching ml category)."""
-    r = parse_optimizer_columns({
+    r = parse_optimiser_columns({
         "search_ingredient": "canned tomatoes",
         "returned_ingredient": "Canned Tomatoes",
         "quantity": 500,
@@ -144,7 +144,7 @@ def test_incompatible_approx_cross_category():
 
 def test_incompatible_approx_mixed_category():
     """'1 can coconut milk' → approx 400ml, pack is 400g — cross-category 1ml≈1g."""
-    r = parse_optimizer_columns({
+    r = parse_optimiser_columns({
         "search_ingredient": "coconut milk",
         "returned_ingredient": "Coconut Milk",
         "quantity": 400,
@@ -164,7 +164,7 @@ def test_incompatible_approx_mixed_category():
 
 def test_incompatible_approx_wrong_category():
     """Approx unit is count but pack is weight — still incompatible."""
-    r = parse_optimizer_columns({
+    r = parse_optimiser_columns({
         "search_ingredient": "onion",
         "quantity": 500,
         "measurement_unit": "g",

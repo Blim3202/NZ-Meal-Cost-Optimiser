@@ -1,6 +1,6 @@
 # LLM Pipeline
 
-The LLM pipeline augments the supermarket optimizer with AI-generated ingredient lists, post-run search-result validation, and quantity-based cost scaling. It is **manual/interactive** — the user runs `llm_interactive.py` to step through a dish, query stores, and review results. Validation (`llm_validate.py`) runs **separately and post-hoc** on the CSV; it is not yet wired into the optimizer at runtime.
+The LLM pipeline augments the supermarket optimiser with AI-generated ingredient lists, post-run search-result validation, and quantity-based cost scaling. It is **manual/interactive** — the user runs `llm_interactive.py` to step through a dish, query stores, and review results. Validation (`llm_validate.py`) runs **separately and post-hoc** on the CSV; it is not yet wired into the optimiser at runtime.
 
 ## Architecture & Data Flow
 
@@ -12,9 +12,9 @@ llm_interactive.py  (CLI orchestration, 6 steps)
     │
     ├──► llm_utils.py
     │       ├── resolve_ingredients  → curated JSON  OR  LLM generation
-    │       └── parse_optimizer_columns  → quantity scaling / cost math
+    │       └── parse_optimiser_columns  → quantity scaling / cost math
     │
-    ├──► optimizer_utils.py / woolworths_optimizer.py  (woolworths_querier)
+    ├──► optimiser_utils.py / woolworths_optimiser.py  (woolworths_querier)
     │       └── query + append_rows → data/full_results.csv
     │
     └──► llm_validate.py  (run separately, post-hoc)
@@ -38,7 +38,7 @@ llm_interactive.py  (CLI orchestration, 6 steps)
 |--------|------|
 | `scripts/llms/llm_client.py` | Mistral API client. Enforces rate limiting and JSON parsing with retries. |
 | `scripts/llms/llm_utils.py` | Ingredient resolution (curated → LLM), dish parsing/validation, quantity scaling math. |
-| `scripts/llms/llm_interactive.py` | End-to-end interactive CLI that ties ingredient resolution → optimizer queries → results. |
+| `scripts/llms/llm_interactive.py` | End-to-end interactive CLI that ties ingredient resolution → optimiser queries → results. |
 | `scripts/llms/llm_validate.py` | Post-run validator: sends batches of CSV rows to the LLM to mark `is_valid` (True/False). |
 
 ## Ingredient Resolution
@@ -66,7 +66,7 @@ llm_interactive.py  (CLI orchestration, 6 steps)
 
 ## LLM Validation
 
-`llm_validate.py` validates whether each supermarket search result (`returned_ingredient`) matches what the user was searching for (`search_ingredient`). It runs **after** the optimizer has written results to `data/full_results.csv`.
+`llm_validate.py` validates whether each supermarket search result (`returned_ingredient`) matches what the user was searching for (`search_ingredient`). It runs **after** the optimiser has written results to `data/full_results.csv`.
 
 ### How it works
 
@@ -130,7 +130,7 @@ Re-running the script skips rows already marked `is_valid` (True or False), fill
 
 ## Quantity Scaling
 
-`parse_optimizer_columns(row)` is the core scaling function. It takes an optimizer CSV row enriched with LLM ingredient data and computes purchase quantities and proportional costs.
+`parse_optimiser_columns(row)` is the core scaling function. It takes an optimiser CSV row enriched with LLM ingredient data and computes purchase quantities and proportional costs.
 
 ### Normalized units
 
@@ -183,9 +183,9 @@ Append-only results store. 18 columns:
 
 | Column | Source |
 |--------|--------|
-| `company` | optimizer |
-| `store` | optimizer |
-| `store_id` | optimizer |
+| `company` | optimiser |
+| `store` | optimiser |
+| `store_id` | optimiser |
 | `search_ingredient` | from DISHES / LLM |
 | `returned_ingredient` | API response |
 | `price` | API response |
@@ -265,7 +265,7 @@ Re-run to incrementally fill in more rows — already-validated rows are always 
 - **Compound units** (e.g., `x 375ml`) are handled, but unusual pack formats can confuse the parser.
 - **Cross-category approximation** (1ml≈1g) is a heuristic — works for water-like densities, not oils or powders.
 - **No brand-specific refiltering** — ingredients are not re-evaluated based on store-specific substitutions (e.g., "cheapest cheese available").
-- **Validation is offline** — `is_valid` is not consulted by the optimizer at runtime; it's purely a data-quality aid.
+- **Validation is offline** — `is_valid` is not consulted by the optimiser at runtime; it's purely a data-quality aid.
 - **No automated feedback loop** — the user must manually review and re-run.
 - **Garlic pricing** (noted in main README) — loose garlic is per-kg ($40+), so crushed garlic jars are returned instead.
 
@@ -276,7 +276,7 @@ Re-run to incrementally fill in more rows — already-validated rows are always 
 
 ## Future Work
 
-- **Runtime validation** — use `is_valid` during optimization to prefer validated results.
+- **Runtime validation** — use `is_valid` during optimisation to prefer validated results.
 - **Interactive feedback loop** — let users flag invalid results during `llm_interactive.py` and feed corrections back to the LLM prompt for re-generation.
 - **Brand-specific ingredient substitution** — at runtime, substitute ingredients based on what's cheapest or available at the selected store (e.g., "cheapest cheese" instead of a fixed search term).
-- **Automated batch validation** — optionally run `llm_validate.py` as part of the optimizer pipeline (flag to enable/disable).
+- **Automated batch validation** — optionally run `llm_validate.py` as part of the optimiser pipeline (flag to enable/disable).

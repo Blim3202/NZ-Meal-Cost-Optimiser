@@ -28,7 +28,7 @@ import requests
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "combined"))
-from optimizer_utils import haversine
+from optimiser_utils import haversine
 
 BASE_URL = "https://www.woolworths.co.nz/api/v1"
 SITE_URL = "https://www.woolworths.co.nz/"

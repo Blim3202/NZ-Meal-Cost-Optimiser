@@ -2,15 +2,15 @@
 LLM-Integrated Interactive Dish Pipeline
 =========================================
 Full interactive CLI that combines LLM ingredient generation with the existing
-supermarket optimizers (Pak'nSave Edge/Mobile, New World Edge/Mobile, Woolworths).
+supermarket optimisers (Pak'nSave Edge/Mobile, New World Edge/Mobile, Woolworths).
 
 Flow:
     STEP 1: Collect inputs (address, distance, dish, portions, supermarkets)
     STEP 2: Resolve ingredients (curated set -> LLM -> fallback)
     STEP 3: Interactive review & refinement of the ingredient list
-    STEP 4: Query selected optimizers with the dish dict
+    STEP 4: Query selected optimisers with the dish dict
     STEP 5: Optimise & present per-brand comparison tables
-    STEP 6: Apply quantity scaling via parse_optimizer_columns
+    STEP 6: Apply quantity scaling via parse_optimiser_columns
 
     Usage:
         python -m scripts.llms.llm_interactive [OPTIONS]
@@ -47,7 +47,7 @@ sys.path.insert(0, str(_PROJECT_ROOT / "scripts" / "paknsave"))
 sys.path.insert(0, str(_PROJECT_ROOT / "scripts" / "newworld"))
 sys.path.insert(0, str(_PROJECT_ROOT / "scripts" / "woolworths"))
 
-from optimizer_utils import (
+from optimiser_utils import (
     RESULTS_FILE,
     _resolve_dish_terms,
     foodstuffs_querier_edge,
@@ -55,7 +55,7 @@ from optimizer_utils import (
     optimise,
     woolworths_querier,
 )
-from scripts.llms.llm_utils import resolve_ingredients, parse_optimizer_columns
+from scripts.llms.llm_utils import resolve_ingredients, parse_optimiser_columns
 
 
 # ─── Supermarket Registry ─────────────────────────────────────────────────
@@ -321,10 +321,10 @@ def _print_ingredient_table(ingredients):
             print(f"  {i:>3d}  {ing}")
 
 
-# ─── Step 4: Query Optimizers ─────────────────────────────────────────────
+# ─── Step 4: Query Optimisers ─────────────────────────────────────────────
 
 def step4_query(address, dish_dict, requery, distance, selected):
-    """Query selected optimizers with the dish dict.
+    """Query selected optimisers with the dish dict.
 
     Returns:
         set of store_ids that are within the distance radius (for Steps 5/6 filtering).
@@ -334,7 +334,7 @@ def step4_query(address, dish_dict, requery, distance, selected):
     requery_bool = requery.lower() != "false" if isinstance(requery, str) else requery
 
     print(f"\n{'='*60}")
-    print(f"STEP 4: Querying optimizers (requery={requery_bool})")
+    print(f"STEP 4: Querying optimisers (requery={requery_bool})")
     print(f"{'='*60}")
 
     store_ids = set()
@@ -470,7 +470,7 @@ def step4b_validate(dish_dict, do_validate, requery):
 
 def _collect_store_ids(store_ids, sm, address, distance):
     """Call find_nearby_stores / get_nearby_stores to collect store_ids within distance."""
-    from optimizer_utils import geocode
+    from optimiser_utils import geocode
 
     user_lat, user_lon = geocode(address)
     if user_lat is None or user_lon is None:
@@ -587,7 +587,7 @@ def step6_scaling(dish_dict, selected, store_ids=None, require_valid=False):
         enriched["ingredient_approx_quantity"] = llm_info.get("approx_quantity")
         enriched["ingredient_approx_unit"] = llm_info.get("approx_unit")
 
-        sr = parse_optimizer_columns(enriched)
+        sr = parse_optimiser_columns(enriched)
         sr["store"] = row.get("store", "Unknown")
         sr["company"] = company
         sr["pack_price"] = float(row.get("price", 0)) if row.get("price") else 0
@@ -723,7 +723,7 @@ def main():
     args = parser.parse_args()
 
     print("=" * 60)
-    print("  NZ Meal Cost Optimizer - LLM-Integrated Pipeline")
+    print("  NZ Meal Cost Optimiser - LLM-Integrated Pipeline")
     print("=" * 60)
 
     # Step 1: Collect inputs
@@ -747,7 +747,7 @@ def main():
     # Step 3: Interactive review
     dish_dict = step3_review(dish_dict, args)
 
-    # Step 4: Query optimizers (returns store_ids within distance radius)
+    # Step 4: Query optimisers (returns store_ids within distance radius)
     store_ids = step4_query(address, dish_dict, args.requery, distance, selected)
 
     # Step 4b: Validate query results via LLM

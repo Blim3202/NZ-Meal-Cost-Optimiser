@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>NZ Meal Cost Optimizer</title>
+  <title>NZ Meal Cost Optimiser</title>
   <style>
     body { font-family: Arial, sans-serif; max-width: 800px; margin: 2rem auto; padding: 1rem; }
     input, button, select { padding: 0.5rem; margin: 0.25rem 0; width: 100%; box-sizing: border-box; }
@@ -19,7 +19,7 @@
   </style>
 </head>
 <body>
-  <h1>NZ Meal Cost Optimizer</h1>
+  <h1>NZ Meal Cost Optimiser</h1>
   <p>Find the cheapest supermarket for any meal across Pak'nSave, New World, and Woolworths.</p>
 
   <div id="form">
@@ -27,14 +27,14 @@
     <input id="address" placeholder="NZ Address (e.g. Auckland CBD)" value="Auckland CBD" />
     <input id="distance" type="number" min="1" max="20" value="5" />
     <label><input type="checkbox" id="dryRun" /> Dry run (use sample data)</label>
-    <button onclick="runOptimize()">Optimize</button>
+    <button onclick="runOptimise()">Optimise</button>
   </div>
 
   <div id="loading" class="loading" style="display:none">Searching all supermarkets...</div>
   <div id="results"></div>
 
   <script>
-    async function runOptimize() {
+    async function runOptimise() {
       const form = document.getElementById('form');
       const loading = document.getElementById('loading');
       const results = document.getElementById('results');
@@ -51,7 +51,7 @@
       };
 
       try {
-        const resp = await fetch('/optimize', {
+        const resp = await fetch('/optimise', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)

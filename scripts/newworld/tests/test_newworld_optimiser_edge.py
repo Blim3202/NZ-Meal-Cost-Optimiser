@@ -1,5 +1,5 @@
 """
-Unit tests for New World Edge Optimizer CLI (newworld_optimizer_edge.py).
+Unit tests for New World Edge Optimiser CLI (newworld_optimiser_edge.py).
 
 Tests the main() function's argument parsing: positional address/dish args,
 --requery flag parsing, --distance flag parsing, and correct forwarding of
@@ -22,20 +22,20 @@ sys.path.insert(0, str(SCRIPT_DIR))
 sys.path.insert(0, str(PROJECT_ROOT / "scripts" / "combined"))
 
 
-class TestNewWorldOptimizerEdgeCLI:
-    """Tests for Edge API optimizer main() argument parsing and dispatch."""
+class TestNewWorldOptimiserEdgeCLI:
+    """Tests for Edge API Optimiser main() argument parsing and dispatch."""
 
     DEFAULT_ADDRESS = "Botany Town Centre, Auckland"
     DEFAULT_DISH = "spaghetti bolognese"
 
-    @patch("newworld_optimizer_edge.foodstuffs_querier_edge")
-    @patch("newworld_optimizer_edge.optimise")
+    @patch("newworld_optimiser_edge.foodstuffs_querier_edge")
+    @patch("newworld_optimiser_edge.optimise")
     def test_main_defaults(self, mock_optimise, mock_query):
         mock_query.return_value = True
-        import newworld_optimizer_edge
+        import newworld_optimiser_edge
 
-        with patch.object(sys, "argv", ["newworld_optimizer_edge.py"]):
-            newworld_optimizer_edge.main()
+        with patch.object(sys, "argv", ["newworld_optimiser_edge.py"]):
+            newworld_optimiser_edge.main()
 
         mock_query.assert_called_once()
         args, kwargs = mock_query.call_args
@@ -49,20 +49,20 @@ class TestNewWorldOptimizerEdgeCLI:
         assert opt_args[0] == self.DEFAULT_DISH
         assert opt_kwargs.get("company") == "NewWorld"
 
-    @patch("newworld_optimizer_edge.foodstuffs_querier_edge")
-    @patch("newworld_optimizer_edge.optimise")
+    @patch("newworld_optimiser_edge.foodstuffs_querier_edge")
+    @patch("newworld_optimiser_edge.optimise")
     def test_main_custom_args(self, mock_optimise, mock_query):
         mock_query.return_value = True
-        import newworld_optimizer_edge
+        import newworld_optimiser_edge
 
         with patch.object(sys, "argv", [
-            "newworld_optimizer_edge.py",
+            "newworld_optimiser_edge.py",
             "Custom Address",
             "milk",
             "--requery", "false",
             "--distance", "10",
         ]):
-            newworld_optimizer_edge.main()
+            newworld_optimiser_edge.main()
 
         args, kwargs = mock_query.call_args
         assert args[4] == "Custom Address"
@@ -70,61 +70,61 @@ class TestNewWorldOptimizerEdgeCLI:
         assert args[6] is False
         assert kwargs.get("max_dist_km") == 10.0
 
-    @patch("newworld_optimizer_edge.foodstuffs_querier_edge")
-    @patch("newworld_optimizer_edge.optimise")
+    @patch("newworld_optimiser_edge.foodstuffs_querier_edge")
+    @patch("newworld_optimiser_edge.optimise")
     def test_main_requery_true(self, mock_optimise, mock_query):
         mock_query.return_value = True
-        import newworld_optimizer_edge
+        import newworld_optimiser_edge
 
         with patch.object(sys, "argv", [
-            "newworld_optimizer_edge.py",
+            "newworld_optimiser_edge.py",
             "Test Address", "soup",
             "--requery", "true",
         ]):
-            newworld_optimizer_edge.main()
+            newworld_optimiser_edge.main()
 
         args, _ = mock_query.call_args
         assert args[6] is True
 
-    @patch("newworld_optimizer_edge.foodstuffs_querier_edge")
-    @patch("newworld_optimizer_edge.optimise")
+    @patch("newworld_optimiser_edge.foodstuffs_querier_edge")
+    @patch("newworld_optimiser_edge.optimise")
     def test_main_no_optimise_when_no_data(self, mock_optimise, mock_query):
         mock_query.return_value = False
-        import newworld_optimizer_edge
+        import newworld_optimiser_edge
 
-        with patch.object(sys, "argv", ["newworld_optimizer_edge.py"]):
-            newworld_optimizer_edge.main()
+        with patch.object(sys, "argv", ["newworld_optimiser_edge.py"]):
+            newworld_optimiser_edge.main()
 
         mock_query.assert_called_once()
         mock_optimise.assert_not_called()
 
-    @patch("newworld_optimizer_edge.foodstuffs_querier_edge")
-    @patch("newworld_optimizer_edge.optimise")
+    @patch("newworld_optimiser_edge.foodstuffs_querier_edge")
+    @patch("newworld_optimiser_edge.optimise")
     def test_main_float_distance(self, mock_optimise, mock_query):
         mock_query.return_value = True
-        import newworld_optimizer_edge
+        import newworld_optimiser_edge
 
         with patch.object(sys, "argv", [
-            "newworld_optimizer_edge.py",
+            "newworld_optimiser_edge.py",
             "Address", "dish", "--distance", "7.5",
         ]):
-            newworld_optimizer_edge.main()
+            newworld_optimiser_edge.main()
 
         _, kwargs = mock_query.call_args
         assert kwargs.get("max_dist_km") == 7.5
 
-    @patch("newworld_optimizer_edge.foodstuffs_querier_edge")
-    @patch("newworld_optimizer_edge.optimise")
+    @patch("newworld_optimiser_edge.foodstuffs_querier_edge")
+    @patch("newworld_optimiser_edge.optimise")
     def test_main_address_with_spaces(self, mock_optimise, mock_query):
         mock_query.return_value = True
-        import newworld_optimizer_edge
+        import newworld_optimiser_edge
 
         with patch.object(sys, "argv", [
-            "newworld_optimizer_edge.py",
+            "newworld_optimiser_edge.py",
             "Botany Town Centre, Auckland",
             "chicken stir fry",
         ]):
-            newworld_optimizer_edge.main()
+            newworld_optimiser_edge.main()
 
         args, _ = mock_query.call_args
         assert args[4] == "Botany Town Centre, Auckland"

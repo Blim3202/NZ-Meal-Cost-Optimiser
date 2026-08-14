@@ -1,7 +1,7 @@
 """Path bootstrap for the FastAPI layer.
 
 Inserts the legacy `scripts/*/` package directories onto `sys.path` so the
-existing optimizer modules (`optimizer_utils`, `woolworths_api`,
+existing optimiser modules (`optimiser_utils`, `woolworths_api`,
 `paknsave_api`, `newworld_api`, etc.) remain importable — no source files modified.
 """
 import sys

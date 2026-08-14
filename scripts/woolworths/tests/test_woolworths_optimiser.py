@@ -1,6 +1,6 @@
 """
 Unit tests for the shared Woolworths CSV row builder
-(optimizer_utils.build_woolworths_row).
+(optimiser_utils.build_woolworths_row).
 
 Tests focus on build_woolworths_row(), which transforms a raw product
 search result into a CSV row dict that matches the full_results.csv schema.
@@ -25,11 +25,11 @@ import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent  # project root
 
-sys.path.insert(0, str(PROJECT_ROOT / "scripts" / "combined"))  # shared optimizer_utils
+sys.path.insert(0, str(PROJECT_ROOT / "scripts" / "combined"))  # shared optimiser_utils
 
 FIXTURE_DIR = PROJECT_ROOT / "scripts" / "woolworths" / "fixture"
 
-from optimizer_utils import (
+from optimiser_utils import (
     CSV_COLUMNS,
     build_woolworths_row,
     parse_woolworths_volume_size,
@@ -306,7 +306,7 @@ class TestParseWoolworthsVolumeSize:
     Uses real volumeSize strings extracted from the captured product search
     response (fixture/response_example1.json) and from full_results.csv.
 
-    NOTE: per the implementation in optimizer_utils.py, the returned unit
+    NOTE: per the implementation in optimiser_utils.py, the returned unit
     is always lowercased. The regex patterns require a digit prefix —
     bare units like 'ea' without a number fall through to the cup_measure
     fallback or return (None, "").

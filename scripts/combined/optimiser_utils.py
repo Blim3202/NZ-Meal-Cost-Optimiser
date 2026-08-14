@@ -1,8 +1,8 @@
 """
-Shared Optimizer Utilities
+Shared optimiser Utilities
 ==========================
-Common functions and constants for all retailer optimizers (Woolworths, Pak'nSave, New World).
-Both optimizers write to the same data/full_results.csv with identical column structure.
+Common functions and constants for all retailer optimisers (Woolworths, Pak'nSave, New World).
+Both optimisers write to the same data/full_results.csv with identical column structure.
 """
 
 import csv
@@ -70,7 +70,7 @@ def geocode(address):
     try:
         r = requests.get(
             "https://nominatim.openstreetmap.org/search",
-            headers={"User-Agent": "NZMealCostOptimizer/1.0"},
+            headers={"User-Agent": "NZMealCostOptimiser/1.0"},
             params={"q": address, "format": "json", "limit": 1},
             timeout=15,
         )
@@ -552,7 +552,7 @@ def build_edge_row(company, store, store_id, search_ingredient, product, pass1_h
 def build_mobile_row(company, store, store_id, search_ingredient, product, now):
     """Build a CSV row dict from a Foodstuffs Mobile API product.
 
-    Used by both Pak'nSave and New World — the two brand optimizers'
+    Used by both Pak'nSave and New World — the two brand optimisers'
     `build_row` were byte-identical apart from the `company` label, so a
     single shared implementation replaces both.
 
@@ -665,8 +665,8 @@ def foodstuffs_querier_edge(api_class, find_nearby_stores, company_id, company_n
     """Phase 1 (query): shared Edge API pipeline for Pak'nSave and New World.
 
     Queries the Foodstuffs Edge API for product pricing across nearby stores and
-    appends results to the CSV. The two brand CLIs (paknsave_optimizer_edge.py,
-    newworld_optimizer_edge.py) are identical except for the API class, store
+    appends results to the CSV. The two brand CLIs (paknsave_optimiser_edge.py,
+    newworld_optimiser_edge.py) are identical except for the API class, store
     finder, and company label.
 
     Args:
@@ -770,8 +770,8 @@ def foodstuffs_querier_mobile(api_class, find_nearby_stores_fn, company_id, comp
     """Phase 1 (query): shared Mobile API pipeline for Pak'nSave and New World.
 
     Queries the Foodstuffs Mobile API for product pricing across nearby stores and
-    appends results to the CSV. The two brand CLIs (paknsave_optimizer_mobile.py,
-    newworld_optimizer_mobile.py) are identical except for the API class, store
+    appends results to the CSV. The two brand CLIs (paknsave_optimiser_mobile.py,
+    newworld_optimiser_mobile.py) are identical except for the API class, store
     finder, and company label.
 
     Args:
@@ -870,7 +870,7 @@ def woolworths_querier(api, company_id, company_name, user_address, dish_input, 
     Queries the Woolworths API for product pricing across nearby stores and appends
     results to the CSV. Mirrors foodstuffs_querier_edge/foodstuffs_querier_mobile
     for the other two brands: the shared query code lives here so
-    woolworths_optimizer.py stays a thin CLI, and `optimise()` (Step 2) reads the
+    woolworths_optimiser.py stays a thin CLI, and `optimise()` (Step 2) reads the
     CSV rows appended here.
 
     Store identity keys directly on extra1 (fulfilmentStoreId): get_nearby_stores()
@@ -957,7 +957,7 @@ def woolworths_querier(api, company_id, company_name, user_address, dish_input, 
     return True
 
 
-def analyze_results(df, ingredients, dish, company=None, store_ids=None):
+def analyse_results(df, ingredients, dish, company=None, store_ids=None):
     """Build per-store cost summary and per-ingredient comparison table.
 
     Args:
@@ -1097,7 +1097,7 @@ def optimise(dish, company=None, store_ids=None, require_valid=False):
         print(f"No results for dish '{dish_name}' ingredients in today's data")
         return
 
-    summary, table = analyze_results(df_dish, dish_ings, dish, company=company, store_ids=store_ids)
+    summary, table = analyse_results(df_dish, dish_ings, dish, company=company, store_ids=store_ids)
 
     print("\n" + "=" * 70)
     print(f"TOTAL COST COMPARISON -- {dish_name.upper()}")

@@ -1,5 +1,5 @@
 """
-Unit tests for New World Mobile Optimizer CLI (newworld_optimizer_mobile.py).
+Unit tests for New World Mobile Optimiser CLI (newworld_optimiser_mobile.py).
 
 Tests the main() function's argument parsing: positional address/dish args,
 --requery flag parsing, --distance flag parsing, and correct forwarding of
@@ -22,20 +22,20 @@ sys.path.insert(0, str(SCRIPT_DIR))
 sys.path.insert(0, str(PROJECT_ROOT / "scripts" / "combined"))
 
 
-class TestNewWorldOptimizerMobileCLI:
-    """Tests for Mobile API optimizer main() argument parsing and dispatch."""
+class TestNewWorldOptimiserMobileCLI:
+    """Tests for Mobile API Optimiser main() argument parsing and dispatch."""
 
     DEFAULT_ADDRESS = "Botany Town Centre, Auckland"
     DEFAULT_DISH = "spaghetti bolognese"
 
-    @patch("newworld_optimizer_mobile.foodstuffs_querier_mobile")
-    @patch("newworld_optimizer_mobile.optimise")
+    @patch("newworld_optimiser_mobile.foodstuffs_querier_mobile")
+    @patch("newworld_optimiser_mobile.optimise")
     def test_main_defaults(self, mock_optimise, mock_query):
         mock_query.return_value = True
-        import newworld_optimizer_mobile
+        import newworld_optimiser_mobile
 
-        with patch.object(sys, "argv", ["newworld_optimizer_mobile.py"]):
-            newworld_optimizer_mobile.main()
+        with patch.object(sys, "argv", ["newworld_optimiser_mobile.py"]):
+            newworld_optimiser_mobile.main()
 
         mock_query.assert_called_once()
         args, kwargs = mock_query.call_args
@@ -49,20 +49,20 @@ class TestNewWorldOptimizerMobileCLI:
         assert opt_args[0] == self.DEFAULT_DISH
         assert opt_kwargs.get("company") == "NewWorld"
 
-    @patch("newworld_optimizer_mobile.foodstuffs_querier_mobile")
-    @patch("newworld_optimizer_mobile.optimise")
+    @patch("newworld_optimiser_mobile.foodstuffs_querier_mobile")
+    @patch("newworld_optimiser_mobile.optimise")
     def test_main_custom_args(self, mock_optimise, mock_query):
         mock_query.return_value = True
-        import newworld_optimizer_mobile
+        import newworld_optimiser_mobile
 
         with patch.object(sys, "argv", [
-            "newworld_optimizer_mobile.py",
+            "newworld_optimiser_mobile.py",
             "Custom Address",
             "milk",
             "--requery", "false",
             "--distance", "10",
         ]):
-            newworld_optimizer_mobile.main()
+            newworld_optimiser_mobile.main()
 
         args, kwargs = mock_query.call_args
         assert args[4] == "Custom Address"
@@ -70,60 +70,60 @@ class TestNewWorldOptimizerMobileCLI:
         assert args[6] is False
         assert kwargs.get("max_dist_km") == 10.0
 
-    @patch("newworld_optimizer_mobile.foodstuffs_querier_mobile")
-    @patch("newworld_optimizer_mobile.optimise")
+    @patch("newworld_optimiser_mobile.foodstuffs_querier_mobile")
+    @patch("newworld_optimiser_mobile.optimise")
     def test_main_requery_true(self, mock_optimise, mock_query):
         mock_query.return_value = True
-        import newworld_optimizer_mobile
+        import newworld_optimiser_mobile
 
         with patch.object(sys, "argv", [
-            "newworld_optimizer_mobile.py",
+            "newworld_optimiser_mobile.py",
             "Test Address", "soup",
             "--requery", "true",
         ]):
-            newworld_optimizer_mobile.main()
+            newworld_optimiser_mobile.main()
 
         args, _ = mock_query.call_args
         assert args[6] is True
 
-    @patch("newworld_optimizer_mobile.foodstuffs_querier_mobile")
-    @patch("newworld_optimizer_mobile.optimise")
+    @patch("newworld_optimiser_mobile.foodstuffs_querier_mobile")
+    @patch("newworld_optimiser_mobile.optimise")
     def test_main_no_optimise_when_no_data(self, mock_optimise, mock_query):
         mock_query.return_value = False
-        import newworld_optimizer_mobile
+        import newworld_optimiser_mobile
 
-        with patch.object(sys, "argv", ["newworld_optimizer_mobile.py"]):
-            newworld_optimizer_mobile.main()
+        with patch.object(sys, "argv", ["newworld_optimiser_mobile.py"]):
+            newworld_optimiser_mobile.main()
 
         mock_query.assert_called_once()
         mock_optimise.assert_not_called()
 
-    @patch("newworld_optimizer_mobile.foodstuffs_querier_mobile")
-    @patch("newworld_optimizer_mobile.optimise")
+    @patch("newworld_optimiser_mobile.foodstuffs_querier_mobile")
+    @patch("newworld_optimiser_mobile.optimise")
     def test_main_distance_as_float(self, mock_optimise, mock_query):
         mock_query.return_value = True
-        import newworld_optimizer_mobile
+        import newworld_optimiser_mobile
 
         with patch.object(sys, "argv", [
-            "newworld_optimizer_mobile.py",
+            "newworld_optimiser_mobile.py",
             "Address", "dish", "--distance", "7.5",
         ]):
-            newworld_optimizer_mobile.main()
+            newworld_optimiser_mobile.main()
 
         _, kwargs = mock_query.call_args
         assert kwargs.get("max_dist_km") == 7.5
 
-    @patch("newworld_optimizer_mobile.foodstuffs_querier_mobile")
-    @patch("newworld_optimizer_mobile.optimise")
+    @patch("newworld_optimiser_mobile.foodstuffs_querier_mobile")
+    @patch("newworld_optimiser_mobile.optimise")
     def test_main_default_distance_without_flag(self, mock_optimise, mock_query):
         mock_query.return_value = True
-        import newworld_optimizer_mobile
+        import newworld_optimiser_mobile
 
         with patch.object(sys, "argv", [
-            "newworld_optimizer_mobile.py",
+            "newworld_optimiser_mobile.py",
             "Address", "dish",
         ]):
-            newworld_optimizer_mobile.main()
+            newworld_optimiser_mobile.main()
 
         _, kwargs = mock_query.call_args
         assert kwargs.get("max_dist_km") == 5

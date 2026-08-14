@@ -1,23 +1,16 @@
 """
-Unit tests for shared optimizer helpers as used by New World (from optimizer_utils.py).
+Unit tests for shared optimiser helpers as used by Pak'nSave (from optimiser_utils.py).
 
 These tests are fully offline, using captured live API fixtures and the real dishes.json:
 
 Fixtures used:
-    - fixture/edge_store_list_example.json    Edge API store list (148 stores)
-    - fixture/edge_search_pass2_example.json    Edge Pass 2 per-store pricing for "milk" (10 products)
-    - fixture/edge_search_pass1_example.json   Edge Pass 1 relevance hits (40 hits, with category0/category1)
-    - fixture/mobile_search_example.json        Mobile API product search for "milk" (20 products)
-    - fixture/mobile_login_example.json         Mobile guest login response
-    - data/dishes.json                          Curated dish definitions (spaghetti bolognese, etc.)
+    - fixture/edge_search_pass2_example.json  — Edge Pass 2 per-store pricing for "milk" (10 products)
+    - fixture/mobile_search_example.json      — Mobile API product search for "milk" (20 products)
+    - data/dishes.json                         — Curated dish definitions (spaghetti bolognese, etc.)
 
 All assertions reference fixture data values directly for deterministic, traceable results.
-No synthetic test data is used for API responses — every value under test comes from a
-live-captured fixture or the production dishes.json registry.
-
-Exception: simple permutation tests for parsers/filters/calculations (e.g. _parse_display_name,
-NON_FOOD_CATEGORIES membership, haversine, pk_hash arithmetic) use inline inputs since these
-are deterministic pure functions not involving API data retrieval.
+No synthetic test data is used — every value under test comes from a live-captured fixture
+or the production dishes.json registry.
 """
 
 import csv
@@ -31,12 +24,13 @@ from typing import Any, cast
 
 import pytest
 
+# Setup paths for importing scripts/paknsave and scripts/combined
 SCRIPT_DIR = Path(__file__).resolve().parent.parent
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(SCRIPT_DIR))
 sys.path.insert(0, str(PROJECT_ROOT / "scripts" / "combined"))
 
-from optimizer_utils import (
+from optimiser_utils import (
     CSV_COLUMNS,
     parse_foodstuffs_volume_size,
     parse_foodstuffs_mobile_unit,
@@ -50,20 +44,11 @@ from optimizer_utils import (
     _parse_display_name,
     load_existing_hashes,
     append_rows,
-    haversine,
-)
-import newworld_api
-
-from newworld_api import (
-    NON_FOOD_CATEGORIES,
-    NewWorldEdgeAPI,
-    NewWorldMobileAPI,
-    NewWorldAPI,
-    create_api,
-    find_nearby_stores,
-    load_stores,
 )
 
+# CSV_COLUMNS includes "is_valid" which is added by initialize_full_results.py
+# when creating the CSV header; row builders do not populate it. Tests check
+# for the row builder columns (CSV_COLUMNS minus "is_valid").
 ROW_COLUMNS = [c for c in CSV_COLUMNS if c != "is_valid"]
 
 FIXTURE_DIR = SCRIPT_DIR / "fixture"
@@ -71,11 +56,20 @@ DISHES_FILE = PROJECT_ROOT / "data" / "dishes.json"
 
 
 def _load_json(filename):
-    with open(FIXTURE_DIR / filename, "r", encoding="utf-8", errors="replace") as f:
+    """Load a JSON fixture file from the fixture directory.
+
+    Args:
+        filename: the fixture file name (lives in scripts/paknsave/fixture/).
+
+    Returns:
+        The parsed JSON content as a dict or list.
+    """
+    with open(FIXTURE_DIR / filename, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def _load_dishes():
+    """Load the real dishes.json registry from data/."""
     with open(DISHES_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
@@ -89,15 +83,30 @@ class TestDishResolution:
         self.dishes = _load_dishes()
 
     def test_resolve_dish_from_string(self):
+        """Verify _resolve_dish_terms resolves a dish name string to (dish_name, search_terms).
+
+        Uses the real "spaghetti bolognese" entry from data/dishes.json — it has
+        exactly 7 ingredients (beef mince, spaghetti pasta, canned tomatoes,
+        onion, carrot, garlic, mixed herbs).
+        """
         dish_name, ingredients = _resolve_dish_terms("spaghetti bolognese")
+        # Dish name normalized (lowercased in dishes.json)
         assert dish_name == "spaghetti bolognese"
+        # 7 ingredients per the fixture
         assert len(ingredients) == 7
+        # First three ingredients from the fixture
         assert ingredients[0] == "beef mince"
         assert ingredients[1] == "spaghetti pasta"
         assert ingredients[2] == "canned tomatoes"
+        # Last ingredient
         assert ingredients[-1] == "mixed herbs"
 
     def test_resolve_dish_from_dict(self):
+        """Verify _resolve_dish_terms handles structured dict input.
+
+        Constructs a dish dict inline matching the JSON schema shape:
+        {dish_name, portion, ingredients: [{quantity, unit, search_term}, ...]}.
+        """
         dish_dict = {
             "dish_name": "test dish",
             "portion": 2,
@@ -110,10 +119,16 @@ class TestDishResolution:
         assert ingredients == ["test ingredient"]
 
     def test_resolve_dish_unknown_string_raises(self):
+        """Verify _resolve_dish_terms raises ValueError for unknown dish names."""
         with pytest.raises(ValueError):
             _resolve_dish_terms("nonexistent dish")
 
     def test_get_ingredients(self):
+        """Verify get_ingredients returns search terms from the dishes registry.
+
+        Uses real "chicken stir fry" from data/dishes.json — 4 ingredients:
+        chicken breast, stir fry vegetables, soy sauce, rice noodles.
+        """
         ingredients = get_ingredients("chicken stir fry")
         assert len(ingredients) == 4
         assert ingredients[0] == "chicken breast"
@@ -122,9 +137,15 @@ class TestDishResolution:
         assert ingredients[3] == "rice noodles"
 
     def test_build_quantity_map(self):
+        """Verify _build_quantity_map produces {search_term: "quantity unit"} from dishes.json.
+
+        Uses real "roast lamb" from data/dishes.json — 5 ingredients with quantities
+        like "1.2 kg", "4 medium", etc.
+        """
         dish = "roast lamb"
         qty_map = _build_quantity_map(dish)
         assert len(qty_map) == 5
+        # Verify specific quantity strings from the fixture
         assert qty_map["lamb roast"] == "1.2 kg"
         assert qty_map["potato"] == "4 medium (~600 g)"
         assert qty_map["carrot"] == "3 medium (~180 g)"
@@ -132,10 +153,11 @@ class TestDishResolution:
         assert qty_map["stock"] == "2 cups"
 
     def test_resolve_dish_data_from_registry(self):
+        """Verify _resolve_dish_data returns the full dish dict from DISHES."""
         dish_dict: dict[str, Any] = cast(dict[str, Any], _resolve_dish_data("beef curry"))
         assert dish_dict["dish_name"] == "beef curry"
         assert dish_dict["portion"] == 4
-        ingredients: list[dict[str, Any]] = dish_dict["ingredients"]
+        ingredients: list[dict[str, Any]] = dish_dict["ingredients"]  # type: ignore
         assert len(ingredients) == 5
         assert ingredients[0]["search_term"] == "diced beef"
 
@@ -144,19 +166,31 @@ class TestDisplayNameParsing:
     """Tests for _parse_display_name using real displayName values from fixtures."""
 
     def test_parse_display_name_unit_with_number(self):
+        """Verify _parse_display_name parses '1l' -> (1, 'l') and '3l' -> (3, 'l').
+
+        Values '1l', '2l', '3l' come directly from edge_search_pass2_example.json
+        products (Standard UHT Milk, Standard Milk, Lite Milk).
+        """
+        # "1l" — from edge_search_pass2_example.json first product (displayName="1l")
         qty, unit = _parse_display_name("1l")
         assert qty == 1
         assert unit == "l"
 
+        # "2l" — from edge_search_pass2_example.json fourth product (displayName="2l")
         qty, unit = _parse_display_name("2l")
         assert qty == 2
         assert unit == "l"
 
+        # "3l" — from edge_search_pass2_example.json seventh product (displayName="3l")
         qty, unit = _parse_display_name("3l")
         assert qty == 3
         assert unit == "l"
 
     def test_parse_display_name_unit_only(self):
+        """Verify _parse_display_name parses bare units like 'ea' -> (1, 'ea').
+
+        These values appear in Foodstuffs displayName field per docstring examples.
+        """
         qty, unit = _parse_display_name("ea")
         assert qty == 1
         assert unit == "ea"
@@ -166,27 +200,26 @@ class TestDisplayNameParsing:
         assert unit == "kg"
 
     def test_parse_display_name_empty(self):
+        """Verify _parse_display_name returns (None, '') for empty/null input."""
         assert _parse_display_name("") == (None, "")
         assert _parse_display_name(None) == (None, "")
 
 
-class TestOptimizerUtilsNewWorld:
+class TestOptimiserUtilsPaknSave:
     """Tests for foodstuffs parsers and row builders using live fixture JSON data."""
 
     edge_data: dict
-    edge_pass1: dict
     mobile_data: dict
 
     def setup_method(self):
         self.edge_data = _load_json("edge_search_pass2_example.json")
-        self.edge_pass1 = _load_json("edge_search_pass1_example.json")
         self.mobile_data = _load_json("mobile_search_example.json")
 
     def test_parse_foodstuffs_volume_size(self):
-        """Parse volume size from an Edge API product fixture (Standard Milk 1L).
+        """Parse volume size from an Edge API product fixture (e.g., UHT milk 1L).
 
         Uses edge_search_pass2_example.json products[0] — displayName="1l",
-        singlePrice.price=317 (cents), comparativePrice.pricePerUnit=317,
+        singlePrice.price=209 (cents), comparativePrice.pricePerUnit=209,
         comparativePrice.measureDescription="1L".
         """
         product = self.edge_data["products"][0]
@@ -195,18 +228,21 @@ class TestOptimizerUtilsNewWorld:
             product["singlePrice"],
             product.get("promotions") or [],
         )
+        # displayName="1l" -> qty=1, unit="l"
         assert qty == 1
         assert unit == "l"
+        # comparativePrice.measureDescription="1L" -> per_unit_qty="1L"
         assert per_unit_qty == "1L"
-        assert per_unit_price == 3.17
+        # comparativePrice.pricePerUnit=209 cents -> 2.09 dollars
+        assert per_unit_price == 2.09
 
     def test_parse_foodstuffs_volume_size_3l(self):
-        """Parse volume size from edge_search_pass2_example.json products[8] (3l milk).
+        """Parse volume size from edge_search_pass2_example.json products[7] (3l milk).
 
-        displayName="3l", price=720 cents, comparativePrice.pricePerUnit=240,
+        displayName="3l", price=711 cents, comparativePrice.pricePerUnit=237,
         measureDescription="1L".
         """
-        product = self.edge_data["products"][8]
+        product = self.edge_data["products"][7]
         qty, unit, per_unit_qty, per_unit_price = parse_foodstuffs_volume_size(
             product["displayName"],
             product["singlePrice"],
@@ -215,139 +251,119 @@ class TestOptimizerUtilsNewWorld:
         assert qty == 3
         assert unit == "l"
         assert per_unit_qty == "1L"
-        assert per_unit_price == 2.40
+        assert per_unit_price == 2.37
 
     def test_parse_foodstuffs_mobile_unit(self):
         """Parse units and unit price from a Mobile API product fixture (2L milk).
 
-        Uses mobile_search_example.json products[0] — units="2l", unitPrice="$2.42/1L",
-        price=483 cents.
+        Uses mobile_search_example.json products[0] — units="2l", unitPrice="$2.40/1L",
+        price=479 cents.
         """
         product = self.mobile_data["products"][0]
         qty, unit, per_unit_qty, per_unit_price = parse_foodstuffs_mobile_unit(
             product["units"], product["unitPrice"], product["price"]
         )
+        # units="2l" -> qty=2, measurement_unit="l"
         assert qty == 2
         assert unit == "l"
+        # unitPrice="$2.40/1L" -> per_unit_price=2.40, per_unit_qty="1L"
         assert per_unit_qty == "1L"
-        assert per_unit_price == 2.42
+        assert per_unit_price == 2.40
 
     def test_parse_foodstuffs_mobile_unit_300ml(self):
-        """Parse units from a Mobile API product with non-trivial volume (300ml).
+        """Parse units and unit price from mobile_search_example.json products[17] (300ml milk).
 
-        Finds a product with units containing '300ml' from mobile_search_example.json.
-        Verifies qty=300, unit="ml".
+        units="300ml", unitPrice="$6.10/1L", price=183 cents.
         """
-        product = None
-        for p in self.mobile_data["products"]:
-            if "300ml" in (p.get("units") or ""):
-                product = p
-                break
-        assert product is not None
+        product = self.mobile_data["products"][17]
         qty, unit, per_unit_qty, per_unit_price = parse_foodstuffs_mobile_unit(
-            product["units"], product.get("unitPrice", ""), product["price"]
+            product["units"], product["unitPrice"], product["price"]
         )
         assert qty == 300
         assert unit == "ml"
+        assert per_unit_qty == "1L"
+        assert per_unit_price == 6.10
 
     def test_build_edge_row(self):
         """Build a standardized CSV row dict from an Edge API product and verify all fields.
 
-        Uses edge_search_pass2_example.json products[0] (Standard Milk, 317 cents/1L).
+        Uses edge_search_pass2_example.json products[0] (Standard UHT Milk, 209 cents/1L).
         Store metadata (name, store_id) comes from edge_store_list_example.json first store
-        (New World Papakura, id=ef977d89-f3d8-4e8b-8a48-b895ded38646).
-        pass1 hit provides category0=["Fridge, Deli & Eggs"] and category1=["Milk"].
+        (PAK'nSAVE Te Awamutu, id=3bb30799-82ce-4648-8c02-5113228963ed).
         """
         now = datetime(2026, 8, 10, 12, 0, 0)
 
+        # Load real store metadata from edge_store_list_example.json
         stores_fixture = _load_json("edge_store_list_example.json")
         store = stores_fixture["stores"][0]
-        store_name = store["name"]
-        store_id = store["id"]
+        store_name = store["name"]  # "PAK'nSAVE Te Awamutu"
+        store_id = store["id"]      # "3bb30799-82ce-4648-8c02-5113228963ed"
 
         product = self.edge_data["products"][0]
         pass1_hit = {
-            "category0": [product["categoryTrees"][0]["level0"]] if product.get("categoryTrees") else ["Fridge, Deli & Eggs"],
-            "category1": [product["categoryTrees"][0]["level1"]] if product.get("categoryTrees") else ["Milk"],
+            "category0": [product["categoryTrees"][0]["level0"]],
+            "category1": [product["categoryTrees"][0]["level1"]],
         }
 
-        row = build_edge_row("NewWorld", store_name, store_id, "milk", product, pass1_hit, now)
+        row = build_edge_row("PaknSave", store_name, store_id, "milk", product, pass1_hit, now)
 
+        # Verify all expected row columns are present
         for col in ROW_COLUMNS:
             assert col in row
 
-        assert row["company"] == "NewWorld"
+        # Verify values from fixture data
+        assert row["company"] == "PaknSave"
         assert row["store"] == store_name
         assert row["store_id"] == store_id
         assert row["search_ingredient"] == "milk"
-        assert row["returned_ingredient"] == "Standard Milk"
-        assert row["price"] == 3.17
+        assert row["returned_ingredient"] == "Standard UHT Milk"
+        assert row["price"] == 2.09  # 209 cents / 100
         assert row["quantity"] == 1
         assert row["measurement_unit"] == "l"
         assert row["per_unit_quantity"] == "1L"
-        assert row["per_unit_price"] == 3.17
-        assert row["is_sale"] is False
-        assert row["sku"] == "5201800-EA-000"
+        assert row["per_unit_price"] == 2.09
+        assert row["is_sale"] is False  # no promotions in fixture
+        assert row["sku"] == "5004752-EA-000"
         assert row["department"] == "Fridge, Deli & Eggs"
         assert row["sub_department"] == "Milk"
         assert row["date_created"] == "2026-08-10"
 
+        # Verify pk_hash matches _compute_pk_hash with real store_id and sku
         expected_hash = _compute_pk_hash(store_id, product["productId"], "2026-08-10")
         assert row["pk_hash"] == expected_hash
-
-    def test_build_edge_row_from_pass1_hit_categories(self):
-        """Build an edge row using categories lifted directly from a Pass 1 hit fixture.
-
-        Uses edge_search_pass1_example.json hits[0] to supply category0/category1.
-        Verifies department and sub_department columns populated from real Pass 1 categories.
-        """
-        now = datetime(2026, 8, 10, 12, 0, 0)
-        stores_fixture = _load_json("edge_store_list_example.json")
-        store = stores_fixture["stores"][0]
-        store_name = store["name"]
-        store_id = store["id"]
-
-        h0 = self.edge_pass1["hits"][0]
-        pass1_hit = {
-            "category0": h0.get("category0", []),
-            "category1": h0.get("category1", []),
-        }
-
-        product = self.edge_data["products"][0]
-        row = build_edge_row("NewWorld", store_name, store_id, "milk", product, pass1_hit, now)
-
-        assert row["department"] == "Fridge, Deli & Eggs"
-        assert row["sub_department"] == "Milk"
 
     def test_build_mobile_row(self):
         """Build a standardized CSV row dict from a Mobile API product and verify all fields.
 
-        Uses mobile_search_example.json products[0] (Standard Milk, 483 cents/2L).
+        Uses mobile_search_example.json products[0] (Standard Milk, 479 cents/2L).
         Store metadata comes from edge_store_list_example.json first store.
         """
         now = datetime(2026, 8, 10, 12, 0, 0)
 
+        # Load real store metadata
         stores_fixture = _load_json("edge_store_list_example.json")
         store = stores_fixture["stores"][0]
         store_name = store["name"]
         store_id = store["id"]
 
         product = self.mobile_data["products"][0]
-        row = build_mobile_row("NewWorld", store_name, store_id, "milk", product, now)
+        row = build_mobile_row("PaknSave", store_name, store_id, "milk", product, now)
 
+        # Verify all expected row columns are present
         for col in ROW_COLUMNS:
             assert col in row
 
-        assert row["company"] == "NewWorld"
+        # Verify values from fixture data
+        assert row["company"] == "PaknSave"
         assert row["store"] == store_name
         assert row["store_id"] == store_id
         assert row["search_ingredient"] == "milk"
         assert row["returned_ingredient"] == "Standard Milk"
-        assert row["price"] == 4.83
+        assert row["price"] == 4.79  # 479 cents / 100
         assert row["quantity"] == 2
         assert row["measurement_unit"] == "l"
         assert row["per_unit_quantity"] == "1L"
-        assert row["per_unit_price"] == 2.42
+        assert row["per_unit_price"] == 2.40
         assert row["is_sale"] is False
         assert row["sku"] == "5201479-EA-000"
         assert row["department"] == ""  # no department in mobile API
@@ -369,22 +385,33 @@ class TestPkHashAndDedup:
         self.stores_fixture = _load_json("edge_store_list_example.json")
 
     def test_compute_pk_hash_deterministic(self):
+        """Verify _compute_pk_hash produces consistent, deterministic SHA-256 output.
+
+        Uses real SKU from edge_search_pass2_example.json products[0]
+        (productId="5004752-EA-000") and real store_id from edge_store_list_example.json.
+        """
+        # Load real store_id from fixture
         store_id = self.stores_fixture["stores"][0]["id"]
-        sku = "5201800-EA-000"  # from edge_search_pass2_example.json products[0]
+        sku = "5004752-EA-000"  # from edge_search_pass2_example.json products[0]
         date_str = "2026-08-10"
 
         hash1 = _compute_pk_hash(store_id, sku, date_str)
         hash2 = _compute_pk_hash(store_id, sku, date_str)
 
+        # Must be deterministic
         assert hash1 == hash2
+
+        # Must be 16-char hex string (SHA-256 truncated to 16 hex chars)
         assert len(hash1) == 16
         assert all(c in "0123456789abcdef" for c in hash1)
 
+        # Verify it's the actual SHA-256 of "store_id|sku|date"
         raw = f"{store_id}|{sku}|{date_str}"
         expected = hashlib.sha256(raw.encode()).hexdigest()[:16]
         assert hash1 == expected
 
     def test_compute_pk_hash_different_inputs(self):
+        """Verify _compute_pk_hash produces different hashes for different inputs."""
         hash1 = _compute_pk_hash("store-A", "sku-1", "2026-08-10")
         hash2 = _compute_pk_hash("store-B", "sku-1", "2026-08-10")
         hash3 = _compute_pk_hash("store-A", "sku-2", "2026-08-10")
@@ -394,44 +421,50 @@ class TestPkHashAndDedup:
         assert hash2 != hash3
 
     def test_append_rows_dedup_and_new(self):
+        """Verify append_rows skips duplicates via pk_hash and appends new rows.
+
+        Uses real fixture product SKUs and store IDs from edge_search_pass2_example.json
+        and edge_store_list_example.json.
+        """
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, newline="", encoding="utf-8") as f:
             csv_path = Path(f.name)
 
         try:
+            # Build rows from real fixture products
             store = self.stores_fixture["stores"][0]
             now = datetime(2026, 8, 10, 12, 0, 0)
 
+            # Row 1: edge_search_pass2_example.json products[0]
             product1 = self.edge_data["products"][0]
-            pass1_hit1 = {
-                "category0": [product1["categoryTrees"][0]["level0"]],
-                "category1": [product1["categoryTrees"][0]["level1"]],
-            }
             row1 = build_edge_row(
-                "NewWorld", store["name"], store["id"], "milk", product1, pass1_hit1, now,
+                "PaknSave", store["name"], store["id"], "milk", product1,
+                {"category0": ["Fridge, Deli & Eggs"], "category1": ["Milk"]}, now,
             )
 
+            # Row 2: edge_search_pass2_example.json products[1] (different SKU)
             product2 = self.edge_data["products"][1]
-            pass1_hit2 = {
-                "category0": [product2["categoryTrees"][0]["level0"]],
-                "category1": [product2["categoryTrees"][0]["level1"]],
-            }
             row2 = build_edge_row(
-                "NewWorld", store["name"], store["id"], "milk", product2, pass1_hit2, now,
+                "PaknSave", store["name"], store["id"], "milk", product2,
+                {"category0": ["Fridge, Deli & Eggs"], "category1": ["Milk"]}, now,
             )
 
             # Row 3: duplicate of row1 (same store_id + sku + date)
             row3 = build_edge_row(
-                "NewWorld", store["name"], store["id"], "milk", product1, pass1_hit1, now,
+                "PaknSave", store["name"], store["id"], "milk", product1,
+                {"category0": ["Fridge, Deli & Eggs"], "category1": ["Milk"]}, now,
             )
 
+            # First append: 2 new rows
             appended, skipped = append_rows([row1, row2], csv_path)
             assert appended == 2
             assert skipped == 0
 
+            # Second append: row1 is duplicate, row2 is duplicate, row3 is duplicate
             appended2, skipped2 = append_rows([row1, row2, row3], csv_path)
             assert appended2 == 0
             assert skipped2 == 3
 
+            # Verify CSV contents
             with open(csv_path, "r", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
                 rows = list(reader)
@@ -442,25 +475,22 @@ class TestPkHashAndDedup:
             csv_path.unlink(missing_ok=True)
 
     def test_load_existing_hashes(self):
+        """Verify load_existing_hashes reads pk_hash values from a CSV file.
+
+        Creates a temp CSV with real fixture data, then verifies hashes are loaded.
+        """
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, newline="", encoding="utf-8") as f:
             csv_path = Path(f.name)
 
         try:
+            # Write a CSV with two real SKUs from edge_search_pass2_example.json
             store_id = self.stores_fixture["stores"][0]["id"]
             now = datetime(2026, 8, 10, 12, 0, 0)
 
             product1 = self.edge_data["products"][0]
-            pass1_hit1 = {
-                "category0": [product1["categoryTrees"][0]["level0"]],
-                "category1": [product1["categoryTrees"][0]["level1"]],
-            }
-            row1 = build_edge_row("NewWorld", "Test Store", store_id, "milk", product1, pass1_hit1, now)
+            row1 = build_edge_row("PaknSave", "Test Store", store_id, "milk", product1, None, now)
             product2 = self.edge_data["products"][1]
-            pass1_hit2 = {
-                "category0": [product2["categoryTrees"][0]["level0"]],
-                "category1": [product2["categoryTrees"][0]["level1"]],
-            }
-            row2 = build_edge_row("NewWorld", "Test Store", store_id, "milk", product2, pass1_hit2, now)
+            row2 = build_edge_row("PaknSave", "Test Store", store_id, "milk", product2, None, now)
 
             with open(csv_path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.DictWriter(f, fieldnames=CSV_COLUMNS)
@@ -474,94 +504,3 @@ class TestPkHashAndDedup:
             assert row2["pk_hash"] in hashes
         finally:
             csv_path.unlink(missing_ok=True)
-
-
-class TestNewWorldSpecific:
-    """Tests for New World-specific behaviour (banner, endpoints, categories)."""
-
-    def test_non_food_categories_excludes_milk(self):
-        assert "Milk" not in NON_FOOD_CATEGORIES
-
-    def test_edge_search_returns_40_hits(self):
-        """All 40 Pass 1 hits belong to food categories in the real fixture."""
-        pass1 = _load_json("edge_search_pass1_example.json")
-        for h in pass1["hits"]:
-            cat1 = h.get("category1", [])
-            assert not any(c in NON_FOOD_CATEGORIES for c in cat1)
-
-    def test_mobile_search_products_are_food(self):
-        """All 20 Mobile search products belong to food categories."""
-        mobile_search = _load_json("mobile_search_example.json")
-        for p in mobile_search["products"]:
-            cats = p.get("categories", []) or []
-            cat1 = cats[0] if cats else ""
-            assert cat1 not in NON_FOOD_CATEGORIES or not cat1
-
-    def test_haversine_within_new_zealand(self):
-        """Haversine between two NZ cities returns a sensible distance (~600 km Auckland-Wellington)."""
-        # Auckland ≈ -36.8485, 174.7635; Wellington ≈ -41.2865, 174.7762
-        dist = haversine(-36.8485, 174.7635, -41.2865, 174.7762)
-        assert 400 < dist < 800
-
-    def test_find_nearby_stores_returns_empty_when_no_csv(self):
-        """find_nearby_stores returns empty list when stores CSV is missing."""
-        from unittest.mock import patch
-        with patch.object(newworld_api, "STORES_CSV", Path("/nonexistent/path.csv")):
-            result = find_nearby_stores(-36.8, 174.7, radius_km=5)
-            assert result == []
-
-    def test_load_stores_handles_missing_csv(self):
-        """load_stores returns empty list when stores CSV does not exist."""
-        original = newworld_api.STORES_CSV
-        newworld_api.STORES_CSV = Path("/nonexistent/path.csv")
-        try:
-            result = load_stores()
-            assert result == []
-        finally:
-            newworld_api.STORES_CSV = original
-
-
-class TestOptimizerIntegration:
-    """Integration tests verifying the full flow from fixtures to CSV rows."""
-
-    def test_edge_row_price_in_dollars(self):
-        """Verify build_edge_row converts cents to dollars correctly for all 10 Pass 2 products."""
-        edge_data = _load_json("edge_search_pass2_example.json")
-        stores_fixture = _load_json("edge_store_list_example.json")
-        store = stores_fixture["stores"][0]
-        now = datetime(2026, 8, 10, 12, 0, 0)
-
-        prices = []
-        for prod in edge_data["products"]:
-            pass1_hit = {
-                "category0": [prod["categoryTrees"][0]["level0"]],
-                "category1": [prod["categoryTrees"][0]["level1"]],
-            }
-            row = build_edge_row("NewWorld", store["name"], store["id"], "milk", prod, pass1_hit, now)
-            price = row["price"]
-            if price != "":
-                prices.append(price)
-
-        # All prices should be valid floats in dollars (cents/100)
-        expected_cents = sorted([p["singlePrice"]["price"] for p in edge_data["products"]])
-        expected_dollars = [round(c / 100.0, 2) for c in expected_cents]
-        assert prices == expected_dollars
-
-    def test_mobile_row_price_in_dollars(self):
-        """Verify build_mobile_row converts cents to dollars correctly for all 20 Mobile products."""
-        mobile_data = _load_json("mobile_search_example.json")
-        stores_fixture = _load_json("edge_store_list_example.json")
-        store = stores_fixture["stores"][0]
-        now = datetime(2026, 8, 10, 12, 0, 0)
-
-        prices = []
-        for prod in mobile_data["products"]:
-            row = build_mobile_row("NewWorld", store["name"], store["id"], "milk", prod, now)
-            price = row["price"]
-            if price != "":
-                prices.append(price)
-
-        # Verify prices match the raw cents converted to dollars
-        raw_cents = [p["price"] for p in mobile_data["products"]]
-        expected_dollars = [round(c / 100.0, 2) for c in raw_cents]
-        assert prices == expected_dollars

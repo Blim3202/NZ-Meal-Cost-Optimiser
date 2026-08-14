@@ -23,7 +23,7 @@ through reverse engineering the Foodstuffs Android app. Key sources:
 
 This document builds on Arefu's discovery to document every confirmed endpoint,
 parameter, response shape, and edge case encountered during integration into this
-project's meal cost optimizer. Where responses differ between the OpenAPI spec and
+project's meal cost optimiser. Where responses differ between the OpenAPI spec and
 observed behaviour, both are noted.
 
 ---
@@ -123,7 +123,7 @@ and only a new `PaknSaveMobileAPI()` recovers. The `/refreshtoken` endpoint (4.2
 confirmed working in `Exploration/explore_edge_api3.py` but **not wired into** the client.
 Edge's `fs-user-token` JWT also expires ~30 min (design.md "Fresh JWT required"), but
 `PaknSaveEdgeAPI` reads only the cookie *value* (never its Max-Age) and `authenticate()`
-runs **once per run** (optimizer_utils.py:761, not per store) — no per-store re-auth, no
+runs **once per run** (optimiser_utils.py:761, not per store) — no per-store re-auth, no
 retry on expiry.
 
 ### 4.2 Token Refresh
@@ -245,9 +245,9 @@ Returns an object with a single `"stores"` key containing an array:
 
 Two API modules are available:
 - **Pak'nSave API client**: `scripts/paknsave/paknsave_api.py` — `PaknSaveAPI(backend="edge"|"mobile")`.
-- **Cross-brand shared logic**: `scripts/combined/optimizer_utils.py` — `foodstuffs_querier_edge`, `foodstuffs_querier_mobile`, `build_edge_row`, `build_mobile_row`, parsing, geocoding, haversine, dish lookup, Phase 2 CSV readers, and append-only CSV writers.
+- **Cross-brand shared logic**: `scripts/combined/optimiser_utils.py` — `foodstuffs_querier_edge`, `foodstuffs_querier_mobile`, `build_edge_row`, `build_mobile_row`, parsing, geocoding, haversine, dish lookup, Phase 2 CSV readers, and append-only CSV writers.
 
-See **section 10** for the full production module/optimizer usage.
+See **section 10** for the full production module/optimiser usage.
 
 ### 5.2 `POST /mobile/ecomm-products/{banner}/{storeId}/search?q={query}`
 
@@ -274,7 +274,7 @@ specific store, **with per-store pricing**.
 | `disableAdsOverride` | `bool` | `false` | Disable ad insertion in results (not used by production) |
 
 The `sortOrder`, `searchingTobacco`, and `disableAdsOverride` params are *not used* by
-this project (the optimizer always relies on the default relevance ordering and only
+this project (the optimiser always relies on the default relevance ordering and only
 sends `q` + `hitsPerPage`).
 
 #### Request body
@@ -351,7 +351,7 @@ The body is required but can be empty — it's used internally for filter state
 
 The mobile search endpoint returns either a **bare JSON array** of products or a
 **wrapped dict** with a `"products"` key. Observed behaviour varies across the PNS / NW
-endpoints — the production code in `paknsave_api.py` (and the shared `optimizer_utils.py`
+endpoints — the production code in `paknsave_api.py` (and the shared `optimiser_utils.py`
 helpers) handles both shapes defensively:
 
 ```python
@@ -393,7 +393,7 @@ price_dollars = product["price"] / 100
 
 Each `{storeId}` returns independent prices for the same product. For example,
 searching "standard milk" at Botany vs Ormiston may return different `price`
-values for the same `productId`. This is the foundation of the meal cost optimizer.
+values for the same `productId`. This is the foundation of the meal cost optimiser.
 
 #### `categories` mapping & non-food filtering
 
@@ -413,7 +413,7 @@ Food"]` is filtered out because `categories[0]` is `"Dog"`. A product with an em
 
 #### Mobile parsing (`units` + `unitPrice` → 4-tuple)
 
-The optimizer splits the mobile product into
+The optimiser splits the mobile product into
 `(quantity, measurement_unit, per_unit_quantity, per_unit_price)` in one call via
 `parse_foodstuffs_mobile_unit(units, unitPrice, price_cents)`:
 
@@ -438,7 +438,7 @@ ingredient searches return in a single page).
 
 #### Specifying sort order
 
-The mobile endpoint's sort parameter is not used by this project. The optimizer relies
+The mobile endpoint's sort parameter is not used by this project. The optimiser relies
 on the default relevance ordering (returns the most-relevant results first) and only
 sends `q` + `hitsPerPage`.
 
@@ -851,7 +851,7 @@ Pipeline)**. Reference implementation: `scripts/paknsave/paknsave_api.py`
 
 ---
 
-### 6.9 Why This Matters for the Meal Cost Optimizer
+### 6.9 Why This Matters for the Meal Cost Optimiser
 
 **Without relevance matching**: Searching "beef mince" could return pet food, pies, or unrelated products first.
 
@@ -884,7 +884,7 @@ ambiguous ingredient queries like "beef mince".
 
 ### 6.11 Conclusion
 
-**The Edge API CAN fully replace the mobile API** for the meal cost optimizer:
+**The Edge API CAN fully replace the mobile API** for the meal cost optimiser:
 
 1. [OK] Store listing works (57 stores)
 2. [OK] Product search works via two-pass pipeline
@@ -903,7 +903,7 @@ ambiguous ingredient queries like "beef mince".
 - Categories endpoint available for navigation
 - Pet food filtering via `category1` field
 
-**Implementation Reference**: `scripts/paknsave/paknsave_api.py` (`PaknSaveEdgeAPI`) + `scripts/combined/optimizer_utils.py` (`foodstuffs_querier_edge`)
+**Implementation Reference**: `scripts/paknsave/paknsave_api.py` (`PaknSaveEdgeAPI`) + `scripts/combined/optimiser_utils.py` (`foodstuffs_querier_edge`)
 **Full Exploration Details**: `scripts/paknsave/Exploration/Exploration.md`
 
 ---
@@ -938,7 +938,7 @@ stores (e.g., Auckland vs Christchurch) can show larger differences.
 
 ### 7.3 Why This Matters
 
-The meal cost optimizer finds the cheapest total for an entire recipe by searching
+The meal cost optimiser finds the cheapest total for an entire recipe by searching
 each ingredient at each nearby store and comparing totals. Without per-store pricing,
 this comparison would be meaningless.
 
@@ -947,9 +947,9 @@ this comparison would be meaningless.
 ## 8. Data Query & Parsing Pipeline
 
 > **Default backend: Edge API (two-pass).** Both the unified API client
-> (`PaknSaveAPI(backend="edge")`) and the production CLI optimizer
-> (`paknsave_optimizer_edge.py`) default to the Edge backend. The mobile backend
-> (`backend="mobile"`, `paknsave_optimizer_mobile.py`) is the legacy fallback.
+> (`PaknSaveAPI(backend="edge")`) and the production CLI optimiser
+> (`paknsave_optimiser_edge.py`) default to the Edge backend. The mobile backend
+> (`backend="mobile"`, `paknsave_optimiser_mobile.py`) is the legacy fallback.
 
 This section shows how the production code queries the two backends and parses the
 responses into CSV rows. Both backends follow the same skeleton:
@@ -964,8 +964,8 @@ geocode(address) → find_nearby_stores(lat, lon, radius_km)
 The shared helpers (`foodstuffs_querier_edge`, `foodstuffs_querier_mobile`,
 `build_edge_row`, `build_mobile_row`, `parse_foodstuffs_volume_size`,
 `parse_foodstuffs_mobile_unit`, `geocode`, `find_nearby_stores`, `append_rows`,
-`optimise`, etc.) live in `scripts/combined/optimizer_utils.py`. The CLI optimizers
-`scripts/paknsave/paknsave_optimizer_edge.py` and `scripts/paknsave/paknsave_optimizer_mobile.py`
+`optimise`, etc.) live in `scripts/combined/optimiser_utils.py`. The CLI optimisers
+`scripts/paknsave/paknsave_optimiser_edge.py` and `scripts/paknsave/paknsave_optimiser_mobile.py`
 are thin wrappers that inject the brand API class and store-finder function (`find_nearby_stores`) into those shared helpers.
 
 ### 8.1 Edge API (two-pass) — `PaknSaveEdgeAPI`
@@ -1003,7 +1003,7 @@ Then `build_row` calls `parse_foodstuffs_mobile_unit(units, unitPrice, price_cen
 `(quantity, measurement_unit, per_unit_quantity, per_unit_price)`. `units` packs
 count + measure (`"3 x 80g"`, `"500g"`, `"1pk"`, `"ea"`); `unitPrice` splits on `/`
 (`"$26.99/1kg"` → qty `1kg`, price `26.99`). When `unitPrice` is missing/null and `units`
-has a numeric prefix (e.g. `"1pk"`, `"500g"`) or is bare `"ea"`, the optimizer infers
+has a numeric prefix (e.g. `"1pk"`, `"500g"`) or is bare `"ea"`, the optimiser infers
 per-unit pricing from the item's own `price` — `per_unit_quantity` becomes the
 `measurement_unit` and `per_unit_price` mirrors the item price.
 
@@ -1061,7 +1061,7 @@ CLI: `python -m scripts.paknsave.paknsave_setup [--source edge|mobile|store_find
 
 ---
 
-## 10. Production Architecture & Optimizers
+## 10. Production Architecture & Optimisers
 
 ### 10.1 Unified API Module (`paknsave_api.py`)
 
@@ -1080,18 +1080,18 @@ products = edge.pass2_per_store_pricing(store_id, "beef mince", pids)
 ```
 
 Row-builders (`build_edge_row`, `build_mobile_row`) and shared parsing live in
-`scripts/combined/optimizer_utils.py`.
+`scripts/combined/optimiser_utils.py`.
 
-### 10.2 Optimizers
+### 10.2 Optimisers
 
-Both optimizers are **two-phase**: Phase 1 queries the API and appends to
+Both optimisers are **two-phase**: Phase 1 queries the API and appends to
 `full_results.csv`; Phase 2 reads today's rows and prints a comparison.
 
 Both are thin wrappers that inject the brand API class and store-finder function
 (`find_nearby_stores`) into the shared helpers `foodstuffs_querier_edge` / `foodstuffs_querier_mobile` in
-`scripts/combined/optimizer_utils.py`.
+`scripts/combined/optimiser_utils.py`.
 
-**Edge** (`scripts/paknsave/paknsave_optimizer_edge.py`):
+**Edge** (`scripts/paknsave/paknsave_optimiser_edge.py`):
 1. Geocode address → lat/lon
 2. Load stores → filter by haversine distance (`--distance N`, default 5km)
 3. Authenticate with Edge API (website JWT)
@@ -1101,7 +1101,7 @@ Both are thin wrappers that inject the brand API class and store-finder function
 6. Phase 2: cheapest per ingredient per store → totals + breakdown
    → saves `data/paknsave_latest_results.csv`
 
-**Mobile** (`scripts/paknsave/paknsave_optimizer_mobile.py`):
+**Mobile** (`scripts/paknsave/paknsave_optimiser_mobile.py`):
 Same skeleton, single-pass (guest token), `_is_food_product()` filter on
 `categories[0]`, `parse_foodstuffs_mobile_unit` for parsing
 → saves `data/paknsave_mobile_latest_results.csv`.
@@ -1138,7 +1138,7 @@ for p in products:
 ### 10.4 How to Find Nearby Stores and Compare Prices
 
 ```python
-from scripts.combined.optimizer_utils import geocode, find_nearby_stores, DISHES
+from scripts.combined.optimiser_utils import geocode, find_nearby_stores, DISHES
 from scripts.paknsave.paknsave_setup import load_stores
 from scripts.paknsave.paknsave_api import PaknSaveEdgeAPI
 
@@ -1165,11 +1165,11 @@ for _, store in nearby.iterrows():
 
 ### 10.5 Ingredient Search Strategy
 
-The optimizer takes the **first (most relevant)** result per query. This avoids
+The optimiser takes the **first (most relevant)** result per query. This avoids
 irrelevant bulk items that might appear at lower prices (e.g., pet food for
 "beef mince"). 21 dishes are hand-curated in `DISHES` (dict format with
 quantity/unit/search_term) loaded from `data/dishes.json` via
-`scripts/combined/optimizer_utils.py`. LLM-backed
+`scripts/combined/optimiser_utils.py`. LLM-backed
 dish generation available via `scripts/llms/llm_utils.py`.
 
 ### 10.6 Architecture Diagrams
@@ -1239,7 +1239,7 @@ Compare totals → cheapest store
 | chicken katsu | chicken breast, flour, eggs, bread, rice, katsu sauce |
 
 Dishes are defined in `DISHES` (dict format with quantity/unit/search_term) loaded
-from `data/dishes.json` via `scripts/combined/optimizer_utils.py` (via `get_ingredients()`).
+from `data/dishes.json` via `scripts/combined/optimiser_utils.py` (via `get_ingredients()`).
 `paknsave_api.py` no longer re-exports — use the shared module directly.
 Unknown dish names fall through — the dish name itself becomes the single search query.
 
@@ -1247,14 +1247,14 @@ Unknown dish names fall through — the dish name itself becomes the single sear
 
 ## 12. CLI Usage
 
-**Edge API Optimizer (Production — two-pass, default):**
+**Edge API Optimiser (Production — two-pass, default):**
 ```powershell
-python scripts/paknsave/paknsave_optimizer_edge.py "588 Chapel Road, East Tāmaki, Auckland 2016" "spaghetti bolognese"
+python scripts/paknsave/paknsave_optimiser_edge.py "588 Chapel Road, East Tāmaki, Auckland 2016" "spaghetti bolognese"
 ```
 
-**Mobile API Optimizer (Fallback — single-pass):**
+**Mobile API Optimiser (Fallback — single-pass):**
 ```powershell
-python scripts/paknsave/paknsave_optimizer_mobile.py "588 Chapel Road, East Tāmaki, Auckland 2016" "spaghetti bolognese"
+python scripts/paknsave/paknsave_optimiser_mobile.py "588 Chapel Road, East Tāmaki, Auckland 2016" "spaghetti bolognese"
 ```
 
 | Argument | Default | Description |
@@ -1264,8 +1264,8 @@ python scripts/paknsave/paknsave_optimizer_mobile.py "588 Chapel Road, East Tām
 | `--requery` | `true` | `false` to skip API and optimise from existing CSV |
 | `--distance` | `5` | Store search radius in km |
 
-The Edge optimizer is the **production default** (two-pass relevance + per-store
-pricing, pet-food filtering, `PRICE_ASC` sort). Use the mobile optimizer only as a
+The Edge optimiser is the **production default** (two-pass relevance + per-store
+pricing, pet-food filtering, `PRICE_ASC` sort). Use the mobile optimiser only as a
 fallback when the Edge API is unavailable. Raw rows are appended to `data/full_results.csv`;
 per-run results saved to `data/paknsave_latest_results.csv` (Edge) or
 `data/paknsave_mobile_latest_results.csv` (Mobile).

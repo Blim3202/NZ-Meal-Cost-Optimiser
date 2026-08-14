@@ -1,4 +1,4 @@
-# FastAPI Integration Plan — NZ Meal Cost Optimizer
+# FastAPI Integration Plan — NZ Meal Cost Optimiser
 
 ## Goal
 A FastAPI backend that finds the cheapest supermarket for a dish by searching **all 3 companies concurrently** across nearby stores, with a basic frontend dashboard.
@@ -50,7 +50,7 @@ async def _fetch_ingredient(company, store_id, ingredient):
 
 ```
 scripts/fastapi/
-├── main.py              # FastAPI app + async /optimize endpoint + frontend serving
+├── main.py              # FastAPI app + async /optimise endpoint + frontend serving
 ├── core/
 │   ├── __init__.py
 │   ├── config.py        # Optional SUPABASE_* settings
@@ -72,7 +72,7 @@ scripts/fastapi/
 
 **API call:**
 ```bash
-curl -X POST "http://127.0.0.1:8000/optimize" \
+curl -X POST "http://127.0.0.1:8000/optimise" \
   -H "Content-Type: application/json" \
   -d '{"dish": "spaghetti bolognese", "address": "Auckland CBD", "distance_km": 5.0}'
 ```
@@ -94,10 +94,10 @@ curl -X POST "http://127.0.0.1:8000/optimize" \
 - **`services/supabase_client.py`** — Supabase write client. Removed because persistence is optional and can be added to `main.py` later.
 - **`seed_phase1.py`, `schema_phase1.sql`** — Database seeding scripts. Removed because we're starting with local storage; can add later if Supabase is used.
 - **`models/` folder** — Pydantic request/response models. Consolidated into `main.py` for simplicity.
-- **`routes/` folder** — Separate route files. Consolidated to single `main.py` since we only have 2 endpoints (`/optimize`, `/health`).
+- **`routes/` folder** — Separate route files. Consolidated to single `main.py` since we only have 2 endpoints (`/optimise`, `/health`).
 
 ## Next Steps
-1. ✅ Core FastAPI app with concurrent `/optimize` endpoint — **done**
+1. ✅ Core FastAPI app with concurrent `/optimise` endpoint — **done**
 2. ✅ Basic frontend at `http://127.0.0.1:8000/` — **done**
 3. Deploy to **Google Cloud Run** (serverless containers):
    ```dockerfile

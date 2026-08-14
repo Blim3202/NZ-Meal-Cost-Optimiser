@@ -42,10 +42,10 @@ Unified interface via `PaknSaveAPI(backend="edge"|"mobile")`.
 - `find_nearby_stores(lat, lon, radius_km=5)` — filtered & sorted
 - `get_ingredients(dish_name)` — 21-dish ingredient map (from DISHES dict)
 
-### 2. `paknsave_optimizer_edge.py` — Edge API Optimizer (Production)
+### 2. `paknsave_optimiser_edge.py` — Edge API Optimiser (Production)
 
 ```bash
-python scripts/paknsave/paknsave_optimizer_edge.py "Botany Town Centre, Auckland" "spaghetti bolognese"
+python scripts/paknsave/paknsave_optimiser_edge.py "Botany Town Centre, Auckland" "spaghetti bolognese"
 ```
 
 **Pipeline:**
@@ -59,10 +59,10 @@ python scripts/paknsave/paknsave_optimizer_edge.py "Botany Town Centre, Auckland
    - Pick cheapest by **unit price** (fallback: absolute price)
 5. Output: cost comparison + itemized breakdown → `data/paknsave_latest_results.csv`
 
-### 3. `paknsave_optimizer_mobile.py` — Mobile API Optimizer (Fallback)
+### 3. `paknsave_optimiser_mobile.py` — Mobile API Optimiser (Fallback)
 
 ```bash
-python scripts/paknsave/paknsave_optimizer_mobile.py "Botany Town Centre, Auckland" "spaghetti bolognese"
+python scripts/paknsave/paknsave_optimiser_mobile.py "Botany Town Centre, Auckland" "spaghetti bolognese"
 ```
 
 Same structure but uses Mobile API (single-pass, guest token). No per-store price sort — returns first result. Same unit-price selection logic.
@@ -181,7 +181,7 @@ from scripts.paknsave.paknsave_api import (
     find_nearby_stores,
     haversine,
 )
-from scripts.combined.optimizer_utils import get_ingredients
+from scripts.combined.optimiser_utils import get_ingredients
 
 # Default: Edge API (two-pass)
 api = PaknSaveAPI(backend="edge")
@@ -211,12 +211,12 @@ ingredients = get_ingredients("spaghetti bolognese")
 - `PaknSaveEdgeAPI` — Full two-pass pipeline with pet food filtering
 - `PaknSaveMobileAPI` — Legacy single-pass mobile API
 
-### Pak'nSave Optimizers
+### Pak'nSave Optimisers
 
-#### Edge API Optimizer (`paknsave_optimizer_edge.py`)
+#### Edge API Optimiser (`paknsave_optimiser_edge.py`)
 
 ```bash
-python scripts/paknsave/paknsave_optimizer_edge.py "Botany Town Centre, Auckland" "spaghetti bolognese"
+python scripts/paknsave/paknsave_optimiser_edge.py "Botany Town Centre, Auckland" "spaghetti bolognese"
 ```
 
 **Pipeline:**
@@ -230,10 +230,10 @@ python scripts/paknsave/paknsave_optimizer_edge.py "Botany Town Centre, Auckland
 5. Pick cheapest by **unit price** (falls back to absolute price)
 6. Output: cost comparison table + itemized breakdown → saves `data/paknsave_latest_results.csv`
 
-#### Mobile API Optimizer (`paknsave_optimizer_mobile.py`)
+#### Mobile API Optimiser (`paknsave_optimiser_mobile.py`)
 
 ```bash
-python scripts/paknsave/paknsave_optimizer_mobile.py "Botany Town Centre, Auckland" "spaghetti bolognese"
+python scripts/paknsave/paknsave_optimiser_mobile.py "Botany Town Centre, Auckland" "spaghetti bolognese"
 ```
 
 **Pipeline:** Same as Edge but uses Mobile API (single-pass, guest token). No per-store price sort — returns first (most relevant) result. Same unit-price selection logic. Saves `data/paknsave_mobile_latest_results.csv`.
@@ -533,7 +533,7 @@ def newworld_two_pass_search(token, store_id, query, max_relevance=20):
 
 ## Ingredient Mapping
 
-- `DISHES` dict loaded from `data/dishes.json` via `scripts/combined/optimizer_utils.py` (dict format with quantity/unit/search_term)
+- `DISHES` dict loaded from `data/dishes.json` via `scripts/combined/optimiser_utils.py` (dict format with quantity/unit/search_term)
 - 21 dishes, each mapping to structured ingredients with quantity, unit, and search_term
 - Unknown dishes fall through: the dish name itself becomes the single search query
 - LLM-backed dish generation available via `scripts/llms/llm_utils.py`
@@ -564,18 +564,18 @@ def newworld_two_pass_search(token, store_id, query, max_relevance=20):
 | tomato pasta | pasta, canned tomatoes, garlic, olive oil, mixed herbs, cheese |
 | chicken katsu | chicken breast, flour, eggs, bread, rice, katsu sauce |
 
-To add a dish: edit `data/dishes.json` directly — the file is loaded by `optimizer_utils.py` at runtime and by `llm_utils.py`'s `resolve_ingredients`.
+To add a dish: edit `data/dishes.json` directly — the file is loaded by `optimiser_utils.py` at runtime and by `llm_utils.py`'s `resolve_ingredients`.
 
 ## CLI Usage
 
-**Edge API Optimizer (Production — two-pass, relevance + price sort):**
+**Edge API Optimiser (Production — two-pass, relevance + price sort):**
 ```powershell
-python scripts/paknsave/paknsave_optimizer_edge.py "Botany Town Centre, Auckland" "spaghetti bolognese"
+python scripts/paknsave/paknsave_optimiser_edge.py "Botany Town Centre, Auckland" "spaghetti bolognese"
 ```
 
-**Mobile API Optimizer (Fallback — single-pass):**
+**Mobile API Optimiser (Fallback — single-pass):**
 ```powershell
-python scripts/paknsave/paknsave_optimizer_mobile.py "Botany Town Centre, Auckland" "spaghetti bolognese"
+python scripts/paknsave/paknsave_optimiser_mobile.py "Botany Town Centre, Auckland" "spaghetti bolognese"
 ```
 
 Args: `[address] [dish name]`. Defaults to "Botany Town Centre, Auckland" and "spaghetti bolognese".
@@ -612,7 +612,7 @@ User input (address + dish)
 | `/api/v1/shell` | GET | Navigation taxonomy, session context, fulfilment details |
 | `/api/v1/products?target=search&search=<term>` | GET | Product search with prices |
 | `/api/v1/products?target=browse&dasFilter=Department;;<slug>;false` | GET | Browse by department |
-| `/api/v1/addresses/pickup-addresses` | GET | [LEGACY] pickup-addresses (extra2). No longer consulted by the optimizer. |
+| `/api/v1/addresses/pickup-addresses` | GET | [LEGACY] pickup-addresses (extra2). No longer consulted by the optimiser. |
 | CDX `api.cdx.nz/site-location/api/v1/sites` | GET | Source of extra1 (fulfilmentStoreId) + lat/lon for `woolworths_stores.csv` |
 
 ### Required Headers
@@ -637,16 +637,16 @@ dm-Pickup,f-{extra1},s-38
 - The legacy `pickupAddressId` (extra2) and `get_store_mapping()` indirection are
   retired (see `woolworths_api.py` legacy markers).
 
-### Woolworths query pipeline (shared, in `optimizer_utils.py`)
+### Woolworths query pipeline (shared, in `optimiser_utils.py`)
 
 `woolworths_querier(api, company_id, company_name, address, dish, requery, max_dist_km=5)` mirrors
 `foodstuffs_querier_edge`/`_mobile` for the other brands. `woolworths_api.py` stays a **functional**
 module (session, cookie injection, product search) and is injected as the `api` param. The CLI
-`woolworths_optimizer.py` is a thin wrapper that calls it, then `optimise()`.
+`woolworths_optimiser.py` is a thin wrapper that calls it, then `optimise()`.
 
 ```python
 import woolworths_api
-from optimizer_utils import woolworths_querier, optimise
+from optimiser_utils import woolworths_querier, optimise
 
 # Step 1: geocode → nearby stores → per-store pricing (fresh session per store)
 woolworths_querier(woolworths_api, "Woolworths", "Woolworths",

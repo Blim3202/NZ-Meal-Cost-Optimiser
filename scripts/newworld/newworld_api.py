@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Optional, Literal, cast
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "combined"))
-from optimizer_utils import haversine, geocode
+from optimiser_utils import haversine, geocode
 
 # ─── Constants ──────────────────────────────────────────────────────────────
 WEB_BASE = "https://www.newworld.co.nz"

@@ -194,7 +194,7 @@ def summarize_field(field, info, query):
     return f"{head} {type(info).__name__}"
 
 
-def analyze_hit(hit, query):
+def analyse_hit(hit, query):
     hl = hit.get("_highlightResult", None)
     scalar_matches, any_matches = split_matches(hl) if isinstance(hl, dict) else ([], [])
     return {
@@ -282,19 +282,19 @@ def main():
               f"redacted, hits truncated to {HITS_LIMIT}):")
         print_json(display)
 
-        analyzed = [analyze_hit(h, q) for h in hits[:HITS_LIMIT]]
-        n = len(analyzed)
+        analysed = [analyse_hit(h, q) for h in hits[:HITS_LIMIT]]
+        n = len(analysed)
         if n == 0:
             print("      (no hits)")
-            overall.append((q, "OK_EMPTY", analyzed))
+            overall.append((q, "OK_EMPTY", analysed))
             continue
 
-        has_hr = sum(1 for a in analyzed if a["has_hr_key"])
-        hr_dict = sum(1 for a in analyzed if a["hr_is_dict"])
-        empty = sum(1 for a in analyzed if a["hr_empty"])
-        scalar_flagged = sum(1 for a in analyzed if a["scalar_flagged"])
-        any_flagged = sum(1 for a in analyzed if a["any_flagged"])
-        scalar_fields = sorted({f for a in analyzed for f in a["scalar_matches"]})
+        has_hr = sum(1 for a in analysed if a["has_hr_key"])
+        hr_dict = sum(1 for a in analysed if a["hr_is_dict"])
+        empty = sum(1 for a in analysed if a["hr_empty"])
+        scalar_flagged = sum(1 for a in analysed if a["scalar_flagged"])
+        any_flagged = sum(1 for a in analysed if a["any_flagged"])
+        scalar_fields = sorted({f for a in analysed for f in a["scalar_matches"]})
 
         print(f"\n      Hit analysis ({n} hits):")
         print(f"        _highlightResult key present   : {has_hr}/{n}")
@@ -304,7 +304,7 @@ def main():
         print(f"        hits with any match (incl list): {any_flagged}")
         print(f"        matched field names (scalar)   : {scalar_fields}")
 
-        for a in analyzed:
+        for a in analysed:
             print(f"        {a['productID']}  {a['DisplayName']!r}  "
                   f"scalar_match={a['scalar_flagged']}  any_match={a['any_flagged']}")
             if a["_highlightResult"]:
@@ -312,7 +312,7 @@ def main():
                     print(summarize_field(field, info, q))
         print()
 
-        overall.append((q, "OK", analyzed))
+        overall.append((q, "OK", analysed))
         time.sleep(0.3)
 
     # ── 4. Pass 2 negative check (claim 7) ─────────────────────────────
@@ -321,8 +321,8 @@ def main():
     pass2_checked = 0
     last_ok = next((a for a in overall if a[1] == "OK"), None)
     if last_ok:
-        q, _, analyzed = last_ok
-        ids = [a["productID"] for a in analyzed if a["any_flagged"]]
+        q, _, analysed = last_ok
+        ids = [a["productID"] for a in analysed if a["any_flagged"]]
     else:
         q, ids = None, []
     if ids:
@@ -371,13 +371,13 @@ def main():
           f"{verdict6} (statuses {sorted(dead_codes)})")
 
     print("\n  Per-query hit analysis:")
-    for q, status, analyzed in overall:
+    for q, status, analysed in overall:
         if status != "OK":
             print(f"      {q!r:14s} {status}")
             continue
-        scalar = sum(1 for a in analyzed if a["scalar_flagged"])
-        anym = sum(1 for a in analyzed if a["any_flagged"])
-        print(f"      {q!r:14s} hits={len(analyzed):3d}  "
+        scalar = sum(1 for a in analysed if a["scalar_flagged"])
+        anym = sum(1 for a in analysed if a["any_flagged"])
+        print(f"      {q!r:14s} hits={len(analysed):3d}  "
               f"scalar_match={scalar:3d}  any_match={anym:3d}")
     print("=" * 80)
 

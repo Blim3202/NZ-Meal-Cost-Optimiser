@@ -58,7 +58,7 @@ ALL THREE indices return identical _highlightResult structures with matchedWords
 The only difference is the sort order of results. For relevance matching, any index
 works — products-index (relevance sort) is preferred since top hits are most relevant.
 
-PHASE 5: Per-Store Pricing Discovery (edge_full_test.py, edge_optimizer_demo.py)
+PHASE 5: Per-Store Pricing Discovery (edge_full_test.py, edge_optimiser_demo.py)
 ---------------------------------------------------------------------------------
 - Found separate endpoint: POST /v1/edge/search/paginated/products
 - Requires website JWT (fs-user-token) + store context cookies

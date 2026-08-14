@@ -8,18 +8,18 @@ Consolidates two responsibilities:
   1. Ingredient parsing — validate/normalize LLM-generated dish JSON into
      typed dataclasses (ParsedDish, ParsedIngredient) and resolve ingredient
      lists via resolution order: curated dishes.json → LLM generation → fallback.
-  2. Quantity scaling — parse optimizer CSV rows and compute scaling ratios
+  2. Quantity scaling — parse optimiser CSV rows and compute scaling ratios
      between LLM-generated ingredient quantities and supermarket pack sizes.
 
 Usage:
     from scripts.llms.llm_utils import (
         ParsedDish, parse_and_validate, LLMParseError,
-        resolve_ingredients, parse_optimizer_columns,
+        resolve_ingredients, parse_optimiser_columns,
     )
 
     dish = parse_and_validate(raw_llm_response)   # raises LLMParseError on hard failures
     dish_dict, source = resolve_ingredients("spaghetti bolognese", portions=4)
-    scaled = parse_optimizer_columns(csv_row_enriched_with_llm_data)
+    scaled = parse_optimiser_columns(csv_row_enriched_with_llm_data)
 """
 
 import json
@@ -387,8 +387,8 @@ def _safe_float(value: Any, default: float = 0.0) -> float:
     return default
 
 
-def parse_optimizer_columns(row: dict) -> dict:
-    """Parse an optimizer CSV row enriched with LLM ingredient data and compute scaling.
+def parse_optimiser_columns(row: dict) -> dict:
+    """Parse an optimiser CSV row enriched with LLM ingredient data and compute scaling.
 
     The input row should contain:
         - CSV fields: search_ingredient, returned_ingredient, quantity (pack size),

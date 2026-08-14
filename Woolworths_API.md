@@ -931,7 +931,7 @@ are effectively reachable; the remaining 3 always return the prices of their
 fulfilment partner. Verified via `scripts/woolworths/exploration/explore_extra1_collisions.py`
 (Phase 5: /shell context validation). See `logs.md` §63 for the full investigation.
 
-**Pipeline note**: the optimizer no longer bridges extra2->extra1 at runtime.
+**Pipeline note**: the optimiser no longer bridges extra2->extra1 at runtime.
 `woolworths_setup.fetch_store_data()` builds `data/woolworths_stores.csv` with
 `id=extra1` directly from CDX, `get_nearby_stores()` returns that `id` as
 `store_id`, and `set_store_context(session, store_id)` builds the cookie as
@@ -1071,7 +1071,7 @@ for store in nearby_stores:
 
 ## 9. Store ID Mapping [LEGACY - indirection retired]
 
-> **Status**: Retained for historical reference only. The optimizer no longer
+> **Status**: Retained for historical reference only. The optimiser no longer
 > bridges `pickupAddressId`->`fulfilmentStoreId` via a mapping table. Store identity
 > now keys directly on `extra1` (fulfilmentStoreId) sourced from CDX. See section 15.3
 > (`fetch_store_data()` builds `woolworths_stores.csv` keyed on extra1) and `decision.md`
@@ -1094,7 +1094,7 @@ for store in nearby_stores:
 | Birkenhead | 2124460 | 9101 | 720 | 9145 |
 
 **Note**: this mapping existed to translate `pickupAddressId`->`extra1` for cookie
-construction. It is no longer needed — the optimizer sources extra1 directly from
+construction. It is no longer needed — the optimiser sources extra1 directly from
 CDX and uses it both as `store_id` and in the `cw-lrkswrdjp` cookie.
 
 ### 9.3 How the (Legacy) Mapping Was Built
@@ -1110,7 +1110,7 @@ CDX and uses it both as `store_id` and in the `cw-lrkswrdjp` cookie.
 | File | Content | Source |
 |------|---------|--------|
 | woolworths_store_data.json | Site details incl. extra1 (fulfilmentStoreId) + extra2 (pickupAddressId) + lat/lon | woolworths_setup.py - `fetch_store_data()` (CDX API) |
-| woolworths_store_choices.csv | [LEGACY] pickup locations keyed on extra2 (pickupAddressId) | woolworths_setup.py - `fetch_store_choices()` (pickup-addresses API) - not consulted by optimizer |
+| woolworths_store_choices.csv | [LEGACY] pickup locations keyed on extra2 (pickupAddressId) | woolworths_setup.py - `fetch_store_choices()` (pickup-addresses API) - not consulted by optimiser |
 | woolworths_stores.csv | **Canonical** store list keyed on `id`=extra1 (fulfilmentStoreId) + lat/lon + name + address | woolworths_setup.py - `fetch_store_data()` (reads CDX directly) |
 
 ---
@@ -1240,7 +1240,7 @@ Playwright is NOT needed for any API operation. It is only needed if you want to
 2. Perform actions that require a real browser (e.g., adding to trolley, checkout)
 3. Access authenticated endpoints (e.g., /api/v1/trolleys/my)
 
-For the meal cost optimizer, the API + constructed cookies are sufficient.
+For the meal cost optimiser, the API + constructed cookies are sufficient.
 
 ### 10.4 Fresh Session Per Store (Required)
 
@@ -1255,8 +1255,8 @@ For the meal cost optimizer, the API + constructed cookies are sufficient.
 (9250, 9045, 9500 for Auckland stores). Reused sessions always return the first
 store's ID.
 
-**Implementation in `optimizer_utils.woolworths_querier`** (the CLI
-`woolworths_optimizer.py` passes the `woolworths_api` module as the `api` param):
+**Implementation in `optimiser_utils.woolworths_querier`** (the CLI
+`woolworths_optimiser.py` passes the `woolworths_api` module as the `api` param):
 ```python
 for store in nearby:
     store_name = store["name"]
@@ -1309,7 +1309,7 @@ Strategy:
 1. **Prices are NOT global** — the initial finding of "global pricing" was wrong. Prices
    ARE per-store, but only when the correct cookie (cw-lrkswrdjp) is set. Query
    parameters alone do not change prices.
-2. **fulfilmentStoreId != pickupAddressId** — these are different numbers. The optimizer
+2. **fulfilmentStoreId != pickupAddressId** — these are different numbers. The optimiser
    keys directly on `extra1` (fulfilmentStoreId) from CDX; the `cw-lrkswrdjp` cookie uses
    `f-{extra1}`. The legacy `pickupAddressId` (extra2) no longer drives the pipeline.
 3. **x-requested-with header is mandatory** — omitting it returns HTTP 400. The literal
@@ -1436,7 +1436,7 @@ The `GET /api/v1/addresses/pickup-addresses` endpoint returns 19 `storeAreas`.
 Area `id=494` ("All Pick up locations") contains only **171 stores**. 
 Regional areas (e.g., area 302 "Waikato") contain additional pickup points that are **NOT** in area 494.
 
-This was relevant to the **legacy** merge pipeline (which joined choices.id=pickupAddressId with CDX SiteDataID=extra2). **Store identity is now sourced directly from CDX via extra1 (fulfilmentStoreId)** — see §15.3. The pickup-addresses API / `fetch_store_choices()` is retained only for historical reference and is no longer consulted by the optimizer.
+This was relevant to the **legacy** merge pipeline (which joined choices.id=pickupAddressId with CDX SiteDataID=extra2). **Store identity is now sourced directly from CDX via extra1 (fulfilmentStoreId)** — see §15.3. The pickup-addresses API / `fetch_store_choices()` is retained only for historical reference and is no longer consulted by the optimiser.
 
 **Missing stores** from area 494 include:
 - Woolworths Chartwell (area 302, Waikato)
@@ -1450,7 +1450,7 @@ function + `run_full_setup()`:
 ```python
 from scripts.woolworths.woolworths_setup import (
     fetch_store_data,      # Fetches CDX data + builds woolworths_stores.csv (keyed on extra1)
-    fetch_store_choices,   # [LEGACY] regenerates data/woolworths_store_choices.* ; not consulted by optimizer
+    fetch_store_choices,   # [LEGACY] regenerates data/woolworths_store_choices.* ; not consulted by optimiser
     run_full_setup         # Runs fetch_store_data() only (legacy choices detached)
 )
 ```
@@ -1483,7 +1483,7 @@ from scripts.woolworths.woolworths_setup import (
 - `cleaned=True` (default) also drops rows with non-numeric/blank lat or lon.
 - Output: **177 stores** (183 CDX sites − 4 null-extra1 − 2 shut-down)
 - `data/woolworths_store_data.csv` (the intermediate wide CSV) is **no longer
-  produced** — the full store data is contained in the JSON, and the optimizer
+  produced** — the full store data is contained in the JSON, and the optimiser
   only needs the 5-column `woolworths_stores.csv`.
 
 **Note on extra1 collisions**: extra1 is a *fulfilment store ID* — 3 pairs of
@@ -1526,7 +1526,7 @@ python -c "from scripts.woolworths.woolworths_setup import fetch_store_choices; 
 | Woolworths_API.md | This document |
 | AGENTS.md | Project overview and file structure |
 | scripts/woolworths/woolworths_api.py | Cookie-based API module: session creation, store context injection, product search, nearby stores |
-| scripts/woolworths/woolworths_optimizer.py | **Thin CLI**: Step 1 query via shared `woolworths_querier` in `optimizer_utils.py`, then Step 2 `optimise()`. Supports `--requery`, `--distance` flags, 5km default |
+| scripts/woolworths/woolworths_optimiser.py | **Thin CLI**: Step 1 query via shared `woolworths_querier` in `optimiser_utils.py`, then Step 2 `optimise()`. Supports `--requery`, `--distance` flags, 5km default |
  | scripts/woolworths/woolworths_setup.py | Unified store pipeline: `fetch_store_data()` fetches CDX data (177 stores after filtering) and builds `woolworths_stores.csv` keyed on extra1 (fulfilmentStoreId); filters out shut-down stores (9285, 9035) and null-extra1 sites. `fetch_store_choices()` [LEGACY, detached] regenerates `woolworths_store_choices.*`. |
 | scripts/woolworths/exploration/explore_extra1_collisions.py | Phase 7: investigation of extra1 collision pairs (9112, 9290, 9511) — shell context inspection, live price queries across extra1/extra2/site.id keys |
 | scripts/combined/initialize_full_results.py | Creates `data/full_results.csv` with 17-column structure including `pk_hash` for deduplication |
@@ -1536,7 +1536,7 @@ python -c "from scripts.woolworths.woolworths_setup import fetch_store_choices; 
 | scripts/woolworths/Exploration/explore_woolworths_api_part4.py | Phase 4: programmatic cookie construction, mapping capture, price validation |
 | scripts/woolworths/Playwright/ChangeStore.py | Playwright store selection via modal (reference implementation) |
 | data/woolworths_store_data.json | [Source] CDX store details with extra1 (fulfilmentStoreId) and extra2 (pickupAddressId) + lat/lon — 183 sites (4 excluded for null extra1, 2 hardcoded as shut-down) |
-| data/woolworths_store_choices.csv | [LEGACY, detached] pickup-addresses API output keyed on extra2 (pickupAddressId) — not consulted by optimizer; can be regenerated via `fetch_store_choices()` |
+| data/woolworths_store_choices.csv | [LEGACY, detached] pickup-addresses API output keyed on extra2 (pickupAddressId) — not consulted by optimiser; can be regenerated via `fetch_store_choices()` |
 | data/woolworths_stores.csv | [Canonical] 177 stores (183 CDX − 4 null-extra1 − 2 shut-down) keyed on `id`=extra1 (fulfilmentStoreId) + lat/lon + name + address. Built by `fetch_store_data()`. |
 | data/full_results.csv | Shared append-only CSV with all search results (pk_hash for dedup) |
 | data/Exploration/woolworths/part2_cookies.json | Playwright-captured full cookie jars (Greymouth, Glenfield, baseline) |

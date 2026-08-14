@@ -1,11 +1,11 @@
-r"""FastAPI entrypoint for the NZ Meal Cost Optimizer.
+r"""FastAPI entrypoint for the NZ Meal Cost Optimiser.
 
 Run:
     .venv\Scripts\python scripts/fastapi/main.py
 or:
     .venv\Scripts\uvicorn main:app --app-dir scripts/fastapi --port 8000
 
-The /optimize endpoint runs all retailer searches concurrently — up to 3
+The /optimise endpoint runs all retailer searches concurrently — up to 3
 companies x 3 stores x ~6 ingredients = 54 concurrent HTTP requests.
 Woolworths sessions are isolated per-store (fresh session + cookie per store).
 Nominatim geocode runs once per request (not parallelized).
@@ -26,9 +26,9 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import core.paths  # noqa: F401  (bootstrap sys.path for legacy modules)
-import optimizer_utils
+import optimiser_utils
 from core.config import settings
-from optimizer_utils import analyze_results, get_ingredients
+from optimiser_utils import analyse_results, get_ingredients
 from paknsave_api import PaknSaveEdgeAPI, find_nearby_stores as ps_find_nearby
 from newworld_api import NewWorldEdgeAPI, find_nearby_stores as nw_find_nearby
 import woolworths_api
@@ -81,7 +81,7 @@ class IngredientResult(BaseModel):
     found: bool
 
 
-class OptimizationResult(BaseModel):
+class OptimisationResult(BaseModel):
     dish: str
     companies_checked: list[str]
     cheapest_store: str
@@ -92,7 +92,7 @@ class OptimizationResult(BaseModel):
 
 
 app = FastAPI(
-    title="NZ Meal Cost Optimizer",
+    title="NZ Meal Cost Optimiser",
     description="Query Pak'nSave / New World / Woolworths prices concurrently to find the cheapest meal.",
 )
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -108,13 +108,13 @@ def root():
     return FileResponse(STATIC_DIR / "index.html")
 
 
-@app.post("/optimize", response_model=OptimizationResult)
-async def optimize(req: DishRequest):
-    return await run_optimization(req.dish, req.address, req.distance_km, req.max_stores_per_company, req.companies)
+@app.post("/optimise", response_model=OptimisationResult)
+async def optimise(req: DishRequest):
+    return await run_optimisation(req.dish, req.address, req.distance_km, req.max_stores_per_company, req.companies)
 
 
-async def run_optimization(dish_name: str, address: str, distance_km: float = 5.0,
-                          max_stores_per_company: int = 3, companies: Optional[list[str]] = None) -> OptimizationResult:
+async def run_optimisation(dish_name: str, address: str, distance_km: float = 5.0,
+                          max_stores_per_company: int = 3, companies: Optional[list[str]] = None) -> OptimisationResult:
     """Run concurrent fetch across all companies/stores/ingredients.
 
     Returns a structured comparison of the cheapest store for the dish.
@@ -130,11 +130,11 @@ async def run_optimization(dish_name: str, address: str, distance_km: float = 5.
     if invalid:
         raise HTTPException(400, f"Unsupported company: {invalid}")
 
-    log.info("Optimizing '%s' near '%s' (%.1f km), max %d stores per company",
+    log.info("Optimising '%s' near '%s' (%.1f km), max %d stores per company",
              dish_name, address, distance_km, max_stores_per_company)
 
     # Single geocoding call
-    user_lat, user_lon = optimizer_utils.geocode(address)
+    user_lat, user_lon = optimiser_utils.geocode(address)
     if user_lat is None:
         raise HTTPException(status_code=400, detail=f"Could not geocode address '{address}'")
     log.info("Geocoded: lat=%.4f lon=%.4f", user_lat, user_lon)
@@ -193,7 +193,7 @@ async def run_optimization(dish_name: str, address: str, distance_km: float = 5.
     breakdown = sorted(store_totals.items(), key=lambda x: x[1]["total_cost"])
     cheapest_name, cheapest_data = breakdown[0] if breakdown else ("No results", None)
 
-    return OptimizationResult(
+    return OptimisationResult(
         dish=dish_name_resolved,
         companies_checked=companies,
         cheapest_store=cheapest_name,
@@ -260,18 +260,18 @@ async def _fetch_ingredient(company: str, store_id: str, ingredient: str) -> Opt
 def _resolve_dish_terms(dish_input: str) -> tuple[str, list[str]]:
     """Resolve dish name and return (display_name, search_terms)."""
     search_terms = get_ingredients(dish_input)
-    dish_dict = optimizer_utils._resolve_dish_data(dish_input)
+    dish_dict = optimiser_utils._resolve_dish_data(dish_input)
     display_name = dish_dict.get("dish_name", dish_input)
     return display_name, search_terms
 
 
 # --- optional Supabase persistence (not required for core functionality) ---
-async def _maybe_persist(result: OptimizationResult):
+async def _maybe_persist(result: OptimisationResult):
     if settings.supabase_enabled:
         try:
             from services.supabase_client import get_supabase
             sb = get_supabase()
-            sb.from_("optimization_runs").insert({
+            sb.from_("optimisation_runs").insert({
                 "dish": result.dish,
                 "address": result.store_breakdown,
                 "companies": result.companies_checked,

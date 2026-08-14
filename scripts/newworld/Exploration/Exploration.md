@@ -71,7 +71,7 @@ This folder contains **14 exploration scripts** documenting the multi phase jour
 
 ### `explore_edge_api5.py` — Store Finder & Search Page Analysis
 
-**Purpose**: Analyze `__NEXT_DATA__` from store-finder and search pages for API clues.
+**Purpose**: Analyse `__NEXT_DATA__` from store-finder and search pages for API clues.
 
 **What it tests**:
 - Store finder page structure (`contentstackStores` + `regionStoreGroupings`)
@@ -232,9 +232,9 @@ Returns: per-store singlePrice.price + promotions for ONLY the relevant products
 
 ---
 
-### `demo_edge_optimizer.py` — Complete Optimizer Demo (Website Edge API)
+### `demo_edge_optimiser.py` — Complete Optimiser Demo (Website Edge API)
 
-**Purpose**: End-to-end meal cost optimizer using Edge API (single-pass, no relevance matching).
+**Purpose**: End-to-end meal cost optimiser using Edge API (single-pass, no relevance matching).
 
 **What it does**:
 - Gets website JWT
@@ -254,7 +254,7 @@ Returns: per-store singlePrice.price + promotions for ONLY the relevant products
 | 1 | explore_edge_api1-5 | Edge API has store listing, NO standard product search endpoints |
 | 2 | explore_edge_api6_auth | **Website JWT works!** Product search = `/search/paginated/products` (Algolia) |
 | 3 | explore_edge_api7-9 | **All 3 indices have `_highlightResult.matchedWords`**; `products-index` preferred (relevance sort) |
-| 4 | test_*, demo_* | Two-pass pipeline validated; full optimizer demo working |
+| 4 | test_*, demo_* | Two-pass pipeline validated; full optimiser demo working |
 | 5 | explore_categories.py | **116 unique category1 values discovered** via 637 broad queries |
 | 5 | paknsave_api.py, newworld_api.py, Foodstuffs_api.py | **NON_FOOD_CATEGORIES** blacklist (53 categories) applied in Pass 1 |
 
@@ -320,7 +320,7 @@ scripts/newworld/Exploration/
 ├── explore_edge_api9_relevance.py # Phase 3: COMPREHENSIVE — Two-pass pipeline implementation
 ├── test_website_jwt_edge.py       # Phase 4: JWT integration validation
 ├── test_milk_metro_relevance.py   # Phase 4: Focused two-pass validation
-├── demo_edge_optimizer.py         # Phase 4: Full optimizer demo (single-pass)
+├── demo_edge_optimiser.py         # Phase 4: Full optimiser demo (single-pass)
 └── demo_edge_full_test.py         # Phase 4: Geographic price comparison
 ```
 

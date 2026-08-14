@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import unittest
 
-from optimizer_utils import (
+from optimiser_utils import (
     parse_foodstuffs_mobile_unit,
     parse_foodstuffs_volume_size,
 )

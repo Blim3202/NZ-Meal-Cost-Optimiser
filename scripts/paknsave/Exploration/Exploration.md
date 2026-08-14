@@ -140,7 +140,7 @@ cookies = {
 
 ### `demo_two_pass_pipeline.py` — Complete Proof of Concept
 
-**Purpose**: End-to-end meal cost optimizer using two-pass pipeline.
+**Purpose**: End-to-end meal cost optimiser using two-pass pipeline.
 
 **Features**:
 - Website JWT authentication
@@ -214,7 +214,7 @@ Relevant product IDs found: 37 (after non-food category1 filtering)
 | 3 | Two-pass pipeline: Pass 1 gets relevant productIDs → Pass 2 gets per-store prices via filters |
 | 3 | Non-food category1 filtering via `NON_FOOD_CATEGORIES` (53 values) in Pass 1 |
 | 3 | Promotional pricing via `promotions[].rewardValue` |
-| 4 | Full optimizer demo working across multiple stores for multi-ingredient dishes |
+| 4 | Full optimiser demo working across multiple stores for multi-ingredient dishes |
 
 ---
 
@@ -237,7 +237,7 @@ Relevant product IDs found: 37 (after non-food category1 filtering)
 ```
 scripts/paknsave/Exploration/
 ├── Exploration.md                # This file
-└── demo_two_pass_pipeline.py     # Complete optimizer proof of concept
+└── demo_two_pass_pipeline.py     # Complete optimiser proof of concept
 ```
 
 ---
@@ -247,7 +247,7 @@ scripts/paknsave/Exploration/
 1. **Integrate into `PaknSave_prototype.py`** — Replace mobile API calls with Edge API two-pass pipeline
 2. **Add South Island region support** — Region cookie `SI` for South Island stores
 3. **Category-aware ingredient matching** — Use `category2`/`category3` for better filtering (e.g., "fresh" vs "frozen" vs "sauce")
-4. **Performance optimization** — Batch ingredient searches per store, cache JWT token
+4. **Performance optimisation** — Batch ingredient searches per store, cache JWT token
 5. **Fallback to mobile API** — Keep mobile API as fallback if Edge API unavailable
 
 ---

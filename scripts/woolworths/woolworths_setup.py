@@ -1,7 +1,7 @@
 """
 Woolworths NZ Store Setup Pipeline
 ===================================
-Builds the two data files consumed by the optimizer and API module:
+Builds the two data files consumed by the optimiser and API module:
 
     1. data/woolworths_store_data.json  — raw CDX site-location response (183 sites)
     2. data/woolworths_stores.csv       — cleaned canonical store list keyed on
@@ -14,7 +14,7 @@ Pipeline (single function):
         coordinates or with extra1 == "null" (literal string emitted by CDX
         for missing values). The resulting woolworths_stores.csv is the
         canonical store list — its `id` column is the store_id used everywhere
-        downstream (optimizer results, and the cw-lrkswrdjp cookie's
+        downstream (optimiser results, and the cw-lrkswrdjp cookie's
         `f-{id}` field).
 
 Legacy (detached from the main pipeline — kept for historical reference only):
@@ -54,7 +54,7 @@ CSV_STORES = DATA_DIR / "woolworths_stores.csv"
 
 # Hardcoded exclusions — stores that CDX still lists but are permanently
 # closed. CDX has not yet reflected these closures, so we filter them here
-# to prevent the optimizer / API from targeting defunct stores.
+# to prevent the optimiser / API from targeting defunct stores.
 # Format: {extra1: "human-readable reason with shutdown date"}
 EXCLUDED_STORE_IDS = {
     "9285": "Te Atatu Woolworths — permanently shut down on 24/04/2025; "

@@ -1,4 +1,4 @@
-# NZ Meal Cost Optimizer
+# NZ Meal Cost Optimiser
 
 Finds the cheapest Pak'nSave, New World, or Woolworths for a given dish by comparing ingredient prices across nearby stores (within 5 km of a NZ address).
 
@@ -18,7 +18,7 @@ Finds the cheapest Pak'nSave, New World, or Woolworths for a given dish by compa
 | New World | Edge API (two-pass), Mobile API (single-pass) | 148 Edge / 150 Mobile | Yes | Active |
 | Woolworths | REST API (cookie injection) | 177 with coords | Yes | Active |
 
-- Pak'nSave and New World share a unified Foodstuffs backend (`scripts/combined/optimizer_utils.py` + brand-specific API modules)
+- Pak'nSave and New World share a unified Foodstuffs backend (`scripts/combined/optimiser_utils.py` + brand-specific API modules)
 - Woolworths uses cookie-based store context injected per-store (no shared backend)
 - New World stores have coordinates from the mobile API — no Nominatim geocoding needed for store lookup
 - Pak'nSave Edge API requires pet food filtering via `category1` (exclude Dog/Cat/Pet) in Pass 1
@@ -30,14 +30,14 @@ Finds the cheapest Pak'nSave, New World, or Woolworths for a given dish by compa
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 
-# Run optimizer (Pak'nSave Edge API — two-pass with unit-price selection)
-python scripts/paknsave/paknsave_optimizer_edge.py "Botany Town Centre, Auckland" "spaghetti bolognese"
+# Run optimiser (Pak'nSave Edge API — two-pass with unit-price selection)
+python scripts/paknsave/paknsave_optimiser_edge.py "Botany Town Centre, Auckland" "spaghetti bolognese"
 
-# Run optimizer (New World Edge API — two-pass with unit-price selection)
-python scripts/newworld/newworld_optimizer_edge.py "Botany Town Centre, Auckland" "spaghetti bolognese"
+# Run optimiser (New World Edge API — two-pass with unit-price selection)
+python scripts/newworld/newworld_optimiser_edge.py "Botany Town Centre, Auckland" "spaghetti bolognese"
 
-# Run optimizer (Woolworths — cookie-based per-store pricing)
-python scripts/woolworths/woolworths_optimizer.py "Botany Town Centre, Auckland" "spaghetti bolognese"
+# Run optimiser (Woolworths — cookie-based per-store pricing)
+python scripts/woolworths/woolworths_optimiser.py "Botany Town Centre, Auckland" "spaghetti bolognese"
 ```
 
 ## Architecture
@@ -89,32 +89,32 @@ opencode/
 │   ├── woolworths_store_choices.json           # Same data as CSV, JSON format
 │   ├── woolworths_store_data.csv               # Woolworths store details from CDX API
 │   ├── woolworths_store_data.json              # Store details with extra1 (fulfilmentStoreId), extra2 (pickupAddressId)
-│   ├── woolworths_latest_results.csv           # Last optimizer output for Woolworths
-│   ├── paknsave_latest_results.csv             # Last Edge optimizer output
-│   ├── paknsave_mobile_latest_results.csv      # Last Mobile optimizer output
+│   ├── woolworths_latest_results.csv           # Last optimiser output for Woolworths
+│   ├── paknsave_latest_results.csv             # Last Edge optimiser output
+│   ├── paknsave_mobile_latest_results.csv      # Last Mobile optimiser output
 │   ├── observed_category1_newworld.json         # Category1 values from New World Algolia index
 │   ├── observed_category1_paknsave.json         # Category1 values from Pak'nSave Algolia index
 │   ├── dishes.json                              # 21 hand-curated dishes with structured ingredients
 │   └── full_results.csv                         # Append-only results with pk_hash deduplication + is_valid column
 ├── scripts/
 │   ├── combined/
-│   │   ├── optimizer_utils.py                  # **Cross-brand helpers**: foodstuffs_querier_edge/mobile, woolworths_querier, build_edge_row/mobile_row/build_woolworths_row, parsing, geocoding, haversine, DISHES, get_ingredients, _resolve_dish_terms, _resolve_dish_data, _build_quantity_map, optimise(), append_rows, _compute_pk_hash
+│   │   ├── optimiser_utils.py                  # **Cross-brand helpers**: foodstuffs_querier_edge/mobile, woolworths_querier, build_edge_row/mobile_row/build_woolworths_row, parsing, geocoding, haversine, DISHES, get_ingredients, _resolve_dish_terms, _resolve_dish_data, _build_quantity_map, optimise(), append_rows, _compute_pk_hash
 │   │   └── initialize_full_results.py          # Creates data/full_results.csv with 18-column schema (17 + is_valid) + pk_hash
 │   ├── newworld/
 │   │   ├── newworld_setup.py                   # **Unified store builder**: Edge API (148 stores), Mobile API (150 stores). Callable module + CLI with `source` param.
 │   │   ├── newworld_api.py                     # **Unified API module**: Edge API (two-pass) + Mobile API (single-pass) with shared utilities
-│   │   ├── newworld_optimizer_edge.py           # **Edge API optimizer**: CLI with geocoding, 5km radius, two-pass search, unit-price selection
-│   │   ├── newworld_optimizer_mobile.py         # **Mobile API optimizer**: CLI with geocoding, 5km radius, single-pass search, unit-price selection
+│   │   ├── newworld_optimiser_edge.py           # **Edge API optimiser**: CLI with geocoding, 5km radius, two-pass search, unit-price selection
+│   │   ├── newworld_optimiser_mobile.py         # **Mobile API optimiser**: CLI with geocoding, 5km radius, single-pass search, unit-price selection
 │   │   └── Exploration/                         # API exploration scripts (legacy)
 │   ├── paknsave/
 │   │   ├── paknsave_api.py                     # **Unified API module**: Edge API (two-pass) + Mobile API (single-pass) with shared utilities
-│   │   ├── paknsave_optimizer_edge.py           # **Edge API optimizer**: CLI with geocoding, 5km radius, two-pass search, unit-price selection
-│   │   ├── paknsave_optimizer_mobile.py         # **Mobile API optimizer**: CLI with geocoding, 5km radius, single-pass search, unit-price selection
+│   │   ├── paknsave_optimiser_edge.py           # **Edge API optimiser**: CLI with geocoding, 5km radius, two-pass search, unit-price selection
+│   │   ├── paknsave_optimiser_mobile.py         # **Mobile API optimiser**: CLI with geocoding, 5km radius, single-pass search, unit-price selection
 │   │   ├── paknsave_setup.py                    # **Unified store builder**: Edge (57 stores) + Mobile (60 stores) + store_finder (60 stores, Pak'nSave only). Callable module + CLI with `source` param.
 │   │   └── Exploration/                         # API exploration scripts (legacy)
 │   ├── woolworths/
 │   │   ├── woolworths_api.py                    # Cookie-based API module: session, store context, product search
-│   │   ├── woolworths_optimizer.py              # **Thin CLI**: Step 1 via shared `woolworths_querier` in `optimizer_utils.py`, then Step 2 `optimise()` from CSV
+│   │   ├── woolworths_optimiser.py              # **Thin CLI**: Step 1 via shared `woolworths_querier` in `optimiser_utils.py`, then Step 2 `optimise()` from CSV
 │   │   ├── woolworths_setup.py                  # **Unified store pipeline**: fetch choices, fetch data, merge (188 stores → 177 with coords). Replaces legacy scripts.
 │   │   ├── Exploration/                         # API exploration scripts (legacy)
 │   │   ├── Fixture/                             # Test fixtures (legacy)
@@ -203,7 +203,7 @@ opencode/
 
 ## Limitations
 
-- **Unit sizes**: Prices shown for full units (e.g., whole kg of mince) — unit-price selection available in Edge optimizers
+- **Unit sizes**: Prices shown for full units (e.g., whole kg of mince) — unit-price selection available in Edge optimisers
 - **Garlic pricing**: Loose garlic is per-kg ($40+); crushed garlic jar ($2-3) returned instead
 - **Store density**: Auckland CBD has 1 store within 5 km; East Auckland has 3
 - **Woolworths sessions**: Each store requires a fresh `requests.Session` (Set-Cookie overwrites injected cookies)

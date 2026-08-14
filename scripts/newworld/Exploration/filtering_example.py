@@ -276,7 +276,7 @@ def geocode(address):
     time.sleep(1.2)  # respect Nominatim rate limit
     r = requests.get(
         "https://nominatim.openstreetmap.org/search",
-        headers={"User-Agent": "NZMealCostOptimizer/1.0"},
+        headers={"User-Agent": "NZMealCostOptimiser/1.0"},
         params={"q": address, "format": "json", "limit": 1},
         timeout=15,
     )

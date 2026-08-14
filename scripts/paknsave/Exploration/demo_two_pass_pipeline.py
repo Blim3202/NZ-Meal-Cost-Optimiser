@@ -144,7 +144,7 @@ def haversine(lat1, lon1, lat2, lon2):
 def geocode(address):
     r = requests.get(
         "https://nominatim.openstreetmap.org/search",
-        headers={"User-Agent": "NZMealCostOptimizer/1.0"},
+        headers={"User-Agent": "NZMealCostOptimiser/1.0"},
         params={"q": address, "format": "json", "limit": 1},
         timeout=30
     )
@@ -165,7 +165,7 @@ def find_nearby(user_lat, user_lon, stores, radius_km=5):
 
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "combined"))
-from optimizer_utils import DISHES, get_ingredients
+from optimiser_utils import DISHES, get_ingredients
 
 
 def main():
@@ -199,7 +199,7 @@ def main():
     # Test dish
     dish = "spaghetti bolognese"
     ingredients = get_ingredients(dish)
-    print(f"\n[5] Optimizing dish: {dish}")
+    print(f"\n[5] Optimising dish: {dish}")
     print(f"    Ingredients: {ingredients}")
 
     # Test two-pass for each ingredient at each store
