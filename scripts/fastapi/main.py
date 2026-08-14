@@ -29,6 +29,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 import asyncio
 import concurrent.futures
+import json
 import logging
 import time
 from datetime import datetime
@@ -122,7 +123,20 @@ def health() -> dict:
 
 @app.get("/")
 def root():
-    return FileResponse(STATIC_DIR / "index.html")
+    return FileResponse(STATIC_DIR / "index_old.html")
+
+
+@app.get("/app")
+@app.get("/app/")
+def vue_app():
+    return FileResponse(STATIC_DIR / "vue" / "index.html")
+
+
+@app.get("/dishes")
+def dishes() -> dict:
+    """Expose curated dishes to the static Vue dashboard."""
+    with open(DATA_DIR / "dishes.json", encoding="utf-8") as handle:
+        return json.load(handle)
 
 
 @app.post("/optimise", response_model=OptimisationResult)

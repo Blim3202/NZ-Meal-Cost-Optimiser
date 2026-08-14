@@ -30,6 +30,10 @@ opencode/
 │   ├── dishes.json                              # 21 hand-curated dishes with structured ingredients
 │   └── full_results.csv                         # Append-only results with pk_hash deduplication + is_valid column
 ├── scripts/
+│   ├── fastapi/
+│   │   ├── frontend/                            # Vue CLI dashboard source
+│   │   ├── static/index_old.html                # Legacy dashboard served at /
+│   │   └── static/vue/                          # Generated Vue build served at /app
 │   ├── combined/
 │   │   ├── optimiser_utils.py                  # **Cross-brand helpers**: foodstuffs_querier_edge/mobile, woolworths_querier, build_edge_row/mobile_row/build_woolworths_row, parsing, geocoding, haversine, DISHES, get_ingredients, _resolve_dish_terms, _resolve_dish_data, _build_quantity_map, optimise(), append_rows, _compute_pk_hash
 │   │   └── initialize_full_results.py          # Creates data/full_results.csv with 18-column schema (17 + is_valid) + pk_hash
@@ -92,6 +96,9 @@ opencode/
 | `scripts/woolworths/woolworths_setup.py` | **Unified store pipeline**: fetch choices, fetch data, merge (188 stores → 177 with coords). Replaces legacy scripts. |
 | `scripts/woolworths/woolworths_api.py` | Cookie-based Woolworths API module. Session, store context, product search. Constructs `cw-lrkswrdjp` cookie from `extra1` in store data. No Playwright needed at runtime. |
 | `scripts/woolworths/woolworths_optimiser.py` | **Thin CLI**: Step 1 query via shared `woolworths_querier` in `optimiser_utils.py`, then Step 2 `optimise()`. `--requery`/`--distance` flags, 5km default. |
+| `scripts/fastapi/frontend/` | Vue CLI dashboard source. Run `npm install` then `npm run build`; output is written to `scripts/fastapi/static/vue/`. |
+| `scripts/fastapi/static/index_old.html` | Original vanilla dashboard, still served at `/`. |
+| `scripts/fastapi/static/vue/` | Generated Vue dashboard assets, served at `/app`; do not edit generated files directly. |
 | `data/woolworths_store_data.json` | Store details with `extra1` (=fulfilmentStoreId) and `extra2` (=pickupAddressId) |
 | `requirements.txt` | Pinned deps. Core: `cloudscraper`, `requests`, `pandas`, `numpy`, `beautifulsoup4`, `playwright`, `jupyterlab`. |
 | `LLM_Pipeline.md` | LLM ingredient generation, post-run validation, and quantity scaling pipeline (see `scripts/llms/`). |
