@@ -2,7 +2,7 @@
 
 ## Overview
 
-A FastAPI web server that turns the CLI optimiser into an HTTP API + browser dashboard. Users send a dish name and NZ address, the server concurrently searches all 3 supermarket brands across nearby stores, and returns the cheapest option.
+A FastAPI web server that turns the CLI optimiser into an HTTP API + browser dashboard. Users send a dish name and NZ address, the server concurrently searches all 3 supermarket brands across nearby stores, and returns a two-table result: (1) all raw product rows in `full_results.csv` format, and (2) a per-store cost comparison using quantity-scaled "used cost".
 
 **Run with:**
 ```
@@ -16,13 +16,14 @@ Then open `http://127.0.0.1:8000/` for the dashboard or `http://127.0.0.1:8000/d
 
 ```python
 import core.paths              # Adds scripts/combined/, scripts/newworld/, etc. to sys.path
-import optimiser_utils          # Shared helpers (geocode, get_ingredients, _resolve_dish_terms)
+import optimiser_utils          # build_edge_row, build_woolworths_row
 from paknsave_api import PaknSaveEdgeAPI, find_nearby_stores as ps_find_nearby
 from newworld_api import NewWorldEdgeAPI, find_nearby_stores as nw_find_nearby
 import woolworths_api
+from scripts.llms.llm_utils import resolve_ingredients, parse_optimiser_columns
 ```
 
-`core.paths` runs at import time and adds all `scripts/*/` directories to `sys.path` so the existing modules are importable without modifying them. No `async` changes were needed in any of the old code.
+`core.paths` runs at import time and adds all `scripts/*/` directories (including project root and `scripts/llms`) to `sys.path` so the existing modules are importable without modification. `resolve_ingredients` resolves dish names from the curated `dishes.json` (no LLM needed for the 21 curated dishes); `parse_optimiser_columns` computes proportional "used cost" by scaling recipe quantities against supermarket pack sizes.
 
 ---
 
@@ -30,16 +31,16 @@ import woolworths_api
 
 ```python
 import concurrent.futures
-_THREAD_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=20)
+_thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=20)
 
 @app.on_event("startup")
 async def _set_thread_pool():
-    asyncio.get_event_loop().set_default_executor(_THREAD_POOL)
+    asyncio.get_event_loop().set_default_executor(_thread_pool)
 ```
 
-**Why this exists:** The API libraries (`woolworths_api`, `newworld_api`, `paknsave_api`) are all synchronous — they use `requests.Session` for blocking HTTP calls. Without `asyncio.to_thread`, these calls freeze the event loop and all tasks execute one-by-one.
+**Why this exists:** The API libraries (`woolworths_api`, `paknsave_api`, `newworld_api`) are all synchronous — they use `requests.Session` for HTTP calls. Without `asyncio.to_thread`, these calls block the event loop and all tasks execute one-by-one.
 
-`asyncio.to_thread(func, *args)` runs `func` on a background thread from the pool while the event loop stays free. With 20 workers, up to 20 searches run in parallel — the rest queue and start as slots free up.
+`asyncio.to_thread(func, *args)` runs `func` on a background thread from the pool (20 workers) while the event loop stays free. With 20 workers, up to 20 searches run in parallel — the rest queue and start as slots free up.
 
 ---
 
@@ -51,7 +52,7 @@ async def _set_thread_pool():
 | `TMP_DIR` | Scratchpad folder (`scripts/fastapi/tmp/`), created if missing. Currently unused. |
 | `STATIC_DIR` | Folder for the frontend (`scripts/fastapi/static/`). Mounted at `/static`. |
 | `BRANDS` | Dispatch dict mapping brand names to their API classes, find_nearby functions, and metadata. |
-| `_THREAD_POOL` | 20-worker thread pool for offloading blocking HTTP calls. |
+| `_thread_pool` | 20-worker thread pool for offloading blocking HTTP calls. |
 
 ### `BRANDS` dispatch dict
 
@@ -63,7 +64,7 @@ BRANDS = {
 }
 ```
 
-Used by `run_optimisation()` and `_fetch_foodstuffs_sync()` to look up which API client and store finder to use per brand. `company_id` and `logo` are currently unused (reserved for future UI work).
+Used by `run_optimisation()` and `_fetch_foodstuffs_sync()` to look up which API client and store finder to use per brand. `company_id` is passed to `build_*_row` to label rows in the CSV format.
 
 ---
 
@@ -77,228 +78,232 @@ Used by `run_optimisation()` and `_fetch_foodstuffs_sync()` to look up which API
 | `distance_km` | `float` | `5.0` | Search radius around the address |
 | `max_stores_per_company` | `int` | `3` | Cap on stores checked per brand |
 | `companies` | `list[str]` | `None` | Filter to specific brands; `None` = all 3 |
+| `portions` | `int` | `4` | Number of servings (used for ingredient quantity resolution) |
 
 ### `OptimisationResult` (output)
 | Field | Type | Description |
 |---|---|---|
 | `dish` | `str` | Resolved display name of the dish |
 | `companies_checked` | `list[str]` | Which brands were searched |
-| `cheapest_store` | `str` | Name of the store with the lowest total |
-| `cheapest_total` | `float` | Total cost of all ingredients at the cheapest store |
-| `store_breakdown` | `list[dict]` | Every store sorted by total cost, with ingredient details |
-| `ingredient_results` | `list[dict]` | Flat list of every successful ingredient fetch |
+| `rows` | `list[dict]` | All product result rows in CSV_COLUMNS format (18 fields per row) |
+| `store_costs` | `list[dict]` | Per-store cost summary sorted by total used cost (cheapest first) |
 | `timestamp` | `str` | ISO timestamp of when the result was generated |
+
+### Row format (`rows[]`)
+Each row dict matches `full_results.csv` columns:
+
+| Column | Source |
+|---|---|
+| `company` | Brand label ("PaknSave", "NewWorld", "Woolworths") |
+| `store` | Store name |
+| `store_id` | Store UUID / extra1 |
+| `search_ingredient` | Ingredient search term from dish |
+| `returned_ingredient` | Product name from API |
+| `price` | Total pack price in dollars |
+| `quantity` | Pack quantity |
+| `measurement_unit` | Pack unit (g, kg, ml, ea, etc.) |
+| `per_unit_quantity` | Comparative price quantity |
+| `per_unit_price` | Comparative price per unit |
+| `is_sale` | Promotion flag |
+| `sku` | Product SKU / productId |
+| `department` | Department from API |
+| `sub_department` | Sub-department / category1 |
+| `datetime_created` | Timestamp |
+| `date_created` | Date |
+| `pk_hash` | SHA-256 of `store_id|sku|date_created` (16-char prefix) |
+| `is_valid` | Empty (for LLM validation to fill in later) |
+| `ingredient_quantity` | Recipe quantity needed (enriched from dishes.json) |
+| `ingredient_measurement` | Recipe unit (enriched) |
+| `ingredient_approx_quantity` | Approximate weight/volume for non-standard units (enriched) |
+| `ingredient_approx_unit` | Approx unit ("g" or "ml") (enriched) |
+| `used_price` | Proportional cost for the recipe amount (computed by `parse_optimiser_columns`) |
+| `purchase_quantity` | Number of packs to buy (ceil) |
+| `purchase_price` | Total cost for purchased packs |
+| `scaling_ratio` | Recipe qty / pack qty (unit-normalized) |
+| `status` | "ok", "approximate", or "incompatible_units" |
+| `units_match` | True if recipe and pack units are in the same base category |
+| `unit_approximate` | True if 1ml≈1g cross-category approximation was applied |
+
+### Store cost format (`store_costs[]`)
+| Field | Description |
+|---|---|
+| `store` | Store name |
+| `company` | Brand label |
+| `total_used_cost` | Sum of cheapest valid `used_price` across all ingredients |
+| `ingredients_matched` | Number of ingredients with valid scaled prices |
+| `ingredients_total` | Total ingredients searched |
+| `best_per_ingredient` | Detail list: for each ingredient, the cheapest product with used_price, purchase qty, etc. |
 
 ---
 
 ## API Endpoints
 
 ### `GET /` — Web Dashboard
-Returns `static/index.html` via `FileResponse`. The browser loads a form, user fills in dish + address, clicks "Optimise", and the JS calls `POST /optimise` under the hood.
+Returns `static/index.html`. The browser loads a form, user fills in dish + address + options, clicks "Optimise", and the JS calls `POST /optimise`.
 
 ### `GET /health` — Health Check
-Returns `{"status": "ok", "supabase_enabled": bool}`. Used by load balancers / Docker health checks.
+Returns `{"status": "ok", "supabase_enabled": bool}`.
 
 ### `POST /optimise` — Main Endpoint
-Accepts a `DishRequest` body. Delegates everything to `run_optimisation()`. Returns an `OptimisationResult` as JSON. This is where all the concurrent work happens.
+Accepts a `DishRequest` body. Delegates to `run_optimisation()`. Returns an `OptimisationResult` as JSON.
 
 ---
 
 ## Functions
 
-### `run_optimisation(dish_name, address, distance_km, max_stores_per_company, companies) -> OptimisationResult`
+### `run_optimisation(dish_name, address, distance_km, max_stores_per_company, companies, portions) -> OptimisationResult`
 
-The core orchestrator. Runs in 3 phases:
+The core orchestrator. Runs in 4 phases:
 
 **Phase 1 — Resolve & Geocode (sequential)**
-1. Calls `_resolve_dish_terms(dish_name)` to get the list of ingredient search terms from `dishes.json`.
+1. Calls `resolve_ingredients(dish_name, portions)` which looks up `dishes.json` for curated ingredient lists (with quantities, units, and approx fallbacks for non-standard units). Falls back to LLM generation if not curated and an API key is available; otherwise uses the dish name as a single search term.
 2. Calls `optimiser_utils.geocode(address)` (Nominatim, rate-limited to 1 req/sec) to get lat/lon. Runs once — before any concurrent work.
 
 **Phase 2 — Build & Launch Tasks (concurrent)**
-3. For each company × nearby store × ingredient, appends a `_fetch_ingredient(...)` coroutine to the `tasks` list. Builds a parallel `task_metadata` list tracking `(company, store_id, store_name, ingredient)` for each task.
-4. Calls `asyncio.gather(*tasks, return_exceptions=True)` — all tasks run concurrently. Exceptions are caught per-task, not fatal.
+3. For each company × nearby store × ingredient, appends a `_fetch_ingredient(...)` coroutine to the `tasks` list. Builds a parallel `task_metadata` list tracking `(company, store_id, store_name, ingredient)`.
+4. Calls `asyncio.gather(*tasks, return_exceptions=True)` — all tasks run concurrently via the 20-worker thread pool. Exceptions are caught per-task, not fatal.
 
-**Phase 3 — Consolidate Results (sequential)**
-5. Iterates over `(task_metadata, raw_results)` pairs. Converts prices to dollars (Foodstuffs returns cents; Woolworths returns dollars). Builds:
-   - `ingredient_results` — flat list of every successful fetch
-   - `store_totals` — dict keyed by store name, accumulating `total_cost` and ingredient list. If the same ingredient appears at the same store (shouldn't happen, but handled), keeps the cheaper one.
-6. Sorts `store_totals` by `total_cost` ascending.
-7. Returns an `OptimisationResult` with the cheapest store at the top.
+**Phase 3 — Collect, Enrich & Scale (sequential)**
+5. Flattens all task results into `all_rows` (list of `build_*_row` dicts — full CSV_COLUMNS format, 17 fields).
+6. Enriches each row with `ingredient_quantity`, `ingredient_measurement`, `ingredient_approx_quantity`, `ingredient_approx_unit` from the resolved dish ingredients.
+7. Runs `parse_optimiser_columns(row)` on each enriched row to compute `used_price` (proportional cost for the recipe amount), `purchase_quantity`, `purchase_price`, `scaling_ratio`, `status`, etc.
 
-### `_fetch_ingredient(company, store_id, ingredient) -> Optional[dict]`
+**Phase 4 — Build Store Cost Summary (sequential)**
+8. For each store, picks the cheapest valid product per ingredient (preferring exact unit matches over approximations).
+9. Sums `used_price` across all ingredients per store.
+10. Sorts stores by total used cost ascending.
+11. Returns an `OptimisationResult` with `rows` (all raw rows) and `store_costs` (summary).
+
+### `_fetch_ingredient(company, store_id, store_name, ingredient) -> list[dict]`
 
 A thin async dispatcher that offloads blocking work to a background thread:
 
 ```python
-async def _fetch_ingredient(company, store_id, ingredient):
+async def _fetch_ingredient(company, store_id, store_name, ingredient):
     if company == "Woolworths":
-        return await asyncio.to_thread(_fetch_woolworths_sync, store_id, ingredient)
+        return await asyncio.to_thread(_fetch_woolworths_sync, store_id, store_name, ingredient)
     else:
-        return await asyncio.to_thread(_fetch_foodstuffs_sync, company, store_id, ingredient)
+        return await asyncio.to_thread(_fetch_foodstuffs_sync, company, store_id, store_name, ingredient)
 ```
 
-Without `asyncio.to_thread`, the blocking HTTP calls inside `_fetch_woolworths_sync` / `_fetch_foodstuffs_sync` would freeze the event loop. All tasks would run one-by-one (~5+ minutes). With it, up to 20 tasks run in parallel — the rest queue. Wall time ≈ `ceil(total_tasks / 20) × ~5s`.
+Each call runs on a background thread from the 20-worker pool. Returns a list of CSV-format row dicts (all products, not just the cheapest).
 
-### `_fetch_woolworths_sync(store_id, ingredient) -> Optional[dict]`
+### `_fetch_woolworths_sync(store_id, store_name, ingredient) -> list[dict]`
 
-Plain `def` (not async). Runs on a background thread. Contains:
+Plain `def` (not async). Runs on a background thread. Returns ALL priced product rows:
 - `woolworths_api.create_session()` — fresh `requests.Session` with baseline cookies
-- `woolworths_api.set_store_context(session, store_id)` — inject per-store cookie
-- `woolworths_api.search_products(session, ingredient, ...)` — HTTP search
-- Picks cheapest product by `salePrice`
+- `woolworths_api.set_store_context(session, store_id)` — inject `cw-lrkswrdjp` cookie
+- `woolworths_api.search_products(session, ingredient, ...)` — HTTP search (returns up to 20 products)
+- For each priced product: `build_woolworths_row(...)` → adds to rows list
 - Closes session in `finally`
-- Returns `{"price": float (dollars), "unit_price": str, "pack_info": str}`
+- Returns `list[dict]` (all rows, in CSV_COLUMNS format)
 
-### `_fetch_foodstuffs_sync(company, store_id, ingredient) -> Optional[dict]`
+### `_fetch_foodstuffs_sync(company, store_id, store_name, ingredient) -> list[dict]`
 
-Plain `def` (not async). Runs on a background thread. Contains:
+Plain `def` (not async). Runs on a background thread. Returns ALL priced product rows:
 - `PaknSaveEdgeAPI()` or `NewWorldEdgeAPI()` — new instance per call
-- `api.authenticate()` — JWT token if missing
-- `api.search_ingredient(store_id, ingredient)` — two-pass Algolia pipeline
-- Picks cheapest product by `singlePrice.price`
-- Returns `{"price": float (cents), "unit_price": str, "pack_info": str}`
-- **Price is in cents** — `run_optimisation` divides by 100 later
+- `api.authenticate()` — JWT token (if not cached)
+- `api.search_ingredient(store_id, ingredient, region)` — two-pass Algolia pipeline → `(products, pass1_hits)`
+- For each priced product: `build_edge_row(...)` (needs `pass1_hit` for category data) → adds to rows list
+- Returns `list[dict]` (all rows, in CSV_COLUMNS format)
 
-### `_resolve_dish_terms(dish_input) -> tuple[str, list[str]]`
+### Ingredient Resolution: `resolve_ingredients`
 
-Thin wrapper that:
-1. Calls `optimiser_utils.get_ingredients(dish_input)` to get the list of ingredient search terms.
-2. Calls `optimiser_utils._resolve_dish_data(dish_input)` to get the display name.
-3. Returns `(display_name, search_terms)`.
+Imported from `scripts/llms/llm_utils.py`. Resolution order:
+1. **Curated JSON** — `data/dishes.json` lookup (21 dishes). Returns structured ingredients with `quantity`, `unit`, `search_term`, and optional `approx_quantity`/`approx_unit` for non-standard units (e.g. "1 can" → approx 400g).
+2. **LLM generation** — If not curated and `MISTRAL_API_KEY` is set, calls Mistral. Only triggered for non-curated dishes.
+3. **Fallback** — Uses dish name itself as a single search term.
 
-### `_maybe_persist(result)`
+### Quantity Scaling: `parse_optimiser_columns`
 
-Optional — only runs if Supabase is configured. Writes the optimisation result to an `optimisation_runs` table. Currently **not called** from `run_optimisation()` (would need to be added). Fails silently.
+Imported from `scripts/llms/llm_utils.py`. Computes proportional ingredient costs:
 
-### `_safe_json(obj)`
+| Condition | Purchase qty | Purchase price | Used price (proportional) |
+|-----------|-------------|----------------|--------------------------|
+| `ratio <= 1` | 1 pack | `pack_price` | `pack_price × ratio` |
+| `ratio > 1` | `ceil(ratio)` packs | `pack_price × ceil(ratio)` | `pack_price × ratio` |
+| Incompatible | 0 | None | None |
 
-Serialises any object to a JSON string with `json.dumps(..., default=str)`. Used by `_maybe_persist`.
+Units are normalised (weight→grams, volume→milliliters, count→count). Compound units like `x 375ml` are expanded. Cross-category (weight vs volume) uses 1ml≈1g approximation flagged via `unit_approximate=True`.
 
 ---
 
 ## Concurrency Pipeline Diagram
 
-All tasks are submitted to `asyncio.gather()` and offloaded to the 20-worker thread pool via `asyncio.to_thread()`. The diagram below shows the full tree for an example config (3 companies, 3 stores each, 3 ingredients = 27 total tasks).
-
 ```
 POST /optimise  (single HTTP request)
 │
 ├── Phase 1: Sequential setup
-│   ├── _resolve_dish_terms("spaghetti bolognese")
-│   │   └── returns: ("Spaghetti Bolognese", ["beef mince", "spaghetti", "canned tomatoes"])
+│   ├── resolve_ingredients("spaghetti bolognese") → 7 ingredients with quantities
 │   └── geocode("Auckland CBD")  [Nominatim, ~1-3s]
-│       └── returns: (lat=-36.8485, lon=174.7633)
 │
 ├── Phase 2: Build tasks (sequential, instant)
 │   └── for company in [PaknSave, NewWorld, Woolworths]:
-│       ├── find_nearby_stores(lat, lon, radius_km=5)
-│       │   └── returns: [StoreA, StoreB, StoreC]  (capped to 3)
+│       ├── find_nearby_stores(lat, lon, radius_km=5) → [StoreA, StoreB, StoreC]
 │       └── for store in [StoreA, StoreB, StoreC]:
-│           └── for ingredient in ["beef mince", "spaghetti", "canned tomatoes"]:
+│           └── for ingredient in ["beef mince", ...]:
 │               └── tasks.append(_fetch_ingredient(...))
 │
-├── Phase 3: asyncio.gather()  ← ALL 27 TASKS SUBMITTED TO THREAD POOL
-│   │   Each task calls asyncio.to_thread() → background thread pool (20 workers)
-│   │   First 20 run immediately; remaining 7 queue and start as slots free up
-│   │
-│   ├── PaknSave (9 tasks)
-│   │   ├── PS-Newmarket
-│   │   │   ├── to_thread(_fetch_foodstuffs_sync, "PaknSave", "ps-nzm", "beef mince")     ─┐
-│   │   │   ├── to_thread(_fetch_foodstuffs_sync, "PaknSave", "ps-nzm", "spaghetti")      ─┤── parallel
-│   │   │   └── to_thread(_fetch_foodstuffs_sync, "PaknSave", "ps-nzm", "canned tomatoes") ─┘
-│   │   ├── PS-SylviaPark
-│   │   │   ├── to_thread(_fetch_foodstuffs_sync, "PaknSave", "ps-sp",  "beef mince")     ─┐
-│   │   │   ├── to_thread(_fetch_foodstuffs_sync, "PaknSave", "ps-sp",  "spaghetti")      ─┤── parallel
-│   │   │   └── to_thread(_fetch_foodstuffs_sync, "PaknSave", "ps-sp",  "canned tomatoes") ─┘
-│   │   └── PS-Downtown
-│   │       ├── to_thread(_fetch_foodstuffs_sync, "PaknSave", "ps-dt",  "beef mince")     ─┐
-│   │       ├── to_thread(_fetch_foodstuffs_sync, "PaknSave", "ps-dt",  "spaghetti")      ─┤── parallel
-│   │       └── to_thread(_fetch_foodstuffs_sync, "PaknSave", "ps-dt",  "canned tomatoes") ─┘
-│   │
-│   ├── NewWorld (9 tasks)
-│   │   ├── NW-Newmarket
-│   │   │   ├── to_thread(_fetch_foodstuffs_sync, "NewWorld", "nw-nzm", "beef mince")     ─┐
-│   │   │   ├── to_thread(_fetch_foodstuffs_sync, "NewWorld", "nw-nzm", "spaghetti")      ─┤── parallel
-│   │   │   └── to_thread(_fetch_foodstuffs_sync, "NewWorld", "nw-nzm", "canned tomatoes") ─┘
-│   │   ├── NW-Ponsonby
-│   │   │   ├── to_thread(_fetch_foodstuffs_sync, "NewWorld", "nw-pon", "beef mince")     ─┐
-│   │   │   ├── to_thread(_fetch_foodstuffs_sync, "NewWorld", "nw-pon", "spaghetti")      ─┤── parallel
-│   │   │   └── to_thread(_fetch_foodstuffs_sync, "NewWorld", "nw-pon", "canned tomatoes") ─┘
-│   │   └── NW-Glenfield
-│   │       ├── to_thread(_fetch_foodstuffs_sync, "NewWorld", "nw-glf", "beef mince")     ─┐
-│   │       ├── to_thread(_fetch_foodstuffs_sync, "NewWorld", "nw-glf", "spaghetti")      ─┤── parallel
-│   │       └── to_thread(_fetch_foodstuffs_sync, "NewWorld", "nw-glf", "canned tomatoes") ─┘
-│   │
-│   └── Woolworths (9 tasks)
-│       ├── WW-Greymouth
-│       │   ├── to_thread(_fetch_woolworths_sync, "ww-gry", "beef mince")     ─┐
-│       │   ├── to_thread(_fetch_woolworths_sync, "ww-gry", "spaghetti")      ─┤── parallel
-│       │   └── to_thread(_fetch_woolworths_sync, "ww-gry", "canned tomatoes") ─┘
-│       ├── WW-Glenfield
-│       │   ├── to_thread(_fetch_woolworths_sync, "ww-glf", "beef mince")     ─┐
-│       │   ├── to_thread(_fetch_woolworths_sync, "ww-glf", "spaghetti")      ─┤── parallel
-│       │   └── to_thread(_fetch_woolworths_sync, "ww-glf", "canned tomatoes") ─┘
-│       └── WW-StLukes
-│           ├── to_thread(_fetch_woolworths_sync, "ww-stl", "beef mince")     ─┐
-│           ├── to_thread(_fetch_woolworths_sync, "ww-stl", "spaghetti")      ─┤── parallel
-│           └── to_thread(_fetch_woolworths_sync, "ww-stl", "canned tomatoes") ─┘
+├── Phase 3: asyncio.gather() → 20-worker thread pool
+│   ├── _fetch_foodstuffs_sync(...) → build_edge_row() for each product
+│   └── _fetch_woolworths_sync(...) → build_woolworths_row() for each product
+│   All return list[dict] of CSV_COLUMNS rows
 │
-│   All 27 tasks return Optional[dict] or Exception
-│   Thread pool runs up to 20 at once; rest queue and start as slots free up
+├── Phase 3b: Enrich rows with ingredient quantities from dishes.json
 │
-└── Phase 4: Consolidate (sequential)
-    ├── Group results by store, sum costs
-    ├── Sort stores by total_cost ascending
-    └── Return OptimisationResult
+├── Phase 3c: parse_optimiser_columns(row) → used_price, purchase_qty, status
+│
+└── Phase 4: Store cost summary (cheapest per ingredient per store, summed)
 ```
 
 ### What each sync helper does internally
 
 ```
-_fetch_woolworths_sync(store_id, ingredient)     [plain def, runs on thread]
-├── session = woolworths_api.create_session()     ← fresh Session (cookie jar)
-├── woolworths_api.set_store_context(session, sid) ← inject cw-lrkswrdjp cookie
+_fetch_woolworths_sync(store_id, store_name, ingredient)   [plain def, runs on thread]
+├── session = woolworths_api.create_session()         ← fresh Session (cookie jar)
+├── woolworths_api.set_store_context(session, sid)   ← inject cw-lrkswrdjp cookie
 ├── woolworths_api.search_products(session, ingredient)
-├── pick cheapest by salePrice
-├── session.close()
-└── return {"price": float (dollars), "unit_price": str, "pack_info": str}
+├── for each priced product: build_woolworths_row(...) → CSV COLUMNS row
+└── return list[dict]
 
 
-_fetch_foodstuffs_sync(company, store_id, ingredient)   [plain def, runs on thread]
-├── api = PaknSaveEdgeAPI() or NewWorldEdgeAPI()         ← new instance each time
-├── api.authenticate()                                   ← JWT token (if expired)
-├── api.search_ingredient(store_id, ingredient)          ← two-pass Algolia pipeline
-├── pick cheapest by singlePrice.price
-└── return {"price": float (cents), "unit_price": str, "pack_info": str}
+_fetch_foodstuffs_sync(company, store_id, store_name, ingredient)   [plain def, runs on thread]
+├── api = PaknSaveEdgeAPI() or NewWorldEdgeAPI()       ← new instance each call
+├── api.authenticate()                                  ← JWT token (if missing)
+├── api.search_ingredient(store_id, ingredient)        ← two-pass Algolia pipeline → (products, pass1_hits)
+├── for each priced product: build_edge_row(...)      → CSV COLUMNS row
+└── return list[dict]
 ```
 
 ### Timing breakdown (typical)
 
-| Phase | Time | Parallelised? |
+| Phase | Time | Parallelized? |
 |---|---|---|
-| Dish resolution | <1s | No |
+| Ingredient resolution | <1s | No |
 | Geocoding (Nominatim) | 1-3s | No (rate limit 1 req/sec) |
 | Store lookup (×3 brands) | <0.1s | No (local CSV reads, fast) |
 | API searches (20-thread pool) | ~15-25s | **Yes** — runs in batches of 20 via `asyncio.to_thread` |
-| Consolidation | <1s | No |
+| Row enrichment + scaling | <1s | No (CPU-bound, fast) |
+| Store cost summary | <0.1s | No |
 | **Total** | **~17-30s** | — |
 
-Without thread offloading, all tasks run sequentially. With 20 threads, wall time ≈ `ceil(total_tasks / 20) × ~5s`. For 27 tasks: `ceil(27/20) × ~5s ≈ 10-15s`. For 63 tasks: `ceil(63/20) × ~5s ≈ 20-25s`.
+Without thread offloading, all tasks run sequentially. With 20 threads, wall time ≈ `ceil(total_tasks / 20) × ~5s`.
 
 ---
 
 ## Data Flow Summary
 
 ```
-User Input                    API Processing                     Output
-─────────────                 ──────────────                     ──────
-dish: "spaghetti bolognese"   → dishes.json lookup               OptimisationResult
-address: "Auckland CBD"       → Nominatim geocode                  ├─ dish (display name)
-distance_km: 5                → find nearby stores ×3 brands       ├─ cheapest_store
-max_stores: 3                 → to_thread() searches (batches of 20) ├─ cheapest_total
-companies: [all]              → pick cheapest per store             ├─ store_breakdown
-                             → sort stores by total cost           ├─ ingredient_results
-                                                                    └─ timestamp
+User Input                    API Processing                              Output
+──────────                     ──────────────                             ──────
+dish: "spaghetti..."          → dishes.json / LLM → 7 ingredients         OptimisationResult
+address: "Auckland CBD"       → Nominatim geocode                          ├─ dish (display name)
+distance_km: 5                → find nearby stores ×3 brands                ├─ companies_checked
+max_stores: 3                 → to_thread() searches (batches of 20)       ├─ rows (all product results)
+portions: 4                   → build_*_row() per product                  ├─ store_costs (per-store summary)
+                                → parse_optimiser_columns() scaling        └─ timestamp
+                                → pick cheapest per ingredient per store
+                                → sum used_price per store
 ```
 
-Nothing is persisted by default. The optional `_maybe_persist` function (not wired in) would write to Supabase.
+Nothing is written to `full_results.csv` by default — the data is returned directly as JSON. The optional `_maybe_persist` function (not wired in) would write to Supabase if configured.

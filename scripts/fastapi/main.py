@@ -10,11 +10,23 @@ The /optimise endpoint runs all retailer searches via a thread pool
 so the event loop stays free. The total number of concurrent searches
 depends on the dish (3-7 ingredients), search radius, and how many stores
 are found nearby. Tasks run in batches of 20, not all at once.
+
 Woolworths sessions are isolated per-store (fresh session + cookie per store).
 Nominatim geocode runs once per request (not parallelized).
+
+Each search returns ALL product results (not just the cheapest), using the
+same row format as data/full_results.csv (CSV_COLUMNS). Rows are enriched
+with LLM ingredient quantities and run through parse_optimiser_columns to
+compute proportional "used cost" — the actual cost of the amount needed
+for the recipe, scaling between pack sizes and recipe quantities.
+
+A per-store cost summary is also computed: for each store, the cheapest
+valid product is picked per ingredient, and the proportional "used prices"
+are summed to give a total meal cost at that store.
 """
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 import asyncio
 import concurrent.futures
 import logging
@@ -22,11 +34,6 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
-
-# Increase asyncio's default thread pool from 5 to 20 workers.
-# Each worker runs one blocking HTTP search in the background while
-# the event loop remains free to schedule other tasks.
-_THREAD_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=20)
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -36,10 +43,11 @@ from pydantic import BaseModel
 import core.paths  # noqa: F401  (bootstrap sys.path for legacy modules)
 import optimiser_utils
 from core.config import settings
-from optimiser_utils import _resolve_dish_terms
+from optimiser_utils import build_edge_row, build_woolworths_row
 from paknsave_api import PaknSaveEdgeAPI, find_nearby_stores as ps_find_nearby
 from newworld_api import NewWorldEdgeAPI, find_nearby_stores as nw_find_nearby
 import woolworths_api
+from scripts.llms.llm_utils import resolve_ingredients, parse_optimiser_columns
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("fastapi.main")
@@ -71,45 +79,40 @@ BRANDS = {
 }
 
 
+# Increase asyncio's default thread pool from 5 to 20 workers.
+_THREAD_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=20)
+
+
 class DishRequest(BaseModel):
     dish: str
     address: str
     distance_km: float = 5.0
     max_stores_per_company: int = 3
     companies: Optional[list[str]] = None  # None = all 3
-
-
-class IngredientResult(BaseModel):
-    ingredient: str
-    store: str
-    company: str
-    price: float
-    unit_price: str
-    quantity: str
-    found: bool
+    portions: int = 4
 
 
 class OptimisationResult(BaseModel):
     dish: str
     companies_checked: list[str]
-    cheapest_store: str
-    cheapest_total: float
-    store_breakdown: list[dict]
-    ingredient_results: list[dict]
+    rows: list[dict]
+    store_costs: list[dict]
     timestamp: str
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Set the default executor so asyncio.to_thread uses our 20-worker pool."""
+    asyncio.get_event_loop().set_default_executor(_THREAD_POOL)
+    yield
 
 
 app = FastAPI(
     title="NZ Meal Cost Optimiser",
     description="Query Pak'nSave / New World / Woolworths prices concurrently to find the cheapest meal.",
+    lifespan=lifespan,
 )
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-
-
-@app.on_event("startup")
-async def _set_thread_pool():
-    """Set the default executor so asyncio.to_thread uses our 20-worker pool."""
-    asyncio.get_event_loop().set_default_executor(_THREAD_POOL)
 
 
 @app.get("/health")
@@ -124,22 +127,43 @@ def root():
 
 @app.post("/optimise", response_model=OptimisationResult)
 async def optimise(req: DishRequest):
-    return await run_optimisation(req.dish, req.address, req.distance_km, req.max_stores_per_company, req.companies)
+    return await run_optimisation(
+        req.dish, req.address, req.distance_km,
+        req.max_stores_per_company, req.companies, req.portions,
+    )
 
 
-async def run_optimisation(dish_name: str, address: str, distance_km: float = 5.0,
-                          max_stores_per_company: int = 3, companies: Optional[list[str]] = None) -> OptimisationResult:
+async def run_optimisation(
+    dish_name: str,
+    address: str,
+    distance_km: float = 5.0,
+    max_stores_per_company: int = 3,
+    companies: Optional[list[str]] = None,
+    portions: int = 4,
+) -> OptimisationResult:
     """Run concurrent fetch across all companies/stores/ingredients.
 
-    Returns a structured comparison of the cheapest store for the dish.
+    Returns all product rows (same format as full_results.csv) plus a
+    per-store cost breakdown using quantity-scaled "used cost".
     """
     start = time.time()
-    try:
-        dish_name_resolved, search_terms = _resolve_dish_terms(dish_name)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+
+    # --- Phase 1: Resolve ingredients (curated first, LLM fallback) ---
+    dish_dict, source = resolve_ingredients(dish_name, portions=portions)
+
+    dish_name_resolved = dish_dict.get("dish_name", dish_name)
+    ingredients = dish_dict.get("ingredients", [])
+
+    # Normalize: ensure all ingredients are dicts with 'search_term'
+    if ingredients and isinstance(ingredients[0], str):
+        ingredients = [{"search_term": t} for t in ingredients]
+
+    search_terms = [ing.get("search_term", "") for ing in ingredients]
+    search_terms = [t for t in search_terms if t]
+    ing_lookup = {ing["search_term"]: ing for ing in ingredients if isinstance(ing, dict) and "search_term" in ing}
+
     if not search_terms:
-        raise HTTPException(status_code=400, detail=f"Dish '{dish_name}' not found in dishes.json")
+        raise HTTPException(status_code=400, detail=f"Could not resolve ingredients for dish '{dish_name}'")
 
     if companies is None:
         companies = list(BRANDS.keys())
@@ -147,175 +171,224 @@ async def run_optimisation(dish_name: str, address: str, distance_km: float = 5.
     if invalid:
         raise HTTPException(400, f"Unsupported company: {invalid}")
 
-    log.info("Optimising '%s' near '%s' (%.1f km), max %d stores per company",
-             dish_name, address, distance_km, max_stores_per_company)
+    log.info(
+        "Optimising '%s' near '%s' (%.1f km), max %d stores per company, portions=%d (source=%s)",
+        dish_name, address, distance_km, max_stores_per_company, portions, source,
+    )
 
-    # Single geocoding call
+    # --- Phase 1b: Geocode ---
     user_lat, user_lon = optimiser_utils.geocode(address)
     if user_lat is None:
         raise HTTPException(status_code=400, detail=f"Could not geocode address '{address}'")
     log.info("Geocoded: lat=%.4f lon=%.4f", user_lat, user_lon)
 
-    # Build concurrent tasks: 3 companies x 3 stores x 6 ingredients
+    # --- Phase 2: Build concurrent tasks ---
     tasks = []
     task_metadata = []  # (company, store_id, store_name, ingredient)
     for company_name in companies:
         cfg = BRANDS[company_name]
-        nearby = cfg["find_nearby"](user_lat, user_lon, radius_km=distance_km) if company_name != "Woolworths" else \
-                   woolworths_api.get_nearby_stores(user_lat, user_lon, max_dist_km=distance_km)
+        if company_name == "Woolworths":
+            nearby = woolworths_api.get_nearby_stores(user_lat, user_lon, max_dist_km=distance_km)
+        else:
+            nearby = cfg["find_nearby"](user_lat, user_lon, radius_km=distance_km)
         nearby = nearby[:max_stores_per_company]
         for store in nearby:
             store_id = store["store_id"]
             store_name = store["name"]
             for ingredient in search_terms:
-                tasks.append(_fetch_ingredient(company_name, store_id, ingredient))
+                tasks.append(_fetch_ingredient(company_name, store_id, store_name, ingredient))
                 task_metadata.append((company_name, store_id, store_name, ingredient))
 
-    log.info("Launching %d concurrent searches across %d stores...", len(tasks), len({t[1] for t in task_metadata}))
+    log.info(
+        "Launching %d concurrent searches across %d stores...",
+        len(tasks), len({t[1] for t in task_metadata}),
+    )
     raw_results = await asyncio.gather(*tasks, return_exceptions=True)
     log.info("All searches completed in %.2fs", time.time() - start)
 
-    # Consolidate results
-    store_totals = {}  # store_name -> {company, total_cost, ingredients_detail}
-    ingredient_results = []
-
-    for (company, sid, store_name, ingredient), result in zip(task_metadata, raw_results):
+    # --- Phase 3: Collect all rows ---
+    all_rows = []
+    for (company, _sid, store_name, ingredient), result in zip(task_metadata, raw_results):
         if isinstance(result, Exception):
             log.warning("Error fetching %s@%s: %s", ingredient, store_name, result)
             continue
-        if result and result.get("price") is not None:
-            row = {
-                "company": company,
-                "store": store_name,
-                "ingredient": ingredient,
-                "price": result["price"] / 100.0 if company != "Woolworths" else result["price"],
-                "unit_price": result.get("unit_price", ""),
-                "quantity": result.get("pack_info", ""),
-            }
-            ingredient_results.append(row)
-            if store_name not in store_totals:
-                store_totals[store_name] = {"company": company, "total_cost": 0.0, "ingredients": []}
-            # Track best price per ingredient per store for the summary
-            store_entry = store_totals[store_name]
-            existing_ing = next((i for i in store_entry["ingredients"] if i["ingredient"] == ingredient), None)
-            if existing_ing is None:
-                store_entry["total_cost"] += row["price"]
-                store_entry["ingredients"].append(row)
-            elif row["price"] < existing_ing["price"]:
-                store_entry["total_cost"] -= existing_ing["price"]
-                store_entry["total_cost"] += row["price"]
-                existing_ing.update(row)
+        if result:
+            all_rows.extend(result)
 
-    # Sort stores by total cost
-    breakdown = sorted(store_totals.items(), key=lambda x: x[1]["total_cost"])
-    cheapest_name, cheapest_data = breakdown[0] if breakdown else ("No results", None)
+    if not all_rows:
+        return OptimisationResult(
+            dish=dish_name_resolved,
+            companies_checked=companies,
+            rows=[],
+            store_costs=[],
+            timestamp=datetime.now().isoformat(),
+        )
+
+    # --- Phase 3b: Enrich rows with LLM ingredient quantities ---
+    for row in all_rows:
+        ing = ing_lookup.get(row.get("search_ingredient", ""), {})
+        row["ingredient_quantity"] = ing.get("quantity") if ing.get("quantity") is not None else ""
+        row["ingredient_measurement"] = ing.get("unit", "")
+        row["ingredient_approx_quantity"] = ing.get("approx_quantity")
+        row["ingredient_approx_unit"] = ing.get("approx_unit")
+        row["is_valid"] = ""
+
+    # --- Phase 3c: Run parse_optimiser_columns for quantity scaling ---
+    for row in all_rows:
+        try:
+            scaled = parse_optimiser_columns(row)
+            row["used_price"] = scaled.get("used_price")
+            row["purchase_quantity"] = scaled.get("purchase_quantity")
+            row["purchase_price"] = scaled.get("purchase_price")
+            row["scaling_ratio"] = scaled.get("scaling_ratio")
+            row["status"] = scaled.get("status")
+            row["units_match"] = scaled.get("units_match")
+            row["unit_approximate"] = scaled.get("unit_approximate")
+            row["pack_price"] = float(row.get("price", 0)) if row.get("price") not in ("", None) else 0.0
+        except Exception as e:
+            log.warning("Scaling error for row sku=%s: %s", row.get("sku", "?"), e)
+            row["used_price"] = None
+            row["purchase_quantity"] = 0
+            row["purchase_price"] = None
+            row["scaling_ratio"] = None
+            row["status"] = "error"
+            row["units_match"] = False
+            row["unit_approximate"] = False
+            row["pack_price"] = float(row.get("price", 0)) if row.get("price") not in ("", None) else 0.0
+
+    # --- Phase 4: Build per-store cost summary ---
+    # For each (store, search_ingredient), pick the cheapest valid product
+    # (preferring exact unit matches), then sum used_price across ingredients
+    # per store to get the total "used cost" for that store.
+    store_ingredients: dict[str, dict[str, list[dict]]] = {}
+    for row in all_rows:
+        store_name = row.get("store", "")
+        term = row.get("search_ingredient", "")
+        store_ingredients.setdefault(store_name, {}).setdefault(term, []).append(row)
+
+    store_costs = []
+    for store_name, ing_map in store_ingredients.items():
+        total_used = 0.0
+        valid_ing_count = 0
+        best_per_ingredient = []
+        company = ""
+        for term, rows in ing_map.items():
+            for r in rows:
+                if r.get("company"):
+                    company = r["company"]
+                    break
+            valid = [r for r in rows if r.get("used_price") is not None]
+            if valid:
+                best = min(
+                    valid,
+                    key=lambda r: (r["used_price"], 0 if r.get("units_match", False) else 1),
+                )
+                total_used += best["used_price"]
+                valid_ing_count += 1
+                best_per_ingredient.append({
+                    "search_ingredient": term,
+                    "returned_ingredient": best.get("returned_ingredient", ""),
+                    "price": best.get("price", ""),
+                    "ingredient_quantity": best.get("ingredient_quantity", ""),
+                    "ingredient_measurement": best.get("ingredient_measurement", ""),
+                    "ingredient_approx_quantity": best.get("ingredient_approx_quantity"),
+                    "ingredient_approx_unit": best.get("ingredient_approx_unit"),
+                    "quantity": best.get("quantity", ""),
+                    "measurement_unit": best.get("measurement_unit", ""),
+                    "used_price": round(best["used_price"], 2),
+                    "purchase_quantity": best.get("purchase_quantity", 0),
+                    "purchase_price": round(best["purchase_price"], 2) if best.get("purchase_price") is not None else None,
+                    "status": best.get("status", ""),
+                })
+        store_costs.append({
+            "store": store_name,
+            "company": company,
+            "total_used_cost": round(total_used, 2),
+            "ingredients_matched": valid_ing_count,
+            "ingredients_total": len(ing_map),
+            "best_per_ingredient": best_per_ingredient,
+        })
+
+    store_costs.sort(key=lambda x: x["total_used_cost"])
 
     return OptimisationResult(
         dish=dish_name_resolved,
         companies_checked=companies,
-        cheapest_store=cheapest_name,
-        cheapest_total=round(cheapest_data["total_cost"], 2) if cheapest_data else 0.0,
-        store_breakdown=[{"store": s, "company": d["company"], "total_cost": round(d["total_cost"], 2),
-                          "ingredients": d["ingredients"]} for s, d in breakdown],
-        ingredient_results=ingredient_results,
+        rows=all_rows,
+        store_costs=store_costs,
         timestamp=datetime.now().isoformat(),
     )
 
 
-def _fetch_woolworths_sync(store_id: str, ingredient: str) -> Optional[dict]:
+def _fetch_woolworths_sync(store_id: str, store_name: str, ingredient: str) -> list[dict]:
     """Synchronous Woolworths search — called from a background thread.
 
     Creates a fresh session per call (cookie isolation), searches for the
-    ingredient, and returns the cheapest result.
+    ingredient, and returns ALL priced product rows in CSV_COLUMNS format.
+    Price is in dollars (already handled by build_woolworths_row).
     """
     session = woolworths_api.create_session()
     try:
         woolworths_api.set_store_context(session, store_id)
-        products = woolworths_api.search_products(session, ingredient, food_only=True, size=10)
-        priced = [p for p in products if p.get("salePrice") is not None]
-        if not priced:
-            return None
-        best = min(priced, key=lambda p: p["salePrice"])
-        return {
-            "price": best["salePrice"],
-            "unit_price": best.get("cupListPrice", ""),
-            "pack_info": f"{best.get('volumeSize', '')}",
-        }
+        products = woolworths_api.search_products(session, ingredient, food_only=True, size=20)
+        if not products:
+            return []
+        now = datetime.now()
+        rows = []
+        for prod in products:
+            if prod.get("salePrice") is not None:
+                row = build_woolworths_row(
+                    "Woolworths", store_name, store_id, ingredient, prod, now,
+                )
+                rows.append(row)
+        return rows
     finally:
         session.close()
 
 
-def _fetch_foodstuffs_sync(company: str, store_id: str, ingredient: str) -> Optional[dict]:
-    """Synchronous Foodstuffs search — called from a background thread.
+def _fetch_foodstuffs_sync(company: str, store_id: str, store_name: str, ingredient: str) -> list[dict]:
+    """Synchronous Foodstuffs (Pak'nSave/New World) Edge search — called from a background thread.
 
     Creates a new API instance, authenticates if needed, runs the two-pass
-    search, and returns the cheapest result. Price is in cents.
+    search, and returns ALL priced product rows in CSV_COLUMNS format.
+    Price is in cents (build_edge_row handles the /100 conversion).
     """
     cfg = BRANDS[company]
     api = cfg["api_class"]()
     if not api.token:
         api.authenticate()
     region = "NI"
+    now = datetime.now()
+    rows = []
     try:
         products, pass1_hits = api.search_ingredient(store_id, ingredient, region=region)
         if not products:
-            return None
-        priced = [p for p in products if p.get("singlePrice", {}).get("price") is not None]
-        if not priced:
-            return None
-        best = min(priced, key=lambda p: p["singlePrice"]["price"])
-        sp = best.get("singlePrice", {})
-        comp = best.get("promotions", [{}])[0].get("comparativePrice") if best.get("promotions") else None
-        comp = comp or sp.get("comparativePrice", {})
-        return {
-            "price": sp["price"],
-            "unit_price": comp.get("measureDescription", "") if comp else "",
-            "pack_info": best.get("displayName", ""),
-        }
+            return rows
+        pass1_by_id = {h["productID"]: h for h in pass1_hits}
+        for prod in products:
+            hit = pass1_by_id.get(prod.get("productId", ""))
+            row = build_edge_row(
+                cfg["company_id"], store_name, store_id, ingredient,
+                prod, hit, now,
+            )
+            if row["price"] != "":
+                rows.append(row)
+        return rows
     finally:
         pass
 
 
-async def _fetch_ingredient(company: str, store_id: str, ingredient: str) -> Optional[dict]:
+async def _fetch_ingredient(company: str, store_id: str, store_name: str, ingredient: str) -> list[dict]:
     """Offload a blocking ingredient search to a background thread.
 
-    The underlying API libraries (requests, woolworths_api, newworld_api,
-    paknsave_api) are all synchronous. asyncio.to_thread needed to prevent
-    blocking HTTP calls freezing the event loop.
-
-    asyncio.to_thread runs the sync function on a background thread from
-    the pool (20 workers)
+    Returns a list of CSV_COLUMNS-format row dicts (all products, not just
+    the cheapest). ``asyncio.to_thread`` runs the sync function on a
+    background thread from the pool (20 workers).
     """
     if company == "Woolworths":
-        return await asyncio.to_thread(_fetch_woolworths_sync, store_id, ingredient)
+        return await asyncio.to_thread(_fetch_woolworths_sync, store_id, store_name, ingredient)
     else:
-        return await asyncio.to_thread(_fetch_foodstuffs_sync, company, store_id, ingredient)
-
-
-
-# --- optional Supabase persistence (not required for core functionality) ---
-async def _maybe_persist(result: OptimisationResult):
-    if settings.supabase_enabled:
-        try:
-            from services.supabase_client import get_supabase
-            sb = get_supabase()
-            sb.from_("optimisation_runs").insert({
-                "dish": result.dish,
-                "address": result.store_breakdown,
-                "companies": result.companies_checked,
-                "result": _safe_json(result),
-                "created_at": result.timestamp,
-            }).execute()
-        except Exception as e:
-            log.warning("Supabase write failed (non-fatal): %s", e)
-
-
-def _safe_json(obj) -> str:
-    import json
-    try:
-        return json.dumps(obj, default=str, ensure_ascii=False)
-    except Exception:
-        return str(obj)
+        return await asyncio.to_thread(_fetch_foodstuffs_sync, company, store_id, store_name, ingredient)
 
 
 if __name__ == "__main__":

@@ -15,7 +15,9 @@ PAKNSAVE_DIR = SCRIPTS_DIR / "paknsave"
 NEWWORLD_DIR = SCRIPTS_DIR / "newworld"
 DATA_DIR = SCRIPTS_DIR.parent / "data"                 # project/data
 
-_PATHS = [str(FASTAPI_DIR), str(COMBINED_DIR), str(WOOLWORTHS_DIR), str(PAKNSAVE_DIR), str(NEWWORLD_DIR)]
+PROJECT_ROOT = SCRIPTS_DIR.parent  # project root (for scripts.llms.* imports)
+LLMS_DIR = SCRIPTS_DIR / "llms"
+_PATHS = [str(FASTAPI_DIR), str(PROJECT_ROOT), str(COMBINED_DIR), str(WOOLWORTHS_DIR), str(PAKNSAVE_DIR), str(NEWWORLD_DIR), str(LLMS_DIR)]
 
 def bootstrap() -> None:
     for p in _PATHS:
