@@ -11,3 +11,4 @@ __pycache__/
 tempCodeRunnerFile.py
 pyrightconfig.json
 .env
+node_modules/
