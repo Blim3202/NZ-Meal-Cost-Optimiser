@@ -1,0 +1,1 @@
+"""Pricing package: shared optimiser helpers and per-brand API clients."""

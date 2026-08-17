@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "NZMealOptimiser"
+version = "0.1.0"
+description = "Finds the cheapest Pak'nSave, New World, or Woolworths for a given dish by comparing ingredient prices across nearby stores (within 5 km of a NZ address)."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "cloudscraper",
+    "requests",
+    "pandas",
+    "numpy",
+    "python-dotenv",
+    "mistralai",
+    "playwright",
+    "pydantic-settings",
+    "supabase",
+    "fastapi",
+    "uvicorn",
+    "beautifulsoup4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+
+[tool.setuptools]
+packages = {find = {where = ["src"]}}
+
+[tool.setuptools.package-dir]
+"" = "src"

@@ -18,7 +18,7 @@ Finds the cheapest Pak'nSave, New World, or Woolworths for a given dish by compa
 | New World | Edge API (two-pass), Mobile API (single-pass) | 148 Edge / 150 Mobile | Yes | Active |
 | Woolworths | REST API (cookie injection) | 177 with coords | Yes | Active |
 
-- Pak'nSave and New World share a unified Foodstuffs backend (`scripts/combined/optimiser_utils.py` + brand-specific API modules)
+- Pak'nSave and New World share a unified Foodstuffs backend (`src/NZMealOptimiser/pricing/optimiser_utils.py` + brand-specific API modules)
 - Woolworths uses cookie-based store context injected per-store (no shared backend)
 - New World stores have coordinates from the mobile API — no Nominatim geocoding needed for store lookup
 - Pak'nSave Edge API requires pet food filtering via `category1` (exclude Dog/Cat/Pet) in Pass 1
@@ -28,16 +28,17 @@ Finds the cheapest Pak'nSave, New World, or Woolworths for a given dish by compa
 ```powershell
 # Setup
 .venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+pip install -e .          # editable install (src-layout package)
+pip install -e ".[dev]"   # dev extras (pytest)
 
 # Run optimiser (Pak'nSave Edge API — two-pass with unit-price selection)
-python scripts/paknsave/paknsave_optimiser_edge.py "Botany Town Centre, Auckland" "spaghetti bolognese"
+python -m tools.paknsave.paknsave_optimiser_edge "Botany Town Centre, Auckland" "spaghetti bolognese"
 
 # Run optimiser (New World Edge API — two-pass with unit-price selection)
-python scripts/newworld/newworld_optimiser_edge.py "Botany Town Centre, Auckland" "spaghetti bolognese"
+python -m tools.newworld.newworld_optimiser_edge "Botany Town Centre, Auckland" "spaghetti bolognese"
 
 # Run optimiser (Woolworths — cookie-based per-store pricing)
-python scripts/woolworths/woolworths_optimiser.py "Botany Town Centre, Auckland" "spaghetti bolognese"
+python -m tools.woolworths.woolworths_optimiser "Botany Town Centre, Auckland" "spaghetti bolognese"
 ```
 
 ## Architecture
@@ -96,43 +97,20 @@ opencode/
 │   ├── observed_category1_paknsave.json         # Category1 values from Pak'nSave Algolia index
 │   ├── dishes.json                              # 21 hand-curated dishes with structured ingredients
 │   └── full_results.csv                         # Append-only results with pk_hash deduplication + is_valid column
-├── scripts/
-│   ├── combined/
-│   │   ├── optimiser_utils.py                  # **Cross-brand helpers**: foodstuffs_querier_edge/mobile, woolworths_querier, build_edge_row/mobile_row/build_woolworths_row, parsing, geocoding, haversine, DISHES, get_ingredients, _resolve_dish_terms, _resolve_dish_data, _build_quantity_map, optimise(), append_rows, _compute_pk_hash
-│   │   └── initialize_full_results.py          # Creates data/full_results.csv with 18-column schema (17 + is_valid) + pk_hash
-│   ├── newworld/
-│   │   ├── newworld_setup.py                   # **Unified store builder**: Edge API (148 stores), Mobile API (150 stores). Callable module + CLI with `source` param.
-│   │   ├── newworld_api.py                     # **Unified API module**: Edge API (two-pass) + Mobile API (single-pass) with shared utilities
-│   │   ├── newworld_optimiser_edge.py           # **Edge API optimiser**: CLI with geocoding, 5km radius, two-pass search, unit-price selection
-│   │   ├── newworld_optimiser_mobile.py         # **Mobile API optimiser**: CLI with geocoding, 5km radius, single-pass search, unit-price selection
-│   │   └── Exploration/                         # API exploration scripts (legacy)
-│   ├── paknsave/
-│   │   ├── paknsave_api.py                     # **Unified API module**: Edge API (two-pass) + Mobile API (single-pass) with shared utilities
-│   │   ├── paknsave_optimiser_edge.py           # **Edge API optimiser**: CLI with geocoding, 5km radius, two-pass search, unit-price selection
-│   │   ├── paknsave_optimiser_mobile.py         # **Mobile API optimiser**: CLI with geocoding, 5km radius, single-pass search, unit-price selection
-│   │   ├── paknsave_setup.py                    # **Unified store builder**: Edge (57 stores) + Mobile (60 stores) + store_finder (60 stores, Pak'nSave only). Callable module + CLI with `source` param.
-│   │   └── Exploration/                         # API exploration scripts (legacy)
-│   ├── woolworths/
-│   │   ├── woolworths_api.py                    # Cookie-based API module: session, store context, product search
-│   │   ├── woolworths_optimiser.py              # **Thin CLI**: Step 1 via shared `woolworths_querier` in `optimiser_utils.py`, then Step 2 `optimise()` from CSV
-│   │   ├── woolworths_setup.py                  # **Unified store pipeline**: fetch choices, fetch data, merge (188 stores → 177 with coords). Replaces legacy scripts.
-│   │   ├── Exploration/                         # API exploration scripts (legacy)
-│   │   ├── Fixture/                             # Test fixtures (legacy)
-│   │   ├── Playwright/                          # Playwright-based scripts (legacy, not needed at runtime)
-│   │   └── tests/                               # Unit tests (legacy)
-│   └── llms/
-│       ├── llm_client.py                        # Mistral API client with rate limiting + JSON retries
-│       ├── llm_utils.py                         # Ingredient resolution (curated → LLM), parsing, quantity scaling (incl. approx_unit fallback)
-│       ├── llm_validate.py                      # Post-run search-result validation (is_valid column)
-│       └── llm_interactive.py                   # Interactive CLI: ingredients → query → optimise → scale → validate
-├── LLM_Pipeline.md                             # LLM ingredient generation, validation, and quantity scaling pipeline
+├── src/NZMealOptimiser/                        # Installable package (pip install -e .)
+│   ├── pricing/                                # optimiser_utils.py, paknsave_api.py, newworld_api.py, woolworths_api.py
+│   ├── llm/                                    # llm_client.py, llm_utils.py
+│   └── web/                                    # FastAPI app (main.py, config.py) + static/ + frontend/
+├── tools/                                      # CLI layer (optimisers, setup, llm tools, initialize_full_results)
+├── tests/                                      # test suites + fixtures per brand
+├── exploration/                                # per-brand exploration scripts
+├── docs/
+│   ├── project/                                # decision.md, design.md, logs.md
+│   └── technical/                              # PaknSave_API.md, NewWorld_API.md, Woolworths_API.md, LLM_Pipeline.md, FastAPI.md
+├── unsure/                                     # Retired path bootstrap (paths.py — history only)
+├── Dockerfile                                  # Container image for Google Cloud Run (repo root)
+├── pyproject.toml                              # src-layout package metadata
 ├── AGENTS.md                                   # Agent instructions and project reference
-├── NewWorld_API.md                             # New World API documentation (cross-references PaknSave_API.md)
-├── PaknSave_API.md                             # Pak'nSave API documentation (primary reference)
-├── Woolworths_API.md                           # Full /api/v1 endpoint documentation (1360+ lines)
-├── decision.md                                 # Key decisions and rationale (includes cross-brand comparison + CommonApi endpoint list)
-├── design.md                                   # Technical design (API, auth, pipeline)
-├── logs.md                                     # Major errors and resolutions
 ├── requirements.txt                            # Pinned dependencies
 └── README.md                                   # This file
 ```
@@ -172,34 +150,35 @@ opencode/
 - **Base URL**: `https://api-prod.paknsave.co.nz/v1/edge`
 - **Auth**: Website JWT (`fs-user-token` cookie)
 - **Store context**: `eCom_STORE_ID`, `STORE_ID_V2`, `Region` cookies
-- **Endpoints**: See `PaknSave_API.md` section 6
+- **Endpoints**: See `docs/technical/PaknSave_API.md` section 6
 
 ### New World Edge API
 
 - **Base URL**: `https://api-prod.newworld.co.nz/v1/edge`
 - **Auth**: Website JWT (`fs-user-token` cookie)
 - **Store context**: `eCom_STORE_ID`, `STORE_ID_V2`, `Region` cookies
-- **Endpoints**: See `NewWorld_API.md` section 6
+- **Endpoints**: See `docs/technical/NewWorld_API.md` section 6
 
 ### Woolworths API
 
 - **Base URL**: `https://www.woolworths.co.nz`
 - **Auth**: Session cookies (no login required)
 - **Store context**: `cw-lrkswrdjp` cookie (constructed from store data, `extra1` = fulfilmentStoreId)
-- **Endpoints**: See `Woolworths_API.md`
+- **Endpoints**: See `docs/technical/Woolworths_API.md`
 
 ## Documentation
 
 | Doc | Purpose |
 |-----|---------|
 | `AGENTS.md` | Agent instructions: setup, project layout, key gotchas, research status |
-| `PaknSave_API.md` | Primary API reference for Pak'nSave (shared Foodstuffs structure + Pak'nSave-specific endpoints) |
-| `NewWorld_API.md` | New World-specific API reference (cross-references PaknSave_API.md for shared structure) |
-| `Woolworths_API.md` | Full Woolworths `/api/v1` endpoint documentation (cookie architecture, per-store pricing) |
-| `decision.md` | Key design decisions, cross-brand comparison table, CommonApi rationale |
-| `design.md` | Technical design (API, auth, pipeline) |
-| `logs.md` | Major errors and resolutions |
-| `LLM_Pipeline.md` | LLM ingredient generation, validation, and quantity scaling pipeline (incl. approx-unit fallback for non-standard recipe units) |
+| `docs/technical/PaknSave_API.md` | Primary API reference for Pak'nSave (shared Foodstuffs structure + Pak'nSave-specific endpoints) |
+| `docs/technical/NewWorld_API.md` | New World-specific API reference (cross-references PaknSave_API.md for shared structure) |
+| `docs/technical/Woolworths_API.md` | Full Woolworths `/api/v1` endpoint documentation (cookie architecture, per-store pricing) |
+| `docs/technical/LLM_Pipeline.md` | LLM ingredient generation, validation, and quantity scaling pipeline (incl. approx-unit fallback for non-standard recipe units) |
+| `docs/technical/FastAPI.md` | FastAPI web app architecture (endpoints, thread pool, scaling) |
+| `docs/project/decision.md` | Key design decisions, cross-brand comparison table, CommonApi rationale |
+| `docs/project/design.md` | Technical design (API, auth, pipeline) |
+| `docs/project/logs.md` | Major errors and resolutions |
 
 ## Limitations
 

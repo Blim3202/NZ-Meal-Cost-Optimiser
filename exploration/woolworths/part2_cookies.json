@@ -1,0 +1,748 @@
+{
+  "Greymouth": {
+    "dtCookie": {
+      "value": "v_4_srv_8_sn_B791D80C4B0144A2D65B4D2F4F212C05_perc_100000_ol_0_mul_1_app-3Ae071988f3d34c6b3_0_rcs-3Acss_0",
+      "domain": ".woolworths.co.nz"
+    },
+    "AKA_A2": {
+      "value": "A",
+      "domain": ".woolworths.co.nz"
+    },
+    "cw-ssuflow": {
+      "value": "1",
+      "domain": "www.woolworths.co.nz"
+    },
+    "browserSessionId": {
+      "value": "5a4fcef8-6980-4bd2-8aa9-b6588e90470f",
+      "domain": ".woolworths.co.nz"
+    },
+    "https://www.woolworths.co.nz_5a4fcef8-6980-4bd2-8aa9-b6588e90470f$$21124251956$$session_state": {
+      "value": "{\"lastSessionTimestamp\":1786976196397,\"sessionId\":\"4e8f3e08-3f98-4f2d-8de9-61dcd980508f\"}",
+      "domain": "a21125881217.cdn.optimizely.com"
+    },
+    "agaCORS": {
+      "value": "9676a885270db13a4d28f4ae1f14d022",
+      "domain": "www.woolworths.co.nz"
+    },
+    "aga": {
+      "value": "9676a885270db13a4d28f4ae1f14d022",
+      "domain": "www.woolworths.co.nz"
+    },
+    "dtid": {
+      "value": "2:IXvryDonS6SxpXzHbodj+X8GBa2+1lIYxr4GYoqx7buKjUBawevrFzQTUm3LWTn9p7r3tNeNorN7/njND5ocQljYo3osHijM0oI7ojrwH0oCwtIE9ac8l7Uv1TIs3ZVNnsk=",
+      "domain": "www.woolworths.co.nz"
+    },
+    "ASP.NET_SessionId": {
+      "value": "fc4okcpvjrohwdyszxrm5fgd",
+      "domain": "www.woolworths.co.nz"
+    },
+    "cw-arjshtsw": {
+      "value": "x3b7af2f40ba74024974a33b194719c75xsngzxknw",
+      "domain": "www.woolworths.co.nz"
+    },
+    "XSRF-TOKEN": {
+      "value": "uVFpSiSVfbYqXqga7123z26p0p9NlrN6aWJzWO7YdXJBPsLXXzVUly0vmul-FQNg8cqtIKcW2FrjIHIVN8UzMMev9sk8q494KSbX7qGntSg1:bJuXe5MKbyy9AYHkJx5PYmasnn3cNKcm7-XdAAnWzaR-tmrGj_pzMKmaVbdFQJmjlrFa0243knv1nrWGzbx_J0mhDR2SilXRxG88iYDS9xs1",
+      "domain": "www.woolworths.co.nz"
+    },
+    "cw-laie": {
+      "value": "caea707709b24db193b9574cdbd2af37",
+      "domain": "www.woolworths.co.nz"
+    },
+    "appsettings-browserSessionId": {
+      "value": "5a4fcef8-6980-4bd2-8aa9-b6588e90470f",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main_v_id": {
+      "value": "01a01014db020022ffbb1349bd3c0506f004b06700838",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main__sn": {
+      "value": "1",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main_ses_id": {
+      "value": "1786976197378%3Bexp-session",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main__pn": {
+      "value": "1%3Bexp-session",
+      "domain": ".woolworths.co.nz"
+    },
+    "ak_bmsc": {
+      "value": "43DEF61A7C09DF2BB3B4F1CDC12DBE99~000000000000000000000000000000~YAAQj6lgaLZR3+2fAQAABNkUEAAcOuSuHfbdHOuD0URm/Gs4tk+0auD++yotIezrVMg0/lPJL8zQbMpPlBhNqYqMboy2/4+70Kftb3DIyLG9bCqAmqK42FLKWwc8yovt7HiYruaJlZQRdlcfc2gLSN69eQDcil/XDhnX+3SgyH1q04G//UA03CM39x6cNRoQdUbazGSJDXAu7gFw7rZg+sSanmgPaztKpLX+rmuektH7+WAuYYIwm42pYx38PiL5s3nnseYOovX8o0MPK5Aai0yXxo8tCoidsV5uub0ExKwey0bqtCOHj5SXM/KQs5ob5XlMt4CgTa4kCpnF4IzmM33YLhtvZdSpcqvrtt+58O862FQtT2OKupdjuDGFa1BmnjfjaHO4jGfJhBxF4Ydk3b63KtaUC/XwhjPwk3gLUbjB+EH7fBIaMdlkFqjZw/DVhRsKYkiFIcCMTeCCff2LYKkraA==",
+      "domain": ".woolworths.co.nz"
+    },
+    "optimizelySession": {
+      "value": "1786976197429",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main_dc_visit": {
+      "value": "1",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main__ss": {
+      "value": "0%3Bexp-session",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main_dcsyncran": {
+      "value": "1%3Bexp-session",
+      "domain": ".woolworths.co.nz"
+    },
+    "bm_sz": {
+      "value": "59B46DFB615A6F3FB7C9D4A1B10F2F4F~YAAQj6lgaLxR3+2fAQAAhNkUEAAMi6JGtRAy7QEO6JP6P/63tfpSO3W7/XJcguzARk6T1w0ptERoZ/nSdDZ4EltTuwmtjR51XZ+hl2wPqiQmtDOEsnnKoH1td5uN+JK4aXJKUInk7z7G7qTuhO6QGJ0ZlS0i2XUYZR8xlc1QSHY8NfD/I+xS5chO8PSuBWoT8BF4fhPoCp7E6t1hLNfQhQIovqArG8lNygftv7k1t/VfxQyeRxJW0JBxU9ROXCVMjO7fptKBki86WE7iRCzGXBzpMwdHtXjzU9Fy6zSkaGBkY187bVxJ01ZJoLvtIYWCa3dhENN0aYPZAAGqg383aNCCB+w1mWP4Ros5G4GF42mn7OxMMVaJg/+qiy0W1vF3wuk2+5HL4ch27/kZ91tFlqa1mRdfw30h9lY=~4404546~3621702",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main_dc_region": {
+      "value": "ap-southeast-2%3Bexp-session",
+      "domain": ".woolworths.co.nz"
+    },
+    "_fbp": {
+      "value": "fb.2.1786976197708.619601675403867109",
+      "domain": ".woolworths.co.nz"
+    },
+    "_gcl_au": {
+      "value": "1.1.1903407400.1786976198",
+      "domain": ".woolworths.co.nz"
+    },
+    "IDE": {
+      "value": "AHWqTUn7hNBV8vG9AacpjU-gdTsVL14sYnrE4A5NlgzGE0Fq2wpossfRzDbCJJgMw5U",
+      "domain": ".doubleclick.net"
+    },
+    "_ga": {
+      "value": "GA1.1.147022603.1786976198",
+      "domain": ".woolworths.co.nz"
+    },
+    "TAPID": {
+      "value": "wwnz/main>01a01014db020022ffbb1349bd3c0506f004b06700838|",
+      "domain": ".tealiumiq.com"
+    },
+    "tcs.google_cver": {
+      "value": "eyJ3d256L21haW4iOiIxfDE3ODY5NzYxOTc1MjAifQ==",
+      "domain": ".tealiumiq.com"
+    },
+    "tcs.google_gid": {
+      "value": "eyJ3d256L21haW4iOiJDQUVTRU5hRGFmZS1VVHdFWHVpLVFVOHdPYWN8MTc4Njk3NjE5NzUyMCJ9",
+      "domain": ".tealiumiq.com"
+    },
+    "_ga_7LRHCST7DF": {
+      "value": "GS2.1.s1786976198$o1$g0$t1786976198$j60$l0$h0",
+      "domain": ".woolworths.co.nz"
+    },
+    "kampyle_userid": {
+      "value": "90a8-3718-add0-86a7-e2ad-fd81-5281-4684",
+      "domain": "www.woolworths.co.nz"
+    },
+    "kampyleUserSession": {
+      "value": "1786976199121",
+      "domain": "www.woolworths.co.nz"
+    },
+    "kampyleUserSessionsCount": {
+      "value": "1",
+      "domain": "www.woolworths.co.nz"
+    },
+    "kampyleUserPercentile": {
+      "value": "93.22392664082443",
+      "domain": "www.woolworths.co.nz"
+    },
+    "TDID": {
+      "value": "5d74b011-4828-4eac-893c-eadc77ef80cd",
+      "domain": ".adsrvr.org"
+    },
+    "audit_p": {
+      "value": "1|QHBk17foiarIFisHsUBWFbhNd5nX47Ku8s/Q0q2sfQAKDbjyACkTY1eEi5+XcB7zBO+wHwlUZIxw0S94mtzOH0pB9H8pjytykCdHvyxZSdYsJIQzbPMdBEDWSffWwDxTausU+tRxXm22Hbh/KV3LNhIyZJK4IYAsi8N7BAmaQgdJt49mPrPRUFyo1mMSXCQ85kHVXO4iITS/uI9Aj+Yjkr7KKI+4mJy3oGirqm5gUhh8KMm0j6uXBGY3KwFBcKEE94+z9/eToJrLtHkR71fkUv/JTzblBZm7jOq1oSpaE+yma+WVcS1g3g==",
+      "domain": ".rubiconproject.com"
+    },
+    "khaos": {
+      "value": "MSXBHNRX-R-GS6U",
+      "domain": ".rubiconproject.com"
+    },
+    "khaos_p": {
+      "value": "MSXBHNRX-R-GS6U",
+      "domain": ".rubiconproject.com"
+    },
+    "audit": {
+      "value": "1|QHBk17foiarIFisHsUBWFbhNd5nX47Ku8s/Q0q2sfQAKDbjyACkTY1eEi5+XcB7zBO+wHwlUZIxw0S94mtzOH0pB9H8pjytykCdHvyxZSdYsJIQzbPMdBEDWSffWwDxTausU+tRxXm22Hbh/KV3LNhIyZJK4IYAsi8N7BAmaQgdJt49mPrPRUFyo1mMSXCQ85kHVXO4iITS/uI9Aj+Yjkr7KKI+4mJy3oGirqm5gUhh8KMm0j6uXBGY3KwFBcKEE94+z9/eToJrLtHkR71fkUv/JTzblBZm7jOq1oSpaE+yma+WVcS1g3g==",
+      "domain": ".rubiconproject.com"
+    },
+    "XANDR_PANID": {
+      "value": "aT0_mudNDK81I0Vym3AIGDppgbpbP6_V_lPBS4ZimNbHSgiKm5o08MIo6u8Fbhf_rBrbCJMZamN0nIa1QlACHHGxXCGGNpM328FU07LNpFM.",
+      "domain": ".adnxs.com"
+    },
+    "uuid2": {
+      "value": "3786458754486081842",
+      "domain": ".adnxs.com"
+    },
+    "utag_main_dleUpToDate": {
+      "value": "true%3Bexp-session",
+      "domain": ".woolworths.co.nz"
+    },
+    "_abck": {
+      "value": "5C5DEF49B737F0D6A05A986252CAB91A~0~YAAQj6lgaHdS3+2fAQAAX+YUEBCc46/yzOcQVONT8Ckb8Hz62N9JnfQWZ1d3p7sW/sxgKs6j5Xs912yBktIiHs/Hc5hJ7kTKuH8UH1QXJHHGcJBBNo37g871AZSztstewVk4/pkeFq1FCQbNr98KrikHGcRmX3n1TVvnZy/2Lj+7TKuTs0cXZzUyPniFStxgHZLWMRsPoYSH3yIsr1bnvIzp58FzFMPBIrvepeRmL+0tibfRIHk5ODRa0YQs/V+JXfmO1lfbRJQKSLYe3v/IoOyn8hfHYlwALPVQiBdc5ztK96XJAoYU8V8tTVHeL0Oq55rh/e7sBfjy0vNyZHX6aEGjiWOiQqwT5dhrZr4SMb0wMQpTzaquXlXOE14maMLF1SbvfSYQl9Yxa1Rc2bijYmddsRddDRvxSZEEoHH38e8ueCoGUy6vdLCTRBaSFZb7AG01SteRMuefdWGuzzkDlHV41DyTu/xQfVN7rfHo1wupjPVgbGa3n1RWDyu4zXzHK4aydwlWr+ztybOd4/TMuhCK9ghH0/vLLgZbLubxqmPwm89NF30E4K+Rwrp8dGNyzacVHk+CtBzt0favkhFBLT3+BGKnMvA2PW2ZofhUsSHGXUslrjN/tymaXLWuAPCT9r1QhuYiDfaA+BhkX5JrfU10zvdazrk/Bgqlv5SnPl5YQLT41T6gK7YABLH6wp3l6JoRYZHc/eaevTnc11RfUDS6NLl3gNponf3pL3sp1BlS1lSWyG+4MG307BuHS0WxY03Cp5Oa4TZc1FTUHpNjbCxTf2QRJIR1+Ej6aOS26HRIW7fpJWAIHuNCV2Q3Px5na62+a0TTT81TRLo2roEpXeSc29mwhx7gkUHFawnOfaYS2khKAWK36G71fF/DfCUs4QH8uCOqvxB+JaZoE/gOmgDFFhgAWtjg5JbhrOl2X/5TegPELn/A0fXYbf/N+4izPNcACkIvXC8Htja2kjR/ti6U9PN8gQwAD+ckHwwkNpyrKjhEDI/HWXFtfA86xiLbWtih2iI31Uby74jztC2ny5RG3QL7JNm5/TFHIj/3q3QZKPtxz6yKHAysd0wcyLcBcc7JtirWbDHePSCXxPPzmlDRxLxYHrcv15RDXV+kLwmWYHqjL3/IbHXv0oCJ86GhhZDTIVJfJkz9T6oXWvSQrohtMvu+/EgWcO2KbjVxdmtbiW75hWK1caaS~-1~-1~1786979796~AAQAAAAG%2f%2f%2f%2f%2f9qMJ5zu8IGdIEaDFLzyNb3+jxUYAS8frd8d1%2f++uOtPZD2KLEpljRotbI2D5THOX9mOb%2fICBvtv55nspEUAYWZL9SMgjxSQ3F3s~-1",
+      "domain": ".woolworths.co.nz"
+    },
+    "cw-lrkswrdjp": {
+      "value": "dm-Pickup,f-9009,a-224,s-38",
+      "domain": "www.woolworths.co.nz"
+    },
+    "appsettings-previousUrl": {
+      "value": "%2Fbookatimeslot",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main__se": {
+      "value": "3%3Bexp-session",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main__st": {
+      "value": "1786978004171%3Bexp-session",
+      "domain": ".woolworths.co.nz"
+    },
+    "_ga_NPJ5Q489WC": {
+      "value": "GS2.1.s1786976197$o1$g1$t1786976204$j53$l0$h0",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main_dc_event": {
+      "value": "3%3Bexp-session",
+      "domain": ".woolworths.co.nz"
+    },
+    "CMID": {
+      "value": "aoMXy4sFVk8AKADvAPFCDQAA",
+      "domain": ".casalemedia.com"
+    },
+    "CMPS": {
+      "value": "4999",
+      "domain": ".casalemedia.com"
+    },
+    "CMPRO": {
+      "value": "4999",
+      "domain": ".casalemedia.com"
+    },
+    "kampyleSessionPageCounter": {
+      "value": "2",
+      "domain": "www.woolworths.co.nz"
+    },
+    "akavpau_vpwww": {
+      "value": "1786976504~id=cb19cc1036c4160a9c50a7666f87f33c",
+      "domain": "www.woolworths.co.nz"
+    },
+    "tuuid": {
+      "value": "cfde7737-fe6e-428a-a3c4-33165ce3e18d",
+      "domain": ".bidswitch.net"
+    },
+    "c": {
+      "value": "1786976204",
+      "domain": ".bidswitch.net"
+    },
+    "tuuid_lu": {
+      "value": "1786976204",
+      "domain": ".bidswitch.net"
+    },
+    "KRTBCOOKIE_377": {
+      "value": "6810-5d74b011-4828-4eac-893c-eadc77ef80cd&KRTB&22918-5d74b011-4828-4eac-893c-eadc77ef80cd&KRTB&22926-5d74b011-4828-4eac-893c-eadc77ef80cd&KRTB&23031-5d74b011-4828-4eac-893c-eadc77ef80cd",
+      "domain": ".pubmatic.com"
+    },
+    "PugT": {
+      "value": "1786976204",
+      "domain": ".pubmatic.com"
+    },
+    "TDCPM": {
+      "value": "CAESFgoHcnViaWNvbhILCI7siveFnb4_EAUSFwoIYXBwbmV4dXMSCwjwoZ79hZ2-PxAFEhUKBmdvb2dsZRILCMD7k_qFnb4_EAUSFQoGY2FzYWxlEgsIiNeep4advj8QBRIYCgliaWRzd2l0Y2gSCwjqh5-nhp2-PxAFEhcKCHB1Ym1hdGljEgsI0MOfp4advj8QBRgFIAIoBjILCIChodScnb4_EAVaB211d3Fvd2ZgAXoJCgV0aWVyMRAB",
+      "domain": ".adsrvr.org"
+    }
+  },
+  "Glenfield": {
+    "AKA_A2": {
+      "value": "A",
+      "domain": ".woolworths.co.nz"
+    },
+    "rxVisitor": {
+      "value": "1786976209751HESRU3SS6U0LVB1O4K9LV6GPFI0G887O",
+      "domain": ".woolworths.co.nz"
+    },
+    "dtSa": {
+      "value": "-",
+      "domain": ".woolworths.co.nz"
+    },
+    "cw-ssuflow": {
+      "value": "1",
+      "domain": "www.woolworths.co.nz"
+    },
+    "browserSessionId": {
+      "value": "ed6b38a3-19fd-41f9-b2ae-4eeba4a4d4a3",
+      "domain": ".woolworths.co.nz"
+    },
+    "https://www.woolworths.co.nz_ed6b38a3-19fd-41f9-b2ae-4eeba4a4d4a3$$21124251956$$session_state": {
+      "value": "{\"lastSessionTimestamp\":1786976210002,\"sessionId\":\"4c04a29c-d116-46c8-a697-abbe12c054f6\"}",
+      "domain": "a21125881217.cdn.optimizely.com"
+    },
+    "dtPC": {
+      "value": "-23344$176209749_405h9vKNLKJDLAAWDVLCHHLHPPIBCGJHDVKPRQ-0e0",
+      "domain": ".woolworths.co.nz"
+    },
+    "agaCORS": {
+      "value": "162c23c3582dddcd27156e73058e7484",
+      "domain": "www.woolworths.co.nz"
+    },
+    "aga": {
+      "value": "162c23c3582dddcd27156e73058e7484",
+      "domain": "www.woolworths.co.nz"
+    },
+    "dtid": {
+      "value": "2:s5gVuBRmigBYZkZza4Ca1CqaAxfTO8GsnYAERkF9Vf/YzTDE2kLSJo+O0y4JvxRcKYMAcSHRnK60NauGu/2OUw07PhORu1TXJhKGrpJvkVdJ1q4rgII1gasuAAB2OAXpy/Y=",
+      "domain": "www.woolworths.co.nz"
+    },
+    "ASP.NET_SessionId": {
+      "value": "00atimkrfylj2yy2d0jqissc",
+      "domain": "www.woolworths.co.nz"
+    },
+    "cw-arjshtsw": {
+      "value": "o0defc0157b0147acac1318ad71733eb1ocnamfvnc",
+      "domain": "www.woolworths.co.nz"
+    },
+    "XSRF-TOKEN": {
+      "value": "acz6IoM8rID33TDOWmLnpwNf10fQ0ul3prBtDtXqab6ZTvZqgJ24B12p36bXCbHGs9l9TQpDxQJdZS05Kw-h8-e43B_IZSRXFDz9ExramHU1:wZ8OUo1x0WeIuP9FOqtfmu2lmognIBAdAkrtOE1p_ddaCmItykizZ98puC7hEDBXNJRC9guByTAGT9pvH1yRh_gT_vrQuwQNJcfjph6bN3Q1",
+      "domain": "www.woolworths.co.nz"
+    },
+    "cw-laie": {
+      "value": "5455832f0359403da04b0d083444d9dd",
+      "domain": "www.woolworths.co.nz"
+    },
+    "dtCookie": {
+      "value": "v_4_srv_3_sn_04IKQ7VVB53VN3K9GC4218NP1OF7PRQ0_perc_100000_ol_0_mul_1_app-3Ae071988f3d34c6b3_0_rcs-3Acss_0",
+      "domain": ".woolworths.co.nz"
+    },
+    "rxvt": {
+      "value": "1786978010586|1786976209752",
+      "domain": ".woolworths.co.nz"
+    },
+    "appsettings-browserSessionId": {
+      "value": "ed6b38a3-19fd-41f9-b2ae-4eeba4a4d4a3",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main_v_id": {
+      "value": "01a01015100200015180c7c6d0450506f004b06700838",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main__sn": {
+      "value": "1",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main_ses_id": {
+      "value": "1786976210946%3Bexp-session",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main__pn": {
+      "value": "1%3Bexp-session",
+      "domain": ".woolworths.co.nz"
+    },
+    "ak_bmsc": {
+      "value": "9FB9AE1721E95EAC01BEA5B10C40E973~000000000000000000000000000000~YAAQj6lgaFRU3+2fAQAAHQ4VEABsFX7rfeXohfdMJ9TCoQyy5K6i8YwZbL2SKA4AspI7FHPHtK7Bce67it7LzHXflLxWLE3RXzyNAFDVgPbZmK74UUSdDPELWOWLMY507OIzkQ9KKDbfCXryG7mG7k7QjLj55YR0KaZ/PVJtSqLwfMaQ+s/naByh7AdnHtDEgP1O6piqWe0iASfWdF3TrZdwmFs0lFEJqmy/drwZUkDwR0GVZ/nbmAM8aiE7Tk22yWzEqvcNewhEd72rfLSMhWrlf04fhZH09nTuEcDouP3RKDd7xWVFkE+G9QIC5ZsS42l8OA2m14zZExHvwixOxLhgBq9SrEUAKBoPbpm/slE7y8w6z1QcK+5NnjdJ1R3iEiJrfaibvJXjywyJiGkAHKwRDUVXZHkF1ijgbHlgkOvL10D7w3Kicw1QVcepPzgviiLUSwMV7Y11W7ZoLw61gFUn4A==",
+      "domain": ".woolworths.co.nz"
+    },
+    "optimizelySession": {
+      "value": "1786976211014",
+      "domain": ".woolworths.co.nz"
+    },
+    "bm_sz": {
+      "value": "02BA388E4E5C10A7E43F3B1A234994C8~YAAQj6lgaFtU3+2fAQAAgw4VEABNSDxb8zQ230V0GotHpjauxiZHNr9nMdDNBZyUL/s7uNHPZKff3rgXD2gYwyTKasTbNf5dlSkyigP+ERBf69yeWyApYeOsf0eiBjSqesVk/jSrfmK1cNXtjEE9X0VNu6iVKJDaIRfwmc4hSqs1Ch821XbsulmKYBtJk430/jrrxOZ+Wdy9zVGJ8L5kbAHLFK3iV+4uC7C6M+LJxikDG484rmGYzoqcuDHx9sn+ZZpFs8CQhJV6rR9WwcqUlS61rOH1wzGF5O3kJ+wBbN2YOjz1sHio8lo/xBxwf9DkOiKKSnlpfQs/6I8/J8NPTHw4rcBrQyaGpd8LEuhz28QfQx9OyZrWOE0KrBpJ9zEebvYGSwy5+Y1o6534nek1/nO2/+d2seu7eU8=~3224131~4343094",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main_dc_visit": {
+      "value": "1",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main_dcsyncran": {
+      "value": "1%3Bexp-session",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main__ss": {
+      "value": "0%3Bexp-session",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main_dc_region": {
+      "value": "ap-southeast-2%3Bexp-session",
+      "domain": ".woolworths.co.nz"
+    },
+    "_fbp": {
+      "value": "fb.2.1786976211416.127870350281724957",
+      "domain": ".woolworths.co.nz"
+    },
+    "_gcl_au": {
+      "value": "1.1.2005887487.1786976212",
+      "domain": ".woolworths.co.nz"
+    },
+    "IDE": {
+      "value": "AHWqTUkux4iVHKcAJgAhBMPF4Wk0ncEhDrgWu75KiWqY29gJXtPXfxfX_rQ38_HxwZ4",
+      "domain": ".doubleclick.net"
+    },
+    "_ga": {
+      "value": "GA1.1.190808094.1786976212",
+      "domain": ".woolworths.co.nz"
+    },
+    "TAPID": {
+      "value": "wwnz/main>01a01015100200015180c7c6d0450506f004b06700838|",
+      "domain": ".tealiumiq.com"
+    },
+    "tcs.google_gid": {
+      "value": "eyJ3d256L21haW4iOiJDQUVTRUU2LVUtQm0yN1RENm14eXdpN2E5U018MTc4Njk3NjIxMTI4OSJ9",
+      "domain": ".tealiumiq.com"
+    },
+    "tcs.google_cver": {
+      "value": "eyJ3d256L21haW4iOiIxfDE3ODY5NzYyMTEyODkifQ==",
+      "domain": ".tealiumiq.com"
+    },
+    "RT": {
+      "value": "\"z=1&dm=www.woolworths.co.nz&si=d511ddb0-6423-4b7e-a27a-3c2cd10f6316&ss=msxbhvx0&sl=1&tt=2jd&rl=1&ld=2je\"",
+      "domain": ".www.woolworths.co.nz"
+    },
+    "kampyle_userid": {
+      "value": "30ba-1c20-d2f0-dd63-9b7c-9e80-63ae-7ee4",
+      "domain": "www.woolworths.co.nz"
+    },
+    "kampyleUserSession": {
+      "value": "1786976212952",
+      "domain": "www.woolworths.co.nz"
+    },
+    "kampyleUserSessionsCount": {
+      "value": "1",
+      "domain": "www.woolworths.co.nz"
+    },
+    "kampyleUserPercentile": {
+      "value": "36.58892323241264",
+      "domain": "www.woolworths.co.nz"
+    },
+    "TDID": {
+      "value": "ab88d9bb-629c-4cf8-9e67-1304ef65c2a5",
+      "domain": ".adsrvr.org"
+    },
+    "XANDR_PANID": {
+      "value": "CS1FUCuRuBJKhnm_ShO3TA_GLBtSaKt8XC3jeoBbBLeT0aLnUv9PETssgV2AvgY8DPIF1D-mykiWmeW5fOvB0YetBM9u5yCdCjr_w8iMeqo.",
+      "domain": ".adnxs.com"
+    },
+    "uuid2": {
+      "value": "1685129860792044010",
+      "domain": ".adnxs.com"
+    },
+    "audit_p": {
+      "value": "1|H3qCyLpGJNtNzIVM72Kyqs0OyLc9FlR0cEnvutAuG/OcsAm2ov+kEQioxKtqfnAjnbYtNCbgFYqM1KxoLazIt9i2Wk5FrGos0XY24Ec+XLv4zTVrUTiiKQwaKqfHF4zIvQZmiIca4icvm4iRXIFbFDe3bca0aPCXXHRiEbp3BzpbOz6AjJtUa8ZnH3r7x5VAdeodiyl5GGjkt77VmXBK7kiCfUmSYXqD+ohH/uuQN8oOr/S07bYDcYQkZmofZQkSVSwKu1RXSJT0/fhu8/pkBO4VeIulq+4M1TRwmTZWV3Xc6UO785F0Pw==",
+      "domain": ".rubiconproject.com"
+    },
+    "khaos": {
+      "value": "MSXBHYGT-1R-KEHH",
+      "domain": ".rubiconproject.com"
+    },
+    "khaos_p": {
+      "value": "MSXBHYGT-1R-KEHH",
+      "domain": ".rubiconproject.com"
+    },
+    "audit": {
+      "value": "1|H3qCyLpGJNtNzIVM72Kyqs0OyLc9FlR0cEnvutAuG/OcsAm2ov+kEQioxKtqfnAjnbYtNCbgFYqM1KxoLazIt9i2Wk5FrGos0XY24Ec+XLv4zTVrUTiiKQwaKqfHF4zIvQZmiIca4icvm4iRXIFbFDe3bca0aPCXXHRiEbp3BzpbOz6AjJtUa8ZnH3r7x5VAdeodiyl5GGjkt77VmXBK7kiCfUmSYXqD+ohH/uuQN8oOr/S07bYDcYQkZmofZQkSVSwKu1RXSJT0/fhu8/pkBO4VeIulq+4M1TRwmTZWV3Xc6UO785F0Pw==",
+      "domain": ".rubiconproject.com"
+    },
+    "utag_main_dleUpToDate": {
+      "value": "true%3Bexp-session",
+      "domain": ".woolworths.co.nz"
+    },
+    "cw-lrkswrdjp": {
+      "value": "dm-Pickup,f-9443,a-440,s-38",
+      "domain": "www.woolworths.co.nz"
+    },
+    "appsettings-previousUrl": {
+      "value": "%2Fbookatimeslot",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main__se": {
+      "value": "3%3Bexp-session",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main__st": {
+      "value": "1786978017669%3Bexp-session",
+      "domain": ".woolworths.co.nz"
+    },
+    "_ga_NPJ5Q489WC": {
+      "value": "GS2.1.s1786976211$o1$g1$t1786976217$j54$l0$h0",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main_dc_event": {
+      "value": "3%3Bexp-session",
+      "domain": ".woolworths.co.nz"
+    },
+    "CMID": {
+      "value": "aoMX2YsFVcEAD-t3AQPKlQAA",
+      "domain": ".casalemedia.com"
+    },
+    "CMPS": {
+      "value": "4873",
+      "domain": ".casalemedia.com"
+    },
+    "CMPRO": {
+      "value": "4873",
+      "domain": ".casalemedia.com"
+    },
+    "kampyleSessionPageCounter": {
+      "value": "2",
+      "domain": "www.woolworths.co.nz"
+    },
+    "KRTBCOOKIE_377": {
+      "value": "6810-ab88d9bb-629c-4cf8-9e67-1304ef65c2a5&KRTB&22918-ab88d9bb-629c-4cf8-9e67-1304ef65c2a5&KRTB&22926-ab88d9bb-629c-4cf8-9e67-1304ef65c2a5&KRTB&23031-ab88d9bb-629c-4cf8-9e67-1304ef65c2a5",
+      "domain": ".pubmatic.com"
+    },
+    "PugT": {
+      "value": "1786976217",
+      "domain": ".pubmatic.com"
+    },
+    "tuuid": {
+      "value": "19e08d1a-67f9-4704-9d52-71c350ca5fb4",
+      "domain": ".bidswitch.net"
+    },
+    "c": {
+      "value": "1786976217",
+      "domain": ".bidswitch.net"
+    },
+    "tuuid_lu": {
+      "value": "1786976217",
+      "domain": ".bidswitch.net"
+    },
+    "TDCPM": {
+      "value": "CAESFQoGZ29vZ2xlEgsI_PmH_oadvj8QBRIXCghhcHBuZXh1cxILCLall4GHnb4_EAUSFgoHcnViaWNvbhILCL6VjvuGnb4_EAUSGAoJYmlkc3dpdGNoEgsItNf3p4edvj8QBRIXCghwdWJtYXRpYxILCJCD-KeHnb4_EAUSFQoGY2FzYWxlEgsI9rf4p4edvj8QBRgFIAIoBjILCKyk-tSdnb4_EAVaB211d3Fvd2ZgAXoJCgV0aWVyMRAB",
+      "domain": ".adsrvr.org"
+    },
+    "akavpau_vpwww": {
+      "value": "1786976518~id=f5aa64916d51f1aadcedeb722de313bc",
+      "domain": "www.woolworths.co.nz"
+    },
+    "_abck": {
+      "value": "3A7CE10751B6CEB050B4EBD5B00B7EF9~-1~YAAQj6lgaBhW3+2fAQAAPy0VEBD+E7da6YSUo+T3WzXeqOT8PdTiTvmaAFJGhY0jWm6n5UppqKdUdiiWyklT4log1wq0y1YZ+9fxuul+nXGHV8/INKwUtm9tvD2wPLwNEpeRTXpcbDTmJaqxrO1ejgu7x7GDmAWSkdidtkfxHCwhlCUfgT2c+KBu3Sgsv6Ocg9ZC4qPz/2+Gx84zAcBTM5l8uGgDhGE5aIhN0M7Nr9g+/Y4iJ8XusyxnXLV9tTPpCzO7uskc5pxIx4GhKZZ/I6evuQ2cp0ri/wd595KHl5RHz5od7cpT6xKpepKAOqhuKrfFEoPyiH4cJMTdYx0cxPtGo+SEQn4fZ/E7bXMcnBRNlXdgK8GOMIU/l234ma5iO3qX4LRLkqffrMU9jzfS13wEMyxcijCoxXMNIFbL3heM+V5QqFIylvviK8T2eH/N0582STzYymc52cfcmg34ovDfto0vJTPoF9Y3HBNsJdpSLOoCdD+X8rkTDxB8Enls7xGU3ZcIhBd1Cmtv1oIav4WZiMZk6uVyE/Q5n9IomF4aPwAMk3eetiJOr7AhI09DRwtmRZ8pAD6saR5GWtA+zgAGXvMq0WaGh9Il7H8b7vmBxgo/2iUymXGZCSHckIOhn7GKOO2VV4/ogFXjfWgmYQaVRlw9hxAwLEgk4hoXId7fiEt8pcI8svSn+hLGdT+2zFKEhnOIEuVLd9FmIFTJMbBg/+sYOk2ZxOsglHZYmiTc1iCgiNxKh7iwTUv6vA0tVgXwGZ/c59f0qhAIC4ty5cvef0S78LvcsPK2cyO84uWWR3VDIxtDr6+tfgQWG9Dyi10B0dDB0h87S0pGMh4nvjj2NqPYz83cua10+e0n7Ly8dkjkyRIgRSIwfXVV7AXGFDzE2EOssZzQIhXnotUooKgv+Gw+U4faAVHqg5V7wycWTjB2X/nnESOXuufC1AcZCdVzgSW72mD5uxhdD7gO++808AhHCxHEdCfKlVwLN9gkfml3W/57ssaGhcPNJO5b4gJkca9fn2KmDYhEKDiWG3CO1ylPrdyFwKL91wvkzHGrmPy2mr0mQbVCGYtfUBVW+CzoBDivjl0OGXZJemPg87eVXRSERzZmcb0RSZ+stpKy0eNT5oT3WviXsCLa4qF0AQwdT8WQ7Ic=~-1~-1~1786979809~AAQAAAAG%2f%2f%2f%2f%2f2wL+okpnRJItDzC%2fwQQPX6bAlRFnalYYNBdcgIVvNNPcE8bxc2Rmlnt0MiMBLEvPEIddW+ep3mFMXKgoZjdwSRIY8lmnpykPITw~-1",
+      "domain": ".woolworths.co.nz"
+    }
+  },
+  "BASELINE": {
+    "AKA_A2": {
+      "value": "A",
+      "domain": ".woolworths.co.nz"
+    },
+    "rxVisitor": {
+      "value": "1786976223322LIHANCQDBIL0V70FHS7120M5M685EOVQ",
+      "domain": ".woolworths.co.nz"
+    },
+    "dtSa": {
+      "value": "-",
+      "domain": ".woolworths.co.nz"
+    },
+    "cw-ssuflow": {
+      "value": "1",
+      "domain": "www.woolworths.co.nz"
+    },
+    "browserSessionId": {
+      "value": "0fb0b25a-edb0-4895-97c1-df97d0c7ff85",
+      "domain": ".woolworths.co.nz"
+    },
+    "https://www.woolworths.co.nz_0fb0b25a-edb0-4895-97c1-df97d0c7ff85$$21124251956$$session_state": {
+      "value": "{\"lastSessionTimestamp\":1786976223572,\"sessionId\":\"e13b34c9-0ab0-4f81-8587-31e6ef504a87\"}",
+      "domain": "a21125881217.cdn.optimizely.com"
+    },
+    "dtPC": {
+      "value": "-30953$176223320_837h9vHUMAWTNIDEOTHSCQPPROQOCRNFUMUUHA-0e0",
+      "domain": ".woolworths.co.nz"
+    },
+    "agaCORS": {
+      "value": "766707b394872b181f1414b0000342ea",
+      "domain": "www.woolworths.co.nz"
+    },
+    "aga": {
+      "value": "766707b394872b181f1414b0000342ea",
+      "domain": "www.woolworths.co.nz"
+    },
+    "dtid": {
+      "value": "2:9X2QvQDy9QBSjywBdLJVU4xV41dAPZlCmUCL4uo3whtj393CAH5xvJm3tjLomARcADutxTAVnxOCpVEeTA1curXwEv/YHVKqnGp+25VHUmJqmR3oG5iAUdOnDBIzZ7BwFYY=",
+      "domain": "www.woolworths.co.nz"
+    },
+    "ASP.NET_SessionId": {
+      "value": "rut5euudqivpctrbdhenb3j5",
+      "domain": "www.woolworths.co.nz"
+    },
+    "cw-arjshtsw": {
+      "value": "y10e84591002b4ce2a2b077619e8bf47dywnjaqbfw",
+      "domain": "www.woolworths.co.nz"
+    },
+    "XSRF-TOKEN": {
+      "value": "aDSBZ5rzMouyG1mK9SAYP6kw47PX4qjyLwU8hCWL9eBoHrSMtjP7pguciOmQwb0Ije6yYWBcCxdMnomVWfCc-4r7AymvEodBunLlCRS4O2U1:-qtooaE4Gt2S1vrY807hrf5vFXUfu030IoD-Tb6jruNN79BNxcmd-allx_X9QD1q_-zj_21WZMFuHZKfzZU_pOeL69TTVvm28vyFvnAAzHA1",
+      "domain": "www.woolworths.co.nz"
+    },
+    "cw-laie": {
+      "value": "2be5d1bfe45e48d4be8c9960259a2fed",
+      "domain": "www.woolworths.co.nz"
+    },
+    "dtCookie": {
+      "value": "v_4_srv_8_sn_J8N3050DTLA22Q2CV1KGIIINFB5LJ7HD_perc_100000_ol_0_mul_1_app-3Ae071988f3d34c6b3_0_rcs-3Acss_0",
+      "domain": ".woolworths.co.nz"
+    },
+    "rxvt": {
+      "value": "1786978024091|1786976223323",
+      "domain": ".woolworths.co.nz"
+    },
+    "appsettings-browserSessionId": {
+      "value": "0fb0b25a-edb0-4895-97c1-df97d0c7ff85",
+      "domain": ".woolworths.co.nz"
+    },
+    "appsettings-previousUrl": {
+      "value": "%2Fbookatimeslot%2F(hww-modal%3Achange-pick-up-store)",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main_v_id": {
+      "value": "01a0101544c600028ac32b7d11450506f004b067007e8",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main__sn": {
+      "value": "1",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main_ses_id": {
+      "value": "1786976224455%3Bexp-session",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main__pn": {
+      "value": "1%3Bexp-session",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main_dc_visit": {
+      "value": "1",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main_dcsyncran": {
+      "value": "1%3Bexp-session",
+      "domain": ".woolworths.co.nz"
+    },
+    "ak_bmsc": {
+      "value": "44055A2DCA679E064A1CE04C3133852B~000000000000000000000000000000~YAAQj6lgaHlX3+2fAQAA6kIVEABNPTYQxF+wg99uIrtTKYIOJHEDwraI3V2yr0tPhaDr1SvN/RtkbrpdQCz9k6dBdz7ehtTkYdO/NrJONg+e3kY7hWfh0C2nxJX7jkeo7+xZX2ZF2qoG+poTpMK/ly/7IOKteP79VM4IPzSL9rou+ZDI2kBv88vVGxJKMNQCobHTTELT4gUWVHyv3qgpJY4QiNIOZxS61w3FgDYt0g01csRtOlKOv8Dz5spGfHswT8XfGL8oc32sPpug0wFelqrSzN51dU9qn8rcCkO8foLUn1TolntxI4qVKP4c8SfNd6XC1afHnQ9eVc+kTfupcKfRIU4KnP/KdZW4rD/pIPAaB1qm1fyqkcNcrKBYV6AEpNsevzsEEb9ulIxeFRoypYU3zA0cSRtJoyBA+K6S2pWuTodCo/IYGmkos1dc4kkOjMo0ezB0dSpd/IAw1v/cUC6/oQ==",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main__se": {
+      "value": "2%3Bexp-session",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main__ss": {
+      "value": "0%3Bexp-session",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main__st": {
+      "value": "1786978024509%3Bexp-session",
+      "domain": ".woolworths.co.nz"
+    },
+    "utag_main_dc_event": {
+      "value": "2%3Bexp-session",
+      "domain": ".woolworths.co.nz"
+    },
+    "akavpau_vpwww": {
+      "value": "1786976524~id=4659cb56fc8561287d1d00ef3d7100c9",
+      "domain": "www.woolworths.co.nz"
+    },
+    "utag_main_dc_region": {
+      "value": "ap-southeast-2%3Bexp-session",
+      "domain": ".woolworths.co.nz"
+    },
+    "bm_sz": {
+      "value": "8528D3F9F736C044027382789FDF104A~YAAQj6lgaIFX3+2fAQAAW0MVEAD2YXtWfNEyfx7YE8rpyB64m4NbkM2XNljZhLlUxVRfSb9ujMKAoM2BqqRBsR9wg18Kq+CyPMU5uBlWYzlDoWh161PTI24fdvj7ju4Wyu/nXwwwUfRXgrhhUyGgjnagA7KdK5hw1MdxVjhb8mHqMh3tIfTWQCF7JtqBjnNvVRIm8o66eNGvzhZniV5yKd7CqPXDmWRzaGTDpmniZTVZadIzZH15Y+M7tzGDBOacogL4CGwWVAY+VJ9LiV2R8LSe/VJrDLIkDYdDkkI4IvmNwkoF/1cZ+dmUy7GSBMkCSocjGJwqFq4cZDGH1EJ0uvatcm3VjdKcUJgRZ5XIil9j9uZSwulxnyfqmbssOu+Ygt19iHKnFvTKD7nIlv1+TzSdBsQJgnD5fII=~3424821~4339253",
+      "domain": ".woolworths.co.nz"
+    },
+    "optimizelySession": {
+      "value": "1786976224620",
+      "domain": ".woolworths.co.nz"
+    },
+    "_fbp": {
+      "value": "fb.2.1786976224666.14708122793358914",
+      "domain": ".woolworths.co.nz"
+    },
+    "IDE": {
+      "value": "AHWqTUm-I6OJRMREbbNhSIRkX0Ey3jr3Smq_iTe0HKDEHNSQOGEaTjFZhUFaZox7oUo",
+      "domain": ".doubleclick.net"
+    },
+    "_ga": {
+      "value": "GA1.1.627346677.1786976225",
+      "domain": ".woolworths.co.nz"
+    },
+    "_ga_7LRHCST7DF": {
+      "value": "GS2.1.s1786976224$o1$g0$t1786976224$j60$l0$h0",
+      "domain": ".woolworths.co.nz"
+    },
+    "_gcl_au": {
+      "value": "1.1.789580996.1786976225",
+      "domain": ".woolworths.co.nz"
+    },
+    "_abck": {
+      "value": "139485A55DD6BCD6168B5C5A7038F492~-1~YAAQj6lgaKJX3+2fAQAAF0UVEBCpkNFOrHwJSByD/LRiAaOYK65c8BRdRE1A4GapeSCQr7mO6c/KHMTbWjV8lr5qWspHja9TWfP+N+0Z+CIgrhKIT6EzfQG6Hqd/8ZkTf3Scf5hKH0xFEVkqlqzKDyZCzfGP6vWBL/nW1yp2LnkinyBxeU1DUP6BnKLUyZnQcENyppSXa8rPddlLc1A465boyX81NWUJjNecJVstRhx1x1oIp9YRWHv1AIYCBM+qHLuG2mettpigzC6LZ5tVRecvH3ML2L6QrI4mv7zaMUe9QUpRj/g0waJuHYunyupHmKKb6eBf52GjgXN6Uan1NXMNOh0s1viiDJvEiGCpjQ8sWKD4Pt6pDCsiJBiYsb7nad85q/d3osSGEbhzim69n/Kjaxbbjs4SRTo7l9/enuIkxXCgnD/EPETFP1C/24zdCTd/UR14ecJcyiGBl0bBGXRP4MoZBxDwSHsD+i28l372XPH13zbvdmrn6XkBfz14l6fLzKoeAHeYWwqhcE1q2cSwR5ZnTKZh11kLDOFWi1VAswrZCfhUgRe6nB0pv1epAZTj5eIrP6YKsjTvIw8VSehI0GVR+m0bfUe5qBJ3nfj5CuD0CmZQ+xEI3n+zUj+5AdmcyaVUPFADT0QnzqIhpldP4mlY6RSgJpPJD03A5RDpDUzVIVHGHStEOa4Hw+atJuUca+n57QzN+aS9pGS5Q7lNcstSnBE+P2SpOVK+t4Ifps5dB95M5MYqx5zMBMLNQFhDOPscDFawFwSKNNugOJdIzMm76koovRKHuEt184dPyleX87xZDvG7a0d6p3p4GY2MOTZI5OAjx5f5XAsTwp6+1y8CZ/vqdMoH1ssu79IjpyFDIEshCNC5+X3j/5zWYwddtXLtz2jHwm0mO2Yqdx3K5hNXQpuioZRhzXylH0Jmg2qMJW+zqZdfNOXQxCbEjNxpxoFAouAAy4D0dJGrl/mwg6DOWHJelUNFY2wqPTwOmoFBl7HG8XmkzYijCFswjl5KYGjoIWbpLMP8AwSAf+R6wEEvwF6fqyPuUKlpx6pew9lhw/nwYc6gxyuSIiPi5C2tD/UPfTVvlCxU0L50yehC/TMuktKCDIPHml85+F7F/UW4GLqAy/Hahz+UlfsRpUKMFC6Rqg==~-1~-1~1786979823~AAQAAAAG%2f%2f%2f%2f%2f1Kh7weGl+nh7omr1Uyt4buiFAaGAnSFQZBTpD%2fIwHysjmS94DVW5rciTNKNL+hP9%2fMMHIJa72jGeDEv%2fo0xDFp5IyNQgD8ecsGc~-1",
+      "domain": ".woolworths.co.nz"
+    },
+    "tcs.google_gid": {
+      "value": "eyJ3d256L21haW4iOiJDQUVTRUhrNTlmdElwN1VHZE5RTHF5eFFmWVl8MTc4Njk3NjIyNDUyNCJ9",
+      "domain": ".tealiumiq.com"
+    },
+    "TAPID": {
+      "value": "wwnz/main>01a0101544c600028ac32b7d11450506f004b067007e8|",
+      "domain": ".tealiumiq.com"
+    },
+    "tcs.google_cver": {
+      "value": "eyJ3d256L21haW4iOiIxfDE3ODY5NzYyMjQ1MjQifQ==",
+      "domain": ".tealiumiq.com"
+    },
+    "_ga_NPJ5Q489WC": {
+      "value": "GS2.1.s1786976225$o1$g0$t1786976225$j60$l0$h0",
+      "domain": ".woolworths.co.nz"
+    },
+    "RT": {
+      "value": "\"z=1&dm=www.woolworths.co.nz&si=71ae0e95-603b-4f72-bef0-3464ce671759&ss=msxbi6do&sl=1&tt=27o&rl=1&ld=27q\"",
+      "domain": ".www.woolworths.co.nz"
+    },
+    "kampyle_userid": {
+      "value": "c008-7e47-ea33-85fe-5942-9a81-9a00-72c7",
+      "domain": "www.woolworths.co.nz"
+    },
+    "kampyleUserSession": {
+      "value": "1786976226104",
+      "domain": "www.woolworths.co.nz"
+    },
+    "kampyleUserSessionsCount": {
+      "value": "1",
+      "domain": "www.woolworths.co.nz"
+    },
+    "kampyleUserPercentile": {
+      "value": "62.02464794359908",
+      "domain": "www.woolworths.co.nz"
+    },
+    "kampyleSessionPageCounter": {
+      "value": "1",
+      "domain": "www.woolworths.co.nz"
+    },
+    "TDID": {
+      "value": "26d59418-468f-4641-8d07-a56d3c92eb0e",
+      "domain": ".adsrvr.org"
+    },
+    "XANDR_PANID": {
+      "value": "7jLRH31jcvELhXQlLJTqMNDMnCg1DYTZpLsaBXlC_XUv8lgfswp2SXAsqBr49dTplJKjSE5cN19cQQIQrG2EZyorTDJlXrql_nmwrQmZfwA.",
+      "domain": ".adnxs.com"
+    },
+    "uuid2": {
+      "value": "5241318943569365613",
+      "domain": ".adnxs.com"
+    },
+    "audit_p": {
+      "value": "1|zh4+LtDCjg2gpdFiSjB0+61YlvErfGg4ULF79WHull8KDbjyACkTY1eEi5+XcB7zNNZg+bwfMbZw0S94mtzOH0pB9H8pjytykCdHvyxZSdYhUdHDJIQDoEhHOjB8oxz04oSoILCxyabn0jPs5KuHFLMAWdp0qvuni8N7BAmaQgdJt49mPrPRUFyo1mMSXCQ85kHVXO4iITS/uI9Aj+Yjkr7KKI+4mJy3oGirqm5gUhh8KMm0j6uXBGY3KwFBcKEE94+z9/eToJrLtHkR71fkUv/JTzblBZm7jOq1oSpaE+yma+WVcS1g3g==",
+      "domain": ".rubiconproject.com"
+    },
+    "khaos": {
+      "value": "MSXBI8M5-9-9L9H",
+      "domain": ".rubiconproject.com"
+    },
+    "khaos_p": {
+      "value": "MSXBI8M5-9-9L9H",
+      "domain": ".rubiconproject.com"
+    },
+    "audit": {
+      "value": "1|zh4+LtDCjg2gpdFiSjB0+61YlvErfGg4ULF79WHull8KDbjyACkTY1eEi5+XcB7zNNZg+bwfMbZw0S94mtzOH0pB9H8pjytykCdHvyxZSdYhUdHDJIQDoEhHOjB8oxz04oSoILCxyabn0jPs5KuHFLMAWdp0qvuni8N7BAmaQgdJt49mPrPRUFyo1mMSXCQ85kHVXO4iITS/uI9Aj+Yjkr7KKI+4mJy3oGirqm5gUhh8KMm0j6uXBGY3KwFBcKEE94+z9/eToJrLtHkR71fkUv/JTzblBZm7jOq1oSpaE+yma+WVcS1g3g==",
+      "domain": ".rubiconproject.com"
+    },
+    "TDCPM": {
+      "value": "CAESFwoIYXBwbmV4dXMSCwj4lsb-h52-PxAFEhUKBmdvb2dsZRILCOKDzPuHnb4_EAUSFgoHcnViaWNvbhILCJamu_iHnb4_EAUYBSADKAYyCwics72lnp2-PxAFWgdtdXdxb3dmYAF6CQoFdGllcjEQAQ..",
+      "domain": ".adsrvr.org"
+    }
+  }
+}
