@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NZ Meal Cost Optimiser</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 1200px; margin: 2rem auto; padding: 1rem; }
+    input, button, select { padding: 0.5rem; margin: 0.25rem 0; box-sizing: border-box; }
+    button { background: #f5a623; color: white; border: none; cursor: pointer; }
+    button:hover { background: #e09715; }
+    .loading { color: #666; margin: 1rem 0; }
+    .result-section { border: 1px solid #ddd; padding: 1rem; margin: 1rem 0; border-radius: 4px; }
+    .cheapest { background: #e8f5e9; border-left: 4px solid #4caf50; }
+    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 0.85rem; }
+    th, td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid #ddd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+    th { background: #f5f5f5; font-weight: bold; position: sticky; top: 0; }
+    tr:hover { background: #fafafa; }
+    .badge { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 3px; font-size: 0.8rem; }
+    .badge-pns { background: #fff9e6; color: #7a5900; }
+    .badge-nw { background: #fff0f0; color: #c62828; }
+    .badge-ww { background: #e6f9ee; color: #00695c; }
+    .status-ok { color: #2e7d32; font-weight: bold; }
+    .status-approx { color: #ef6c00; font-weight: bold; }
+    .status-incompatible { color: #c62828; font-weight: bold; }
+    .status-error { color: #c62828; font-weight: bold; }
+    .section-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 0.5rem; }
+    .summary { margin-bottom: 1rem; color: #666; font-size: 0.9rem; }
+    .store-cost-row { cursor: pointer; }
+    .store-cost-row:hover { background: #e8f5e9; }
+    .toggle-detail { font-size: 0.75rem; color: #999; }
+    .ingredient-detail { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+    .ingredient-detail.expanded { max-height: 500px; }
+  </style>
+</head>
+<body>
+  <h1>NZ Meal Cost Optimiser</h1>
+  <p>Find the cheapest supermarket for any meal across Pak'nSave, New World, and Woolworths.</p>
+
+  <div id="form">
+    <input id="dish" placeholder="Dish (e.g. spaghetti bolognese)" value="spaghetti bolognese" />
+    <input id="address" placeholder="NZ Address (e.g. Auckland CBD)" value="Auckland CBD" />
+    <div style="display: flex; gap: 0.5rem; align-items: center;">
+      <input id="distance" type="number" min="1" max="20" value="5" style="width: 80px;" />
+      <label>km radius</label>
+      <input id="maxStores" type="number" min="1" max="10" value="3" style="width: 60px;" />
+      <label>max stores</label>
+      <input id="portions" type="number" min="1" max="20" value="4" style="width: 60px;" />
+      <label>portions</label>
+    </div>
+    <select id="companies" multiple style="height: 100px; width: 200px;">
+      <option value="PaknSave">Pak'nSave</option>
+      <option value="NewWorld">New World</option>
+      <option value="Woolworths">Woolworths</option>
+    </select>
+    <button onclick="runOptimise()">Optimise</button>
+  </div>
+
+  <div id="loading" class="loading" style="display:none">Searching all supermarkets...</div>
+  <div id="results"></div>
+
+  <script>
+    function badgeClass(company) {
+      if (company === "PaknSave") return "badge-pns";
+      if (company === "NewWorld") return "badge-nw";
+      if (company === "Woolworths") return "badge-ww";
+      return "";
+    }
+
+    function statusClass(status) {
+      const s = (status || "").toLowerCase();
+      if (s === "ok") return "status-ok";
+      if (s === "approximate") return "status-approx";
+      if (s === "incompatible_units") return "status-incompatible";
+      return "status-error";
+    }
+
+    function fmtPrice(v) {
+      if (v === "" || v === null || v === undefined) return "-";
+      const n = parseFloat(v);
+      if (isNaN(n)) return v;
+      return "$" + n.toFixed(2);
+    }
+
+    function fmtQty(qty, unit) {
+      if (!qty && qty !== 0) return "";
+      return qty + " " + (unit || "");
+    }
+
+    async function runOptimise() {
+      const form = document.getElementById('form');
+      const loading = document.getElementById('loading');
+      const results = document.getElementById('results');
+
+      loading.style.display = 'block';
+      results.innerHTML = '';
+      form.style.display = 'none';
+
+      const selected = Array.from(document.getElementById('companies').selectedOptions).map(o => o.value);
+      const payload = {
+        dish: document.getElementById('dish').value,
+        address: document.getElementById('address').value,
+        distance_km: parseFloat(document.getElementById('distance').value) || 5.0,
+        max_stores_per_company: parseInt(document.getElementById('maxStores').value) || 3,
+        portions: parseInt(document.getElementById('portions').value) || 4,
+        companies: selected.length > 0 ? selected : undefined
+      };
+
+      try {
+        const resp = await fetch('/optimise', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        displayResults(data);
+      } catch (e) {
+        results.innerHTML = '<p style="color:red">Error: ' + e.message + '</p>';
+      } finally {
+        loading.style.display = 'none';
+        form.style.display = 'block';
+      }
+    }
+
+    function displayResults(data) {
+      if (data.detail) {
+        document.getElementById('results').innerHTML = '<p style="color:red">Error: ' + data.detail + '</p>';
+        return;
+      }
+
+      const rows = data.rows || [];
+      const storeCosts = data.store_costs || [];
+
+      let html = '';
+
+      // Summary line
+      html += '<div class="summary">';
+      html += `<strong>${data.dish}</strong> &middot; Searched: ${data.companies_checked.join(', ')} &middot; `;
+      html += `${rows.length} product results across ${storeCosts.length} stores`;
+      html += ` &middot; <em>Completed at ${new Date(data.timestamp).toLocaleString()}</em>`;
+      html += '</div>';
+
+      // --- Store Cost Comparison (cheapest first) ---
+      html += '<div class="result-section cheapest">';
+      html += '<div class="section-title">Store Cost Comparison (Used Cost)</div>';
+      if (storeCosts.length === 0) {
+        html += '<p>No store cost data available.</p>';
+      } else {
+        html += '<table>';
+        html += '<tr><th>Rank</th><th>Store</th><th>Company</th><th>Ingredients Matched</th><th>Used Cost</th></tr>';
+        storeCosts.forEach((sc, i) => {
+          html += `<tr class="store-cost-row" onclick="toggleDetail('${sc.store}')">`;
+          html += `<td>#${i + 1}</td>`;
+          html += `<td><strong>${sc.store}</strong></td>`;
+          html += `<td><span class="badge ${badgeClass(sc.company)}">${sc.company}</span></td>`;
+          html += `<td>${sc.ingredients_matched}/${sc.ingredients_total}</td>`;
+          html += `<td><strong>$${sc.total_used_cost.toFixed(2)}</strong></td>`;
+          html += `</tr>`;
+          // Expandable ingredient detail
+          const detailId = sc.store.replace(/[^a-zA-Z0-9]/g, '_');
+          html += `<tr id="detail-${detailId}" class="ingredient-detail"><td colspan="5">`;
+          if (sc.best_per_ingredient && sc.best_per_ingredient.length > 0) {
+            html += '<table style="margin-top:0.5rem;"><tr><th>Ingredient</th><th>Recipe Needed</th><th>Returned Product</th><th>Pack Size</th><th>Used Price</th><th>Purch Qty</th><th>Purch Cost</th><th>Status</th></tr>';
+            sc.best_per_ingredient.forEach(bi => {
+              const recipeInfo = [
+                bi.ingredient_quantity,
+                bi.ingredient_measurement
+              ].filter(x => x !== "" && x !== null && x !== undefined).join(" ");
+              const recipeApprox = [
+                bi.ingredient_approx_quantity,
+                bi.ingredient_approx_unit
+              ].filter(x => x !== "" && x !== null && x !== undefined && x !== 0).join(" ");
+              const recipeDisplay = recipeInfo + (recipeApprox ? ' (~' + recipeApprox + ')' : '');
+              const packInfo = [
+                bi.quantity,
+                bi.measurement_unit
+              ].filter(x => x !== "" && x !== null && x !== undefined).join(" ");
+              html += `<tr>`;
+              html += `<td>${bi.search_ingredient}</td>`;
+              html += `<td>${recipeDisplay || "-"}</td>`;
+              html += `<td>${bi.returned_ingredient}</td>`;
+              html += `<td>${packInfo || "-"}</td>`;
+              html += `<td>${fmtPrice(bi.used_price)}</td>`;
+              html += `<td>${bi.purchase_quantity} pack(s)</td>`;
+              html += `<td>${fmtPrice(bi.purchase_price)}</td>`;
+              html += `<td class="${statusClass(bi.status)}">${bi.status}</td>`;
+              html += `</tr>`;
+            });
+            html += '</table>';
+          } else {
+            html += '<p style="color:#999">No matching ingredients found.</p>';
+          }
+          html += '</td></tr>';
+        });
+        html += '</table>';
+      }
+      html += '</div>';
+
+      // --- All Results Table ---
+      html += '<div class="result-section">';
+       html += '<div class="section-title">All Results (' + rows.length + ' products)</div>';
+      if (rows.length === 0) {
+        html += '<p>No results found.</p>';
+      } else {
+        html += '<table>';
+        html += '<tr>';
+        html += '<th>Company</th><th>Store</th><th>Search Term</th><th>Returned Product</th>';
+        html += '<th>Recipe Needed</th><th>Price</th><th>Pack Size</th><th>Cost Per Unit</th><th>Used Price</th>';
+        html += '<th>Purch Qty</th><th>Purch Cost</th><th>Status</th><th>SKU</th>';
+        html += '</tr>';
+        rows.forEach(r => {
+          const packInfo = [r.quantity, r.measurement_unit].filter(x => x !== "" && x !== null && x !== undefined).join(" ");
+          const recipeInfo = [
+            r.ingredient_quantity,
+            r.ingredient_measurement
+          ].filter(x => x !== "" && x !== null && x !== undefined).join(" ");
+          const recipeApprox = [
+            r.ingredient_approx_quantity,
+            r.ingredient_approx_unit
+          ].filter(x => x !== "" && x !== null && x !== undefined && x !== 0).join(" ");
+          const recipeDisplay = recipeInfo + (recipeApprox ? ' (~' + recipeApprox + ')' : '');
+          html += `<tr>`;
+          html += `<td><span class="badge ${badgeClass(r.company)}">${r.company}</span></td>`;
+          html += `<td>${r.store || "-"}</td>`;
+          html += `<td>${r.search_ingredient || "-"}</td>`;
+          html += `<td>${r.returned_ingredient || "-"}</td>`;
+          html += `<td>${recipeDisplay || "-"}</td>`;
+          html += `<td>${fmtPrice(r.price)}</td>`;
+          html += `<td>${packInfo || "-"}</td>`;
+          html += `<td>${r.per_unit_price !== "" && r.per_unit_price !== null && r.per_unit_price !== undefined ? '$' + r.per_unit_price + '/' + r.per_unit_quantity : "-"}</td>`;
+          html += `<td>${fmtPrice(r.used_price)}</td>`;
+          html += `<td>${r.purchase_quantity || 0}</td>`;
+          html += `<td>${fmtPrice(r.purchase_price)}</td>`;
+          html += `<td class="${statusClass(r.status)}">${r.status || "-"}</td>`;
+          html += `<td>${r.sku || "-"}</td>`;
+          html += `</tr>`;
+        });
+        html += '</table>';
+      }
+      html += '</div>';
+
+      document.getElementById('results').innerHTML = html;
+    }
+
+    function toggleDetail(storeName) {
+      const detailId = storeName.replace(/[^a-zA-Z0-9]/g, '_');
+      const el = document.getElementById('detail-' + detailId);
+      if (!el) return;
+      el.classList.toggle('expanded');
+    }
+  </script>
+</body>
+</html>
