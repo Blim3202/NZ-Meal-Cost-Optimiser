@@ -75,7 +75,7 @@
       <section class="panel">
         <div class="section-heading"><div><p class="eyebrow">Best value</p><h3>Store cost comparison</h3></div><select v-model="storeSort" aria-label="Sort stores"><option value="price">Lowest used cost</option><option value="store">Store name</option><option value="company">Company</option></select></div>
         <div v-if="!filteredStoreCosts.length" class="empty-state">No store cost data is available.</div>
-        <div v-else class="store-list"><article v-for="(store, index) in filteredStoreCosts" :id="`store-card-${storeKey(store)}`" :key="storeKey(store)" class="store-card" :class="{ expanded: expandedStores.has(storeKey(store)) }"><button class="store-summary" type="button" @click="toggleStore(store)"><span class="rank">#{{ index + 1 }}</span><span class="store-name"><strong>{{ store.store }}</strong><small>{{ store.ingredients_matched }}/{{ store.ingredients_total }} ingredients matched<template v-if="store.issues && store.issues.length"> · ⚠ {{ store.issues.length }} failed</template></small></span><span class="badge" :class="badgeClass(store.company)">{{ companyLabel(store.company) }}</span><strong class="store-price">{{ money(store.total_used_cost) }}</strong><span class="chevron">⌄</span></button><div v-if="expandedStores.has(storeKey(store))" class="store-detail"><p v-if="store.issues && store.issues.length" class="issue-note">⚠ Unresolved searches: {{ store.issues.map((issue) => `${issue.search_ingredient} (${issue.status})`).join(', ') }}</p><div class="detail-scroll"><table><thead><tr><th>Ingredient</th><th>Recipe Needed</th><th>Returned Product</th><th>Brand</th><th>Pack Size</th><th>Used Price</th><th>Purch Qty</th><th>Purch Cost</th><th>Status</th></tr></thead><tbody><tr v-for="item in store.best_per_ingredient" :key="item.search_ingredient"><td>{{ item.search_ingredient }}</td><td>{{ recipe(item) }}</td><td>{{ item.returned_ingredient || '-' }}</td><td>{{ item.brand || '-' }}</td><td>{{ pack(item) }}</td><td>{{ usedPrice(item) }}</td><td>{{ item.purchase_quantity || 0 }} pack(s)</td><td>{{ money(item.purchase_price) }}</td><td><span class="status" :class="statusClass(item.status)">{{ item.status || '-' }}</span></td></tr></tbody></table></div></div></article></div>
+        <div v-else class="store-list"><article v-for="(store, index) in filteredStoreCosts" :id="`store-card-${storeKey(store)}`" :key="storeKey(store)" class="store-card" :class="{ expanded: expandedStores.has(storeKey(store)) }"><button class="store-summary" type="button" @click="toggleStore(store)"><span class="rank">#{{ index + 1 }}</span><span class="store-name"><strong>{{ store.store }}</strong><small>{{ store.ingredients_matched }}/{{ store.ingredients_total }} ingredients matched<template v-if="store.issues && store.issues.length"> · ⚠ {{ store.issues.length }} unavailable</template></small></span><span class="badge" :class="badgeClass(store.company)">{{ companyLabel(store.company) }}</span><strong class="store-price" :class="{ 'price-partial': store.complete === false }" :title="store.complete === false ? 'Partial basket — some ingredients could not be priced at this store' : ''"><template v-if="store.complete === false">~</template>{{ money(store.total_used_cost) }}</strong><span class="chevron">⌄</span></button><div v-if="expandedStores.has(storeKey(store))" class="store-detail"><p v-if="store.issues && store.issues.length" class="issue-note">⚠ Unavailable ingredients: {{ store.issues.map((issue) => `${issue.search_ingredient} (${issue.status.replace(/_/g, ' ')})`).join(', ') }}</p><div class="detail-scroll"><table><thead><tr><th>Ingredient</th><th>Recipe Needed</th><th>Returned Product</th><th>Brand</th><th>Pack Size</th><th>Used Price</th><th>Purch Qty</th><th>Purch Cost</th><th>Status</th></tr></thead><tbody><tr v-for="item in store.best_per_ingredient" :key="item.search_ingredient"><td>{{ item.search_ingredient }}</td><td>{{ recipe(item) }}</td><td>{{ item.returned_ingredient || '-' }}</td><td>{{ item.brand || '-' }}</td><td>{{ pack(item) }}</td><td>{{ usedPrice(item) }}</td><td>{{ item.purchase_quantity || 0 }} pack(s)</td><td>{{ money(item.purchase_price) }}</td><td><span class="status" :class="statusClass(item.status)">{{ item.status || '-' }}</span></td></tr></tbody></table></div></div></article></div>
       </section>
       <section class="panel">
         <div class="section-heading"><div><p class="eyebrow">Product detail</p><h3>All results <span class="count">({{ filteredRows.length }} of {{ result.rows.length }})</span></h3></div></div>
@@ -91,6 +91,7 @@
           <select v-model="numSortKey" class="num-sort" aria-label="Numeric sort">
             <option value="default">Sort: Company / Store / Term</option>
             <option value="price">Price</option>
+            <option value="per_unit_price">Cost per unit</option>
             <option value="purchase_quantity">Purchase qty</option>
             <option value="purchase_price">Purchase cost</option>
           </select>
@@ -142,7 +143,7 @@ export default {
     const winnerKey = computed(() => {
       const costs = result.value?.store_costs || [];
       if (!costs.length) return '';
-      const best = costs.reduce((a, b) => (b.total_used_cost < a.total_used_cost ? b : a));
+      const best = costs.find((s) => s.complete !== false) || costs[0];
       return `${best.company}-${best.store}`;
     });
     const resolved = computed(() => !!origin.value);
@@ -352,13 +353,20 @@ export default {
       if (numSortKey.value !== 'default') {
         const dir = numSortDir.value === 'asc' ? 1 : -1;
         const key = numSortKey.value;
-        rows.sort((a, b) => dir * ((Number(a[key]) || 0) - (Number(b[key]) || 0)));
+        const num = (r) => { const v = r[key]; const n = Number(v); return v === '' || v === null || v === undefined || Number.isNaN(n) ? null : n; };
+        rows.sort((a, b) => {
+          const av = num(a); const bv = num(b);
+          if (av === null && bv === null) return 0;
+          if (av === null) return 1; // rows without a value always sink to the bottom
+          if (bv === null) return -1;
+          return dir * (av - bv);
+        });
       } else {
         rows.sort((a, b) => (a.company || '').localeCompare(b.company || '') || (a.store || '').localeCompare(b.store || '') || (a.search_ingredient || '').localeCompare(b.search_ingredient || ''));
       }
       return rows;
     });
-    const filteredStoreCosts = computed(() => { const stores = [...(result.value?.store_costs || [])]; if (storeSort.value === 'store') return stores.sort((a, b) => a.store.localeCompare(b.store)); if (storeSort.value === 'company') return stores.sort((a, b) => a.company.localeCompare(b.company) || a.store.localeCompare(b.store)); return stores.sort((a, b) => a.total_used_cost - b.total_used_cost); });
+    const filteredStoreCosts = computed(() => { const stores = [...(result.value?.store_costs || [])]; if (storeSort.value === 'store') return stores.sort((a, b) => a.store.localeCompare(b.store)); if (storeSort.value === 'company') return stores.sort((a, b) => a.company.localeCompare(b.company) || a.store.localeCompare(b.store)); return stores.sort((a, b) => ((a.complete === false) - (b.complete === false)) || a.total_used_cost - b.total_used_cost); });
     function toggleStore(store) { const next = new Set(expandedStores.value); const key = storeKey(store); next.has(key) ? next.delete(key) : next.add(key); expandedStores.value = next; }
     function storeKey(store) { return `${store.company}-${store.store}`; }
     function money(value) { return value === '' || value === null || value === undefined || Number.isNaN(Number(value)) ? '-' : `$${Number(value).toFixed(2)}`; }

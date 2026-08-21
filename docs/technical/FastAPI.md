@@ -110,7 +110,7 @@ GPS coordinates are validated against a rough NZ bounding box (`NZ_LAT_RANGE = (
 | `dish` | `str` | Resolved display name of the dish |
 | `companies_checked` | `list[str]` | Which brands were searched |
 | `rows` | `list[dict]` | All product result rows in CSV_COLUMNS format (18 fields per row) |
-| `store_costs` | `list[dict]` | Per-store cost summary sorted by total used cost (cheapest first) |
+| `store_costs` | `list[dict]` | Per-store cost summary sorted complete-basket-first, then by total used cost |
 | `timestamp` | `str` | ISO timestamp of when the result was generated |
 | `duration_seconds` | `float` | Wall-clock duration of the pipeline run |
 | `origin` | `dict \| None` | Search origin for the map: `{lat, lon, source}` where `source` is `"gps"` or `"geocoded"`; present even when zero stores matched |
@@ -155,13 +155,16 @@ Each row dict matches `full_results.csv` columns:
 |---|---|
 | `store` | Store name |
 | `company` | Brand label |
-| `total_used_cost` | Sum of cheapest valid `used_price` across all ingredients |
+| `total_used_cost` | Sum of cheapest valid `used_price` across all ingredients. Ingredients with no valid price contribute $0 — which is why `complete`, `issues`, and the ranking rule below exist |
 | `ingredients_matched` | Number of ingredients with valid scaled prices |
-| `ingredients_total` | Total ingredients searched |
+| `ingredients_total` | Number of ingredients REQUESTED for the dish (not just those that returned rows) |
+| `complete` | `true` when every requested ingredient has a valid scaled price at this store. Only complete baskets are directly comparable |
 | `best_per_ingredient` | Detail list: for each ingredient, the cheapest product with used_price, purchase qty, etc. |
-| `issues` | Failed/no-match searches for this store: `{search_ingredient, status: "error"\|"no_match", detail}` — lets a cheap total with missing ingredients be spotted at a glance |
+| `issues` | Unavailable ingredients for this store: `{search_ingredient, status: "error"\|"no_match"\|"incompatible_units", detail}`. `incompatible_units` means products were returned but none sold in units scalable to the recipe (e.g. recipe needs 6 eggs, store sells per egg) — their would-be cost is silently absent from the total, so they must be visible |
 | `lat` / `lon` | Store coordinates (from the brand store CSVs) — consumed by the dashboard map pins |
 | `distance_km` | Haversine distance from the resolved origin, rounded to 2 dp |
+
+**Ranking:** stores are sorted **complete-basket-first, then by total_used_cost** — a partial basket can never outrank a complete one on a missing ingredient's $0. If no store is complete, all are partial and sort by cost among themselves.
 
 ---
 
@@ -239,7 +242,7 @@ The core orchestrator. Runs in 4 phases, writing progress into `job` as it goes 
 
 **Phase 4 — Build Store Cost Summary (sequential)**
 8. Groups rows by `(company, store name)`; picks the cheapest valid product per ingredient (preferring exact unit matches over approximations).
-9. Sums `used_price` across all ingredients per store and attaches failed/no-match searches from `outcomes` as `issues`.
+9. Sums `used_price` across all ingredients per store and attaches failed/no-match searches AND all-products-unit-incompatible ingredients as `issues`. Ranks complete baskets first, then cheapest.
 10. Sorts stores by total used cost ascending, logs the winner event, and returns an `OptimisationResult` with `duration_seconds`.
 
 ### `_fetch_ingredient(company, api, store_id, store_name, ingredient, region="") -> list[dict]`

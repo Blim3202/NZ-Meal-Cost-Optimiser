@@ -431,6 +431,22 @@ def _parse_display_name(display_name):
     return None, ""
 
 
+def _normalize_per_unit_qty(per_unit_qty):
+    """Strip a redundant leading "1" from count-based per-unit quantities.
+
+    Woolworths supplies cupMeasure values like "1ea" while Foodstuffs uses
+    bare "ea"; normalising keeps the per_unit_quantity column consistent
+    across retailers. Weight/volume measures ("1kg", "1L", "100g") carry a
+    meaningful count and are left untouched. Empty/None returns "".
+    """
+    if not per_unit_qty or not isinstance(per_unit_qty, str):
+        return ""
+    match = re.match(r"^1\s*(ea|each)$", per_unit_qty.strip(), re.IGNORECASE)
+    if match:
+        return match.group(1).lower()
+    return per_unit_qty
+
+
 def _normalize_brand(brand):
     """Capitalise the first character of a brand string ("anchor" -> "Anchor").
 
@@ -562,7 +578,7 @@ def build_edge_row(company, store, store_id, search_ingredient, product, pass1_h
         "price": price_dollars,
         "quantity": quantity if quantity is not None else "",
         "measurement_unit": measurement_unit,
-        "per_unit_quantity": per_unit_qty,
+        "per_unit_quantity": _normalize_per_unit_qty(per_unit_qty),
         "per_unit_price": per_unit_price if per_unit_price else "",
         "is_sale": bool(promotions),
         "sku": sku,
@@ -632,7 +648,7 @@ def build_mobile_row(company, store, store_id, search_ingredient, product, now):
         "price": price_dollars,
         "quantity": quantity,
         "measurement_unit": measurement_unit,
-        "per_unit_quantity": per_unit_qty,
+        "per_unit_quantity": _normalize_per_unit_qty(per_unit_qty),
         "per_unit_price": per_unit_price if per_unit_price else "",
         "is_sale": False,
         "sku": sku,
@@ -675,7 +691,7 @@ def build_woolworths_row(company, store, store_id, search_ingredient, product, n
         "price": product.get("salePrice", ""),
         "quantity": quantity if quantity is not None else "",
         "measurement_unit": measurement_unit,
-        "per_unit_quantity": product.get("cupMeasure", ""),
+        "per_unit_quantity": _normalize_per_unit_qty(product.get("cupMeasure", "")),
         "per_unit_price": product.get("cupListPrice", ""),
         "is_sale": product.get("isSpecial", False),
         "sku": sku,

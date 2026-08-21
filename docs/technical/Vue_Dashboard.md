@@ -46,7 +46,7 @@ Built with Vue CLI 5, no router, no state library. Two components: `App.vue` (al
 ### GPS & map
 - `gps` — ref holding `{lat, lon}` when a device location is locked, else `null`; `gpsBusy` while `navigator.geolocation` is in flight. Locking disables the address input (and its `required`) and shows a dismissible green chip with the coordinates.
 - `mapOrigin` — computed: resolved `origin` first, else the run's `result.origin` fallback.
-- `mapStores` — `result.store_costs` filtered to entries with coords; `winnerKey` — key of the cheapest store (★ pin); both feed `MapPanel`.
+- `mapStores` — `result.store_costs` filtered to entries with coords; `winnerKey` — key of the first **complete** store (★ pin, partial baskets excluded); both feed `MapPanel`.
 - Client-side NZ bounding-box check (`NZ_BOUNDS`) mirrors the server's so an obviously-outside device fails fast without a round-trip.
 
 ### Live job object
@@ -158,11 +158,12 @@ All four cards stretch to fill their cells. The console starts skinny (fits its 
 ## Results Rendering
 
 - **Store cards**: ranked list sorted by `total_used_cost` (or name/company via `storeSort`). Key = `` `${company}-${store}` `` — matches the backend's `(company, store_name)` grouping guarantee (same-name collisions are rejected server-side). Expand/collapse toggles membership in `expandedStores`.
-- **Issue surfacing**: if `store.issues` is non-empty, the collapsed row shows `⚠ n failed` and the expanded detail opens with an amber note listing each unresolved term and its status (`error`/`no_match`) — so a cheap total with missing ingredients is visible at a glance.
+- **Issue surfacing**: if `store.issues` is non-empty (search errors, no-matches, OR ingredients whose every product was unit-incompatible), the collapsed row shows `⚠ n unavailable` and the expanded detail opens with an amber note listing each term and its status (`error`/`no match`/`incompatible units`) — so a cheap total with missing ingredients is visible at a glance.
+- **Honest ranking**: `total_used_cost` omits unpriceable ingredients ($0), so partial baskets are ranked **after** complete ones (`complete === false` sorts last, both server-side and in the client's "Lowest used cost" sort). Partial totals render amber with a `~` prefix and a tooltip explaining the basket is incomplete; the ★ winner pin goes to the first **complete** store, never a cheaper partial one.
 - **All-results filter bar** (replaces the old company/price dropdowns). Default ordering is `company → store → search_ingredient` (alphabetical, multi-key):
   - *Categorical popovers* — Company, Store, Search term, Brand, Status. Each is a button + absolutely-positioned checkbox list built from `catOptions` (unique sorted values observed in `result.rows`). Checking/unchecking toggles membership in `excluded[column]`; the button shows a live `shown/total` counter that turns amber while filtered. Popovers close on any outside click (document-level listener) but survive clicks inside via `@click.stop` on the wrapper.
   - *Text lookups* — case-insensitive substring inputs for returned product name and SKU (`textFilters`).
-  - *Numeric sort* — dropdown for Price / Purchase qty / Purchase cost with an asc↔desc direction toggle; "default" falls back to the alphabetical multi-key order. Filters apply first, then sorting, inside one `filteredRows` computed (always on an array copy).
+   - *Numeric sort* — dropdown for Price / Cost per unit / Purchase qty / Purchase cost with an asc↔desc direction toggle; "default" falls back to the alphabetical multi-key order. Rows lacking the chosen value (e.g. blank `per_unit_price`) always sink to the bottom regardless of direction. Filters apply first, then sorting, inside one `filteredRows` computed (always on an array copy).
   - State resets at the start of every run via `resetFilters()`.
 - **Product table**: row key includes sku + ingredient to stay unique.
 - **Formatters**: `money` (blank-safe `$x.xx`), `usedPrice`/`unitPrice` prefix `~` when `status === 'approximate'`, `recipe()` composes quantity + unit + optional approx fallback ("1 can (~400 g)"), `pack()` joins pack size fields.
