@@ -4,6 +4,8 @@
 
 A FastAPI web server that turns the CLI optimiser into an HTTP API + browser dashboard. Users send a dish name and NZ address, the server concurrently searches all 3 supermarket brands across nearby stores, and returns a two-table result: (1) all raw product rows in `full_results.csv` format, and (2) a per-store cost comparison using quantity-scaled "used cost".
 
+Runs are **background jobs**: `POST /optimise/jobs` returns a `job_id` immediately and the pipeline streams progress (phase, per-company store/product counters, per-search event log) via `GET /optimise/{job_id}` polling. The Vue dashboard renders this as brand progress tiles with SVG rings plus a live terminal-style backend console.
+
 **Run with:**
 ```
 .venv\Scripts\uvicorn NZMealOptimiser.web.main:app --host 0.0.0.0 --port 8000
@@ -60,6 +62,9 @@ async def lifespan(app: FastAPI):
 | `STATIC_DIR` | Folder for the frontend (`src/NZMealOptimiser/web/static/`). Mounted at `/static`. |
 | `BRANDS` | Dispatch dict mapping brand names to their API classes, find_nearby functions, and metadata. |
 | `_THREAD_POOL` | 20-worker thread pool for offloading blocking HTTP calls. |
+| `COMPANY_LABELS` / `COMPANY_CODES` | Display names ("Pak'nSave") and console tag codes ("PNS"/"NW"/"WW") per brand. |
+| `JOBS` | `OrderedDict` registry of active/finished `JobState` objects, keyed by job id. Max `MAX_RETAINED_JOBS` (40); oldest *finished* jobs evicted first so running jobs are never dropped. |
+| `_BACKGROUND_TASKS` | Strong-ref set holding pipeline tasks so `asyncio.create_task` results aren't garbage-collected mid-run. |
 
 ### `BRANDS` dispatch dict
 
@@ -71,7 +76,15 @@ BRANDS = {
 }
 ```
 
-Used by `run_optimisation()` and `_fetch_foodstuffs_sync()` to look up which API client and store finder to use per brand. `company_id` is passed to `build_*_row` to label rows in the CSV format.
+Used by `_execute_pipeline()` and `_fetch_foodstuffs_sync()` to look up which API client and store finder to use per brand. `company_id` is passed to `build_*_row` to label rows in the CSV format.
+
+---
+
+## Job State (`JobState`)
+
+Mutable progress object created per optimisation request (`_new_job`). Key attributes: `id` (12-char hex), `req` (the `DishRequest`), `status`, `phase`, `started`/`finished` timestamps, `error_detail`/`error_status`, task counters (`total_tasks`/`done_tasks`/`products_found`), `company_progress` (per-brand `{label, code, stores_total, stores_done, products}`), `events` (append-only console log), and the final `result`.
+
+**Thread-safety model:** everything mutates inside the pipeline coroutine on the event-loop thread; snapshot reads run on that same loop, and search threads never touch the object (their results are consumed by `as_completed` on the loop) — so no locking is required.
 
 ---
 
@@ -81,11 +94,15 @@ Used by `run_optimisation()` and `_fetch_foodstuffs_sync()` to look up which API
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `dish` | `str` | — | Dish name (e.g. "spaghetti bolognese") |
-| `address` | `str` | — | NZ address or suburb for geocoding |
+| `address` | `str` | — | NZ address or suburb for geocoding (ignored when GPS coords are supplied) |
 | `distance_km` | `float` | `5.0` | Search radius around the address |
 | `max_stores_per_company` | `int` | `3` | Cap on stores checked per brand |
 | `companies` | `list[str]` | `None` | Filter to specific brands; `None` = all 3 |
 | `portions` | `int` | `4` | Number of servings (used for ingredient quantity resolution) |
+| `latitude` | `float \| None` | `None` | Device GPS latitude — bypasses Nominatim when set |
+| `longitude` | `float \| None` | `None` | Device GPS longitude — must accompany `latitude` |
+
+GPS coordinates are validated against a rough NZ bounding box (`NZ_LAT_RANGE = (-47.6, -34.2)`, `NZ_LON_RANGE = (166.2, 178.9)`): out-of-bounds or half-specified coords fail with 400 before any search work starts.
 
 ### `OptimisationResult` (output)
 | Field | Type | Description |
@@ -95,6 +112,8 @@ Used by `run_optimisation()` and `_fetch_foodstuffs_sync()` to look up which API
 | `rows` | `list[dict]` | All product result rows in CSV_COLUMNS format (18 fields per row) |
 | `store_costs` | `list[dict]` | Per-store cost summary sorted by total used cost (cheapest first) |
 | `timestamp` | `str` | ISO timestamp of when the result was generated |
+| `duration_seconds` | `float` | Wall-clock duration of the pipeline run |
+| `origin` | `dict \| None` | Search origin for the map: `{lat, lon, source}` where `source` is `"gps"` or `"geocoded"`; present even when zero stores matched |
 
 ### Row format (`rows[]`)
 Each row dict matches `full_results.csv` columns:
@@ -140,6 +159,9 @@ Each row dict matches `full_results.csv` columns:
 | `ingredients_matched` | Number of ingredients with valid scaled prices |
 | `ingredients_total` | Total ingredients searched |
 | `best_per_ingredient` | Detail list: for each ingredient, the cheapest product with used_price, purchase qty, etc. |
+| `issues` | Failed/no-match searches for this store: `{search_ingredient, status: "error"\|"no_match", detail}` — lets a cheap total with missing ingredients be spotted at a glance |
+| `lat` / `lon` | Store coordinates (from the brand store CSVs) — consumed by the dashboard map pins |
+| `distance_km` | Haversine distance from the resolved origin, rounded to 2 dp |
 
 ---
 
@@ -151,61 +173,87 @@ Each row dict matches `full_results.csv` columns:
 | `/app`, `/app/` | GET | Vue dashboard (`static/vue/index.html`) |
 | `/health` | GET | Health check → `{"status": "ok", "supabase_enabled": bool}` |
 | `/dishes` | GET | Curated dishes from `data/dishes.json` (for the Vue dashboard) |
-| `/optimise` | POST | Main endpoint — accepts `DishRequest`, returns `OptimisationResult` |
+| `/geocode` | GET | `?address=...` → `{lat, lon, cached}` — standalone Nominatim lookup for the dashboard's resolve step (LRU-cached, NZ-bbox validated) |
+| `/stores/nearby` | GET | `?lat&lon&distance_km&companies=PaknSave,NewWorld,Woolworths&max_per_company` → `{origin, stores[]}` — preview of which stores a run would query (local CSV + haversine, same helpers/cap as pipeline Phase 2, no supermarket API calls) |
+| `/optimise` | POST | Legacy synchronous endpoint (classic dashboard) — accepts `DishRequest`, blocks until done, returns `OptimisationResult` |
+| `/optimise/jobs` | POST | Queue an optimisation — accepts `DishRequest`, returns `{"job_id"}` immediately |
+| `/optimise/{job_id}` | GET | Job snapshot: status, phase, elapsed, per-company progress, incremental events (`?events_since=N`), final `result` |
 | `/docs` | GET | Swagger UI (FastAPI default) |
 | `/static` | Mount | Serves `STATIC_DIR` |
 
-### `POST /optimise` — Main Endpoint
+### `POST /optimise/jobs` — Job-Based Endpoint
 
-Accepts a `DishRequest` body. Delegates to `run_optimisation()`. Returns an `OptimisationResult` as JSON.
+Accepts the same `DishRequest` body. Validates the company list synchronously (400 on unknown brands), registers a `JobState` in the `JOBS` registry (`OrderedDict`, max 40 retained; finished jobs evicted first), and spawns the pipeline via `asyncio.create_task` (strong-ref'd through `_BACKGROUND_TASKS`). Returns `{"job_id": "..."}` at once.
 
 **curl example:**
 ```bash
-curl -X POST "http://127.0.0.1:8000/optimise" \
+curl -X POST "http://127.0.0.1:8000/optimise/jobs" \
   -H "Content-Type: application/json" \
   -d '{"dish": "spaghetti bolognese", "address": "Auckland CBD", "distance_km": 5, "portions": 4, "max_stores_per_company": 3}'
 ```
+
+### `GET /optimise/{job_id}?events_since=-1` — Progress Snapshot
+
+Returns a snapshot dict:
+
+| Field | Description |
+|---|---|
+| `status` | `queued` → `running` → `complete` \| `error` |
+| `phase` | Human-readable pipeline stage ("Geocoding address", "Searching 63 store × ingredient combos", …); terminal jobs end on "Completed" or "Failed" |
+| `elapsed_seconds` | Server-computed seconds since start |
+| `total_tasks` / `done_tasks` | Store × ingredient search counters |
+| `products_found` | Total product rows collected so far |
+| `companies[]` | Per-brand: `{id, label, code, stores_total, stores_done, products}` |
+| `events[]` / `next_cursor` | Console events with index > `events_since`; pass `next_cursor` back for incremental polling |
+| `error_detail` | Set when `status=error` |
+| `result` | Full `OptimisationResult` once `status=complete` |
+
+Each event is `{i, t, kind, co, text}`: `t` = seconds since start, `co` = brand code (`PNS`/`NW`/`WW`) or null, `kind` ∈ `phase` \| `info` \| `ok` \| `warn` \| `err` \| `done`. Every search completion emits one event ("beef mince @ PAK'nSAVE Botany → 10 products"), as do auth steps, store discovery, scaling, and the winner announcement.
+
+An HTTP middleware also logs every request's method/path/status/duration to the server log.
 
 ---
 
 ## Functions
 
-### `run_optimisation(dish_name, address, distance_km, max_stores_per_company, companies, portions) -> OptimisationResult`
+### `_new_job(req) -> JobState` / `_run_job(job)`
 
-The core orchestrator. Runs in 4 phases:
+`_new_job` validates companies and registers a fresh `JobState`. `_run_job` wraps the pipeline: sets `status`/`started`, catches any `HTTPException`/exception into `error_detail` + `error_status`, stamps `finished`, and emits a final console event. Both `/optimise` (sync) and `/optimise/jobs` funnel through it.
+
+### `_execute_pipeline(job) -> OptimisationResult`
+
+The core orchestrator. Runs in 4 phases, writing progress into `job` as it goes (`job.phase`, `job.log_event(...)`, per-company counters):
 
 **Phase 1 — Resolve & Geocode (sequential)**
-1. Calls `resolve_ingredients(dish_name, portions)` which looks up `dishes.json` for curated ingredient lists (with quantities, units, and approx fallbacks for non-standard units). Falls back to LLM generation if not curated and an API key is available; otherwise uses the dish name as a single search term.
-2. Calls `optimiser_utils.geocode(address)` (Nominatim, rate-limited to 1 req/sec) to get lat/lon. Runs once — before any concurrent work.
+1. Calls `resolve_ingredients(dish, portions)` which looks up `dishes.json` for curated ingredient lists (with quantities, units, and approx fallbacks for non-standard units). Falls back to LLM generation if not curated and an API key is available; otherwise uses the dish name as a single search term.
+2. Calls `_resolve_origin(job)` to locate the search origin. If the request carries `latitude`/`longitude` (device GPS), those are validated against the NZ bounding box and used directly — **no Nominatim call**. Otherwise `optimiser_utils.geocode(address)` (Nominatim, rate-limited to 1 req/sec) runs once, before any concurrent work. The resolved `{lat, lon, source}` is carried through as the result's `origin`.
 
 **Phase 2 — Build & Launch Tasks (concurrent)**
-3. For each company × nearby store × ingredient, appends a `_fetch_ingredient(...)` coroutine to the `tasks` list. Builds a parallel `task_metadata` list tracking `(company, store_id, store_name, ingredient)`.
-4. Calls `asyncio.gather(*tasks, return_exceptions=True)` — all tasks run concurrently via the 20-worker thread pool. Exceptions are caught per-task, not fatal.
+3. Authenticates ONE Edge API client per Foodstuffs company up front (`_make_authenticated_api`, offloaded via `asyncio.to_thread`) and shares it across all of that brand's searches — post-auth methods use plain `requests.post` with the cached JWT, so concurrent use is safe.
+4. For each company: finds nearby stores (capped by `max_stores_per_company`), guards duplicate store names within a brand (400 on same-name/different-ID), initialises the per-company progress entry, and appends `(company, store_id, store_name, ingredient)` tuples to `metas`.
+5. Wraps each meta in a coroutine that returns `(meta, rows, exception)`; consumes them with **`asyncio.as_completed`** so each finished search immediately updates `done_tasks`/`products_found`/per-store counters and emits a console event. Outcomes are recorded as `ok` / `no_match` / `error` in an `outcomes` dict.
 
-**Phase 3 — Collect, Enrich & Scale (sequential)**
-5. Flattens all task results into `all_rows` (list of `build_*_row` dicts — full CSV_COLUMNS format, 17 fields).
+**Phase 3 — Enrich & Scale (sequential)**
 6. Enriches each row with `ingredient_quantity`, `ingredient_measurement`, `ingredient_approx_quantity`, `ingredient_approx_unit` from the resolved dish ingredients.
 7. Runs `parse_optimiser_columns(row)` on each enriched row to compute `used_price` (proportional cost for the recipe amount), `purchase_quantity`, `purchase_price`, `scaling_ratio`, `status`, etc.
 
 **Phase 4 — Build Store Cost Summary (sequential)**
-8. For each store, picks the cheapest valid product per ingredient (preferring exact unit matches over approximations).
-9. Sums `used_price` across all ingredients per store.
-10. Sorts stores by total used cost ascending.
-11. Returns an `OptimisationResult` with `rows` (all raw rows) and `store_costs` (summary).
+8. Groups rows by `(company, store name)`; picks the cheapest valid product per ingredient (preferring exact unit matches over approximations).
+9. Sums `used_price` across all ingredients per store and attaches failed/no-match searches from `outcomes` as `issues`.
+10. Sorts stores by total used cost ascending, logs the winner event, and returns an `OptimisationResult` with `duration_seconds`.
 
-### `_fetch_ingredient(company, store_id, store_name, ingredient) -> list[dict]`
+### `_fetch_ingredient(company, api, store_id, store_name, ingredient, region="") -> list[dict]`
 
 A thin async dispatcher that offloads blocking work to a background thread:
 
 ```python
-async def _fetch_ingredient(company, store_id, store_name, ingredient):
+async def _fetch_ingredient(company, api, store_id, store_name, ingredient, region=""):
     if company == "Woolworths":
         return await asyncio.to_thread(_fetch_woolworths_sync, store_id, store_name, ingredient)
-    else:
-        return await asyncio.to_thread(_fetch_foodstuffs_sync, company, store_id, store_name, ingredient)
+    return await asyncio.to_thread(_fetch_foodstuffs_sync, company, api, store_id, store_name, ingredient, region)
 ```
 
-Each call runs on a background thread from the 20-worker pool. Returns a list of CSV-format row dicts (all products, not just the cheapest).
+``api`` is the shared pre-authenticated Edge client for Foodstuffs brands (unused for Woolworths); ``region`` ("NI"/"SI" from the store CSVs) feeds the Edge API Region cookie. Each call runs on a background thread from the 20-worker pool and returns a list of CSV-format row dicts (all products, not just the cheapest).
 
 ### `_fetch_woolworths_sync(store_id, store_name, ingredient) -> list[dict]`
 
@@ -219,11 +267,9 @@ Plain `def` (not async). Runs on a background thread. Returns ALL priced product
 
 **Session isolation pattern:** Each Woolworths search creates its own `requests.Session` (fresh cookie jar), because the server's `Set-Cookie` overwrites injected cookies on a reused session. Foodstuffs uses JWT tokens with URL-path store IDs — no session conflicts.
 
-### `_fetch_foodstuffs_sync(company, store_id, store_name, ingredient) -> list[dict]`
+### `_fetch_foodstuffs_sync(company, api, store_id, store_name, ingredient, region="") -> list[dict]`
 
-Plain `def` (not async). Runs on a background thread. Returns ALL priced product rows:
-- `PaknSaveEdgeAPI()` or `NewWorldEdgeAPI()` — new instance per call
-- `api.authenticate()` — JWT token (if not cached)
+Plain `def` (not async). Runs on a background thread. Reuses the shared, already-authenticated Edge API client for the company (created once per request in Phase 2). Returns ALL priced product rows:
 - `api.search_ingredient(store_id, ingredient, region)` — two-pass Algolia pipeline → `(products, pass1_hits)`
 - For each priced product: `build_edge_row(...)` (needs `pass1_hit` for category data) → adds to rows list
 - Returns `list[dict]` (all rows, in CSV_COLUMNS format)
@@ -263,29 +309,29 @@ Units are normalised (weight→grams, volume→milliliters, count→count). Comp
 ## Concurrency Pipeline Diagram
 
 ```
-POST /optimise  (single HTTP request)
+POST /optimise/jobs  → {"job_id"}  (background task; poll GET /optimise/{id})
 │
 ├── Phase 1: Sequential setup
 │   ├── resolve_ingredients("spaghetti bolognese") → 7 ingredients with quantities
 │   └── geocode("Auckland CBD")  [Nominatim, ~1-3s]
 │
-├── Phase 2: Build tasks (sequential, instant)
+├── Phase 2: Shared Edge clients + task list (sequential, instant)
+│   ├── authenticate ONE PaknSaveEdgeAPI + ONE NewWorldEdgeAPI (shared per request)
 │   └── for company in [PaknSave, NewWorld, Woolworths]:
 │       ├── find_nearby_stores(lat, lon, radius_km=5) → [StoreA, StoreB, StoreC]
-│       └── for store in [StoreA, StoreB, StoreC]:
-│           └── for ingredient in ["beef mince", ...]:
-│               └── tasks.append(_fetch_ingredient(...))
+│       └── metas += (company, store_id, store_name, ingredient) tuples
 │
-├── Phase 3: asyncio.gather() → 20-worker thread pool
+├── Phase 2b: asyncio.as_completed() → 20-worker thread pool
+│   ├── each finished search updates job counters + emits a console event
 │   ├── _fetch_foodstuffs_sync(...) → build_edge_row() for each product
 │   └── _fetch_woolworths_sync(...) → build_woolworths_row() for each product
-│   All return list[dict] of CSV_COLUMNS rows
 │
 ├── Phase 3b: Enrich rows with ingredient quantities from dishes.json
 │
 ├── Phase 3c: parse_optimiser_columns(row) → used_price, purchase_qty, status
 │
-└── Phase 4: Store cost summary (cheapest per ingredient per store, summed)
+└── Phase 4: Store cost summary (cheapest per ingredient per store, summed,
+    failed searches attached as issues)
 ```
 
 ### What each sync helper does internally
@@ -299,11 +345,10 @@ _fetch_woolworths_sync(store_id, store_name, ingredient)   [plain def, runs on t
 └── return list[dict]
 
 
-_fetch_foodstuffs_sync(company, store_id, store_name, ingredient)   [plain def, runs on thread]
-├── api = PaknSaveEdgeAPI() or NewWorldEdgeAPI()       ← new instance each call
-├── api.authenticate()                                  ← JWT token (if missing)
-├── api.search_ingredient(store_id, ingredient)        ← two-pass Algolia pipeline → (products, pass1_hits)
-├── for each priced product: build_edge_row(...)      → CSV COLUMNS row
+_fetch_foodstuffs_sync(company, api, store_id, store_name, ingredient, region)   [plain def, runs on thread]
+├── api = shared PaknSaveEdgeAPI/NewWorldEdgeAPI          ← authenticated ONCE per request
+├── api.search_ingredient(store_id, ingredient, region)   ← two-pass Algolia pipeline → (products, pass1_hits)
+├── for each priced product: build_edge_row(...)          → CSV COLUMNS row
 └── return list[dict]
 ```
 
@@ -314,7 +359,7 @@ _fetch_foodstuffs_sync(company, store_id, store_name, ingredient)   [plain def, 
 | Ingredient resolution | <1s | No |
 | Geocoding (Nominatim) | 1-3s | No (rate limit 1 req/sec) |
 | Store lookup (×3 brands) | <0.1s | No (local CSV reads, fast) |
-| API searches (20-thread pool) | ~15-25s | **Yes** — runs in batches of 20 via `asyncio.to_thread` |
+| API searches (20-thread pool) | ~15-25s | **Yes** — parallel searches capped at 20 via `asyncio.to_thread` (the per-query limit shared across all stores); results stream in per-search via `as_completed` |
 | Row enrichment + scaling | <1s | No (CPU-bound, fast) |
 | Store cost summary | <0.1s | No |
 | **Total** | **~17-30s** | — |
@@ -333,15 +378,17 @@ Without thread offloading, all tasks run sequentially. With 20 threads, wall tim
 ## Data Flow Summary
 
 ```
+POST /optimise/jobs → {"job_id"}            GET /optimise/{id}?events_since=N (polled)
+│                                            │
 User Input                    API Processing                              Output
 ──────────                     ──────────────                             ──────
-dish: "spaghetti..."          → dishes.json / LLM → 7 ingredients         OptimisationResult
-address: "Auckland CBD"       → Nominatim geocode                          ├─ dish (display name)
-distance_km: 5                → find nearby stores ×3 brands                ├─ companies_checked
-max_stores: 3                 → to_thread() searches (batches of 20)       ├─ rows (all product results)
-portions: 4                   → build_*_row() per product                  ├─ store_costs (per-store summary)
-                                → parse_optimiser_columns() scaling        └─ timestamp
-                                → pick cheapest per ingredient per store
+dish: "spaghetti..."          → dishes.json / LLM → 7 ingredients         snapshot / OptimisationResult
+address: "Auckland CBD"       → Nominatim geocode                         ├─ status, phase, elapsed
+distance_km: 5                → find nearby stores ×3 brands              ├─ per-company progress counters
+max_stores: 3                 → shared Edge clients + as_completed()      ├─ events[] (console log)
+portions: 4                   → build_*_row() per product                 ├─ rows (all product results)
+                              → parse_optimiser_columns() scaling        └─ store_costs (per-store summary
+                                → pick cheapest per ingredient per store      incl. issues) + duration_seconds
                                 → sum used_price per store
 ```
 

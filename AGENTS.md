@@ -43,7 +43,7 @@ opencode/
 │   │   ├── llm_client.py                       # Mistral API client: rate limiting, JSON retries, model aliases
 │   │   └── llm_utils.py                        # Ingredient resolution (curated JSON → LLM), dish parsing/validation, quantity scaling
 │   └── web/
-│       ├── main.py                             # FastAPI app: /optimise endpoint, /app (Vue) + /dishes, thread pool
+│       ├── main.py                             # FastAPI app: /optimise/jobs + GET /optimise/{id} (live progress), legacy POST /optimise, /app (Vue) + /dishes, thread pool
 │       ├── config.py                           # Supabase settings loaded from .env
 │       ├── static/                             # index_old.html + generated Vue build (served at / and /app)
 │       └── frontend/                           # Vue CLI dashboard source (npm run build → static/vue/)
@@ -58,7 +58,7 @@ opencode/
 ├── docs/
 │   ├── migration_plan.md                       # This migration handoff
 │   ├── project/                                # decision.md, design.md, logs.md
-│   └── technical/                              # PaknSave_API.md, NewWorld_API.md, Woolworths_API.md, LLM_Pipeline.md, FastAPI.md
+│   └── technical/                              # PaknSave_API.md, NewWorld_API.md, Woolworths_API.md, LLM_Pipeline.md, FastAPI.md, Vue_Dashboard.md
 ├── AGENTS.md                                   # This file
 ├── Dockerfile                                  # Container image for Google Cloud Run (repo root)
 ├── pyproject.toml                              # src-layout package metadata + deps
@@ -85,7 +85,7 @@ opencode/
 | `src/NZMealOptimiser/pricing/woolworths_api.py` | Cookie-based Woolworths API module. Session, store context, product search. Constructs `cw-lrkswrdjp` cookie from `extra1` in store data. No Playwright needed at runtime. |
 | `src/NZMealOptimiser/llm/llm_client.py` | Mistral API client: model aliases (small/medium/large), rate limiting, JSON parsing with retries. |
 | `src/NZMealOptimiser/llm/llm_utils.py` | Ingredient resolution (curated `dishes.json` → LLM → fallback), dish parsing/validation (`parse_and_validate`), and quantity scaling (`parse_optimiser_columns` with `approx_quantity`/`approx_unit` fallback for non-standard units). |
-| `src/NZMealOptimiser/web/main.py` | FastAPI app + async `/optimise` endpoint + frontend serving. Runs via `uvicorn NZMealOptimiser.web.main:app`. |
+| `src/NZMealOptimiser/web/main.py` | FastAPI app + background-job optimisation API (`POST /optimise/jobs`, `GET /optimise/{id}` with per-company progress + event log) + legacy sync `/optimise` + frontend serving. HTTP logging middleware. Runs via `uvicorn NZMealOptimiser.web.main:app`. |
 | `src/NZMealOptimiser/web/frontend/` | Vue CLI dashboard source. Run `npm install` then `npm run build`; output is written to `src/NZMealOptimiser/web/static/vue/`. |
 | `src/NZMealOptimiser/web/static/index_old.html` | Original vanilla dashboard, still served at `/`. |
 | `src/NZMealOptimiser/web/static/vue/` | Generated Vue dashboard assets, served at `/app`; do not edit generated files directly. |
