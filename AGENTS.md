@@ -59,8 +59,6 @@ opencode/
 │   ├── migration_plan.md                       # This migration handoff
 │   ├── project/                                # decision.md, design.md, logs.md
 │   └── technical/                              # PaknSave_API.md, NewWorld_API.md, Woolworths_API.md, LLM_Pipeline.md, FastAPI.md
-├── unsure/
-│   └── paths.py                                # Retired path bootstrap (kept only for history; no longer imported)
 ├── AGENTS.md                                   # This file
 ├── Dockerfile                                  # Container image for Google Cloud Run (repo root)
 ├── pyproject.toml                              # src-layout package metadata + deps
@@ -99,7 +97,7 @@ opencode/
 | `tools/newworld/newworld_optimiser_mobile.py` | **Mobile API optimiser**: CLI with geocoding, 5km radius, single-pass search, unit-price selection. Thin wrapper over shared `foodstuffs_querier_mobile` in `optimiser_utils.py`. |
 | `tools/woolworths/woolworths_setup.py` | **Unified store pipeline**: fetch choices (legacy/detached), fetch data from CDX, build woolworths_stores.csv keyed on extra1. |
 | `tools/woolworths/woolworths_optimiser.py` | **Thin CLI**: Step 1 query via shared `woolworths_querier` in `optimiser_utils.py`, then Step 2 `optimise()`. `--requery`/`--distance` flags, 5km default. |
-| `tools/combined/initialize_full_results.py` | Creates data/full_results.csv with 18-column schema (17 + is_valid) + pk_hash for deduplication |
+| `tools/combined/initialize_full_results.py` | Creates data/full_results.csv with 19-column schema (18 + brand) + pk_hash for deduplication |
 | `tools/llm/llm_validate.py` | Post-run validator: batches rows through `ministral-3b-2512`, writes `is_valid` back to `data/full_results.csv`. Skips already-validated rows. |
 | `tools/llm/llm_interactive.py` | Interactive CLI: Step 1 inputs → Step 2 resolve ingredients → Step 3 review → Step 4 query optimisers → Step 5 optimise → Step 6 scaling (enriches CSV rows with `ingredient_approx_*` fields). |
 | `data/woolworths_store_data.json` | Store details with `extra1` (=fulfilmentStoreId) and `extra2` (=pickupAddressId) |

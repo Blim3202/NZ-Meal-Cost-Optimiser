@@ -275,6 +275,7 @@ class TestOptimiserUtilsNewWorld:
         assert row["store_id"] == store_id
         assert row["search_ingredient"] == "milk"
         assert row["returned_ingredient"] == "Standard Milk"
+        assert row["brand"] == "Pams Value"
         assert row["price"] == 3.17
         assert row["quantity"] == 1
         assert row["measurement_unit"] == "l"
@@ -337,6 +338,7 @@ class TestOptimiserUtilsNewWorld:
         assert row["store_id"] == store_id
         assert row["search_ingredient"] == "milk"
         assert row["returned_ingredient"] == "Standard Milk"
+        assert row["brand"] == "Pams Value"
         assert row["price"] == 4.83
         assert row["quantity"] == 2
         assert row["measurement_unit"] == "l"
@@ -350,6 +352,22 @@ class TestOptimiserUtilsNewWorld:
 
         expected_hash = _compute_pk_hash(store_id, product["productId"], "2026-08-10")
         assert row["pk_hash"] == expected_hash
+
+    def test_build_edge_row_brand_fallback(self):
+        """Edge rows fall back to 'New World' when the product has no brand."""
+        now = datetime(2026, 8, 10, 12, 0, 0)
+        product = dict(self.edge_data["products"][0])
+        del product["brand"]
+        row = build_edge_row("NewWorld", "New World Test", "sid-1", "milk", product, None, now)
+        assert row["brand"] == "New World"
+
+    def test_build_mobile_row_brand_fallback(self):
+        """Mobile rows fall back to 'New World' when the product has no brand."""
+        now = datetime(2026, 8, 10, 12, 0, 0)
+        product = dict(self.mobile_data["products"][0])
+        del product["brand"]
+        row = build_mobile_row("NewWorld", "New World Test", "sid-1", "milk", product, now)
+        assert row["brand"] == "New World"
 
 
 class TestPkHashAndDedup:

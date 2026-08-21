@@ -85,7 +85,7 @@ class TestBuildRow:
     def test_row_matches_csv_columns(self):
         """The row dict must contain all CSV_COLUMNS except 'is_valid'.
 
-        build_woolworths_row() produces 17 of the 18 CSV_COLUMNS keys. The
+        build_woolworths_row() produces 18 of the 19 CSV_COLUMNS keys. The
         'is_valid' column is intentionally omitted by build_woolworths_row()
         because it is managed separately by the validation pipeline
         (llm_validate.py) and the append_rows() function. It is added
@@ -114,6 +114,32 @@ class TestBuildRow:
         """returned_ingredient must be the product name from the fixture."""
         row = self._build_milk_row()
         assert row["returned_ingredient"] == "anchor milk standard blue"
+
+    def test_brand_value(self):
+        """brand must be the fixture brand with its first character capitalised.
+
+        The raw Woolworths API supplies lowercase slugs ("anchor");
+        build_woolworths_row() normalises to "Anchor" for consistency
+        with Foodstuffs proper-case brand values.
+        """
+        assert self._build_milk_row()["brand"] == "Anchor"
+
+    def test_brand_fallback_to_company_name(self):
+        """brand falls back to 'Woolworths' when the product has no brand.
+
+        Covers in-house items where the API omits the brand field entirely.
+        """
+        product = dict(self.milk_product)
+        del product["brand"]
+        row = build_woolworths_row(
+            company="Woolworths",
+            store="Nelson Junction Woolworths",
+            store_id="9290",
+            search_ingredient="milk",
+            product=product,
+            now=self.now,
+        )
+        assert row["brand"] == "Woolworths"
 
     def test_price_value(self):
         """price must match salePrice from the fixture (9.07)."""

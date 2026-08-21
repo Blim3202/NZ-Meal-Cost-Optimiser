@@ -147,9 +147,9 @@ def search_products(session, query, size=20, food_only=True):
         food_only: if True, exclude non-food departments
                    (Health & Body, Household, Baby & Child, Pet, Back to School)
 
-    Returns list of product dicts with keys: sku, name, salePrice, originalPrice,
-    isSpecial, unitPrice, volumeSize, cupMeasure, cupListPrice, url, imageUrl,
-    department.
+    Returns list of product dicts with keys: sku, name, brand, salePrice,
+    originalPrice, isSpecial, unitPrice, volumeSize, cupMeasure, cupListPrice,
+    url, imageUrl, department.
     """
     resp = session.get(
         f"{BASE_URL}/products",
@@ -169,6 +169,7 @@ def search_products(session, query, size=20, food_only=True):
         results.append({
             "sku": item.get("sku"),
             "name": item.get("name", ""),
+            "brand": item.get("brand", ""),
             "salePrice": price_info.get("salePrice"),
             "originalPrice": price_info.get("originalPrice"),
             "isSpecial": price_info.get("isSpecial", False),

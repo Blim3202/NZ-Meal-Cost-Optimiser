@@ -26,6 +26,7 @@ CSV_COLUMNS = [
     "store_id",
     "search_ingredient",
     "returned_ingredient",
+    "brand",
     "price",
     "quantity",
     "measurement_unit",
@@ -40,6 +41,12 @@ CSV_COLUMNS = [
     "pk_hash",
     "is_valid",
 ]
+
+BRAND_FALLBACKS = {
+    "PaknSave": "Pak'nSave",
+    "NewWorld": "New World",
+    "Woolworths": "Woolworths",
+}
 
 DISHES_FILE = DATA_DIR / "dishes.json"
 
@@ -424,6 +431,18 @@ def _parse_display_name(display_name):
     return None, ""
 
 
+def _normalize_brand(brand):
+    """Capitalise the first character of a brand string ("anchor" -> "Anchor").
+
+    Woolworths supplies lowercase brand slugs while Foodstuffs supplies
+    proper-case names; normalising at row-build time keeps the brand column
+    consistent across retailers. Empty/None values return "".
+    """
+    if not brand:
+        return ""
+    return brand[:1].upper() + brand[1:]
+
+
 def _compute_pk_hash(store_id, sku, date_created):
     """Compute a SHA-256 hash of the composite primary key."""
     raw = f"{store_id}|{sku}|{date_created}"
@@ -535,6 +554,11 @@ def build_edge_row(company, store, store_id, search_ingredient, product, pass1_h
         "store_id": store_id,
         "search_ingredient": search_ingredient,
         "returned_ingredient": product.get("name", ""),
+        "brand": _normalize_brand(
+            product.get("brand")
+            or (pass1_hit or {}).get("brand")
+            or BRAND_FALLBACKS.get(company, "")
+        ),
         "price": price_dollars,
         "quantity": quantity if quantity is not None else "",
         "measurement_unit": measurement_unit,
@@ -604,6 +628,7 @@ def build_mobile_row(company, store, store_id, search_ingredient, product, now):
         "store_id": store_id,
         "search_ingredient": search_ingredient,
         "returned_ingredient": product.get("name", ""),
+        "brand": _normalize_brand(product.get("brand") or BRAND_FALLBACKS.get(company, "")),
         "price": price_dollars,
         "quantity": quantity,
         "measurement_unit": measurement_unit,
@@ -628,8 +653,8 @@ def build_woolworths_row(company, store, store_id, search_ingredient, product, n
         store_id: store's canonical id = extra1 (fulfilmentStoreId), the same
                   value baked into the cw-lrkswrdjp cookie (`f-{store_id}`)
         search_ingredient: the ingredient term we searched for
-        product: dict from search_products() (sku, name, salePrice, cupListPrice,
-                 volumeSize, cupMeasure, isSpecial, department)
+        product: dict from search_products() (sku, name, brand, salePrice,
+                 cupListPrice, volumeSize, cupMeasure, isSpecial, department)
         now: datetime object for timestamps
 
     Returns:
@@ -646,6 +671,7 @@ def build_woolworths_row(company, store, store_id, search_ingredient, product, n
         "store_id": store_id,
         "search_ingredient": search_ingredient,
         "returned_ingredient": product.get("name", ""),
+        "brand": _normalize_brand(product.get("brand") or BRAND_FALLBACKS.get(company, "")),
         "price": product.get("salePrice", ""),
         "quantity": quantity if quantity is not None else "",
         "measurement_unit": measurement_unit,

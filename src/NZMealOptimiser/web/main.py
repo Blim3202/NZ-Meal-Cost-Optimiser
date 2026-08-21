@@ -301,6 +301,7 @@ async def run_optimisation(
                 best_per_ingredient.append({
                     "search_ingredient": term,
                     "returned_ingredient": best.get("returned_ingredient", ""),
+                    "brand": best.get("brand", ""),
                     "price": best.get("price", ""),
                     "ingredient_quantity": best.get("ingredient_quantity", ""),
                     "ingredient_measurement": best.get("ingredient_measurement", ""),

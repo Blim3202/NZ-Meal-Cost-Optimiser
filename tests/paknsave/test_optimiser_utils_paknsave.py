@@ -312,6 +312,7 @@ class TestOptimiserUtilsPaknSave:
         assert row["store_id"] == store_id
         assert row["search_ingredient"] == "milk"
         assert row["returned_ingredient"] == "Standard UHT Milk"
+        assert row["brand"] == "Pams"
         assert row["price"] == 2.09  # 209 cents / 100
         assert row["quantity"] == 1
         assert row["measurement_unit"] == "l"
@@ -354,6 +355,7 @@ class TestOptimiserUtilsPaknSave:
         assert row["store_id"] == store_id
         assert row["search_ingredient"] == "milk"
         assert row["returned_ingredient"] == "Standard Milk"
+        assert row["brand"] == "Pams Value"
         assert row["price"] == 4.79  # 479 cents / 100
         assert row["quantity"] == 2
         assert row["measurement_unit"] == "l"
@@ -367,6 +369,22 @@ class TestOptimiserUtilsPaknSave:
 
         expected_hash = _compute_pk_hash(store_id, product["productId"], "2026-08-10")
         assert row["pk_hash"] == expected_hash
+
+    def test_build_edge_row_brand_fallback(self):
+        """Edge rows fall back to "Pak'nSave" when the product has no brand."""
+        now = datetime(2026, 8, 10, 12, 0, 0)
+        product = dict(self.edge_data["products"][0])
+        del product["brand"]
+        row = build_edge_row("PaknSave", "PAK'nSAVE Test", "sid-1", "milk", product, None, now)
+        assert row["brand"] == "Pak'nSave"
+
+    def test_build_mobile_row_brand_fallback(self):
+        """Mobile rows fall back to "Pak'nSave" when the product has no brand."""
+        now = datetime(2026, 8, 10, 12, 0, 0)
+        product = dict(self.mobile_data["products"][0])
+        del product["brand"]
+        row = build_mobile_row("PaknSave", "PAK'nSAVE Test", "sid-1", "milk", product, now)
+        assert row["brand"] == "Pak'nSave"
 
 
 class TestPkHashAndDedup:

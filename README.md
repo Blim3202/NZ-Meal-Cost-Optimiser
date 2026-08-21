@@ -107,7 +107,6 @@ opencode/
 ├── docs/
 │   ├── project/                                # decision.md, design.md, logs.md
 │   └── technical/                              # PaknSave_API.md, NewWorld_API.md, Woolworths_API.md, LLM_Pipeline.md, FastAPI.md
-├── unsure/                                     # Retired path bootstrap (paths.py — history only)
 ├── Dockerfile                                  # Container image for Google Cloud Run (repo root)
 ├── pyproject.toml                              # src-layout package metadata
 ├── AGENTS.md                                   # Agent instructions and project reference

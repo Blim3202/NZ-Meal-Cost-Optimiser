@@ -160,7 +160,7 @@
           const detailId = sc.store.replace(/[^a-zA-Z0-9]/g, '_');
           html += `<tr id="detail-${detailId}" class="ingredient-detail"><td colspan="5">`;
           if (sc.best_per_ingredient && sc.best_per_ingredient.length > 0) {
-            html += '<table style="margin-top:0.5rem;"><tr><th>Ingredient</th><th>Recipe Needed</th><th>Returned Product</th><th>Pack Size</th><th>Used Price</th><th>Purch Qty</th><th>Purch Cost</th><th>Status</th></tr>';
+            html += '<table style="margin-top:0.5rem;"><tr><th>Ingredient</th><th>Recipe Needed</th><th>Returned Product</th><th>Brand</th><th>Pack Size</th><th>Used Price</th><th>Purch Qty</th><th>Purch Cost</th><th>Status</th></tr>';
             sc.best_per_ingredient.forEach(bi => {
               const recipeInfo = [
                 bi.ingredient_quantity,
@@ -179,6 +179,7 @@
               html += `<td>${bi.search_ingredient}</td>`;
               html += `<td>${recipeDisplay || "-"}</td>`;
               html += `<td>${bi.returned_ingredient}</td>`;
+              html += `<td>${bi.brand || "-"}</td>`;
               html += `<td>${packInfo || "-"}</td>`;
               html += `<td>${fmtPrice(bi.used_price)}</td>`;
               html += `<td>${bi.purchase_quantity} pack(s)</td>`;
@@ -204,7 +205,7 @@
       } else {
         html += '<table>';
         html += '<tr>';
-        html += '<th>Company</th><th>Store</th><th>Search Term</th><th>Returned Product</th>';
+        html += '<th>Company</th><th>Store</th><th>Search Term</th><th>Returned Product</th><th>Brand</th>';
         html += '<th>Recipe Needed</th><th>Price</th><th>Pack Size</th><th>Cost Per Unit</th><th>Used Price</th>';
         html += '<th>Purch Qty</th><th>Purch Cost</th><th>Status</th><th>SKU</th>';
         html += '</tr>';
@@ -224,6 +225,7 @@
           html += `<td>${r.store || "-"}</td>`;
           html += `<td>${r.search_ingredient || "-"}</td>`;
           html += `<td>${r.returned_ingredient || "-"}</td>`;
+          html += `<td>${r.brand || "-"}</td>`;
           html += `<td>${recipeDisplay || "-"}</td>`;
           html += `<td>${fmtPrice(r.price)}</td>`;
           html += `<td>${packInfo || "-"}</td>`;
