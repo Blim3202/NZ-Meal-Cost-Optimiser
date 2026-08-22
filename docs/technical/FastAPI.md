@@ -10,7 +10,7 @@ Runs are **background jobs**: `POST /optimise/jobs` returns a `job_id` immediate
 ```
 .venv\Scripts\uvicorn NZMealOptimiser.web.main:app --host 0.0.0.0 --port 8000
 ```
-Then open `http://127.0.0.1:8000/` for the dashboard, `http://127.0.0.1:8000/app` for the Vue dashboard, or `http://127.0.0.1:8000/docs` for Swagger.
+Then open `http://127.0.0.1:8000/` for the classic dashboard, `http://127.0.0.1:8000/app` for the Vue dashboard, `http://127.0.0.1:8000/test` for the dish-builder page, or `http://127.0.0.1:8000/docs` for Swagger.
 
 No manual path bootstrap is needed — the package is installed editable (`pip install -e .`) and all imports resolve from `NZMealOptimiser.*`.
 
@@ -101,13 +101,32 @@ Mutable progress object created per optimisation request (`_new_job`). Key attri
 | `portions` | `int` | `4` | Number of servings (used for ingredient quantity resolution) |
 | `latitude` | `float \| None` | `None` | Device GPS latitude — bypasses Nominatim when set |
 | `longitude` | `float \| None` | `None` | Device GPS longitude — must accompany `latitude` |
+| `custom_dish` | `CustomDish \| None` | `None` | Hand-built recipe from the dish builder (see below) |
 
 GPS coordinates are validated against a rough NZ bounding box (`NZ_LAT_RANGE = (-47.6, -34.2)`, `NZ_LON_RANGE = (166.2, 178.9)`): out-of-bounds or half-specified coords fail with 400 before any search work starts.
+
+### `CustomDish` / `CustomIngredient` (dish builder input)
+
+```python
+class CustomIngredient(BaseModel):
+    ingredient: str; quantity: float; unit: str
+    search_term: Optional[str] = None
+    approx_quantity: Optional[float] = None; approx_unit: Optional[str] = None
+
+class CustomDish(BaseModel):
+    name: str = ""; base_portions: int = 4; ingredients: list[CustomIngredient]
+```
+
+When `custom_dish` is set it **replaces** the `dish`-name resolution path entirely:
+
+1. `_validate_custom_dish()` — sync validation: non-empty name/ingredients, positive finite quantities, non-empty units. Units are normalised through `normalise_unit()` (alias folding, e.g. `eggs` → `each`) at build time.
+2. `_scale_ingredients_to_portions(dish_dict, req.portions)` — uniform scaling of every numeric quantity from `base_portions` to the requested `portions`. Applied to ALL sources (curated, LLM, custom); a no-op at default portions. Scaling happens per-request — presets are stored verbatim at their base portions.
 
 ### `OptimisationResult` (output)
 | Field | Type | Description |
 |---|---|---|
 | `dish` | `str` | Resolved display name of the dish |
+| `dish_source` | `str` | `"curated"`, `"custom"`, or `"llm"`/`"fallback"` — drives the results-header chip |
 | `companies_checked` | `list[str]` | Which brands were searched |
 | `rows` | `list[dict]` | All product result rows in CSV_COLUMNS format (18 fields per row) |
 | `store_costs` | `list[dict]` | Per-store cost summary sorted complete-basket-first, then by total used cost |
@@ -159,12 +178,12 @@ Each row dict matches `full_results.csv` columns:
 | `ingredients_matched` | Number of ingredients with valid scaled prices |
 | `ingredients_total` | Number of ingredients REQUESTED for the dish (not just those that returned rows) |
 | `complete` | `true` when every requested ingredient has a valid scaled price at this store. Only complete baskets are directly comparable |
-| `best_per_ingredient` | Detail list: for each ingredient, the cheapest product with used_price, purchase qty, etc. |
-| `issues` | Unavailable ingredients for this store: `{search_ingredient, status: "error"\|"no_match"\|"incompatible_units", detail}`. `incompatible_units` means products were returned but none sold in units scalable to the recipe (e.g. recipe needs 6 eggs, store sells per egg) — their would-be cost is silently absent from the total, so they must be visible |
+| `best_per_ingredient` | Detail list — one entry per REQUESTED ingredient per store: the cheapest product with a valid `used_price`, or a **placeholder row** when nothing usable exists. Placeholder rows fill only `search_ingredient` (+ "Recipe Needed" ≈ fallbacks), leave all product columns blank, and carry `status: "not_found"`; they add nothing to totals or match counts |
+| `issues` | Unavailable ingredients for this store: `{search_ingredient, status: "error"\|"no_match"\|"incompatible_units", detail}`. Kept alongside placeholder rows so the *reason* stays visible |
 | `lat` / `lon` | Store coordinates (from the brand store CSVs) — consumed by the dashboard map pins |
 | `distance_km` | Haversine distance from the resolved origin, rounded to 2 dp |
 
-**Ranking:** stores are sorted **complete-basket-first, then by total_used_cost** — a partial basket can never outrank a complete one on a missing ingredient's $0. If no store is complete, all are partial and sort by cost among themselves.
+**Ranking:** stores are sorted **complete-basket-first, then by total_used_cost** — a partial basket can never outrank a complete one on a missing ingredient's $0. If no store is complete, all are partial and sort by cost among themselves (a fully-failed $0.00 store can sit above a 1-of-3 match). Stores where every search failed still get a card ($0.00, incomplete). Phase 4 is implemented in the pure helper `_build_store_costs(search_terms, ing_lookup, all_rows, outcomes, store_geo)` with `_placeholder_row(term, ing)`; candidates derive from the `outcomes` dict, so dead stores are included even with zero rows.
 
 ---
 
@@ -174,8 +193,10 @@ Each row dict matches `full_results.csv` columns:
 |---|---|---|
 | `/` | GET | Legacy vanilla dashboard (`static/index_old.html`) |
 | `/app`, `/app/` | GET | Vue dashboard (`static/vue/index.html`) |
+| `/test`, `/test/` | GET | Dish-builder page (`static/vue/test.html`) — build a custom recipe, run it, save presets |
 | `/health` | GET | Health check → `{"status": "ok", "supabase_enabled": bool}` |
-| `/dishes` | GET | Curated dishes from `data/dishes.json` (for the Vue dashboard) |
+| `/dishes` | GET | Dishes from `data/dishes.json` — curated presets plus any saved builder dishes (`portion` key = base portions) |
+| `/dishes/save` | POST | Upsert a builder dish as a preset in `data/dishes.json` (`SaveDishRequest{name, base_portions, ingredients}`); validates via `_validate_custom_dish`, writes atomically (tmp file + `os.replace`) |
 | `/geocode` | GET | `?address=...` → `{lat, lon, cached}` — standalone Nominatim lookup for the dashboard's resolve step (LRU-cached, NZ-bbox validated) |
 | `/stores/nearby` | GET | `?lat&lon&distance_km&companies=PaknSave,NewWorld,Woolworths&max_per_company` → `{origin, stores[]}` — preview of which stores a run would query (local CSV + haversine, same helpers/cap as pipeline Phase 2, no supermarket API calls) |
 | `/optimise` | POST | Legacy synchronous endpoint (classic dashboard) — accepts `DishRequest`, blocks until done, returns `OptimisationResult` |
@@ -227,9 +248,10 @@ An HTTP middleware also logs every request's method/path/status/duration to the 
 
 The core orchestrator. Runs in 4 phases, writing progress into `job` as it goes (`job.phase`, `job.log_event(...)`, per-company counters):
 
-**Phase 1 — Resolve & Geocode (sequential)**
-1. Calls `resolve_ingredients(dish, portions)` which looks up `dishes.json` for curated ingredient lists (with quantities, units, and approx fallbacks for non-standard units). Falls back to LLM generation if not curated and an API key is available; otherwise uses the dish name as a single search term.
-2. Calls `_resolve_origin(job)` to locate the search origin. If the request carries `latitude`/`longitude` (device GPS), those are validated against the NZ bounding box and used directly — **no Nominatim call**. Otherwise `optimiser_utils.geocode(address)` (Nominatim, rate-limited to 1 req/sec) runs once, before any concurrent work. The resolved `{lat, lon, source}` is carried through as the result's `origin`.
+**Phase 1 — Resolve, Validate & Geocode (sequential)**
+1. Resolves ingredients. If `custom_dish` is set: `_validate_custom_dish` (sync 400 on bad input) + `_scale_ingredients_to_portions` produce the recipe; otherwise `resolve_ingredients(dish, portions)` looks up `dishes.json` for curated lists, falls back to LLM generation when keyed, else uses the dish name as a single term. `dish_source` records which path ran.
+2. **Unit hygiene pass**: every ingredient's `unit`/`approx_unit` is folded through `normalise_unit()` for all sources (e.g. `eggs` → `each`) so downstream scaling sees canonical units.
+3. Calls `_resolve_origin(job)` to locate the search origin. If the request carries `latitude`/`longitude` (device GPS), those are validated against the NZ bounding box and used directly — **no Nominatim call**. Otherwise `optimiser_utils.geocode(address)` (Nominatim, rate-limited to 1 req/sec) runs once, before any concurrent work. The resolved `{lat, lon, source}` is carried through as the result's `origin`.
 
 **Phase 2 — Build & Launch Tasks (concurrent)**
 3. Authenticates ONE Edge API client per Foodstuffs company up front (`_make_authenticated_api`, offloaded via `asyncio.to_thread`) and shares it across all of that brand's searches — post-auth methods use plain `requests.post` with the cached JWT, so concurrent use is safe.
@@ -241,9 +263,8 @@ The core orchestrator. Runs in 4 phases, writing progress into `job` as it goes 
 7. Runs `parse_optimiser_columns(row)` on each enriched row to compute `used_price` (proportional cost for the recipe amount), `purchase_quantity`, `purchase_price`, `scaling_ratio`, `status`, etc.
 
 **Phase 4 — Build Store Cost Summary (sequential)**
-8. Groups rows by `(company, store name)`; picks the cheapest valid product per ingredient (preferring exact unit matches over approximations).
-9. Sums `used_price` across all ingredients per store and attaches failed/no-match searches AND all-products-unit-incompatible ingredients as `issues`. Ranks complete baskets first, then cheapest.
-10. Sorts stores by total used cost ascending, logs the winner event, and returns an `OptimisationResult` with `duration_seconds`.
+8. `_build_store_costs()` (pure helper): groups rows by `(company, store name)`; picks the cheapest valid product per ingredient (preferring exact unit matches over approximations); inserts a `not_found` placeholder row for every requested ingredient with no usable product at that store; sums `used_price` per store; attaches failed/no-match/unit-incompatible searches as `issues`.
+9. Ranks complete baskets first, then cheapest; logs the winner event and returns an `OptimisationResult` with `duration_seconds` and `dish_source`.
 
 ### `_fetch_ingredient(company, api, store_id, store_name, ingredient, region="") -> list[dict]`
 
@@ -279,7 +300,7 @@ Plain `def` (not async). Runs on a background thread. Reuses the shared, already
 
 ### Ingredient Resolution: `resolve_ingredients`
 
-Imported from `NZMealOptimiser.llm.llm_utils`. Resolution order:
+Skipped entirely when `custom_dish` is supplied (builder recipe used verbatim, scaled to portions). Otherwise resolution order:
 1. **Curated JSON** — `data/dishes.json` lookup (21 dishes). Returns structured ingredients with `quantity`, `unit`, `search_term`, and optional `approx_quantity`/`approx_unit` for non-standard units (e.g. "1 can" → approx 400g).
 2. **LLM generation** — If not curated and `MISTRAL_API_KEY` is set, calls Mistral. Only triggered for non-curated dishes.
 3. **Fallback** — Uses dish name itself as a single search term.
@@ -294,7 +315,7 @@ Imported from `NZMealOptimiser.llm.llm_utils`. Computes proportional ingredient 
 | `ratio > 1` | `ceil(ratio)` packs | `pack_price × ceil(ratio)` | `pack_price × ratio` |
 | Incompatible | 0 | None | None |
 
-Units are normalised (weight→grams, volume→milliliters, count→count). Compound units like `x 375ml` are expanded. Cross-category (weight vs volume) uses 1ml≈1g approximation flagged via `unit_approximate=True`.
+Units are normalised (weight→grams, volume→milliliters, count→count), with one-way alias folding via `normalise_unit()` (`UNIT_ALIASES`, e.g. `egg`/`eggs` → `each`) applied to recipe units, approx units, and pack units alike. Compound units like `x 375ml` are expanded. Cross-category (weight vs volume) uses 1ml≈1g approximation flagged via `unit_approximate=True`.
 
 ---
 
@@ -315,6 +336,7 @@ Units are normalised (weight→grams, volume→milliliters, count→count). Comp
 POST /optimise/jobs  → {"job_id"}  (background task; poll GET /optimise/{id})
 │
 ├── Phase 1: Sequential setup
+│   ├── custom_dish? → validate + scale to portions   (skips resolution)
 │   ├── resolve_ingredients("spaghetti bolognese") → 7 ingredients with quantities
 │   └── geocode("Auckland CBD")  [Nominatim, ~1-3s]
 │

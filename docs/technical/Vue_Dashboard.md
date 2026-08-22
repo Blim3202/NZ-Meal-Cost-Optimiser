@@ -1,201 +1,108 @@
 # Vue Dashboard — `src/NZMealOptimiser/web/frontend/`
 
+> **Doc policy — keep entries light.** This file documents *what exists, where, and the key logic contracts* (state machines, payload shapes, gotchas) — deliberately skipping visuals/CSS internals and code dumps; read the source for those. Update the relevant entry here whenever you add or refactor frontend code. Full API field reference lives in `FastAPI.md`.
+
 ## Overview
 
-A single-page Vue 3 app that drives the optimiser: form input → **resolve setup** (verify dish + location) → live job progress → results (store comparison + product tables), with an OpenStreetMap view of the searched stores, an ingredient preview card, an always-on pipeline console, and a device-GPS option that bypasses Nominatim geocoding. It is the only consumer of the job-based API (`POST /optimise/jobs` / `GET /optimise/{id}`); see `FastAPI.md` for the backend contract.
-
-Built with Vue CLI 5, no router, no state library. Two components: `App.vue` (all state, one `setup()`) and `components/MapPanel.vue` (Leaflet map, props in / events out). Styling lives entirely in `styles.css` (SFCs have no `<style>` block).
-
----
+Vue 3 (Composition API) frontend for the optimiser, served by FastAPI at `/app` (standard dashboard) and `/test` (dish builder). Form → resolve setup → live job progress → results, with a Leaflet/OSM map, live pipeline console, and GPS support. It is the only consumer of the job-based API (`POST /optimise/jobs` / `GET /optimise/{id}`).
 
 ## Build & Toolchain
 
 | Item | Value |
 |---|---|
-| Framework | Vue 3.5 (Composition API), core-js 3 |
-| Map | Leaflet 1.9.4 (+ OSM raster tiles, no API key) |
-| Bundler | `@vue/cli-service` 5 (`npm run build`) |
-| Source | `frontend/src/` (`main.js`, `App.vue`, `components/MapPanel.vue`, `styles.css`) |
-| Output | `frontend/../static/vue/` — i.e. `src/NZMealOptimiser/web/static/vue/` |
-| Public path | `/static/vue/` (set in `vue.config.js`; assets only resolve when served by uvicorn, not `file://`) |
+| Framework | Vue 3.5, Vue CLI 5, no router/state library |
+| Map | Leaflet 1.9.4 + OSM tiles |
+| Build | `npm run lint` → `npm run build` (run inside `frontend/`) |
+| Pages | Multi-page via `vue.config.js`: `index` → `static/vue/index.html` (`main.js`/`App.vue`, served at `/app`), `test` → `static/vue/test.html` (`test-main.js`/`TestApp.vue`, served at `/test`) |
+| Output | `src/NZMealOptimiser/web/static/vue/` — **never hand-edit; always rebuild after editing `src/`** |
+| Public path | `/static/vue/` (absolute — pages only work through uvicorn, not `file://`) |
 
-**Workflow:** edit `src/` → `npm run build` → commit generated `static/vue/`. Never hand-edit files under `static/vue/`.
+ESLint config lives inline in `package.json`; keep `no-console` clean.
 
-`main.js` is three lines: create the app, mount it, import `styles.css`. ESLint config lives inline in `package.json` (`no-console: warn`, vue3-essential rules).
-
----
-
-## State Model (`setup()` in App.vue)
-
-### Form & results (pre-existing)
-- `form` — reactive `{ dish, address, distance_km, portions, max_stores_per_company, companies[] }`, bound to the search panel; `companies` pre-checked for all 3 brands.
-- `dishes` — fetched from `GET /dishes` on mount; keeps `{key, label, ingredients[]}` per dish (ingredients feed the preview card).
-- `result` — the final `OptimisationResult` (drives both result panels).
-- `addressHistory` — last 5 addresses persisted in `localStorage["meal-addresses"]`.
-- `expandedStores` — Set of expanded store-card keys. `storeSort` orders the store-comparison panel.
-- **Filter bar** — `excluded` (per-column Sets of deselected categorical values; empty Set = column unfiltered), `textFilters` (`returned_ingredient`/`sku` substrings), `numSortKey`/`numSortDir`, and `openFilter` (which popover is open). See "All-results filter bar" below.
-
-### Two-step resolve (setup → compare)
-- `origin` — ref `{lat, lon, source: "gps"|"geocoded"}` set by the resolve step; `resolving` while the `/geocode` round-trip is in flight; `resolved` = `!!origin`; `readyToCompare` = resolved && not stale.
-- The submit button is **dual-use**: "Resolve setup" (amber) until dish + location are verified, then "Compare prices" (green `.is-ready`). Disabled until `canResolve` (`dish && (gps || address)`); `actionHint` explains what's missing.
-- `resolveSetup()` — GPS lock → origin immediately; otherwise `GET /geocode?address=…` (server-side Nominatim + LRU cache). Failure surfaces in the error banner.
-- **Stale detection**: a watcher on a settings signature (`dish|address|portions|max_stores|distance|companies`) marks `staleNotice` when anything changes after a successful resolve. The button flips back to "Resolve setup", an amber `.notice-banner` appears ("Parameters changed — check to resolve settings"), and the console gains a matching `[SYS]` warn line — while the map and recipe previews stay live.
-- **Store preview**: on resolve success (and whenever distance/companies/max-stores change while an origin exists) the app calls `GET /stores/nearby` into `previewStores` — the same stores, cap, and ordering pipeline Phase 2 will query. Pins show brand colours + distances with a "Price preview" tooltip line; real `store_costs` take over once a run completes. Clearing the origin clears the preview.
-- `dishIngredients` — computed from the selected dish's curated ingredients; rendered in the ingredient-preview card and always live. This card is the future hook for LLM-resolved ingredients + approval (see Roadmap #1).
-
-### GPS & map
-- `gps` — ref holding `{lat, lon}` when a device location is locked, else `null`; `gpsBusy` while `navigator.geolocation` is in flight. Locking disables the address input (and its `required`) and shows a dismissible green chip with the coordinates.
-- `mapOrigin` — computed: resolved `origin` first, else the run's `result.origin` fallback.
-- `mapStores` — `result.store_costs` filtered to entries with coords; `winnerKey` — key of the first **complete** store (★ pin, partial baskets excluded); both feed `MapPanel`.
-- Client-side NZ bounding-box check (`NZ_BOUNDS`) mirrors the server's so an obviously-outside device fails fast without a round-trip.
-
-### Live job object
-```js
-const job = reactive({ id, status, phase, companies[], events[],
-                       total_tasks, done_tasks, products_found,
-                       error_detail, elapsed });
-let cursor = -1;      // last event index received from the snapshot API
-let pollTimer;        // setTimeout handle for the next poll
-let tickTimer;        // setInterval handle for the local elapsed ticker
-let pollRun = 0;      // monotonically increasing run token
-```
-
-Derived computeds: `jobVisible` (`status !== 'idle'` → shows/hides the whole live area), `jobRunning` (`queued|running`), `overallPct` (`done/total`), `elapsedDisplay`.
-
-Module constants: `POLL_MS = 700`, `RING_CIRCUMFERENCE = 2π·20` (matches the SVG ring geometry below), `CAT_COLUMNS` + `catLabels` (the five categorical filter columns).
-
----
-
-## Run Lifecycle
-
-1. **`primaryAction()`** — the dual-use submit: if `resolved`, calls `runOptimise()`; otherwise `resolveSetup()`. **`runOptimise()`** clears `error`/`result`, resets `job`, bumps `pollRun` (a stale-loop guard: any in-flight poll from a previous run sees a token mismatch and exits), POSTs the form to `/optimise/jobs`, stores `job.id`, starts the local ticker, then kicks off `poll(run)`. A failed POST (e.g. unknown company → sync 400) surfaces `detail` in the error banner. The payload always includes `latitude`/`longitude` from the resolved origin (so the backend skips Nominatim); GPS runs replace `address` with `"Device GPS location"`. Typed addresses still update `addressHistory`; GPS runs don't.
-2. **Ticker** — every 250 ms adds `+0.25` to `job.elapsed` while `jobRunning`, so the timer moves smoothly between server polls. Snapshots converge it via `Math.max(local, server)`.
-3. **`poll(run)`** — sequential loop (no overlapping fetches): GETs `/optimise/{id}?events_since={cursor}`, calls `applySnapshot`, re-arms itself with `setTimeout(POLL_MS)` until status is terminal. Transient network errors are swallowed and retried; only a token mismatch or terminal status ends the loop.
-4. **`applySnapshot(d)`** — assigns counters/phase/status, replaces `job.companies` wholesale once non-empty (stores are discovered mid-run, so the tiles appear progressively), appends new events and advances `cursor`, captures `error_detail`, and assigns `d.result` to `result` the moment it appears (results render while the console keeps streaming).
-5. **`finishJob()`** — stops timers, clears `loading`; on `status === 'error'` promotes `error_detail` into the banner.
-
-There is no SSE/WebSocket yet — polling was chosen deliberately (works through every proxy, no server changes beyond the snapshot endpoint). The cursor parameter keeps payloads tiny regardless of event volume.
-
----
-
-## Progress Visualisations
-
-### Overall bar
-`width = overallPct%` on a gradient fill with a CSS width transition. Before store discovery (`total_tasks === 0`) the bar gets an `.indeterminate` shimmer: an absolutely-positioned pseudo-element swept left→right by the shared `slide-strip` keyframes.
-
-### Brand tiles
-One card per company. Brand identity comes from a single custom property (`--brand` set by `.tile-paknsave|-newworld|-woolworths`) applied as a **4px left accent border** plus the ring stroke and shimmer underline — so the company reads as coloured while the completion tick stays colour-neutral (ink stroke).
-
-The ring is an SVG circle (`r=20`, `stroke-width=5`) rotated −90°:
-
-```js
-strokeDashoffset = RING_CIRCUMFERENCE * (1 - stores_done/stores_total)
-```
-
-with `stroke-dasharray: 125.66` (circumference) and a CSS transition on `stroke-dashoffset` — fraction updates animate as a smooth sweep. Three visual states:
-- **unknown** (`stores_total` falsy): `.ring-idle` swaps to a dashed segment spinning continuously (indeterminate).
-- **running**: partial arc + a brand-coloured shimmer line along the tile bottom (`.is-running::after`).
-- **complete**: full circle + neutral ink check path (`M15.5 24.5l6 6 11-12.5`).
-
-Product counts use `font-variant-numeric: tabular-nums` so digits don't jitter as counters tick.
-
-### Terminal console
-Dark panel (`#0e161d`) with a mac-style header (traffic-light dots + uppercase title + live event count). **Always visible** and unconditionally pinned to the bottom: `terminalEl` refs the `.terminal-body` div (the actual scroll container — NOT the outer `.terminal` section), and a watcher on `consoleLines.length` runs `scrollTerminal()` on every change, which sets `el.scrollTop = el.scrollHeight` after `nextTick()`. Every printed line jumps the view to the newest output; there is no user-scroll override.
-
-Content = `feed` + `job.events` (`consoleLines`). `feed` is an append-only event log of setup activity — there are no persistent status lines; each state change prints once:
-
-| Event | Tag | Kind | Trigger |
-|---|---|---|---|
-| dashboard online | `SYS` | phase | once on mount |
-| recipe refreshed · dish · N searches | `DISH` | ok/warn | dish selection changes |
-| gps locked / gps cleared / address changed | `LOC` | ok/warn | location source changes |
-| geocoded "addr" → lat, lon | `LOC` | ok | resolve success |
-| location refreshed · N stores in range · R km | `LOC` | ok | store preview fetched (resolve + distance/company/max changes) |
-| settings resolved — ready to compare | `SYS` | ok | resolve success |
-| parameters changed — check to resolve settings | `SYS` | warn | settings edited after resolve |
-
-Feed lines are timestamped with the **system clock (`HH:MM`)**; run events keep server-relative `[+12.4s]` stamps:
-
-| Piece | Class | Notes |
-|---|---|---|
-| Timestamp | `.t-time` | `HH:MM` for feed lines, `+s.s` for run events; tabular-nums, right-aligned |
-| Tag chip | `.t-tag tag-pns/nw/ww/sys/dish/loc` | Brand-coloured pills; SYS/DISH/LOC have their own muted tones |
-| Message | `.t-text` | Coloured by kind: `.t-phase` white bold, `.t-warn` amber, `.t-err` red, `.t-done` green bold |
-
-The scrollbar is themed to match the terminal (WebKit `::-webkit-scrollbar` + Firefox `scrollbar-color`: dark track `#0c141b`, slate thumb `#2f4457`). While running, a blinking caret line (`steps(1)` keyframe animation) sits under the stream.
-
----
-
-## Map (`components/MapPanel.vue`) & GPS
-
-The home screen is **one 2×2 rectangle** (`.home-grid`, collapses to a single column below 1080 px) built with `grid-template-areas`:
+## Source Map
 
 ```
-┌──────────────────────────┬──────────────────────┐
-│ form   (search panel)    │ recipe (ingredients) │
-├──────────────────────────┼──────────────────────┤
-│ terminal (pipeline log)  │ map   (nearby stores)│
-└──────────────────────────┴──────────────────────┘
+src/
+├── App.vue                    # /app page: all state in one setup()
+├── TestApp.vue                # /test page: dish builder + same run/results flow
+├── main.js / test-main.js     # entry points (create app, import styles.css)
+├── styles.css                 # ALL styling (SFCs have no <style> block)
+├── composables/
+│   └── useJobRunner.js        # shared job engine: POST /optimise/jobs, cursor polling,
+│                              #   elapsed ticker, console feed + event merge
+├── components/
+│   ├── DishBuilder.vue        # /test recipe editor (rows of ingredient/qty/unit/search term)
+│   ├── PipelineConsole.vue    # terminal-style event log
+│   ├── ProgressStrip.vue      # overall bar + per-brand SVG ring tiles
+│   ├── ResultsSection.vue     # store cards + all-results table (shared by both pages)
+│   └── MapPanel.vue           # Leaflet map, props in / events out
+├── resultUtils.js             # winnerKeyOf / storesOf — result-vs-preview pin selection
+└── unitOptions.js             # unit list + aliases mirrored from backend UNIT_ALIASES
 ```
 
-All four cards stretch to fill their cells. The console starts skinny (fits its boot lines, `min-height: 96px`) and extends vertically as events stream, capping at 420px with internal scroll; the map fills the rest of its row (`flex: 1`, `min-height: 340px`), so the block stays rectangular while it grows. Live progress remains a separate thin full-width strip that only appears while a job exists.
+Shared components serve both pages; page-specific differences live in `App.vue` vs `TestApp.vue`. Prefer extracting components over growing either page file.
 
-### Leaflet usage
-- Plain imperative Leaflet 1.9.4 inside `setup()` — no Vue wrapper library. Init happens in `onMounted`, `map.remove()` in `onBeforeUnmount`; a `ResizeObserver` on the container calls `invalidateSize()` (covers the responsive column collapse, which otherwise leaves grey tiles).
-- Tiles: standard OSM raster tiles with the required attribution; default view centred on NZ (`[-41.2, 172.8], z5`).
-- **Pins are `L.divIcon`s**, not image markers — brand colour comes from `BRAND_COLORS` inline styles (single source shared with the legend), and this sidesteps Leaflet's classic webpack broken-icon problem. The cheapest store gets a larger ★ pin; the origin gets a dark diamond with a CSS `pulse-ring` animation.
-- Hover tooltips show store name, company, distance, total used cost and an unresolved-search warning line; HTML-escaped via a small `escapeHtml` helper.
-- A dashed `L.circle` shows the search radius around the origin; it tracks the Distance dropdown live via a `radiusKm` watcher.
-- On any data change the map refits: `fitBounds(points).pad(0.25)` capped at zoom 14, or `setView` when only one point exists.
+## Behaviour Notes (brief)
 
-### Interactions
-- Clicking a pin emits `select-store({company, store})`; App expands that store card (if collapsed) and smooth-scrolls it into view — the card anchor is `` id="store-card-{key}" ``.
-- "Use my location" → `getCurrentPosition` (high accuracy, 10 s timeout); success locks `gps`, permission denial / timeout / outside-NZ all degrade gracefully to the typed-address flow with an explanatory banner message.
-- While idle the map shows NZ-wide with a hint pill ("Run a comparison to plot nearby stores"); locking GPS previews your position immediately.
+- **Two-step flow (/app)**: dual-use submit button — "Resolve setup" (`GET /geocode` or GPS lock) until dish + location are verified, then "Compare prices". Settings changes after resolve flip it back (stale notice) and refresh a `/stores/nearby` map preview.
+- **Dish builder (/test)**: edit ingredients inline (quantity/unit/search term, optional ≈ fallbacks), run immediately, or "Save as preset" → `POST /dishes/save`. Runs send the recipe as `custom_dish` with its `base_portions`; the server scales to requested portions.
+- **Polling**: ~700 ms `setTimeout` loop with an incremental `events_since` cursor; a monotonic `pollRun` token guards against stale polls across runs.
+- **Results**: store cards ranked complete-basket-first; missing ingredients render as blank "not found" rows (`status: "not_found"` → red label) plus the amber ⚠ issues banner; ★ winner pin goes to the first complete store.
+- **Filter bar**: categorical popovers + text lookups + numeric sort over `result.rows`; state resets each run.
 
----
+## Key Logic Reference
 
-## Results Rendering
+### `useJobRunner.js` — run engine (shared by both pages)
+- **Console merge**: `consoleLines = [...feed, ...job.events]`. Pages write setup activity via `logLine(kind, co, text)` (wall-clock `HH:MM`, `boot: true`); polled server events render with `+12.4s`-style stamps. PipelineConsole receives the merged array.
+- **Elapsed ticker**: local tick adds `+0.25` every 250 ms while running; snapshots converge it via `Math.max(local, server)`.
+- **`start(payload)`**: clears result/job → POST `/optimise/jobs` → bumps the monotonic `pollRun` token → starts ticker + poll loop. A failed POST surfaces `detail` and resets to idle.
+- **Poll loop**: ~700 ms sequential `setTimeout`; transient fetch errors are swallowed and retried. Exits only on terminal status or a token mismatch (`run !== pollRun`) — that guard is what stops a stale poll from run N leaking into run N+1.
+- Exposed surface consumed by both pages: `{job, result, loading, error, logLine, start, reset, jobRunning, overallPct, elapsedDisplay, terminalTitle, consoleLines}`.
 
-- **Store cards**: ranked list sorted by `total_used_cost` (or name/company via `storeSort`). Key = `` `${company}-${store}` `` — matches the backend's `(company, store_name)` grouping guarantee (same-name collisions are rejected server-side). Expand/collapse toggles membership in `expandedStores`.
-- **Issue surfacing**: if `store.issues` is non-empty (search errors, no-matches, OR ingredients whose every product was unit-incompatible), the collapsed row shows `⚠ n unavailable` and the expanded detail opens with an amber note listing each term and its status (`error`/`no match`/`incompatible units`) — so a cheap total with missing ingredients is visible at a glance.
-- **Honest ranking**: `total_used_cost` omits unpriceable ingredients ($0), so partial baskets are ranked **after** complete ones (`complete === false` sorts last, both server-side and in the client's "Lowest used cost" sort). Partial totals render amber with a `~` prefix and a tooltip explaining the basket is incomplete; the ★ winner pin goes to the first **complete** store, never a cheaper partial one.
-- **All-results filter bar** (replaces the old company/price dropdowns). Default ordering is `company → store → search_ingredient` (alphabetical, multi-key):
-  - *Categorical popovers* — Company, Store, Search term, Brand, Status. Each is a button + absolutely-positioned checkbox list built from `catOptions` (unique sorted values observed in `result.rows`). Checking/unchecking toggles membership in `excluded[column]`; the button shows a live `shown/total` counter that turns amber while filtered. Popovers close on any outside click (document-level listener) but survive clicks inside via `@click.stop` on the wrapper.
-  - *Text lookups* — case-insensitive substring inputs for returned product name and SKU (`textFilters`).
-   - *Numeric sort* — dropdown for Price / Cost per unit / Purchase qty / Purchase cost with an asc↔desc direction toggle; "default" falls back to the alphabetical multi-key order. Rows lacking the chosen value (e.g. blank `per_unit_price`) always sink to the bottom regardless of direction. Filters apply first, then sorting, inside one `filteredRows` computed (always on an array copy).
-  - State resets at the start of every run via `resetFilters()`.
-- **Product table**: row key includes sku + ingredient to stay unique.
-- **Formatters**: `money` (blank-safe `$x.xx`), `usedPrice`/`unitPrice` prefix `~` when `status === 'approximate'`, `recipe()` composes quantity + unit + optional approx fallback ("1 can (~400 g)"), `pack()` joins pack size fields.
+### Dish builder (`TestApp.vue` + `DishBuilder.vue`)
+- `recipeMode` toggles preset↔custom. The builder **auto-seeds from the selected preset on first switch**; "Customise ✎" copies any preset into the draft; rows carry local `row-N` ids for stable v-for keys.
+- **`validRows()` serialisation contract**: trim term → require `quantity > 0` → `normaliseUnit(unit)` → approx pair only when `approx_quantity > 0` (else both null). This exact shape is reused verbatim for *both* the `custom_dish` run payload and `POST /dishes/save`.
+- `duplicateTerms` (case-insensitive) blocks resolve+save and highlights offending rows in DishBuilder.
+- Save flow: overwrite `confirm()` if key exists → POST → refetch dishes → flip back to preset mode → mark setup stale if an origin was resolved.
+- Scale chips (`×N → M portions`) are **display-only** — real scaling happens server-side in `_scale_ingredients_to_portions`.
 
----
+### `ResultsSection.vue`
+- Parent-facing API via template ref: `focusStore(pin)` (map pin → expand card + smooth-scroll) and `resetFilters()` (called before every run). Also resets itself on `result` change via watcher.
+- Store sort re-implements the server ranking client-side: incomplete stores last, then ascending `total_used_cost`.
+- Numeric sorts sink rows lacking the chosen value to the bottom regardless of direction.
+- Statuses are snake_case in the payload: `statusLabel()` renders them spaced ("not found"), `statusClass()` maps to CSS (`not_found` → red `.status-not-found`).
 
-## Backend Contract (summary)
+### `MapPanel.vue`
+- `BRAND_COLORS` / `COMPANY_LABELS` are the single source for pin + legend colours; pins are inline-styled `L.divIcon`s (winner gets ★).
+- Tooltip distinguishes pre-run pins ("Price preview — run Compare prices") from completed runs ($ total used cost + ⚠ issue count).
+- `fitView`: no points → NZ-wide view; one point → `setView` zoom ≥ 13; else `fitBounds(...).pad(0.25)` capped at zoom 14.
+- Radius circle tracks the `radiusKm` prop live; `ResizeObserver` calls `invalidateSize()` on container resize.
+
+### `ProgressStrip.vue`
+- Hidden while `job.status === 'idle'`. Overall bar shows an indeterminate shimmer while `running && !total_tasks`.
+- Ring = SVG circle (`r=20`, stroke-width 5, rotated −90°), animated via `strokeDashoffset = C × (1 − stores_done/stores_total)` with `C = 2π·20`. Three states: **idle** (dashed segment spinning — `stores_total` falsy), **running** (partial arc + brand-coloured shimmer underline), **done** (full circle + ink check path).
+
+### `PipelineConsole.vue`
+- Pure props component (`title`, `lines`, `running`). A watcher on `lines.length` pins scroll to bottom after `nextTick()` — every printed line jumps the view; there is no user-scroll override. Blinking caret line while `running`.
+
+### Shared helpers
+- `unitOptions.js`: the `SCALABLE` set (`g/kg/oz/ml/l/tsp/tbsp/cup/each/pack`) drives DishBuilder's ≈ fallback prompt (`needsApprox`); `ALIASES` mirror backend `UNIT_ALIASES` incl. the one-way `egg/eggs → each` alias.
+- `resultUtils.js`: `winnerKeyOf` = first store where `complete !== false`, else first store overall; `storesOf` = coords-filtered `store_costs` once a result exists, else the `/stores/nearby` preview list.
+
+> **App.vue ↔ TestApp.vue duplication is deliberate**: resolve/GPS/preview/stale-signature logic (~150 lines) exists in both pages so each can diverge freely. Mirror any edits to this logic in **both files** (or extract into a composable later).
+
+## Backend Contract
 
 | Call | When | Response used for |
 |---|---|---|
-| `GET /dishes` | on mount | Dish dropdown + ingredient preview |
-| `GET /geocode?address=…` | "Resolve setup" click (non-GPS) | `{lat, lon, cached}` — verifies the address before comparing |
-| `GET /stores/nearby?lat&lon&distance_km&companies&max_per_company` | resolve success + distance/company/max changes while resolved | `{origin, stores[]}` — pre-run map preview pins (capped like the run) |
-| `POST /optimise/jobs` | "Compare prices" submit | `{ job_id }` |
-| `GET /optimise/{id}?events_since=N` | every ~700 ms | Snapshot: status/phase/counters/companies/events/result |
-| `GET /health` | — (manual) | Liveness check |
+| `GET /dishes` | on mount | Preset dropdown + ingredient preview |
+| `GET /geocode?address=…` | "Resolve setup" (non-GPS) | `{lat, lon, cached}` |
+| `GET /stores/nearby?…` | resolve success / settings change | Pre-run map preview pins |
+| `POST /dishes/save` | "Save as preset" (/test) | Upsert into `data/dishes.json` |
+| `POST /optimise/jobs` | submit | `{ job_id }` |
+| `GET /optimise/{id}?events_since=N` | every ~700 ms | Snapshot: status/phase/counters/events/result |
 
-Event shape: `{i, t, kind, co, text}` where `i` is the global index matched against `events_since`, `co` ∈ `PNS|NW|WW|null`, `kind` ∈ `phase|info|ok|warn|err|done`. Full field reference in `FastAPI.md`.
-
----
-
-## Gotchas
-
-- **Always rebuild** after editing `frontend/src/` — uvicorn serves only the compiled bundle.
-- `publicPath` is absolute (`/static/vue/`) → the built page must be reached through the FastAPI server at `/app`, never opened from disk.
-- Polls intentionally survive transient failures; a persistent 404 means the job id was evicted (only possible after 40 newer jobs have finished) or the server restarted — there's no resume, just start a new run.
-- `pollRun` token matters: without it, a slow poll from run N could interleave with run N+1's reset and resurrect old timers.
-- Keep `no-console` clean — debug leftovers will trip lint warnings on build.
-- Leaflet needs `invalidateSize()` after its container changes size (grid collapse, tab switches) — currently handled by the `ResizeObserver`; if you move the map into something hidden by default, trigger it on reveal.
-- Store pins require `lat`/`lon` on `store_costs` entries — they come from the brand store CSVs server-side; don't try to join by store name client-side.
-
----
+Event shape `{i, t, kind, co, text}`; full field reference in `FastAPI.md`.
 
 ## Roadmap (tracked, NOT implemented)
 
@@ -203,9 +110,16 @@ Planned functionality that the current structure anticipates. UI hooks already i
 
 1. **LLM requery of generated ingredients** with an approval step before hitting supermarket APIs — the two-step button ("Resolve setup" → "Compare prices") is the seam: the resolve phase can grow an ingredient-resolution call + approval UI inside the ingredient-preview card, and only then unlock "Compare prices".
 2. **NLP refiltering of brands / product names** (e.g. organic only), updatable post-run — the all-results filter bar is the natural host; `excluded`/`textFilters` state shape generalises to rule objects, and rows already carry `brand`/`returned_ingredient`.
-3. **RAG-style recipe generation from a URL + Recipe instructions page** — first real second page; introduce the router then, promote `MapPanel`-style extraction for shared pieces (chips, badges, tables), and keep the home grid as the landing layout.
+3. **RAG-style recipe generation from a URL + Recipe instructions page** — first real second page; introduce the router then, promote `MapPanel`-style extraction for shared pieces (chips, badges, tables), and keep the home grid as the landing layout. *(Note: `/test` now exists as a second page via multi-page build — no router yet; this item would introduce one.)*
 4. **Proper best-price optimisation + repicking interface** for approved ingredients — store-card `best_per_ingredient` rows become selectable pickers; `storeKey` identity and per-store grouping carry over unchanged.
 5. **Download / email recipe + shopping list** — actions bar on the results heading; backend gains an export endpoint, frontend just POSTs current selection.
 6. **Advanced settings page** (pipeline sources, persistent DB link, LLM credentials/models) — keep client-side only as a settings page reading/writing a config endpoint; never bake secrets into the bundle.
 
-General guidance: prefer extracting components over growing `App.vue`, keep new pages under a router lazily, and reuse the brand-colour tokens (`BRAND_COLORS` / CSS vars) rather than hardcoding hexes.
+General guidance: prefer extracting components over growing `App.vue`/`TestApp.vue`, keep new pages under a router lazily, and reuse the brand-colour tokens (`BRAND_COLORS` / CSS vars) rather than hardcoding hexes.
+
+## Gotchas
+
+- Always rebuild after editing `src/` — uvicorn serves only the compiled bundle.
+- Keep unit lists/aliases in sync between `unitOptions.js` and backend `UNIT_ALIASES`.
+- Store pins need `lat`/`lon` from server-side `store_costs` — don't join client-side.
+- Leaflet needs `invalidateSize()` on container resize — handled by a `ResizeObserver` in `MapPanel`.
