@@ -12,6 +12,21 @@ Optimisations run as background jobs so clients can watch live progress:
         elapsed seconds, per-company progress (stores done / products found),
         the incremental event log (cursor-based), and the final result.
 
+Frontends:
+    GET /       classic dashboard (index_old.html)
+    GET /app    Vue dashboard (static/vue/index.html, single-page entry)
+    GET /test   Vue dish-builder dashboard (static/vue/test.html, second
+                multi-page entry) — adds preset/custom recipe modes, a full
+                ingredient editor (add/remove/edit rows, canonical units with
+                alias normalisation, approx fallbacks) and "Save as preset".
+
+Dish sources:
+    1. req.custom_dish  — explicit builder recipe; validated + unit-normalised,
+       quantities scaled from its base_portions to the requested portions.
+    2. resolve_ingredients() — curated dishes.json → LLM → fallback. Curated
+       and LLM recipes are portion-scaled by the same helper, so the Portions
+       control is honoured uniformly across every source.
+
 Both job paths share one pipeline. Searches are offloaded to a thread pool
 (20 workers) via asyncio.to_thread; results are consumed with
 asyncio.as_completed so progress updates stream in per-search rather than
@@ -53,7 +68,11 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from NZMealOptimiser import DATA_DIR
-from NZMealOptimiser.llm.llm_utils import resolve_ingredients, parse_optimiser_columns
+from NZMealOptimiser.llm.llm_utils import (
+    normalise_unit,
+    resolve_ingredients,
+    parse_optimiser_columns,
+)
 from NZMealOptimiser.pricing import optimiser_utils
 from NZMealOptimiser.pricing.optimiser_utils import build_edge_row, build_woolworths_row
 from NZMealOptimiser.pricing.paknsave_api import PaknSaveEdgeAPI, find_nearby_stores as ps_find_nearby
@@ -186,6 +205,22 @@ def _register_job(job: JobState) -> None:
 _THREAD_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=20)
 
 
+class CustomIngredient(BaseModel):
+    search_term: str
+    quantity: float
+    unit: str = ""
+    approx_quantity: Optional[float] = None
+    approx_unit: Optional[str] = None
+
+
+class CustomDish(BaseModel):
+    """A hand-built recipe; quantities are expressed at ``base_portions``."""
+
+    dish_name: str
+    base_portions: int = 4
+    ingredients: list[CustomIngredient]
+
+
 class DishRequest(BaseModel):
     dish: str
     address: str
@@ -195,6 +230,82 @@ class DishRequest(BaseModel):
     portions: int = 4
     latitude: Optional[float] = None  # device GPS: bypasses Nominatim when set
     longitude: Optional[float] = None
+    # Explicit recipe (from the /test dish builder). When set, ingredient
+    # resolution is bypassed entirely — no curated lookup, no LLM call.
+    custom_dish: Optional[CustomDish] = None
+
+
+def _clean_custom_ingredients(ingredients: list[CustomIngredient]) -> list[dict]:
+    """Normalise builder rows into curated-schema dicts.
+
+    Strips search terms, normalises units through UNIT_ALIASES ("pk" ->
+    "pack", "ea" -> "each"), drops empty approx fields, and rejects blank or
+    duplicate terms (case-insensitive) with a 400.
+    """
+    seen: set[str] = set()
+    cleaned: list[dict] = []
+    for ing in ingredients:
+        term = ing.search_term.strip()
+        if not term:
+            raise HTTPException(400, "Every ingredient needs a non-empty search term")
+        key = term.lower()
+        if key in seen:
+            raise HTTPException(400, f"Duplicate ingredient '{term}' — merge or rename it")
+        seen.add(key)
+        entry: dict = {
+            "quantity": float(ing.quantity),
+            "unit": normalise_unit(ing.unit),
+            "search_term": term,
+        }
+        if ing.approx_quantity is not None:
+            entry["approx_quantity"] = float(ing.approx_quantity)
+            entry["approx_unit"] = normalise_unit(ing.approx_unit or "")
+        cleaned.append(entry)
+    return cleaned
+
+
+def _validate_custom_dish(custom: CustomDish) -> tuple[str, int, list[dict]]:
+    """Validate a builder dish and return (dish_name, base_portions, ingredients)."""
+    name = custom.dish_name.strip()
+    if not name:
+        raise HTTPException(400, "The dish needs a name")
+    base = int(custom.base_portions) if custom.base_portions else 4
+    base = max(1, min(base, 24))
+    if not custom.ingredients:
+        raise HTTPException(400, f"Custom dish '{name}' needs at least one ingredient")
+    return name, base, _clean_custom_ingredients(custom.ingredients)
+
+
+def _scale_ingredients_to_portions(dish_dict: dict, target_portions: int) -> dict:
+    """Scale numeric ingredient quantities from the recipe's base portions to
+    ``target_portions``.
+
+    Applied uniformly to every source (curated / LLM / custom) so the
+    Portions control is meaningful everywhere; a no-op when they already
+    match. String-form legacy ingredients pass through untouched.
+    """
+    target = max(1, int(target_portions))
+    raw_base = dish_dict.get("portion")
+    try:
+        base = max(1, int(raw_base))
+    except (TypeError, ValueError):
+        base = target
+    dish_dict["portion"] = target
+    if base == target:
+        return dish_dict
+    factor = target / base
+    scaled: list = []
+    for ing in dish_dict.get("ingredients", []):
+        if isinstance(ing, dict):
+            ing = dict(ing)
+            for key in ("quantity", "approx_quantity"):
+                value = ing.get(key)
+                if isinstance(value, (int, float)) and not isinstance(value, bool):
+                    ing[key] = round(value * factor, 3)
+        scaled.append(ing)
+    dish_dict["ingredients"] = scaled
+    dish_dict["_scale_factor"] = factor
+    return dish_dict
 
 
 # Rough bounding box of New Zealand (incl. Chathams margin). GPS coords
@@ -242,6 +353,7 @@ class OptimisationResult(BaseModel):
     timestamp: str
     duration_seconds: float = 0.0
     origin: Optional[dict] = None  # {lat, lon, source} reference point for the map
+    dish_source: str = ""  # "curated" | "custom" — drives the results-header chip
 
 
 class JobCreated(BaseModel):
@@ -296,11 +408,71 @@ def vue_app():
     return FileResponse(STATIC_DIR / "vue" / "index.html")
 
 
+@app.get("/test")
+@app.get("/test/")
+def test_vue_app():
+    """Dish-builder dashboard (multi-page Vue entry: static/vue/test.html)."""
+    return FileResponse(STATIC_DIR / "vue" / "test.html")
+
+
 @app.get("/dishes")
 def dishes() -> dict:
     """Expose curated dishes to the static Vue dashboard."""
     with open(DATA_DIR / "dishes.json", encoding="utf-8") as handle:
         return json.load(handle)
+
+
+class SaveDishRequest(BaseModel):
+    """Upsert payload for the dish builder's "Save as preset" button.
+
+    Stored verbatim at its base portions — run-time scaling to the requested
+    portions happens per-request in _scale_ingredients_to_portions.
+    """
+
+    dish_name: str
+    base_portions: int = 4
+    ingredients: list[CustomIngredient]
+
+
+def _load_dishes_file() -> dict:
+    path = DATA_DIR / "dishes.json"
+    if not path.exists():
+        return {}
+    with open(path, encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def _write_dishes_file(data: dict) -> None:
+    """Atomic write (temp file + os.replace) so a crash can't corrupt the file."""
+    path = DATA_DIR / "dishes.json"
+    tmp = path.with_suffix(".json.tmp")
+    with open(tmp, "w", encoding="utf-8") as handle:
+        json.dump(data, handle, indent=2, ensure_ascii=False)
+        handle.write("\n")
+    tmp.replace(path)
+
+
+@app.post("/dishes/save")
+async def save_dish(req: SaveDishRequest) -> dict:
+    """Upsert a builder recipe into data/dishes.json as a preset."""
+    name, base_portions, ingredients = _validate_custom_dish(
+        CustomDish(
+            dish_name=req.dish_name,
+            base_portions=req.base_portions,
+            ingredients=req.ingredients,
+        )
+    )
+    key = name.lower()
+    data = await asyncio.to_thread(_load_dishes_file)
+    existed = key in data
+    data[key] = {
+        "dish_name": name,
+        "portion": base_portions,
+        "ingredients": ingredients,
+    }
+    await asyncio.to_thread(_write_dishes_file, data)
+    log.info("Saved preset dish '%s' (%s)", name, "updated" if existed else "new")
+    return {"ok": True, "key": key, "updated": existed, "dishes_count": len(data)}
 
 
 _GEOCODE_CACHE: OrderedDict[str, tuple[float, float]] = OrderedDict()
@@ -418,6 +590,10 @@ def _new_job(req: DishRequest) -> JobState:
         invalid = [c for c in req.companies if c not in BRANDS]
         if invalid:
             raise HTTPException(400, f"Unsupported company: {invalid}")
+    # Reject broken builder recipes up front so clients get an immediate 400
+    # instead of discovering them mid-run.
+    if req.custom_dish is not None:
+        _validate_custom_dish(req.custom_dish)
     job = JobState(req)
     _register_job(job)
     return job
@@ -460,10 +636,41 @@ async def _execute_pipeline(job: JobState) -> OptimisationResult:
     dish_name = req.dish
     start = time.time()
 
-    # --- Phase 1: Resolve ingredients (curated first, LLM fallback) ---
+    # --- Phase 1: Resolve ingredients (custom builder → curated → LLM) ---
     job.phase = "Resolving ingredients"
-    job.log_event("phase", f"Resolving ingredients for '{dish_name}'")
-    dish_dict, source = resolve_ingredients(dish_name, portions=req.portions)
+    if req.custom_dish is not None:
+        base_name, base_portions, custom_ingredients = _validate_custom_dish(req.custom_dish)
+        dish_dict = {
+            "dish_name": base_name,
+            "portion": base_portions,
+            "ingredients": custom_ingredients,
+        }
+        source = "custom"
+        dish_name = base_name
+        job.log_event(
+            "phase",
+            f"Building custom dish '{base_name}' ({len(custom_ingredients)} ingredients "
+            f"@ {base_portions} portions)",
+        )
+        job.log_event("ok", f"Custom recipe accepted: {', '.join(i['search_term'] for i in custom_ingredients)}")
+    else:
+        job.log_event("phase", f"Resolving ingredients for '{dish_name}'")
+        dish_dict, source = resolve_ingredients(dish_name, portions=req.portions)
+
+    # Uniform portions scaling: quantities are defined at the recipe's base
+    # portions and rescaled to the requested count (no-op when equal).
+    try:
+        recipe_base = max(1, int(dish_dict.get("portion")))
+    except (TypeError, ValueError):
+        recipe_base = req.portions
+    dish_dict = _scale_ingredients_to_portions(dish_dict, req.portions)
+    scale_factor = dish_dict.pop("_scale_factor", 1.0)
+    if scale_factor != 1.0:
+        job.log_event(
+            "info",
+            f"Scaled quantities ×{scale_factor:g} for {req.portions} portions "
+            f"(recipe base {recipe_base})",
+        )
 
     dish_name_resolved = dish_dict.get("dish_name", dish_name)
     ingredients = dish_dict.get("ingredients", [])
@@ -611,6 +818,7 @@ async def _execute_pipeline(job: JobState) -> OptimisationResult:
             timestamp=datetime.now().isoformat(),
             duration_seconds=round(time.time() - start, 2),
             origin=origin,
+            dish_source=source,
         )
 
     # --- Phase 3b: Enrich rows with LLM ingredient quantities ---
@@ -751,6 +959,7 @@ async def _execute_pipeline(job: JobState) -> OptimisationResult:
         timestamp=datetime.now().isoformat(),
         duration_seconds=duration,
         origin=origin,
+        dish_source=source,
     )
 
 

@@ -284,6 +284,55 @@ def resolve_ingredients(dish: str, portions: int = 4, regenerate: bool = False,
 # Quantity Scaling
 # ──────────────────────────────────────────────────────────────────────────────
 
+# Canonical recipe units with their accepted aliases (first alias = canonical).
+# Mirrored by the web frontend's unit dropdown (src/unitOptions.js) so the
+# builder UI and the scaling engine agree on vocabulary.
+UNIT_ALIASES = {
+    "g": ("g", "gram", "grams", "gm", "gms"),
+    "kg": ("kg", "kilogram", "kilograms", "kilo", "kilos"),
+    "oz": ("oz", "ounce", "ounces"),
+    "ml": ("ml", "millilitre", "millilitres", "milliliter", "milliliters"),
+    "l": ("l", "litre", "litres", "liter", "liters"),
+    "tsp": ("tsp", "teaspoon", "teaspoons"),
+    "tbsp": ("tbsp", "tablespoon", "tablespoons"),
+    "cup": ("cup", "cups"),
+    "each": ("each", "ea", "unit", "units", "pc", "pcs", "piece", "pieces"),
+    "pack": ("pack", "pk", "packet", "packets", "pkt"),
+    "can": ("can", "cans", "tin", "tins"),
+    "jar": ("jar", "jars"),
+    "bottle": ("bottle", "bottles"),
+    "bag": ("bag", "bags"),
+    "box": ("box", "boxes"),
+    "bunch": ("bunch", "bunches"),
+    "head": ("head", "heads"),
+    "block": ("block", "blocks"),
+    "clove": ("clove", "cloves"),
+    "slice": ("slice", "slices"),
+    "fillet": ("fillet", "fillets"),
+    "chop": ("chop", "chops"),
+    "stalk": ("stalk", "stalks"),
+    "medium": ("medium",),
+    "large": ("large",),
+    "egg": ("egg", "eggs"),
+    "base": ("base", "bases"),
+}
+
+_ALIAS_TO_CANONICAL = {
+    alias: canon for canon, aliases in UNIT_ALIASES.items() for alias in aliases
+}
+
+
+def normalise_unit(unit: Any) -> str:
+    """Map a unit string to its canonical form ("pk" -> "pack", "ea" -> "each").
+
+    Unknown or empty units pass through trimmed; non-strings return "".
+    """
+    if not isinstance(unit, str):
+        return ""
+    cleaned = unit.strip()
+    return _ALIAS_TO_CANONICAL.get(cleaned.lower(), cleaned)
+
+
 # Unit conversion factors to grams (weight) and milliliters (volume)
 # Cooking units (tbsp, tsp, cloves) use approximate conversions.
 _WEIGHT_UNITS_TO_G = {
