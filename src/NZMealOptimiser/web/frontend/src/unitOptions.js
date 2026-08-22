@@ -7,7 +7,7 @@ export const UNIT_GROUPS = [
   { group: 'Volume', units: ['ml', 'l'] },
   { group: 'Spoons & cups', units: ['tsp', 'tbsp', 'cup'] },
   { group: 'Count & packs', units: ['each', 'pack'] },
-  { group: 'Item / packaged', units: ['can', 'jar', 'bottle', 'bag', 'box', 'bunch', 'head', 'block', 'clove', 'slice', 'fillet', 'chop', 'stalk', 'medium', 'large', 'egg', 'base'] },
+  { group: 'Item / packaged', units: ['can', 'jar', 'bottle', 'bag', 'box', 'bunch', 'head', 'block', 'clove', 'slice', 'fillet', 'chop', 'stalk', 'medium', 'large', 'base'] },
 ];
 
 // Units the scaling engine can convert directly (g/ml/count families).
@@ -25,7 +25,11 @@ const ALIASES = {
   tsp: ['tsp', 'teaspoon', 'teaspoons'],
   tbsp: ['tbsp', 'tablespoon', 'tablespoons'],
   cup: ['cup', 'cups'],
-  each: ['each', 'ea', 'unit', 'units', 'pc', 'pcs', 'piece', 'pieces'],
+  each: ['each', 'ea', 'unit', 'units', 'pc', 'pcs', 'piece', 'pieces',
+    // One-way semantic alias (mirrors backend UNIT_ALIASES): recipes say
+    // "6 eggs" but supermarkets sell eggs as count units ("10 ea", "6 pack").
+    // Nothing ever maps "each" back to "egg".
+    'egg', 'eggs'],
   pack: ['pack', 'pk', 'packet', 'packets', 'pkt'],
   can: ['can', 'cans', 'tin', 'tins'],
   jar: ['jar', 'jars'],
@@ -42,7 +46,6 @@ const ALIASES = {
   stalk: ['stalk', 'stalks'],
   medium: ['medium'],
   large: ['large'],
-  egg: ['egg', 'eggs'],
   base: ['base', 'bases'],
 };
 

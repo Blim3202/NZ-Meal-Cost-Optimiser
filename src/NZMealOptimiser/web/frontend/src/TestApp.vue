@@ -222,7 +222,7 @@ export default {
     const mapStores = computed(() => storesOf(result.value, previewStores.value));
     const winnerKey = computed(() => winnerKeyOf(result.value));
     const resolved = computed(() => !!origin.value);
-    const readyToCompare = computed(() => resolved.value && !staleNotice.value);
+    const readyToCompare = computed(() => resolved.value && !staleNotice.value && previewStores.value.length > 0);
     const actionLabel = computed(() => (loading.value ? 'Comparing prices...' : resolving.value ? 'Resolving…' : readyToCompare.value ? 'Compare prices' : 'Resolve setup'));
     const actionHint = computed(() => {
       if (!form.companies.length) return 'Select at least one supermarket.';
@@ -235,6 +235,7 @@ export default {
       } else if (!form.dish) return 'Choose a dish first.';
       if (!resolved.value) return 'Step 1 — verify the dish and location first.';
       if (staleNotice.value) return 'Parameters changed — resolve again to continue.';
+      if (!previewStores.value.length) return 'No stores in range — increase the distance or select more supermarkets.';
       return 'Dish and location verified — ready to compare.';
     });
 
@@ -283,7 +284,7 @@ export default {
 
     async function fetchPreview() {
       const o = origin.value;
-      if (!o) { previewStores.value = []; return; }
+      if (!o) { previewStores.value = []; return true; }
       try {
         const params = new URLSearchParams({ lat: String(o.lat), lon: String(o.lon), distance_km: String(form.distance_km), max_per_company: String(form.max_stores_per_company), companies: form.companies.join(',') });
         const response = await fetch(`/stores/nearby?${params}`);
@@ -293,7 +294,8 @@ export default {
           const n = previewStores.value.length;
           logLine('ok', 'LOC', `location refreshed · ${n} store${n === 1 ? '' : 's'} in range · ${form.distance_km} km radius`);
         }
-      } catch { previewStores.value = []; }
+        return response.ok;
+      } catch { previewStores.value = []; return false; }
     }
 
     async function resolveSetup() {
@@ -303,23 +305,35 @@ export default {
         else error.value = 'Choose a dish first.';
         return;
       }
-      if (gpsActive.value) { origin.value = { lat: gps.value.lat, lon: gps.value.lon, source: 'gps' }; staleNotice.value = false; logLine('ok', 'SYS', 'settings resolved — ready to compare'); return; }
-      if (!form.address) { error.value = 'Enter an address or use device GPS.'; return; }
-      resolving.value = true;
-      try {
-        const response = await fetch(`/geocode?address=${encodeURIComponent(form.address)}`);
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.detail || 'Could not resolve that address');
-        origin.value = { lat: data.lat, lon: data.lon, source: 'geocoded' };
-        staleNotice.value = false;
-        logLine('ok', 'LOC', `geocoded "${form.address}" → ${data.lat.toFixed(4)}, ${data.lon.toFixed(4)}`);
-        logLine('ok', 'SYS', 'settings resolved — ready to compare');
-      } catch (err) { error.value = err.message; } finally { resolving.value = false; }
+      if (gpsActive.value) { origin.value = { lat: gps.value.lat, lon: gps.value.lon, source: 'gps' }; }
+      else {
+        if (!form.address) { error.value = 'Enter an address or use device GPS.'; return; }
+        resolving.value = true;
+        try {
+          const response = await fetch(`/geocode?address=${encodeURIComponent(form.address)}`);
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.detail || 'Could not resolve that address');
+          origin.value = { lat: data.lat, lon: data.lon, source: 'geocoded' };
+          logLine('ok', 'LOC', `geocoded "${form.address}" → ${data.lat.toFixed(4)}, ${data.lon.toFixed(4)}`);
+        } catch (err) { error.value = err.message; return; } finally { resolving.value = false; }
+      }
+      const previewOk = await fetchPreview();
+      if (!previewOk || !previewStores.value.length) {
+        error.value = `No stores found within ${form.distance_km} km — try increasing the distance or selecting more supermarkets.`;
+        logLine('warn', 'LOC', `no stores within ${form.distance_km} km — increase the distance or select more supermarkets`);
+        return;
+      }
+      staleNotice.value = false;
+      logLine('ok', 'SYS', 'settings resolved — ready to compare');
     }
     function primaryAction() { readyToCompare.value ? runOptimise() : resolveSetup(); }
 
     async function runOptimise() {
       error.value = '';
+      if (!previewStores.value.length) {
+        error.value = `No stores found within ${form.distance_km} km — try increasing the distance or selecting more supermarkets.`;
+        return;
+      }
       if (!gpsActive.value && form.address) {
         const history = [form.address, ...addressHistory.value.filter((address) => address !== form.address)].slice(0, 5);
         addressHistory.value = history;

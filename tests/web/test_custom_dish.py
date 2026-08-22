@@ -11,7 +11,7 @@ import json
 import pytest
 from fastapi import HTTPException
 
-from NZMealOptimiser.llm.llm_utils import normalise_unit
+from NZMealOptimiser.llm.llm_utils import normalise_unit, parse_optimiser_columns
 from NZMealOptimiser.web import main as web_main
 from NZMealOptimiser.web.main import (
     CustomDish,
@@ -34,9 +34,36 @@ from NZMealOptimiser.web.main import (
     ("KG", "kg"),
     ("fillets", "fillet"),
     ("base", "base"),
+    ("egg", "each"),
+    ("eggs", "each"),
 ])
 def test_normalise_unit_aliases(raw, expected):
     assert normalise_unit(raw) == expected
+
+
+def test_normalise_unit_one_way():
+    """egg folds into each, but each never expands back to egg."""
+    assert normalise_unit("each") == "each"
+    assert normalise_unit("6 eggs") == "6 eggs"  # only bare units are aliases
+
+
+def test_eggs_scale_against_count_pack():
+    """6 recipe eggs vs a 10-egg pack sold as "ea" -> 0.6 ratio, exact match."""
+    row = {
+        "search_ingredient": "eggs",
+        "quantity": 10,
+        "measurement_unit": "ea",
+        "price": 5.0,
+        "ingredient_quantity": 6,
+        "ingredient_measurement": "eggs",
+    }
+    scaled = parse_optimiser_columns(row)
+    assert scaled["status"] == "ok"
+    assert scaled["units_match"] is True
+    assert scaled["scaling_ratio"] == 0.6
+    assert scaled["used_price"] == 3.0
+    assert scaled["purchase_quantity"] == 1
+    assert scaled["purchase_price"] == 5.0
 
 
 def test_normalise_unit_passthrough_and_garbage():
@@ -64,6 +91,11 @@ def test_clean_rejects_blank_term():
     with pytest.raises(HTTPException) as exc:
         _clean_custom_ingredients([CustomIngredient(search_term="   ", quantity=1)])
     assert exc.value.status_code == 400
+
+
+def test_clean_folds_egg_into_each():
+    cleaned = _clean_custom_ingredients([CustomIngredient(search_term="eggs", quantity=6, unit="egg")])
+    assert cleaned[0]["unit"] == "each"
 
 
 def test_clean_rejects_duplicates_case_insensitive():

@@ -624,6 +624,148 @@ async def _run_job(job: JobState) -> None:
         )
 
 
+def _placeholder_row(term: str, ing: dict) -> dict:
+    """Blank comparison-table row for an ingredient with nothing usable.
+
+    Carries the recipe requirement ("Recipe Needed" stays informative — e.g.
+    "1 pack (~200 g)") and a ``not_found`` status; every product column stays
+    blank so gaps are visually obvious. Contributes nothing to totals and
+    never counts toward ingredients_matched/complete.
+    """
+    return {
+        "search_ingredient": term,
+        "returned_ingredient": "",
+        "brand": "",
+        "price": "",
+        "ingredient_quantity": ing.get("quantity", ""),
+        "ingredient_measurement": ing.get("unit", ""),
+        "ingredient_approx_quantity": ing.get("approx_quantity"),
+        "ingredient_approx_unit": ing.get("approx_unit"),
+        "quantity": "",
+        "measurement_unit": "",
+        "used_price": None,
+        "purchase_quantity": 0,
+        "purchase_price": None,
+        "status": "not_found",
+    }
+
+
+def _build_store_costs(
+    search_terms: list[str],
+    ing_lookup: dict[str, dict],
+    all_rows: list[dict],
+    outcomes: dict[tuple, dict],
+    store_geo: dict[tuple[str, str], dict],
+) -> list[dict]:
+    """Build the per-store cost summary (Phase 4 of the pipeline).
+
+    For each (store, search_ingredient), pick the cheapest valid product
+    (preferring exact unit matches), then sum used_price across ingredients
+    per store to get the total "used cost" for that store. Honesty guarantees:
+
+        1. failed/no-match searches AND ingredients whose every product is
+           unit-incompatible (e.g. recipe needs 6 eggs; store sells per egg)
+           are attached to the store as "issues",
+        2. they ALSO appear in best_per_ingredient as a placeholder row
+           (status ``not_found``, product columns blank) so missing
+           ingredients are visible directly in the comparison table,
+        3. ingredients_total is the REQUESTED ingredient count, and stores
+           that returned no rows at all still get a card ($0.00, incomplete),
+        4. stores are ranked complete-basket-first, then by total cost — a
+           partial basket can never win on a missing ingredient's $0.
+
+    Pure function: no job/event side effects, trivially unit-testable.
+    """
+    # Issue entries (amber banner): failed/no-match searches AND all-incompatible ones.
+    issues_by_store: dict[tuple[str, str], list[dict]] = defaultdict(list)
+    for (company, _sid, store_name, ingredient), oc in outcomes.items():
+        if oc["status"] != "ok":
+            issues_by_store[(company, store_name)].append({
+                "search_ingredient": ingredient,
+                "status": oc["status"],
+                "detail": oc["detail"],
+            })
+
+    # Group rows by (company, store name). Same-name/different-ID collisions
+    # between stores of one brand are rejected up front in Phase 2, so this
+    # grouping cannot silently merge two distinct stores.
+    store_ingredients: dict[tuple[str, str], dict[str, list[dict]]] = {}
+    for row in all_rows:
+        group_key = (row.get("company", ""), row.get("store", ""))
+        term = row.get("search_ingredient", "")
+        store_ingredients.setdefault(group_key, {}).setdefault(term, []).append(row)
+
+    # Every (company, store) that took part in the run gets a card — even a
+    # store whose every search failed (all-placeholder, $0.00, incomplete).
+    candidates = sorted({(company, store_name) for (company, _sid, store_name, _term) in outcomes})
+
+    store_costs = []
+    for company, store_name in candidates:
+        ing_map = store_ingredients.get((company, store_name), {})
+        total_used = 0.0
+        matched = 0
+        best_per_ingredient = []
+        # Requested order, so tables read consistently across stores.
+        for term in search_terms:
+            rows = ing_map.get(term) or []
+            valid = [r for r in rows if r.get("used_price") is not None]
+            if valid:
+                best = min(
+                    valid,
+                    key=lambda r: (r["used_price"], 0 if r.get("units_match", False) else 1),
+                )
+                total_used += best["used_price"]
+                matched += 1
+                best_per_ingredient.append({
+                    "search_ingredient": term,
+                    "returned_ingredient": best.get("returned_ingredient", ""),
+                    "brand": best.get("brand", ""),
+                    "price": best.get("price", ""),
+                    "ingredient_quantity": best.get("ingredient_quantity", ""),
+                    "ingredient_measurement": best.get("ingredient_measurement", ""),
+                    "ingredient_approx_quantity": best.get("ingredient_approx_quantity"),
+                    "ingredient_approx_unit": best.get("ingredient_approx_unit"),
+                    "quantity": best.get("quantity", ""),
+                    "measurement_unit": best.get("measurement_unit", ""),
+                    "used_price": round(best["used_price"], 2),
+                    "purchase_quantity": best.get("purchase_quantity", 0),
+                    "purchase_price": round(best["purchase_price"], 2) if best.get("purchase_price") is not None else None,
+                    "status": best.get("status", ""),
+                })
+            else:
+                # Products came back but none could be scaled to the recipe's
+                # units — record why on the issues banner AND surface a blank
+                # placeholder row; the ingredient costs the store $0 right
+                # now, which must be visible, not folded into a too-cheap
+                # total.
+                if rows:
+                    issues_by_store[(company, store_name)].append({
+                        "search_ingredient": term,
+                        "status": "incompatible_units",
+                        "detail": f"{len(rows)} product(s) returned; none sold in units compatible with the recipe",
+                    })
+                best_per_ingredient.append(_placeholder_row(term, ing_lookup.get(term) or {}))
+        store_issues = issues_by_store.get((company, store_name), [])
+        geo = store_geo.get((company, store_name), {})
+        store_costs.append({
+            "store": store_name,
+            "company": company,
+            "total_used_cost": round(total_used, 2),
+            "ingredients_matched": matched,
+            "ingredients_total": len(search_terms),
+            "complete": matched == len(search_terms),
+            "best_per_ingredient": best_per_ingredient,
+            "issues": store_issues,
+            "lat": geo.get("lat"),
+            "lon": geo.get("lon"),
+            "distance_km": geo.get("distance_km"),
+        })
+
+    # Complete baskets first (truthful comparison set), then cheapest.
+    store_costs.sort(key=lambda x: (not x["complete"], x["total_used_cost"]))
+    return store_costs
+
+
 async def _execute_pipeline(job: JobState) -> OptimisationResult:
     """Run concurrent fetch across all companies/stores/ingredients.
 
@@ -675,6 +817,16 @@ async def _execute_pipeline(job: JobState) -> OptimisationResult:
     dish_name_resolved = dish_dict.get("dish_name", dish_name)
     ingredients = dish_dict.get("ingredients", [])
 
+    # Unit hygiene: fold aliases once for every source ("eggs" -> "each",
+    # "pk" -> "pack") so scaling sees count-vs-count matches and result
+    # tables display canonical units. Legacy string rows pass through.
+    for ing in ingredients:
+        if isinstance(ing, dict):
+            if ing.get("unit"):
+                ing["unit"] = normalise_unit(ing["unit"])
+            if ing.get("approx_unit"):
+                ing["approx_unit"] = normalise_unit(ing["approx_unit"])
+
     # Normalize: ensure all ingredients are dicts with 'search_term'
     if ingredients and isinstance(ingredients[0], str):
         ingredients = [{"search_term": t} for t in ingredients]
@@ -720,13 +872,19 @@ async def _execute_pipeline(job: JobState) -> OptimisationResult:
     store_geo: dict[tuple[str, str], dict] = {}  # (company, store_name) -> map pin data
     for company_name in companies:
         cfg = BRANDS[company_name]
-        job.init_company(company_name)
-        prog = job.company_progress[company_name]
         if company_name == "Woolworths":
             nearby = woolworths_api.get_nearby_stores(user_lat, user_lon, max_dist_km=req.distance_km)
         else:
             nearby = cfg["find_nearby"](user_lat, user_lon, radius_km=req.distance_km)
         nearby = nearby[:req.max_stores_per_company]
+        if not nearby:
+            job.log_event("warn", f"No stores within {req.distance_km:g} km", company_name)
+            continue
+        # Only brands with stores in range enter company_progress, so the
+        # live progress tracker never shows a stuck idle tile for a brand
+        # that has nothing to query.
+        job.init_company(company_name)
+        prog = job.company_progress[company_name]
 
         # Store summaries are grouped by (company, store name) in Phase 4.
         # Two different stores sharing a name within one brand would merge
@@ -757,10 +915,14 @@ async def _execute_pipeline(job: JobState) -> OptimisationResult:
             }
             for ingredient in search_terms:
                 metas.append((company_name, store_id, store_name, ingredient))
-        if nearby:
-            job.log_event("ok", f"{len(nearby)} store(s) within {req.distance_km:g} km", company_name)
-        else:
-            job.log_event("warn", f"No stores within {req.distance_km:g} km", company_name)
+        job.log_event("ok", f"{len(nearby)} store(s) within {req.distance_km:g} km", company_name)
+
+    if not metas:
+        raise HTTPException(
+            400,
+            f"No stores found within {req.distance_km:g} km — try increasing "
+            "the distance or selecting more supermarkets.",
+        )
 
     job.total_tasks = len(metas)
     job.phase = f"Searching {len(metas)} store × ingredient combos"
@@ -855,91 +1017,8 @@ async def _execute_pipeline(job: JobState) -> OptimisationResult:
             row["unit_approximate"] = False
             row["pack_price"] = float(row.get("price", 0)) if row.get("price") not in ("", None) else 0.0
 
-    # --- Phase 4: Build per-store cost summary ---
-    # For each (store, search_ingredient), pick the cheapest valid product
-    # (preferring exact unit matches), then sum used_price across ingredients
-    # per store to get the total "used cost" for that store. Three honesty
-    # guarantees:
-    #   1. failed/no-match searches AND ingredients whose every product is
-    #      unit-incompatible (e.g. recipe needs 6 eggs; store sells per egg)
-    #      are attached to the store as "issues",
-    #   2. ingredients_total is the REQUESTED ingredient count, not the count
-    #      that happened to return rows,
-    #   3. stores are ranked complete-basket-first, then by total cost — a
-    #      partial basket can never win on a missing ingredient's $0.
-    issues_by_store: dict[tuple[str, str], list[dict]] = defaultdict(list)
-    for (company, _sid, store_name, ingredient), oc in outcomes.items():
-        if oc["status"] != "ok":
-            issues_by_store[(company, store_name)].append({
-                "search_ingredient": ingredient,
-                "status": oc["status"],
-                "detail": oc["detail"],
-            })
-
-    # Group rows by (company, store name). Same-name/different-ID collisions
-    # between stores of one brand are rejected up front in Phase 2, so this
-    # grouping cannot silently merge two distinct stores.
-    store_ingredients: dict[tuple[str, str], dict[str, list[dict]]] = {}
-    for row in all_rows:
-        group_key = (row.get("company", ""), row.get("store", ""))
-        term = row.get("search_ingredient", "")
-        store_ingredients.setdefault(group_key, {}).setdefault(term, []).append(row)
-
-    store_costs = []
-    for (company, store_name), ing_map in store_ingredients.items():
-        total_used = 0.0
-        best_per_ingredient = []
-        for term, rows in ing_map.items():
-            valid = [r for r in rows if r.get("used_price") is not None]
-            if valid:
-                best = min(
-                    valid,
-                    key=lambda r: (r["used_price"], 0 if r.get("units_match", False) else 1),
-                )
-                total_used += best["used_price"]
-                best_per_ingredient.append({
-                    "search_ingredient": term,
-                    "returned_ingredient": best.get("returned_ingredient", ""),
-                    "brand": best.get("brand", ""),
-                    "price": best.get("price", ""),
-                    "ingredient_quantity": best.get("ingredient_quantity", ""),
-                    "ingredient_measurement": best.get("ingredient_measurement", ""),
-                    "ingredient_approx_quantity": best.get("ingredient_approx_quantity"),
-                    "ingredient_approx_unit": best.get("ingredient_approx_unit"),
-                    "quantity": best.get("quantity", ""),
-                    "measurement_unit": best.get("measurement_unit", ""),
-                    "used_price": round(best["used_price"], 2),
-                    "purchase_quantity": best.get("purchase_quantity", 0),
-                    "purchase_price": round(best["purchase_price"], 2) if best.get("purchase_price") is not None else None,
-                    "status": best.get("status", ""),
-                })
-            else:
-                # Products came back but none could be scaled to the recipe's
-                # units — the ingredient costs the store $0 right now, which
-                # must be visible, not folded into a too-cheap total.
-                issues_by_store[(company, store_name)].append({
-                    "search_ingredient": term,
-                    "status": "incompatible_units",
-                    "detail": f"{len(rows)} product(s) returned; none sold in units compatible with the recipe",
-                })
-        store_issues = issues_by_store.get((company, store_name), [])
-        geo = store_geo.get((company, store_name), {})
-        store_costs.append({
-            "store": store_name,
-            "company": company,
-            "total_used_cost": round(total_used, 2),
-            "ingredients_matched": len(best_per_ingredient),
-            "ingredients_total": len(search_terms),
-            "complete": len(best_per_ingredient) == len(search_terms),
-            "best_per_ingredient": best_per_ingredient,
-            "issues": store_issues,
-            "lat": geo.get("lat"),
-            "lon": geo.get("lon"),
-            "distance_km": geo.get("distance_km"),
-        })
-
-    # Complete baskets first (truthful comparison set), then cheapest.
-    store_costs.sort(key=lambda x: (not x["complete"], x["total_used_cost"]))
+    # --- Phase 4: Build per-store cost summary (see _build_store_costs) ---
+    store_costs = _build_store_costs(search_terms, ing_lookup, all_rows, outcomes, store_geo)
 
     if store_costs:
         best = store_costs[0]
