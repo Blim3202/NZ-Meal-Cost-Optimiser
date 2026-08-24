@@ -40,13 +40,19 @@ const ESCAPE = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#
 const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ESCAPE[c]);
 
 const renderer = new marked.Renderer();
-renderer.code = ({ text, lang }) => {
+// Dual-signature: marked v12 passes (code, infostring); v13+ passes ({ text, lang }).
+renderer.code = (codeOrToken, infostring) => {
   try {
-    const language = lang && hljs.getLanguage(lang) ? lang : '';
+    const isToken = typeof codeOrToken === 'object' && codeOrToken !== null;
+    const text = isToken ? codeOrToken.text : codeOrToken;
+    const rawLang = isToken ? codeOrToken.lang : infostring;
+    const first = String(rawLang || '').trim().split(/\s+/)[0] || '';
+    const language = first && hljs.getLanguage(first) ? first : '';
     const value = language ? hljs.highlight(text, { language }).value : hljs.highlightAuto(text).value;
     return `<pre class="hljs"><code class="language-${language || ''}">${value}</code></pre>`;
   } catch {
-    return `<pre><code>${escapeHtml(text)}</code></pre>`;
+    const fallbackText = typeof codeOrToken === 'string' ? codeOrToken : (codeOrToken && codeOrToken.text) || '';
+    return `<pre><code>${escapeHtml(fallbackText)}</code></pre>`;
   }
 };
 

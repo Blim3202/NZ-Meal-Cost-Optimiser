@@ -122,6 +122,49 @@ Shared components serve both pages; page-specific differences live in `App.vue` 
 - `unitOptions.js`: the `SCALABLE` set (`g/kg/oz/ml/l/tsp/tbsp/cup/each/pack`) drives DishBuilder's ≈ fallback prompt (`needsApprox`); `ALIASES` mirror backend `UNIT_ALIASES` incl. the one-way `egg/eggs → each` alias.
 - `resultUtils.js`: `winnerKeyOf` = first store where `complete !== false`, else first store overall; `storesOf` = coords-filtered `store_costs` once a result exists, else the `/stores/nearby` preview list.
 
+### Type scale (`styles.css`) — the font-size storyboard
+
+All text sizes come from `--fs-*` tokens defined on `:root`; **never introduce a raw `font-size` for text** — add/reuse a token instead. Every token is wrapped in `calc(<size> * var(--font-scale))`, so the Settings → Display UI-scale slider resizes the entire hierarchy uniformly (body base included).
+
+Storyboard, largest → smallest (percentages are of the 14px body base at scale 100%):
+
+| Token | Size @100% | ~% | Used for |
+|---|---|---|---|
+| `--fs-display` | clamp(2–3.5rem) | ≤400% | h1 page name ("Meal cost optimiser") |
+| `--fs-title` | 2rem | 229% | h2, Documentation reader h1 |
+| `--fs-stat-lg` | 1.5rem | 171% | hero numerals (Settings worker count) |
+| `--fs-tile` | 1.3rem | 149% | progress-tile counters, doc reader h2 |
+| `--fs-heading` | 1.25rem | 143% | h3 panel/card headings |
+| `--fs-lead` | 1.05rem | 120% | lede paragraphs, store prices, sidebar brand, doc h3 |
+| `--fs-emphasis` | .95rem | 109% | bolded text: tile names, topbar brand, adv-card h4, strip phase, **sidebar nav items**, doc body text |
+| *(body inherit)* | 14px | 100% | normal running text (inputs, buttons, banners) |
+| `--fs-label` | .85rem | 97% | hints, counts, ingredient lists, secondary meta |
+| `--fs-ui` | .8rem | 91% | chips, small buttons, mode notes, tables, console-adjacent UI |
+| `--fs-small` | .76rem | 87% | field labels, legends, captions, timestamps-meta |
+| `--fs-micro` | .72rem | 82% | badges, status pills, warn hints, italic-style uppercase caps (`.tile-products em`) |
+| `--fs-nano` | .7rem | 80% | eyebrows, table headers, filter counts |
+| `--fs-mono` / `--fs-mono-tag` | 12px / 9.5px | — | terminal console body / tag pills |
+
+**Documented exceptions** (raw px allowed): map pin glyphs and Leaflet tooltips (`font-size: 10/13/12/12.5px`) — their size is bound to fixed pixel geometry of the pin/overlay boxes. Inline code is the **relational exception**: `--fs-code` (`.84em`) is an em *ratio* of the surrounding text, deliberately NOT multiplied by `--font-scale` (the surrounding text is already scaled — double-scaling would over-inflate); code inside `.adv-card .hint` uses a tighter `.76em` ratio for code nested in already-small text. Everything else must use a token.
+
+### Colour tokens (`styles.css`) — surfaces, status, brands
+
+Same rule as type: repeated colour roles use `:root` tokens; raw hex only for single-use one-offs (hover washes, gradients, spinner alpha, winner-pin glow, ready-button states), the console **tag pills** (`.tag-*` accent tints), and **map-pin overlays** (white rings bound to pin geometry). All blackish surfaces share a blue-grey ramp (~212° hue) so console, doc code blocks and sidebar stay tinted consistently.
+
+| Group | Tokens | Notes |
+|---|---|---|
+| Surfaces | `--surface` (#fff) · `--surface-soft` (#fbfcfd) · `--surface-muted` (#f3f5f6 disabled wells) · `--surface-dim` (#eef1f3 tracks/curated badge) · `--border-hover` (#b9c4cb) | `--surface` doubles as white ink on dark surfaces; `--field-bg` aliases `--surface-soft` |
+| Status | `--ok` (#25803a) · `--approx` (#c56b00 partial-price/approximate) · `--warn/-bg/-line` (#b36a00/#fff8ee/#ffd9a3 chips) · `--err/-bg/-line` (#b42318/#fff0ef/#f5c0ba banners+danger zone) · `--err-alt` (#c62828 table-status red) | disambiguates red/green/amber collisions with brand accents |
+| Brands | PNS: `--pns-bg` + text `--amber-text` · NW: `--nw-bg`, `--nw-text` (aliases `--err`) · WW: `--ww-bg/-line/-text` | badge/chip tints per banner |
+| Info | `--info/-bg/-line` (#0b7285 trio) | user-dish badges + shopping-mode chip |
+| Code | `--code-bg` (#f1f4f5) | inline code chip fill |
+| Dark ramp | `--dark-bg` (#121b24 terminal/pre bg) · `--dark-track` (#0f1820 scrollbar) · `--dark-raised` (#182430 header) · `--dark-border` (#243545) · `--dark-scroll/-hover` (#36506c/#456088) · `--console-dim/-faint` (#5e7d92/#89a6bd timestamps/caret) | shared by `.terminal-*`, `.doc-body pre` |
+| Sidebar | `--sidebar-bg` (#1b2836 — not `--ink`, keeps body text dark) · `--sidebar-hover/-active` (#26394d/#2c4054) · `--sidebar-line` (#2c3c4b) · `--sidebar-text/-muted/-icon` (#d8e2ec/#8ca1b4/#98b0c5) | nav chrome; lighter than the old #17212b base |
+
+### Spacing scale (`styles.css`) — 4px lattice
+
+`--sp-1`(4px) → `--sp-8`(32px). Apply to `padding`/`gap`/`margin` **only when every component lands on-grid** (e.g. `padding: var(--sp-3) var(--sp-5)`); off-lattice legacy values (`11px 12px`, `14px 16px`, `9px 13px`…) stay raw until a visual-consolidation pass snaps them — do not auto-snap. Spacing is fixed px and deliberately NOT multiplied by `--font-scale`.
+
 > **App.vue ↔ DashboardView.vue duplication is deliberate**: resolve/GPS/preview/stale-signature logic (~150 lines) exists in both pages so each can diverge freely. Mirror any edits to this logic in **both files** (or extract into a composable later).
 
 ## Backend Contract
@@ -172,3 +215,4 @@ General guidance: prefer extracting components over growing `App.vue`/`TestApp.v
 - Global `table { min-width: 980px }` is intentional for results tables — any new table (docs reader, settings) must override it locally like `.doc-body table` / `.unit-table` do.
 - Settings are per-browser localStorage; clearing site data resets display prefs and disarms overrides.
 - The sidebar is fixed-position: new pages must render inside the shell's `.app-main` (or set their own left margin) or they'll slide under it.
+- `marked` renderer signatures differ by major: v12 calls `code(code, infostring)` positionally, v13+ passes a `{ text, lang }` token. The `DocsView.vue` renderer accepts both — keep it dual-signature when upgrading `marked`.
