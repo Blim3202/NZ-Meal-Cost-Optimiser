@@ -23,6 +23,10 @@ Frontends:
 Dish sources:
     1. req.custom_dish  — explicit builder recipe; validated + unit-normalised,
        quantities scaled from its base_portions to the requested portions.
+       Also carries the /test "Shopping list" mode: the frontend submits it as
+       a custom dish with base_portions=1 and portions=1 (so scaling is a
+       no-op) plus source_label="shopping_list", which flows through to
+       OptimisationResult.dish_source for the results-header chip.
     2. resolve_ingredients() — curated dishes.json → LLM → fallback. Curated
        and LLM recipes are portion-scaled by the same helper, so the Portions
        control is honoured uniformly across every source.
@@ -111,6 +115,7 @@ BRANDS = {
 
 COMPANY_LABELS = {"PaknSave": "Pak'nSave", "NewWorld": "New World", "Woolworths": "Woolworths"}
 COMPANY_CODES = {"PaknSave": "PNS", "NewWorld": "NW", "Woolworths": "WW"}
+CUSTOM_DISH_SOURCES = {"custom", "shopping_list"}
 MAX_RETAINED_JOBS = 40
 
 
@@ -214,11 +219,18 @@ class CustomIngredient(BaseModel):
 
 
 class CustomDish(BaseModel):
-    """A hand-built recipe; quantities are expressed at ``base_portions``."""
+    """A hand-built recipe; quantities are expressed at ``base_portions``.
+
+    ``source_label`` is carried through to ``OptimisationResult.dish_source``
+    ("custom" = dish-builder recipe, "shopping_list" = the /test shopping-list
+    search). It only drives the results-header chip — ingredient resolution
+    and scaling are identical for both.
+    """
 
     dish_name: str
     base_portions: int = 4
     ingredients: list[CustomIngredient]
+    source_label: str = "custom"
 
 
 class DishRequest(BaseModel):
@@ -266,6 +278,8 @@ def _clean_custom_ingredients(ingredients: list[CustomIngredient]) -> list[dict]
 
 def _validate_custom_dish(custom: CustomDish) -> tuple[str, int, list[dict]]:
     """Validate a builder dish and return (dish_name, base_portions, ingredients)."""
+    if custom.source_label not in CUSTOM_DISH_SOURCES:
+        raise HTTPException(400, f"Unsupported dish source '{custom.source_label}'")
     name = custom.dish_name.strip()
     if not name:
         raise HTTPException(400, "The dish needs a name")
@@ -787,11 +801,12 @@ async def _execute_pipeline(job: JobState) -> OptimisationResult:
             "portion": base_portions,
             "ingredients": custom_ingredients,
         }
-        source = "custom"
+        source = req.custom_dish.source_label
         dish_name = base_name
+        kind_label = "shopping list" if source == "shopping_list" else "custom dish"
         job.log_event(
             "phase",
-            f"Building custom dish '{base_name}' ({len(custom_ingredients)} ingredients "
+            f"Building {kind_label} '{base_name}' ({len(custom_ingredients)} ingredients "
             f"@ {base_portions} portions)",
         )
         job.log_event("ok", f"Custom recipe accepted: {', '.join(i['search_term'] for i in custom_ingredients)}")

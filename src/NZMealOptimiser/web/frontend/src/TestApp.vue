@@ -14,19 +14,21 @@
               <div class="seg-toggle" role="group" aria-label="Recipe source">
                 <button type="button" class="seg-btn" :class="{ active: recipeMode === 'preset' }" @click="setMode('preset')">Preset dish</button>
                 <button type="button" class="seg-btn" :class="{ active: recipeMode === 'custom' }" @click="setMode('custom')">Custom dish</button>
+                <button type="button" class="seg-btn" :class="{ active: recipeMode === 'shopping' }" @click="setMode('shopping')">Shopping list</button>
               </div>
             </div>
             <label v-if="recipeMode === 'preset'" class="field field-wide"><span>Dish</span><select v-model="form.dish" required><option disabled value="">Choose a dish</option><option v-for="dish in dishes" :key="dish.key" :value="dish.key">{{ dish.label }}</option></select></label>
-            <template v-else>
+            <template v-else-if="recipeMode === 'custom'">
               <label class="field field-name"><span>Dish name</span><input v-model.trim.lazy="draft.name" placeholder="e.g. kumara &amp; chorizo hash" maxlength="80"></label>
               <label class="field field-base"><span>Base portions</span><input v-model.number="draft.basePortions" type="number" min="1" max="24" required></label>
             </template>
             <label class="field field-wide"><span>NZ address</span><input v-model.trim="form.address" list="address-history" placeholder="Auckland CBD" :disabled="gpsActive" :required="!gpsActive"><datalist id="address-history"><option v-for="address in addressHistory" :key="address" :value="address" /></datalist></label>
             <label class="field field-sm"><span>Distance</span><select v-model.number="form.distance_km"><option v-for="km in 8" :key="km" :value="km">{{ km }} km</option></select></label>
-            <label class="field field-sm"><span>Portions</span><input v-model.number="form.portions" type="number" min="2" max="12" required></label>
+            <label v-if="recipeMode !== 'shopping'" class="field field-sm"><span>Portions</span><input v-model.number="form.portions" type="number" min="2" max="12" required></label>
             <label class="field field-sm"><span>Max stores / company</span><select v-model.number="form.max_stores_per_company"><option v-for="count in 5" :key="count" :value="count">{{ count }}</option></select></label>
           </div>
           <p v-if="recipeMode === 'custom'" class="mode-note">Quantities above are scaled ×{{ scaleDisplay }} onto the {{ Number(draft.basePortions) || 1 }}-portion base recipe.</p>
+          <p v-else-if="recipeMode === 'shopping'" class="mode-note">Each row is one store search — quantities are exactly what you need to buy, priced at a single portion with no scaling.</p>
           <div class="gps-row">
             <button type="button" class="ghost-button" :disabled="gpsBusy || gpsActive" @click="useGps"><span v-if="gpsBusy" class="spinner"></span>{{ gpsBusy ? 'Locating…' : 'Use my location' }}</button>
             <span v-if="gpsActive" class="chip chip-gps">📍 GPS · {{ gpsDisplay }}<button type="button" class="chip-x" title="Clear GPS location" @click="clearGps">✕</button></span>
@@ -43,14 +45,17 @@
 
       <section class="panel ingredients-panel area-recipe">
         <div class="section-heading">
-          <div><p class="eyebrow">Recipe breakdown</p><h3>{{ recipeMode === 'custom' ? 'Dish builder' : 'Ingredient preview' }}</h3></div>
+          <div><p class="eyebrow">Recipe breakdown</p><h3>{{ recipeMode === 'custom' ? 'Dish builder' : recipeMode === 'shopping' ? 'Shopping list' : 'Ingredient preview' }}</h3></div>
           <div class="heading-actions">
             <span v-if="builderIngredients.length" class="chip">{{ builderIngredients.length }} items</span>
             <button v-if="recipeMode === 'preset'" type="button" class="ghost-button ghost-small" :disabled="!form.dish" title="Copy this preset into the builder and edit it" @click="customiseFromPreset">Customise ✎</button>
-            <button v-else type="button" class="ghost-button ghost-small" :disabled="savingPreset || !canSavePreset" :title="canSavePreset ? 'Store this recipe in data/dishes.json' : 'Complete the dish name and at least one ingredient row first'" @click="savePreset">{{ savingPreset ? 'Saving…' : 'Save as preset' }}</button>
+            <template v-else>
+              <button type="button" class="ghost-button ghost-small" :disabled="!draft.ingredients.length" :title="recipeMode === 'shopping' ? 'Remove every item from the shopping list' : 'Remove every ingredient row (dish name and base portions reset too)'" @click="clearBuilder">Clear all</button>
+              <button v-if="recipeMode === 'custom'" type="button" class="ghost-button ghost-small" :disabled="savingPreset || !canSavePreset" :title="canSavePreset ? 'Store this recipe in data/dishes.json' : 'Complete the dish name and at least one ingredient row first'" @click="savePreset">{{ savingPreset ? 'Saving…' : 'Save as preset' }}</button>
+            </template>
           </div>
         </div>
-        <DishBuilder :mode="recipeMode === 'custom' ? 'edit' : 'locked'" :ingredients="builderIngredients" :duplicate-terms="duplicateTerms" :base-portions="Number(draft.basePortions) || 1" :requested-portions="form.portions" @add="addIngredient" @remove="removeIngredient" @patch="patchIngredient" />
+        <DishBuilder :mode="recipeMode === 'preset' ? 'locked' : 'edit'" :ingredients="builderIngredients" :duplicate-terms="duplicateTerms" :base-portions="builderBasePortions" :requested-portions="builderRequestedPortions" @add="addIngredient" @remove="removeIngredient" @patch="patchIngredient" />
         <p class="hint">{{ recipeHint }}</p>
       </section>
 
@@ -64,7 +69,7 @@
 
     <ProgressStrip :job="job" :running="jobRunning" :pct="overallPct" :elapsed="elapsedDisplay" />
 
-    <ResultsSection ref="resultsSection" :result="result" :companies="companies" />
+    <ResultsSection ref="resultsSection" :result="result" :companies="companies" csv-download />
   </main>
 </template>
 
@@ -113,7 +118,9 @@ export default {
     const scaleDisplay = computed(() => (Number.isInteger(scaleFactor.value) ? String(scaleFactor.value) : scaleFactor.value.toFixed(2).replace(/0$/, '')));
 
     const selectedPreset = computed(() => dishes.value.find((d) => d.key === form.dish));
-    const builderIngredients = computed(() => (recipeMode.value === 'custom' ? draft.ingredients : selectedPreset.value?.ingredients || []));
+    const builderIngredients = computed(() => (recipeMode.value === 'preset' ? selectedPreset.value?.ingredients || [] : draft.ingredients));
+    const builderBasePortions = computed(() => (recipeMode.value === 'shopping' ? 1 : Number(draft.basePortions) || 1));
+    const builderRequestedPortions = computed(() => (recipeMode.value === 'shopping' ? 1 : form.portions));
 
     const validRows = computed(() => draft.ingredients
       .map((row) => ({
@@ -133,15 +140,30 @@ export default {
       return new Set([...counts.entries()].filter(([, n]) => n > 1).map(([term]) => term));
     });
 
-    const canResolveBase = computed(() => recipeMode.value === 'preset'
-      ? !!form.dish
-      : !!String(draft.name || '').trim() && validRows.value.length > 0 && duplicateTerms.value.size === 0);
+    const canResolveBase = computed(() => {
+      if (recipeMode.value === 'preset') return !!form.dish;
+      if (!validRows.value.length || duplicateTerms.value.size) return false;
+      return recipeMode.value === 'shopping' ? true : !!String(draft.name || '').trim();
+    });
     const canResolve = computed(() => canResolveBase.value && (gpsActive.value || !!form.address));
     const canSavePreset = computed(() => !!String(draft.name || '').trim() && validRows.value.length > 0 && duplicateTerms.value.size === 0);
 
     function addIngredient() { draft.ingredients.push(emptyRow()); }
     function removeIngredient(index) { draft.ingredients.splice(index, 1); }
     function patchIngredient(index, changes) { Object.assign(draft.ingredients[index], changes); }
+
+    function clearBuilder() {
+      const count = draft.ingredients.length;
+      if (!count && !String(draft.name || '').trim() && Number(draft.basePortions) === 4) return;
+      const message = recipeMode.value === 'shopping'
+        ? `Clear all ${count} item${count === 1 ? '' : 's'} from the shopping list?`
+        : 'Clear all ingredients?\nThe dish name and base portions will be reset too.';
+      if (!window.confirm(message)) return;
+      draft.ingredients = [];
+      draft.name = '';
+      draft.basePortions = 4;
+      logLine('warn', 'DISH', `builder cleared — ${count} row${count === 1 ? '' : 's'} removed`);
+    }
 
     function loadIntoDraft(key) {
       const dish = dishes.value.find((d) => d.key === key);
@@ -174,8 +196,14 @@ export default {
         logLine('ok', 'DISH', `builder seeded from "${draft.name}" — edit freely or clear rows`);
       } else if (mode === 'custom') {
         logLine('phase', 'DISH', 'builder open — add ingredients manually');
+      } else if (mode === 'shopping') {
+        logLine('phase', 'DISH', 'shopping list — add items with the exact quantity you need');
       }
     }
+
+    const builderPayloadRows = () => validRows.value.map((row) => (row.approx_quantity === null
+      ? { search_term: row.search_term, quantity: row.quantity, unit: row.unit }
+      : { ...row }));
 
     async function savePreset() {
       if (!canSavePreset.value || savingPreset.value) return;
@@ -191,9 +219,7 @@ export default {
           body: JSON.stringify({
             dish_name: name,
             base_portions: Number(draft.basePortions) || 4,
-            ingredients: validRows.value.map((row) => row.approx_quantity === null
-              ? { search_term: row.search_term, quantity: row.quantity, unit: row.unit }
-              : { ...row }),
+            ingredients: builderPayloadRows(),
           }),
         });
         const data = await response.json();
@@ -210,9 +236,11 @@ export default {
       }
     }
 
-    const recipeHint = computed(() => (recipeMode.value === 'custom'
-      ? 'Each row becomes one search per store. The ≈ fields give cans/items a gram or ml equivalent so used-costs can be scaled.'
-      : 'These are the searches the price comparison will run. Use Customise to tweak them.'));
+    const recipeHint = computed(() => {
+      if (recipeMode.value === 'custom') return 'Each row becomes one search per store. The ≈ fields give cans/items a gram or ml equivalent so used-costs can be scaled.';
+      if (recipeMode.value === 'shopping') return 'List the items you need with the quantity you want — each row is one search per store, priced as-is.';
+      return 'These are the searches the price comparison will run. Use Customise to tweak them.';
+    });
 
     // ── Location / map plumbing (shared behaviour with the standard page) ──
     const gpsActive = computed(() => !!gps.value);
@@ -231,6 +259,9 @@ export default {
       if (recipeMode.value === 'custom') {
         if (!String(draft.name || '').trim()) return 'Name your dish first.';
         if (!validRows.value.length) return 'Add at least one ingredient with a term and quantity.';
+        if (duplicateTerms.value.size) return 'Merge the highlighted duplicate search terms.';
+      } else if (recipeMode.value === 'shopping') {
+        if (!validRows.value.length) return 'Add at least one item with a term and quantity.';
         if (duplicateTerms.value.size) return 'Merge the highlighted duplicate search terms.';
       } else if (!form.dish) return 'Choose a dish first.';
       if (!resolved.value) return 'Step 1 — verify the dish and location first.';
@@ -273,9 +304,11 @@ export default {
       else logLine('warn', 'DISH', `recipe unavailable (${key})`);
     });
 
-    const recipeSignature = computed(() => (recipeMode.value === 'custom'
-      ? ['custom', draft.name, draft.basePortions, JSON.stringify(draft.ingredients)]
-      : ['preset', form.dish]).join('|'));
+    const recipeSignature = computed(() => {
+      if (recipeMode.value === 'preset') return ['preset', form.dish].join('|');
+      if (recipeMode.value === 'shopping') return ['shopping', JSON.stringify(draft.ingredients)].join('|');
+      return ['custom', draft.name, draft.basePortions, JSON.stringify(draft.ingredients)].join('|');
+    });
     const settingsSignature = computed(() => [recipeSignature.value, form.address, form.portions, form.max_stores_per_company, form.distance_km, form.companies.join()].join('|'));
     watch(settingsSignature, () => { if (origin.value) { staleNotice.value = true; logLine('warn', 'SYS', 'parameters changed — check to resolve settings'); } });
 
@@ -302,6 +335,7 @@ export default {
       error.value = '';
       if (!canResolveBase.value) {
         if (recipeMode.value === 'custom') error.value = duplicateTerms.value.size ? 'Merge the highlighted duplicate search terms.' : 'Give the dish a name and at least one ingredient.';
+        else if (recipeMode.value === 'shopping') error.value = duplicateTerms.value.size ? 'Merge the highlighted duplicate search terms.' : 'Add at least one item to your shopping list.';
         else error.value = 'Choose a dish first.';
         return;
       }
@@ -345,17 +379,26 @@ export default {
       if (recipeMode.value === 'custom') {
         payload.dish = String(draft.name).trim();
         payload.custom_dish = {
-          dish_name: String(draft.name).trim(),
+          dish_name: payload.dish,
           base_portions: Number(draft.basePortions) || 4,
-          ingredients: validRows.value.map((row) => row.approx_quantity === null
-            ? { search_term: row.search_term, quantity: row.quantity, unit: row.unit }
-            : { ...row }),
+          ingredients: builderPayloadRows(),
+        };
+      } else if (recipeMode.value === 'shopping') {
+        payload.dish = 'Shopping list';
+        payload.portions = 1;
+        payload.custom_dish = {
+          dish_name: 'Shopping list',
+          base_portions: 1,
+          ingredients: builderPayloadRows(),
+          source_label: 'shopping_list',
         };
       }
       resultsSection.value?.resetFilters();
       logLine('phase', 'DISH', recipeMode.value === 'custom'
         ? `submitting custom dish "${payload.dish}" · ${payload.custom_dish.ingredients.length} searches · ×${scaleFactor.value} portions`
-        : `submitting preset "${form.dish}"`);
+        : recipeMode.value === 'shopping'
+          ? `submitting shopping list · ${payload.custom_dish.ingredients.length} searches · single portion`
+          : `submitting preset "${form.dish}"`);
       await start(payload);
     }
 
@@ -379,8 +422,9 @@ export default {
       useGps, clearGps, originLabel, mapOrigin, mapStores, winnerKey, focusStore,
       resolved, readyToCompare, canResolve, actionLabel, actionHint, primaryAction,
       staleNotice, error, loading, resolving,
-      recipeMode, setMode, draft, builderIngredients, duplicateTerms, validRows,
-      addIngredient, removeIngredient, patchIngredient, customiseFromPreset,
+      recipeMode, setMode, draft, builderIngredients, builderBasePortions,
+      builderRequestedPortions, duplicateTerms, validRows,
+      addIngredient, removeIngredient, patchIngredient, clearBuilder, customiseFromPreset,
       savePreset, savingPreset, canSavePreset, recipeHint, scaleDisplay,
       job, jobRunning, overallPct, elapsedDisplay, terminalTitle, consoleLines, result,
       resultsSection,

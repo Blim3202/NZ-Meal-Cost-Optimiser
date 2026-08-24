@@ -45,7 +45,9 @@ Shared components serve both pages; page-specific differences live in `App.vue` 
 ## Behaviour Notes (brief)
 
 - **Two-step flow (/app)**: dual-use submit button — "Resolve setup" (`GET /geocode` or GPS lock) until dish + location are verified, then "Compare prices". Settings changes after resolve flip it back (stale notice) and refresh a `/stores/nearby` map preview.
-- **Dish builder (/test)**: edit ingredients inline (quantity/unit/search term, optional ≈ fallbacks), run immediately, or "Save as preset" → `POST /dishes/save`. Runs send the recipe as `custom_dish` with its `base_portions`; the server scales to requested portions.
+- **Dish builder (/test)**: edit ingredients inline (quantity/unit/search term, optional ≈ fallbacks), run immediately, or "Save as preset" → `POST /dishes/save`. Runs send the recipe as `custom_dish` with its `base_portions`; the server scales to requested portions. "Clear all" (confirm-guarded) wipes the rows plus dish name/base portions.
+- **Shopping list (/test)**: third recipe-source mode. Reuses the builder rows but submits `custom_dish {dish_name: "Shopping list", base_portions: 1, source_label: "shopping_list"}` with `portions: 1` — quantities priced as-is, no scaling; the Portions input is hidden and results show a teal "Shopping list" chip. Draft rows carry over between custom ↔ shopping modes.
+- **CSV export (/test only)**: "Download CSV ⭳" on the All-results heading exports the current *filtered/sorted* view via a client-side `Blob` → `<a download>` click (native browser save dialog). UTF-8 BOM for Excel; raw numeric price columns; filename `<slugified-dish>-<date>.csv`. Gated behind the `csvDownload` prop so `/app` doesn't show it.
 - **Polling**: ~700 ms `setTimeout` loop with an incremental `events_since` cursor; a monotonic `pollRun` token guards against stale polls across runs.
 - **Results**: store cards ranked complete-basket-first; missing ingredients render as blank "not found" rows (`status: "not_found"` → red label) plus the amber ⚠ issues banner; ★ winner pin goes to the first complete store.
 - **Filter bar**: categorical popovers + text lookups + numeric sort over `result.rows`; state resets each run.
@@ -60,17 +62,19 @@ Shared components serve both pages; page-specific differences live in `App.vue` 
 - Exposed surface consumed by both pages: `{job, result, loading, error, logLine, start, reset, jobRunning, overallPct, elapsedDisplay, terminalTitle, consoleLines}`.
 
 ### Dish builder (`TestApp.vue` + `DishBuilder.vue`)
-- `recipeMode` toggles preset↔custom. The builder **auto-seeds from the selected preset on first switch**; "Customise ✎" copies any preset into the draft; rows carry local `row-N` ids for stable v-for keys.
+- `recipeMode` toggles preset↔custom↔shopping. The builder **auto-seeds from the selected preset on first switch to custom**; "Customise ✎" copies any preset into the draft; rows carry local `row-N` ids for stable v-for keys.
 - **`validRows()` serialisation contract**: trim term → require `quantity > 0` → `normaliseUnit(unit)` → approx pair only when `approx_quantity > 0` (else both null). This exact shape is reused verbatim for *both* the `custom_dish` run payload and `POST /dishes/save`.
 - `duplicateTerms` (case-insensitive) blocks resolve+save and highlights offending rows in DishBuilder.
 - Save flow: overwrite `confirm()` if key exists → POST → refetch dishes → flip back to preset mode → mark setup stale if an origin was resolved.
-- Scale chips (`×N → M portions`) are **display-only** — real scaling happens server-side in `_scale_ingredients_to_portions`.
+- Scale chips (`×N → M portions`) are **display-only** — real scaling happens server-side in `_scale_ingredients_to_portions`. Shopping mode passes 1/1 so the chip reads "Base recipe · 1 portion".
+- Mode-specific validation: custom requires name + rows; shopping requires rows only (name is fixed). The stale-detection `recipeSignature` scopes by mode (shopping tracks just the rows JSON).
 
 ### `ResultsSection.vue`
 - Parent-facing API via template ref: `focusStore(pin)` (map pin → expand card + smooth-scroll) and `resetFilters()` (called before every run). Also resets itself on `result` change via watcher.
 - Store sort re-implements the server ranking client-side: incomplete stores last, then ascending `total_used_cost`.
 - Numeric sorts sink rows lacking the chosen value to the bottom regardless of direction.
 - Statuses are snake_case in the payload: `statusLabel()` renders them spaced ("not found"), `statusClass()` maps to CSS (`not_found` → red `.status-not-found`).
+- `downloadCsv()` (only mounted when the `csvDownload` prop is set — `/test` passes it): serialises `filteredRows` with proper quote/comma escaping, prefixes a UTF-8 BOM, and triggers the download via a temporary object-URL anchor.
 
 ### `MapPanel.vue`
 - `BRAND_COLORS` / `COMPANY_LABELS` are the single source for pin + legend colours; pins are inline-styled `L.divIcon`s (winner gets ★).
@@ -112,7 +116,7 @@ Planned functionality that the current structure anticipates. UI hooks already i
 2. **NLP refiltering of brands / product names** (e.g. organic only), updatable post-run — the all-results filter bar is the natural host; `excluded`/`textFilters` state shape generalises to rule objects, and rows already carry `brand`/`returned_ingredient`.
 3. **RAG-style recipe generation from a URL + Recipe instructions page** — first real second page; introduce the router then, promote `MapPanel`-style extraction for shared pieces (chips, badges, tables), and keep the home grid as the landing layout. *(Note: `/test` now exists as a second page via multi-page build — no router yet; this item would introduce one.)*
 4. **Proper best-price optimisation + repicking interface** for approved ingredients — store-card `best_per_ingredient` rows become selectable pickers; `storeKey` identity and per-store grouping carry over unchanged.
-5. **Download / email recipe + shopping list** — actions bar on the results heading; backend gains an export endpoint, frontend just POSTs current selection.
+5. **Download / email recipe + shopping list** — actions bar on the results heading; backend gains an export endpoint, frontend just POSTs current selection. *(Partially shipped: client-side CSV export of the all-results table is live on `/test` — see ResultsSection; email/recipe-sheet export still open.)*
 6. **Advanced settings page** (pipeline sources, persistent DB link, LLM credentials/models) — keep client-side only as a settings page reading/writing a config endpoint; never bake secrets into the bundle.
 
 General guidance: prefer extracting components over growing `App.vue`/`TestApp.vue`, keep new pages under a router lazily, and reuse the brand-colour tokens (`BRAND_COLORS` / CSS vars) rather than hardcoding hexes.

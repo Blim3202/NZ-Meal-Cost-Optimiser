@@ -1,13 +1,13 @@
 <template>
   <section v-if="result" class="results-area">
-    <div class="result-heading"><div><p class="eyebrow">Comparison complete</p><h2>{{ result.dish }} <span v-if="result.dish_source === 'custom'" class="chip chip-custom">Custom recipe</span><span v-else-if="result.dish_source === 'curated'" class="chip">Preset</span></h2><p class="summary">{{ result.rows.length }} products across {{ result.store_costs.length }} stores · {{ result.companies_checked.join(', ') }}</p></div><time>{{ formatDate(result.timestamp) }}</time></div>
+    <div class="result-heading"><div><p class="eyebrow">Comparison complete</p><h2>{{ result.dish }} <span v-if="result.dish_source === 'custom'" class="chip chip-custom">Custom recipe</span><span v-else-if="result.dish_source === 'shopping_list'" class="chip chip-shopping">Shopping list</span><span v-else-if="result.dish_source === 'curated'" class="chip">Preset</span></h2><p class="summary">{{ result.rows.length }} products across {{ result.store_costs.length }} stores · {{ result.companies_checked.join(', ') }}</p></div><time>{{ formatDate(result.timestamp) }}</time></div>
     <section class="panel">
       <div class="section-heading"><div><p class="eyebrow">Best value</p><h3>Store cost comparison</h3></div><select v-model="storeSort" aria-label="Sort stores"><option value="price">Lowest used cost</option><option value="store">Store name</option><option value="company">Company</option></select></div>
       <div v-if="!filteredStoreCosts.length" class="empty-state">No store cost data is available.</div>
       <div v-else class="store-list"><article v-for="(store, index) in filteredStoreCosts" :id="`store-card-${storeKey(store)}`" :key="storeKey(store)" class="store-card" :class="{ expanded: expandedStores.has(storeKey(store)) }"><button class="store-summary" type="button" @click="toggleStore(store)"><span class="rank">#{{ index + 1 }}</span><span class="store-name"><strong>{{ store.store }}</strong><small>{{ store.ingredients_matched }}/{{ store.ingredients_total }} ingredients matched<template v-if="store.issues && store.issues.length"> · ⚠ {{ store.issues.length }} unavailable</template></small></span><span class="badge" :class="badgeClass(store.company)">{{ companyLabel(store.company) }}</span><strong class="store-price" :class="{ 'price-partial': store.complete === false }" :title="store.complete === false ? 'Partial basket — some ingredients could not be priced at this store' : ''"><template v-if="store.complete === false">~</template>{{ money(store.total_used_cost) }}</strong><span class="chevron">⌄</span></button><div v-if="expandedStores.has(storeKey(store))" class="store-detail"><p v-if="store.issues && store.issues.length" class="issue-note">⚠ Unavailable ingredients: {{ store.issues.map((issue) => `${issue.search_ingredient} (${issue.status.replace(/_/g, ' ')})`).join(', ') }}</p><div class="detail-scroll"><table><thead><tr><th>Ingredient</th><th>Recipe Needed</th><th>Returned Product</th><th>Brand</th><th>Pack Size</th><th>Used Price</th><th>Purch Qty</th><th>Purch Cost</th><th>Status</th></tr></thead><tbody><tr v-for="item in store.best_per_ingredient" :key="item.search_ingredient"><td>{{ item.search_ingredient }}</td><td>{{ recipe(item) }}</td><td>{{ item.returned_ingredient || '-' }}</td><td>{{ item.brand || '-' }}</td><td>{{ pack(item) }}</td><td>{{ usedPrice(item) }}</td><td>{{ item.purchase_quantity || 0 }} pack(s)</td><td>{{ money(item.purchase_price) }}</td><td><span class="status" :class="statusClass(item.status)">{{ statusLabel(item.status) || '-' }}</span></td></tr></tbody></table></div></div></article></div>
     </section>
     <section class="panel">
-      <div class="section-heading"><div><p class="eyebrow">Product detail</p><h3>All results <span class="count">({{ filteredRows.length }} of {{ result.rows.length }})</span></h3></div></div>
+      <div class="section-heading"><div><p class="eyebrow">Product detail</p><h3>All results <span class="count">({{ filteredRows.length }} of {{ result.rows.length }})</span></h3></div><button v-if="csvDownload" type="button" class="ghost-button ghost-small" :disabled="!filteredRows.length" title="Export the current filtered view as a CSV download" @click="downloadCsv">Download CSV ⭳</button></div>
       <div class="filter-bar">
         <div v-for="(values, key) in catOptions" :key="key" class="cat-filter" :class="{ open: openFilter === key, active: shownCount(key) < values.length }" @click.stop>
           <button type="button" class="cat-toggle" @click="toggleOpen(key)">{{ catLabels[key] }}<span class="cat-count">{{ shownCount(key) }}/{{ values.length }}</span></button>
@@ -43,6 +43,7 @@ export default {
   props: {
     result: { type: Object, default: null },
     companies: { type: Array, required: true },
+    csvDownload: { type: Boolean, default: false },
   },
   setup(props) {
     const expandedStores = ref(new Set());
@@ -138,7 +139,46 @@ export default {
     function statusLabel(status) { return (status || '').replace(/_/g, ' '); }
     function formatDate(value) { return value ? new Date(value).toLocaleString() : ''; }
 
-    return { expandedStores, storeSort, excluded, textFilters, numSortKey, numSortDir, openFilter, catLabels, catOptions, filteredRows, filteredStoreCosts, resetFilters, focusStore, toggleCat, shownCount, toggleOpen, flipDir, toggleStore, storeKey, money, usedPrice, recipe, pack, unitPrice, companyLabel, badgeClass, statusClass, statusLabel, formatDate };
+    const CSV_HEADER = ['Company', 'Store', 'Search Term', 'Returned Product', 'Brand', 'Recipe Needed', 'Price', 'Pack Size', 'Cost Per Unit', 'Used Price', 'Purch Qty', 'Purch Cost', 'Status', 'SKU'];
+    const csvNum = (value) => (value === '' || value === null || value === undefined || Number.isNaN(Number(value)) ? '' : Number(value));
+    const csvUnitPrice = (row) => (row.per_unit_price === '' || row.per_unit_price === null || row.per_unit_price === undefined || Number.isNaN(Number(row.per_unit_price)) ? '' : `${Number(row.per_unit_price).toFixed(2)}/${row.per_unit_quantity || ''}`);
+    const CSV_CELL_GETTERS = [
+      (r) => companyLabel(r.company),
+      (r) => r.store,
+      (r) => r.search_ingredient,
+      (r) => r.returned_ingredient,
+      (r) => r.brand,
+      (r) => recipe(r),
+      (r) => csvNum(r.price),
+      (r) => pack(r),
+      (r) => csvUnitPrice(r),
+      (r) => csvNum(r.used_price),
+      (r) => r.purchase_quantity ?? 0,
+      (r) => csvNum(r.purchase_price),
+      (r) => statusLabel(r.status),
+      (r) => r.sku,
+    ];
+    function csvCell(value) {
+      const text = String(value ?? '');
+      return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    }
+    function downloadCsv() {
+      if (!filteredRows.value.length) return;
+      const lines = [CSV_HEADER.join(',')];
+      for (const row of filteredRows.value) lines.push(CSV_CELL_GETTERS.map((get) => csvCell(get(row))).join(','));
+      const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const slug = String(props.result?.dish || 'results').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'results';
+      link.href = url;
+      link.download = `${slug}-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    return { expandedStores, storeSort, excluded, textFilters, numSortKey, numSortDir, openFilter, catLabels, catOptions, filteredRows, filteredStoreCosts, resetFilters, focusStore, toggleCat, shownCount, toggleOpen, flipDir, toggleStore, storeKey, money, usedPrice, recipe, pack, unitPrice, companyLabel, badgeClass, statusClass, statusLabel, formatDate, downloadCsv };
   },
 };
 </script>

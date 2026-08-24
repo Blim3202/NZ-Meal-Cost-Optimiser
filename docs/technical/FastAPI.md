@@ -115,18 +115,21 @@ class CustomIngredient(BaseModel):
 
 class CustomDish(BaseModel):
     name: str = ""; base_portions: int = 4; ingredients: list[CustomIngredient]
+    source_label: str = "custom"  # "custom" | "shopping_list" (validated)
 ```
 
 When `custom_dish` is set it **replaces** the `dish`-name resolution path entirely:
 
-1. `_validate_custom_dish()` — sync validation: non-empty name/ingredients, positive finite quantities, non-empty units. Units are normalised through `normalise_unit()` (alias folding, e.g. `eggs` → `each`) at build time.
+1. `_validate_custom_dish()` — sync validation: non-empty name/ingredients, positive finite quantities, non-empty units, and `source_label ∈ CUSTOM_DISH_SOURCES` (`{"custom", "shopping_list"}`; anything else is a 400). Units are normalised through `normalise_unit()` (alias folding, e.g. `eggs` → `each`) at build time.
 2. `_scale_ingredients_to_portions(dish_dict, req.portions)` — uniform scaling of every numeric quantity from `base_portions` to the requested `portions`. Applied to ALL sources (curated, LLM, custom); a no-op at default portions. Scaling happens per-request — presets are stored verbatim at their base portions.
+
+**Shopping-list searches** (/test) reuse this exact path with zero backend-specific logic: the frontend submits `base_portions=1`, `portions=1`, `source_label="shopping_list"` and a fixed dish name `"Shopping list"` — so quantities are priced as-is with no portion scaling, and `dish_source` labels the results header chip.
 
 ### `OptimisationResult` (output)
 | Field | Type | Description |
 |---|---|---|
 | `dish` | `str` | Resolved display name of the dish |
-| `dish_source` | `str` | `"curated"`, `"custom"`, or `"llm"`/`"fallback"` — drives the results-header chip |
+| `dish_source` | `str` | `"curated"`, `"custom"`, `"shopping_list"`, or `"llm"`/`"fallback"` — drives the results-header chip |
 | `companies_checked` | `list[str]` | Which brands were searched |
 | `rows` | `list[dict]` | All product result rows in CSV_COLUMNS format (18 fields per row) |
 | `store_costs` | `list[dict]` | Per-store cost summary sorted complete-basket-first, then by total used cost |
@@ -193,7 +196,7 @@ Each row dict matches `full_results.csv` columns:
 |---|---|---|
 | `/` | GET | Legacy vanilla dashboard (`static/index_old.html`) |
 | `/app`, `/app/` | GET | Vue dashboard (`static/vue/index.html`) |
-| `/test`, `/test/` | GET | Dish-builder page (`static/vue/test.html`) — build a custom recipe, run it, save presets |
+| `/test`, `/test/` | GET | Dish-builder page (`static/vue/test.html`) — build a custom recipe or shopping list, run it, save presets, export results as CSV |
 | `/health` | GET | Health check → `{"status": "ok", "supabase_enabled": bool}` |
 | `/dishes` | GET | Dishes from `data/dishes.json` — curated presets plus any saved builder dishes (`portion` key = base portions) |
 | `/dishes/save` | POST | Upsert a builder dish as a preset in `data/dishes.json` (`SaveDishRequest{name, base_portions, ingredients}`); validates via `_validate_custom_dish`, writes atomically (tmp file + `os.replace`) |
@@ -249,7 +252,7 @@ An HTTP middleware also logs every request's method/path/status/duration to the 
 The core orchestrator. Runs in 4 phases, writing progress into `job` as it goes (`job.phase`, `job.log_event(...)`, per-company counters):
 
 **Phase 1 — Resolve, Validate & Geocode (sequential)**
-1. Resolves ingredients. If `custom_dish` is set: `_validate_custom_dish` (sync 400 on bad input) + `_scale_ingredients_to_portions` produce the recipe; otherwise `resolve_ingredients(dish, portions)` looks up `dishes.json` for curated lists, falls back to LLM generation when keyed, else uses the dish name as a single term. `dish_source` records which path ran.
+1. Resolves ingredients. If `custom_dish` is set: `_validate_custom_dish` (sync 400 on bad input, incl. unknown `source_label`) + `_scale_ingredients_to_portions` produce the recipe; `source_label` flows through to `dish_source` ("custom" or "shopping_list"). Otherwise `resolve_ingredients(dish, portions)` looks up `dishes.json` for curated lists, falls back to LLM generation when keyed, else uses the dish name as a single term. `dish_source` records which path ran.
 2. **Unit hygiene pass**: every ingredient's `unit`/`approx_unit` is folded through `normalise_unit()` for all sources (e.g. `eggs` → `each`) so downstream scaling sees canonical units.
 3. Calls `_resolve_origin(job)` to locate the search origin. If the request carries `latitude`/`longitude` (device GPS), those are validated against the NZ bounding box and used directly — **no Nominatim call**. Otherwise `optimiser_utils.geocode(address)` (Nominatim, rate-limited to 1 req/sec) runs once, before any concurrent work. The resolved `{lat, lon, source}` is carried through as the result's `origin`.
 

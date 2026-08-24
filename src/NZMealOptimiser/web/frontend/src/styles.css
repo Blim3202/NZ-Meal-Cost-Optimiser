@@ -59,6 +59,7 @@
 .heading-actions { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .ghost-small { padding: 7px 12px; font-size: .8rem; }
 .chip-custom { color: #b36a00; border-color: #ffd9a3; background: #fff8ee; }
+.chip-shopping { color: #0b7285; border-color: #99e9f2; background: #e3fafc; }
 
 .builder-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; max-height: 460px; overflow-y: auto; }
 .builder-item { display: grid; gap: 7px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: #fbfcfd; }
