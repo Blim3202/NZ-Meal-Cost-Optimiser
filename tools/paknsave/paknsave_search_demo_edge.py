@@ -18,7 +18,7 @@ Store info:
 
 Usage:
     python -m tools.paknsave.paknsave_search_demo_edge [ingredient]
-    python -m tools.paknsave.paknsave_search_demo_edge "beef mince"
+    python -m tools.paknsave.paknsave_search_demo_edge "NZ beef mince"
 
 Reference: PaknSave_API.md section 6 (Edge API two-pass pipeline)
 """
@@ -32,8 +32,8 @@ import sys
 WEB_BASE = "https://www.paknsave.co.nz"
 EDGE_BASE = "https://api-prod.paknsave.co.nz/v1/edge"
 
-STORE_NAME = "PAK'nSAVE Highland Park"
-STORE_ID = "2a1b331a-fc4a-496a-b072-e97cc8f70cae"
+STORE_NAME = "PAK'nSAVE Ormiston Park"
+STORE_ID = "5f167936-79ae-4f6a-b9d2-74afe1bb096b"
 
 # Non-food category1 blacklist (shared with paknsave_api.py)
 NON_FOOD_CATEGORIES = {
@@ -157,13 +157,13 @@ def extract_price(product):
 def main():
     parser = argparse.ArgumentParser(
         description="Pak'nSave Edge API product search demo (two-pass pipeline).",
-        epilog="Example: python paknsave_search_demo_edge.py 'beef mince'",
+        epilog="Example: python paknsave_search_demo_edge.py 'NZ beef mince'",
     )
     parser.add_argument(
         "ingredient",
         nargs="?",
-        default="milk",
-        help="Ingredient to search for (default: 'milk')",
+        default="NZ beef mince",
+        help="Ingredient to search for (default: 'NZ beef mince')",
     )
     args = parser.parse_args()
     query = args.ingredient

@@ -10,7 +10,7 @@ Runs are **background jobs**: `POST /optimise/jobs` returns a `job_id` immediate
 ```
 .venv\Scripts\uvicorn NZMealOptimiser.web.main:app --host 0.0.0.0 --port 8000
 ```
-Then open `http://127.0.0.1:8000/` for the classic dashboard, `http://127.0.0.1:8000/app` for the Vue dashboard, `http://127.0.0.1:8000/test` for the dish-builder page, or `http://127.0.0.1:8000/docs` for Swagger.
+Then open `http://127.0.0.1:8000/` for the classic dashboard, `http://127.0.0.1:8000/app` for the Vue dashboard, `http://127.0.0.1:8000/test` for the app-shell workspace (optimiser dashboard, My Dishes, LLM Recipe Builder stub, Documentation viewer, Settings), or `http://127.0.0.1:8000/docs` for Swagger.
 
 No manual path bootstrap is needed — the package is installed editable (`pip install -e .`) and all imports resolve from `NZMealOptimiser.*`.
 
@@ -37,7 +37,8 @@ All modules come from the `src/NZMealOptimiser/` package (editable install — n
 
 ```python
 import concurrent.futures
-_THREAD_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=20)
+EFFECTIVE_MAX_WORKERS = max(1, min(int(settings.WEB_MAX_WORKERS), 64))
+_THREAD_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=EFFECTIVE_MAX_WORKERS)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -47,9 +48,11 @@ async def lifespan(app: FastAPI):
 
 **Why this exists:** The API libraries (`woolworths_api`, `paknsave_api`, `newworld_api`) are all synchronous — they use `requests.Session` for HTTP calls. Without `asyncio.to_thread`, these calls block the event loop and all tasks execute one-by-one.
 
-`asyncio.to_thread(func, *args)` runs `func` on a background thread from the pool (20 workers) while the event loop stays free. With 20 workers, up to 20 searches run in parallel — the rest queue and start as slots free up.
+`asyncio.to_thread(func, *args)` runs `func` on a background thread from the pool (default 20 workers) while the event loop stays free. With 20 workers, up to 20 searches run in parallel — the rest queue and start as slots free up.
 
 **Pool size — why 20:** With 20 workers, up to 20 searches run in parallel. Wall time ≈ `ceil(total_tasks / 20) × ~5s`. Going higher (e.g. 63 workers) gives diminishing returns and uses more memory.
+
+**Configuring the size:** `WEB_MAX_WORKERS` (`.env` or env var, default 20, clamped 1–64) is read once at import time. `ThreadPoolExecutor` cannot be resized live, so changes require a server restart — a live-resize endpoint was considered and deliberately deferred (see Vue_Dashboard.md → Future plans). `GET /system-info` reports both the configured and effective values so the Settings page can show "restart required" honestly.
 
 ---
 
@@ -61,7 +64,9 @@ async def lifespan(app: FastAPI):
 | `TMP_DIR` | Scratchpad folder (`src/NZMealOptimiser/web/tmp/`), created if missing. Currently unused. |
 | `STATIC_DIR` | Folder for the frontend (`src/NZMealOptimiser/web/static/`). Mounted at `/static`. |
 | `BRANDS` | Dispatch dict mapping brand names to their API classes, find_nearby functions, and metadata. |
-| `_THREAD_POOL` | 20-worker thread pool for offloading blocking HTTP calls. |
+| `_THREAD_POOL` / `EFFECTIVE_MAX_WORKERS` | Thread pool for offloading blocking HTTP calls, sized from `settings.WEB_MAX_WORKERS` (default 20). |
+| `HARD_LIMITS` | Absolute server-side ceilings for the frontend's danger-zone overrides: `{max_distance_km: 50.0, max_stores_per_company: 20}` — enforced by `_enforce_hard_limits()` in `_new_job()` and `/stores/nearby` (400 beyond). |
+| `TECH_DOCS` / `TECH_DOCS_DIR` | Whitelisted markdown manuals (`docs/technical/*.md`) served to the Documentation viewer; explicit name→title map so no arbitrary file read is possible. |
 | `COMPANY_LABELS` / `COMPANY_CODES` | Display names ("Pak'nSave") and console tag codes ("PNS"/"NW"/"WW") per brand. |
 | `JOBS` | `OrderedDict` registry of active/finished `JobState` objects, keyed by job id. Max `MAX_RETAINED_JOBS` (40); oldest *finished* jobs evicted first so running jobs are never dropped. |
 | `_BACKGROUND_TASKS` | Strong-ref set holding pipeline tasks so `asyncio.create_task` results aren't garbage-collected mid-run. |
@@ -95,8 +100,8 @@ Mutable progress object created per optimisation request (`_new_job`). Key attri
 |---|---|---|---|
 | `dish` | `str` | — | Dish name (e.g. "spaghetti bolognese") |
 | `address` | `str` | — | NZ address or suburb for geocoding (ignored when GPS coords are supplied) |
-| `distance_km` | `float` | `5.0` | Search radius around the address |
-| `max_stores_per_company` | `int` | `3` | Cap on stores checked per brand |
+| `distance_km` | `float` | `5.0` | Search radius around the address (hard ceiling 50 km — 400 beyond) |
+| `max_stores_per_company` | `int` | `3` | Cap on stores checked per brand (hard ceiling 20 — 400 beyond) |
 | `companies` | `list[str]` | `None` | Filter to specific brands; `None` = all 3 |
 | `portions` | `int` | `4` | Number of servings (used for ingredient quantity resolution) |
 | `latitude` | `float \| None` | `None` | Device GPS latitude — bypasses Nominatim when set |
@@ -196,17 +201,25 @@ Each row dict matches `full_results.csv` columns:
 |---|---|---|
 | `/` | GET | Legacy vanilla dashboard (`static/index_old.html`) |
 | `/app`, `/app/` | GET | Vue dashboard (`static/vue/index.html`) |
-| `/test`, `/test/` | GET | Dish-builder page (`static/vue/test.html`) — build a custom recipe or shopping list, run it, save presets, export results as CSV |
+| `/test`, `/test/` | GET | App-shell workspace (`static/vue/test.html`) — left sidebar switching the optimiser dashboard (custom recipes/shopping lists, CSV export), My Dishes, LLM Recipe Builder stub, Documentation viewer and Settings |
 | `/health` | GET | Health check → `{"status": "ok", "supabase_enabled": bool}` |
-| `/dishes` | GET | Dishes from `data/dishes.json` — curated presets plus any saved builder dishes (`portion` key = base portions) |
-| `/dishes/save` | POST | Upsert a builder dish as a preset in `data/dishes.json` (`SaveDishRequest{name, base_portions, ingredients}`); validates via `_validate_custom_dish`, writes atomically (tmp file + `os.replace`) |
+| `/system-info` | GET | Runtime facts for Settings → `{max_workers, configured_workers, hard_limits}` |
+| `/dishes` | GET | Dishes from `data/dishes.json` — curated presets plus saved builder dishes (`portion` key = base portions; `"source": "user"` marks builder-saved entries, absent = curated) |
+| `/dishes/save` | POST | Upsert a builder dish as a preset in `data/dishes.json` (`SaveDishRequest{name, base_portions, ingredients}`); validates via `_validate_custom_dish`, tags `"source": "user"`, writes atomically (tmp file + `os.replace`) |
+| `/dishes/{key}` | DELETE | Remove a preset dish from `data/dishes.json` → `{ok, was_user, dishes_count}`; 404 on unknown keys |
+| `/tech-docs` | GET | List the whitelisted manuals → `[{name, title}]` |
+| `/tech-docs/{name}` | GET | Serve one manual as raw markdown (`text/markdown`) for client-side rendering; whitelisted names only |
 | `/geocode` | GET | `?address=...` → `{lat, lon, cached}` — standalone Nominatim lookup for the dashboard's resolve step (LRU-cached, NZ-bbox validated) |
-| `/stores/nearby` | GET | `?lat&lon&distance_km&companies=PaknSave,NewWorld,Woolworths&max_per_company` → `{origin, stores[]}` — preview of which stores a run would query (local CSV + haversine, same helpers/cap as pipeline Phase 2, no supermarket API calls) |
+| `/stores/nearby` | GET | `?lat&lon&distance_km&companies=PaknSave,NewWorld,Woolworths&max_per_company` → `{origin, stores[]}` — preview of which stores a run would query (local CSV + haversine, same helpers/cap as pipeline Phase 2, no supermarket API calls). Enforces `HARD_LIMITS`. |
 | `/optimise` | POST | Legacy synchronous endpoint (classic dashboard) — accepts `DishRequest`, blocks until done, returns `OptimisationResult` |
-| `/optimise/jobs` | POST | Queue an optimisation — accepts `DishRequest`, returns `{"job_id"}` immediately |
+| `/optimise/jobs` | POST | Queue an optimisation — accepts `DishRequest`, returns `{"job_id"}` immediately. Enforces `HARD_LIMITS` via `_new_job`. |
 | `/optimise/{job_id}` | GET | Job snapshot: status, phase, elapsed, per-company progress, incremental events (`?events_since=N`), final `result` |
 | `/docs` | GET | Swagger UI (FastAPI default) |
 | `/static` | Mount | Serves `STATIC_DIR` |
+
+### Danger-zone hard ceilings
+
+The frontend's overrides mode can unlock larger searches, but `_enforce_hard_limits()` caps every entry point at **50 km radius** and **20 stores/company** with a 400 beyond. The frontend additionally requires an explicit accept-risk confirmation before unlocking its inputs past the standard ranges (8 km / 5 stores) — see Vue_Dashboard.md → Behaviour notes.
 
 ### `POST /optimise/jobs` — Job-Based Endpoint
 

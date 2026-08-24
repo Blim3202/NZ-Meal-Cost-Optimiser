@@ -16,9 +16,16 @@ Frontends:
     GET /       classic dashboard (index_old.html)
     GET /app    Vue dashboard (static/vue/index.html, single-page entry)
     GET /test   Vue dish-builder dashboard (static/vue/test.html, second
-                multi-page entry) — adds preset/custom recipe modes, a full
-                ingredient editor (add/remove/edit rows, canonical units with
-                alias normalisation, approx fallbacks) and "Save as preset".
+                multi-page entry) — app shell with a left sidebar switching
+                between: optimiser dashboard (preset/custom/shopping-list
+                modes + full ingredient editor), My Dishes, LLM Recipe
+                Builder stub, Documentation viewer and a multi-section
+                Settings page.
+
+Supporting endpoints:
+    GET  /system-info        effective thread-pool size + danger-zone caps
+    GET  /tech-docs[/{name}] whitelisted markdown manuals for the docs page
+    DELETE /dishes/{key}     remove a preset dish
 
 Dish sources:
     1. req.custom_dish  — explicit builder recipe; validated + unit-normalised,
@@ -71,7 +78,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from NZMealOptimiser import DATA_DIR
+from NZMealOptimiser import DATA_DIR, PROJECT_ROOT
 from NZMealOptimiser.llm.llm_utils import (
     normalise_unit,
     resolve_ingredients,
@@ -117,6 +124,11 @@ COMPANY_LABELS = {"PaknSave": "Pak'nSave", "NewWorld": "New World", "Woolworths"
 COMPANY_CODES = {"PaknSave": "PNS", "NewWorld": "NW", "Woolworths": "WW"}
 CUSTOM_DISH_SOURCES = {"custom", "shopping_list"}
 MAX_RETAINED_JOBS = 40
+
+# Server-side hard ceilings for the danger-zone overrides. The frontend can
+# unlock larger search radii / store caps, but never past these — they bound
+# the load one run can place on the supermarket APIs.
+HARD_LIMITS = {"max_distance_km": 50.0, "max_stores_per_company": 20}
 
 
 class JobState:
@@ -206,8 +218,28 @@ def _register_job(job: JobState) -> None:
             break
 
 
-# Increase asyncio's default thread pool from 5 to 20 workers.
-_THREAD_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=20)
+# Background search pool. Sized from WEB_MAX_WORKERS (default 20) at import
+# time — ThreadPoolExecutor can't be resized live, so changes need a restart.
+EFFECTIVE_MAX_WORKERS = max(1, min(int(settings.WEB_MAX_WORKERS), 64))
+_THREAD_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=EFFECTIVE_MAX_WORKERS)
+
+
+def _enforce_hard_limits(distance_km: float, max_stores_per_company: int) -> None:
+    """Reject requests beyond the danger-zone ceilings (see HARD_LIMITS).
+
+    The frontend normally constrains these inputs; the unlocked "overrides"
+    mode may send larger values, but never past these absolute caps.
+    """
+    if not (0 < float(distance_km) <= HARD_LIMITS["max_distance_km"]):
+        raise HTTPException(
+            400,
+            f"distance_km must be between 0 and {HARD_LIMITS['max_distance_km']:g} km",
+        )
+    if not (1 <= int(max_stores_per_company) <= HARD_LIMITS["max_stores_per_company"]):
+        raise HTTPException(
+            400,
+            f"max_stores_per_company must be between 1 and {HARD_LIMITS['max_stores_per_company']}",
+        )
 
 
 class CustomIngredient(BaseModel):
@@ -411,6 +443,48 @@ def health() -> dict:
     return {"status": "ok", "supabase_enabled": settings.supabase_enabled}
 
 
+@app.get("/system-info")
+def system_info() -> dict:
+    """Runtime facts for the settings page: effective thread-pool size and
+    the server-side danger-zone ceilings. Worker changes need a restart, so
+    both the configured and effective values are reported."""
+    return {
+        "max_workers": EFFECTIVE_MAX_WORKERS,
+        "configured_workers": int(settings.WEB_MAX_WORKERS),
+        "hard_limits": HARD_LIMITS,
+    }
+
+
+# Whitelisted markdown manuals served to the /test Documentation viewer.
+# Kept explicit (name -> title) so no arbitrary file read is possible.
+TECH_DOCS = {
+    "FastAPI.md": "FastAPI backend",
+    "LLM_Pipeline.md": "LLM pipeline",
+    "NewWorld_API.md": "New World API",
+    "PaknSave_API.md": "Pak'nSave API",
+    "Vue_Dashboard.md": "Vue dashboard",
+    "Woolworths_API.md": "Woolworths API",
+}
+TECH_DOCS_DIR = PROJECT_ROOT / "docs" / "technical"
+
+
+@app.get("/tech-docs")
+def tech_docs_list() -> list[dict]:
+    """List the available technical manuals for the docs viewer."""
+    return [{"name": name, "title": title} for name, title in TECH_DOCS.items()]
+
+
+@app.get("/tech-docs/{name}")
+def tech_doc_file(name: str):
+    """Serve one whitelisted manual as raw markdown (rendered client-side)."""
+    if name not in TECH_DOCS:
+        raise HTTPException(404, f"Unknown document '{name}'")
+    path = TECH_DOCS_DIR / name
+    if not path.exists():
+        raise HTTPException(404, f"Document '{name}' is missing from the repository")
+    return FileResponse(path, media_type="text/markdown; charset=utf-8")
+
+
 @app.get("/")
 def root():
     return FileResponse(STATIC_DIR / "index_old.html")
@@ -483,10 +557,28 @@ async def save_dish(req: SaveDishRequest) -> dict:
         "dish_name": name,
         "portion": base_portions,
         "ingredients": ingredients,
+        "source": "user",
     }
     await asyncio.to_thread(_write_dishes_file, data)
     log.info("Saved preset dish '%s' (%s)", name, "updated" if existed else "new")
     return {"ok": True, "key": key, "updated": existed, "dishes_count": len(data)}
+
+
+@app.delete("/dishes/{key}")
+async def delete_dish(key: str) -> dict:
+    """Remove a preset dish from data/dishes.json.
+
+    Curated dishes (no ``source`` field) and user-saved ones are both
+    deletable — the frontend warns extra-hard before removing curated
+    recipes. The write is the same atomic temp+replace used by save.
+    """
+    data = await asyncio.to_thread(_load_dishes_file)
+    if key not in data:
+        raise HTTPException(404, f"Unknown dish '{key}'")
+    removed = data.pop(key)
+    await asyncio.to_thread(_write_dishes_file, data)
+    log.info("Deleted preset dish '%s'", key)
+    return {"ok": True, "key": key, "was_user": removed.get("source") == "user", "dishes_count": len(data)}
 
 
 _GEOCODE_CACHE: OrderedDict[str, tuple[float, float]] = OrderedDict()
@@ -549,7 +641,8 @@ async def stores_nearby(
     requested = [c for c in requested if c in BRANDS]
     if not requested:
         raise HTTPException(400, "No valid companies requested")
-    cap = max(1, min(int(max_per_company), 10))
+    _enforce_hard_limits(distance_km, max_per_company)
+    cap = max(1, int(max_per_company))
     stores: list[dict] = []
     for name in requested:
         cfg = BRANDS[name]
@@ -600,6 +693,7 @@ def optimise_job_snapshot(job_id: str, events_since: int = -1) -> dict:
 
 
 def _new_job(req: DishRequest) -> JobState:
+    _enforce_hard_limits(req.distance_km, req.max_stores_per_company)
     if req.companies is not None:
         invalid = [c for c in req.companies if c not in BRANDS]
         if invalid:

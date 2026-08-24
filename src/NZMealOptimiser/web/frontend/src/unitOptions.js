@@ -16,7 +16,7 @@ const SCALABLE = new Set(['g', 'kg', 'oz', 'ml', 'l', 'tsp', 'tbsp', 'cup', 'eac
 
 export const isScalableUnit = (unit) => SCALABLE.has(normaliseUnit(unit));
 
-const ALIASES = {
+export const ALIASES = {
   g: ['g', 'gram', 'grams', 'gm', 'gms'],
   kg: ['kg', 'kilogram', 'kilograms', 'kilo', 'kilos'],
   oz: ['oz', 'ounce', 'ounces'],
