@@ -167,6 +167,8 @@ def _store_row(company, store, term, sku, used_price, title="Product", valid=Tru
         "units_match": True, "status": "ok",
         "purchase_quantity": 1, "purchase_price": used_price,
         "valid_ingredient": valid,
+        "brand": "Test Brand", "price": used_price,
+        "quantity": 500, "measurement_unit": "g",
     })
     return row
 
@@ -293,6 +295,74 @@ def test_reapply_rejects_unknown_or_incomplete_jobs(client, monkeypatch):
 
     job.pipeline_cache = None
     response = client.post(f"/optimise/{job.id}/reapply", json={"ingredient_filters": {}})
+    assert response.status_code == 409
+    assert "no cached products" in response.json()["detail"]
+
+
+# ── Filter preview endpoint ───────────────────────────────────────────────────
+
+def test_filter_preview_counts_and_product_flags(client, monkeypatch):
+    job = _register_completed_job(monkeypatch)
+
+    response = client.post(f"/optimise/{job.id}/filter_preview", json={
+        "ingredient_filters": {"beef mince": {"includes": ["mince"], "excludes": ["pork"]}},
+    })
+    assert response.status_code == 200
+    data = response.json()
+    assert data["terms"]["beef mince"] == {"total": 2, "matched": 1}
+    assert data["terms"]["onion"] == {"total": 1, "matched": 1}
+    assert data["unmatched_terms"] == []
+
+    by_sku = {p["sku"]: p for p in data["products"]}
+    assert by_sku["s1"]["valid"] is True and by_sku["s1"]["reason"] == ""
+    assert by_sku["s2"]["valid"] is False
+    assert "EXCLUDE" in by_sku["s2"]["reason"]
+    # Product display fields ride along for the tuner's card 3.
+    assert by_sku["s2"]["brand"] == "Test Brand"
+    assert by_sku["s2"]["returned_ingredient"] == "Pork Mince 500g"
+    assert by_sku["s2"]["price"] == 6.50
+    assert by_sku["s2"]["quantity"] == 500 and by_sku["s2"]["measurement_unit"] == "g"
+    assert by_sku["s2"]["search_ingredient"] == "beef mince"
+
+
+def test_filter_preview_does_not_mutate_job(client, monkeypatch):
+    job = _register_completed_job(monkeypatch)
+    payload = {"ingredient_filters": {
+        "beef mince": {"includes": ["nonexistent"], "excludes": []}}}
+
+    first = client.post(f"/optimise/{job.id}/filter_preview", json=payload)
+    assert first.status_code == 200
+    assert all(p["valid"] is False for p in first.json()["products"]
+               if p["search_ingredient"] == "beef mince")
+
+    # Nothing stuck: cached rows keep their original flags, result untouched,
+    # and a second identical preview is deterministic.
+    assert all(r["valid_ingredient"] is True for r in job.pipeline_cache["rows"])
+    assert job.result is None
+    second = client.post(f"/optimise/{job.id}/filter_preview", json=payload)
+    assert second.json() == first.json()
+
+
+def test_filter_preview_reports_unmatched_terms(client, monkeypatch):
+    job = _register_completed_job(monkeypatch)
+    data = client.post(f"/optimise/{job.id}/filter_preview", json={
+        "ingredient_filters": {"ghost term": {"includes": ["x"], "excludes": []}},
+    }).json()
+    assert data["unmatched_terms"] == ["ghost term"]
+    assert all(p["valid"] is True for p in data["products"])
+
+
+def test_filter_preview_rejects_unknown_or_incomplete_jobs(client, monkeypatch):
+    job = _register_completed_job(monkeypatch)
+    body = {"ingredient_filters": {}}
+    assert client.post("/optimise/nope/filter_preview", json=body).status_code == 404
+
+    queued = JobState(DishRequest(dish="x", address="y"))
+    monkeypatch.setitem(web_main.JOBS, queued.id, queued)
+    assert client.post(f"/optimise/{queued.id}/filter_preview", json=body).status_code == 409
+
+    job.pipeline_cache = None
+    response = client.post(f"/optimise/{job.id}/filter_preview", json=body)
     assert response.status_code == 409
     assert "no cached products" in response.json()["detail"]
 

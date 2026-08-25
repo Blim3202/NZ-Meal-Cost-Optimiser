@@ -66,6 +66,32 @@ def test_eggs_scale_against_count_pack():
     assert scaled["purchase_price"] == 5.0
 
 
+def test_stalk_recipe_vs_count_pack_is_incompatible():
+    """Recipe "2 stalk" (approx 80 g) vs a "1 ea" pack -> unusable product.
+
+    Regression guard: incompatible rows used to report units_match=True
+    because the flag only tracked "was an approximation applied", which was
+    vacuously true when scaling failed outright — the All Results UI then
+    showed a green tick for a product whose used cost could not be computed.
+    """
+    row = {
+        "search_ingredient": "celery",
+        "quantity": 1,
+        "measurement_unit": "ea",
+        "price": 3.99,
+        "ingredient_quantity": 2,
+        "ingredient_measurement": "stalk",
+        "ingredient_approx_quantity": 80,
+        "ingredient_approx_unit": "g",
+    }
+    scaled = parse_optimiser_columns(row)
+    assert scaled["status"] == "incompatible_units"
+    assert scaled["units_match"] is False
+    assert scaled["used_price"] is None
+    assert scaled["purchase_price"] is None
+    assert scaled["purchase_quantity"] == 0
+
+
 def test_normalise_unit_passthrough_and_garbage():
     assert normalise_unit("handful") == "handful"
     assert normalise_unit("  g ") == "g"

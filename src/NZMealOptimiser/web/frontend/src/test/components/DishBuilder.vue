@@ -3,7 +3,7 @@
     <template v-if="mode === 'locked'">
       <p v-if="!ingredients.length" class="empty-state">Choose a dish to preview its ingredient searches.</p>
       <ul v-else class="ingredient-list">
-        <li v-for="(ing, index) in ingredients" :key="index"><span class="ing-name">{{ ing.search_term }}</span><span class="ing-qty">{{ displayQty(ing) }}</span><FilterEditor v-if="termOf(ing)" :term="termOf(ing)" :row-id="`lock-${index}`" :filters="filters" @update-filters="forward" /></li>
+        <li v-for="(ing, index) in ingredients" :key="index"><span class="ing-name">{{ ing.search_term }}</span><span class="ing-qty">{{ displayQty(ing) }}</span><button v-if="rulesCount(termOf(ing))" type="button" class="chip-mini chip-rules" :title="`${rulesCount(termOf(ing))} product-filter keyword(s) — edit in the Filter tuner`" @click="$emit('open-filters', termOf(ing))">{{ rulesCount(termOf(ing)) }} rule{{ rulesCount(termOf(ing)) === 1 ? '' : 's' }}</button></li>
       </ul>
     </template>
     <template v-else>
@@ -31,7 +31,7 @@
             <span v-if="!hasApprox(ing)" class="warn-hint">add for accurate scaling</span>
             <span v-else class="ok-hint" title="Approx fallback set">✓</span>
           </div>
-          <FilterEditor v-if="termOf(ing)" :term="termOf(ing)" :row-id="ing.id" :filters="filters" @update-filters="forward" />
+          <button v-if="rulesCount(termOf(ing))" type="button" class="chip-mini chip-rules" :title="`${rulesCount(termOf(ing))} product-filter keyword(s) — edit in the Filter tuner`" @click="$emit('open-filters', termOf(ing))">{{ rulesCount(termOf(ing)) }} rule{{ rulesCount(termOf(ing)) === 1 ? '' : 's' }}</button>
           <p v-if="isDuplicate(ing)" class="row-error">Duplicate search term — merge or rename one of these rows.</p>
         </li>
       </ul>
@@ -49,22 +49,23 @@
 <script>
 import { computed } from 'vue';
 import { APPROX_UNITS, UNIT_GROUPS, isScalableUnit, normaliseUnit } from '../unitOptions.js';
-import FilterEditor from './FilterEditor.vue';
 
 const KNOWN_UNITS = new Set(UNIT_GROUPS.flatMap((g) => g.units));
 
+// Product filters no longer live inline — the results card's "Filter tuner"
+// tab owns keyword editing. Builder rows only surface a compact rule-count
+// chip that deep-links there (open-filters).
 export default {
   name: 'DishBuilder',
-  components: { FilterEditor },
   props: {
     mode: { type: String, default: 'locked' }, // locked (read-only preview) | edit
     ingredients: { type: Array, required: true },
     duplicateTerms: { type: Set, default: () => new Set() },
     basePortions: { type: Number, default: 4 },
     requestedPortions: { type: Number, default: 4 },
-    filters: { type: Object, default: () => ({}) }, // search_term -> {includes, excludes}
+    filterCounts: { type: Object, default: () => ({}) }, // term -> active keyword count
   },
-  emits: ['add', 'remove', 'patch', 'update-filters'],
+  emits: ['add', 'remove', 'patch', 'open-filters'],
   setup(props, { emit }) {
     const scaleFactor = computed(() => (props.basePortions > 0 ? props.requestedPortions / props.basePortions : 1));
     const trimFactor = computed(() => {
@@ -80,14 +81,14 @@ export default {
     function isKnownUnit(unit) { return KNOWN_UNITS.has(normaliseUnit(unit)); }
     function unitValue(ing) { return normaliseUnit(ing.unit); }
     function termOf(ing) { return String(ing.search_term || '').trim(); }
-    function forward(term, next) { emit('update-filters', term, next); }
+    function rulesCount(term) { return props.filterCounts[term] || 0; }
     function displayQty(ing) {
       const qty = ing.quantity === null || ing.quantity === undefined ? '' : `${ing.quantity} `;
       const approx = ing.approx_quantity ? ` · ~${ing.approx_quantity} ${ing.approx_unit}` : '';
       return `${qty}${ing.unit}${approx}`;
     }
 
-    return { APPROX_UNITS, UNIT_GROUPS, scaleFactor, trimFactor, patch, needsApprox, hasApprox, isDuplicate, isBlank, isKnownUnit, unitValue, termOf, forward, displayQty };
+    return { APPROX_UNITS, UNIT_GROUPS, scaleFactor, trimFactor, patch, needsApprox, hasApprox, isDuplicate, isBlank, isKnownUnit, unitValue, termOf, rulesCount, displayQty };
   },
 };
 </script>

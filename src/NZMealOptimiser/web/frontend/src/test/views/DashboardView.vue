@@ -25,10 +25,10 @@
             <label class="field field-wide"><span>NZ address</span><input v-model.trim="form.address" list="address-history" placeholder="Auckland CBD" :disabled="gpsActive" :required="!gpsActive"><datalist id="address-history"><option v-for="address in addressHistory" :key="address" :value="address" /></datalist></label>
             <label class="field field-sm"><span>Distance</span><input v-if="settings.overridesArmed" v-model.number="form.distance_km" type="number" min="1" max="50" step="1" required @change="clampOverrides"><select v-else v-model.number="form.distance_km"><option v-for="km in 8" :key="km" :value="km">{{ km }} km</option></select></label>
             <label v-if="recipeMode !== 'shopping'" class="field field-sm"><span>Portions</span><input v-model.number="form.portions" type="number" min="2" max="12" required></label>
-            <label class="field field-sm"><span>Max stores / company</span><input v-if="settings.overridesArmed" v-model.number="form.max_stores_per_company" type="number" min="1" max="20" step="1" required @change="clampOverrides"><select v-else v-model.number="form.max_stores_per_company"><option v-for="count in 5" :key="count" :value="count">{{ count }}</option></select></label>
+            <label class="field field-sm"><span>Max stores per company</span><input v-if="settings.overridesArmed" v-model.number="form.max_stores_per_company" type="number" min="1" max="20" step="1" required @change="clampOverrides"><select v-else v-model.number="form.max_stores_per_company"><option v-for="count in 5" :key="count" :value="count">{{ count }}</option></select></label>
           </div>
           <p v-if="recipeMode === 'custom'" class="mode-note">Quantities above are scaled ×{{ scaleDisplay }} onto the {{ Number(draft.basePortions) || 1 }}-portion base recipe.</p>
-          <p v-else-if="recipeMode === 'shopping'" class="mode-note">Each row is one store search — quantities are exactly what you need to buy, priced at a single portion with no scaling.</p>
+          <p v-else-if="recipeMode === 'shopping'" class="mode-note">Each ingredient is one store search. Quantities are exactly what you need to buy, priced at a single portion with no scaling.</p>
           <div class="gps-row">
             <button type="button" class="ghost-button" :disabled="gpsBusy || gpsActive" @click="useGps"><span v-if="gpsBusy" class="spinner"></span>{{ gpsBusy ? 'Locating…' : 'Use my location' }}</button>
             <span v-if="gpsActive" class="chip chip-gps">📍 GPS · {{ gpsDisplay }}<button type="button" class="chip-x" title="Clear GPS location" @click="clearGps">✕</button></span>
@@ -57,7 +57,7 @@
             </template>
           </div>
         </div>
-        <DishBuilder :mode="recipeMode === 'preset' ? 'locked' : 'edit'" :ingredients="builderIngredients" :duplicate-terms="duplicateTerms" :base-portions="builderBasePortions" :requested-portions="builderRequestedPortions" :filters="scopeFilters" @update-filters="onUpdateFilters" @add="addIngredient" @remove="removeIngredient" @patch="patchIngredient" />
+        <DishBuilder :mode="recipeMode === 'preset' ? 'locked' : 'edit'" :ingredients="builderIngredients" :duplicate-terms="duplicateTerms" :base-portions="builderBasePortions" :requested-portions="builderRequestedPortions" :filter-counts="filterCounts" @add="addIngredient" @remove="removeIngredient" @patch="patchIngredient" @open-filters="openInTuner" />
         <p class="hint">{{ recipeHint }}</p>
       </section>
 
@@ -71,12 +71,17 @@
 
     <ProgressStrip :job="job" :running="jobRunning" :pct="overallPct" :elapsed="elapsedDisplay" />
 
-    <section v-if="canReapply" class="reapply-bar">
-      <span>⚙ Product filters changed since this run — store costs are out of date.</span>
-      <button type="button" class="ghost-button" :disabled="reaplying" title="Recalculate ingredient validity, store costs and the winner from the cached products — no new supermarket queries" @click="reapplyFilters">{{ reaplying ? 'Recalculating…' : 'Reapply filters' }}</button>
-    </section>
+    <ResultsTabs ref="resultsSection" :result="result" :companies="companies" :terms="runTerms" :tuner-ingredients="tunerIngredients" :filters="scopeFilters" :job-id="job.id || ''" :preview-active="previewActive" :can-reapply="canReapply" :applying="reaplying" @apply="reapplyFilters" @update-filters="onUpdateFilters" />
 
-    <ResultsSection ref="resultsSection" :result="result" :companies="companies" csv-download />
+    <transition name="toast-slide">
+      <aside v-if="applyToast" class="apply-toast" role="status">
+        <p><strong>{{ applyToast.count }} filter change{{ applyToast.count === 1 ? '' : 's' }}</strong> applied — check <em>Summary</em> for updated comparisons.</p>
+        <div class="toast-actions">
+          <button type="button" class="ghost-button ghost-small" @click="openToastSummary">Open summary →</button>
+          <button type="button" class="kw-x toast-x" title="Dismiss" @click="dismissApplyToast">✕</button>
+        </div>
+      </aside>
+    </transition>
   </main>
 </template>
 
@@ -85,7 +90,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import MapPanel from '../components/MapPanel.vue';
 import PipelineConsole from '../components/PipelineConsole.vue';
 import ProgressStrip from '../components/ProgressStrip.vue';
-import ResultsSection from '../components/ResultsSection.vue';
+import ResultsTabs from '../components/ResultsTabs.vue';
 import DishBuilder from '../components/DishBuilder.vue';
 import { useJobRunner } from '../composables/useJobRunner.js';
 import { normaliseUnit } from '../unitOptions.js';
@@ -98,7 +103,7 @@ const NORMAL_CAPS = { distance: 8, stores: 5 };
 const OVERRIDE_CAPS = { distance: 50, stores: 20 };
 
 export default {
-  components: { MapPanel, PipelineConsole, ProgressStrip, ResultsSection, DishBuilder },
+  components: { MapPanel, PipelineConsole, ProgressStrip, ResultsTabs, DishBuilder },
   setup(_props, { expose }) {
     const {
       job, result, loading, error, logLine, start,
@@ -220,6 +225,38 @@ export default {
     const presetFilters = ref({}); // dish key -> { search_term: {includes, excludes} }
     const reaplying = ref(false);
     let appliedFilterSig = ''; // filter payload baked into the latest run/reapply
+    let appliedFiltersSnapshot = {}; // keyword copy of the payload baked into the latest run/reapply
+
+    // ── Apply-filters toast ─────────────────────────────────────────────────
+    const applyToast = ref(null); // { count } while visible
+    let toastTimer = null;
+    function countFilterChanges(before, after) {
+      let changes = 0;
+      for (const term of new Set([...Object.keys(before), ...Object.keys(after)])) {
+        const a = before[term] || { includes: [], excludes: [] };
+        const b = after[term] || { includes: [], excludes: [] };
+        for (const kind of ['includes', 'excludes']) {
+          const prev = new Set((a[kind] || []).map((w) => w.toLowerCase()));
+          const next = new Set((b[kind] || []).map((w) => w.toLowerCase()));
+          for (const w of next) if (!prev.has(w)) changes += 1;
+          for (const w of prev) if (!next.has(w)) changes += 1;
+        }
+      }
+      return changes;
+    }
+    function showApplyToast(count) {
+      applyToast.value = { count };
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { applyToast.value = null; }, 6000);
+    }
+    function dismissApplyToast() {
+      if (toastTimer) clearTimeout(toastTimer);
+      applyToast.value = null;
+    }
+    function openToastSummary() {
+      dismissApplyToast();
+      resultsSection.value?.openSummary();
+    }
 
     function loadFilterStore() {
       try {
@@ -304,6 +341,31 @@ export default {
     const canReapply = computed(() => !!result.value && !!job.id && !jobRunning.value
       && !reaplying.value && filterSignature.value !== appliedFilterSig);
 
+    // ── Results card handoff (tabs / tuner) ────────────────────────────────
+    // Requested ingredient order for Summary rankings + tuner card 1.
+    const runTerms = computed(() => builderIngredients.value
+      .map((row) => String(row.search_term || '').trim())
+      .filter(Boolean));
+    function displayQty(ing) {
+      const qty = ing.quantity === null || ing.quantity === undefined ? '' : `${ing.quantity} `;
+      const approx = ing.approx_quantity ? ` · ~${ing.approx_quantity} ${ing.approx_unit}` : '';
+      return `${qty}${ing.unit}${approx}`;
+    }
+    const tunerIngredients = computed(() => builderIngredients.value
+      .map((row) => ({ term: String(row.search_term || '').trim(), row }))
+      .filter((entry) => entry.term)
+      .map((entry) => ({ term: entry.term, qty: displayQty(entry.row) })));
+    const filterCounts = computed(() => {
+      const counts = {};
+      for (const [term, entry] of Object.entries(scopeFilters.value || {})) {
+        const n = (entry.includes?.length || 0) + (entry.excludes?.length || 0);
+        if (n) counts[term] = n;
+      }
+      return counts;
+    });
+    const previewActive = computed(() => !!result.value && !jobRunning.value);
+    function openInTuner(term) { resultsSection.value?.openTuner(term); }
+
     async function reapplyFilters() {
       if (!canReapply.value) return;
       reaplying.value = true;
@@ -316,8 +378,12 @@ export default {
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.detail || 'Could not reapply the filters');
+        const changes = countFilterChanges(appliedFiltersSnapshot, currentIngredientFilters());
+        resultsSection.value?.suppressJumpOnce();
         result.value = data;
         appliedFilterSig = filterSignature.value;
+        appliedFiltersSnapshot = JSON.parse(JSON.stringify(currentIngredientFilters()));
+        showApplyToast(changes);
         const winner = data.store_costs?.[0];
         logLine('ok', 'SYS', `filters reapplied · ${data.rows.length} products recalculated · winner ${winner ? `${winner.store} $${winner.total_used_cost.toFixed(2)}` : '—'}`);
       } catch (err) {
@@ -371,9 +437,9 @@ export default {
     }
 
     const recipeHint = computed(() => {
-      if (recipeMode.value === 'custom') return 'Each row becomes one search per store. The ≈ fields give cans/items a gram or ml equivalent so used-costs can be scaled.';
-      if (recipeMode.value === 'shopping') return 'List the items you need with the quantity you want — each row is one search per store, priced as-is.';
-      return 'These are the searches the price comparison will run. Use Customise to tweak them.';
+      if (recipeMode.value === 'custom') return 'Each ingredient is one search per store. The ≈ fields give non-standard units a gram or ml equivalent so used-costs can be scaled.';
+      if (recipeMode.value === 'shopping') return 'List the items you need with the quantity you want. Each ingredient is one search per store, without scaling.';
+      return 'These are the searches the price comparison will run. Use "Customise" to tweak them.';
     });
 
     // ── Location / map plumbing (shared behaviour with the standard page) ──
@@ -398,7 +464,7 @@ export default {
         if (!validRows.value.length) return 'Add at least one item with a term and quantity.';
         if (duplicateTerms.value.size) return 'Merge the highlighted duplicate search terms.';
       } else if (!form.dish) return 'Choose a dish first.';
-      if (!resolved.value) return 'Step 1 — verify the dish and location first.';
+      if (!resolved.value) return 'Please verify the dish and location first.';
       if (staleNotice.value) return 'Parameters changed — resolve again to continue.';
       if (!previewStores.value.length) return 'No stores in range — increase the distance or select more supermarkets.';
       return 'Dish and location verified — ready to compare.';
@@ -543,6 +609,7 @@ export default {
       resultsSection.value?.resetFilters();
       payload.ingredient_filters = currentIngredientFilters();
       appliedFilterSig = filterSignature.value;
+      appliedFiltersSnapshot = JSON.parse(JSON.stringify(currentIngredientFilters()));
       logLine('phase', 'DISH', recipeMode.value === 'custom'
         ? `submitting custom dish "${payload.dish}" · ${payload.custom_dish.ingredients.length} searches · ×${scaleFactor.value} portions`
         : recipeMode.value === 'shopping'
@@ -578,6 +645,8 @@ export default {
       savePreset, savingPreset, canSavePreset, recipeHint, scaleDisplay,
       scopeFilters, onUpdateFilters, canResetFilters, resetFiltersToPreset,
       canReapply, reaplying, reapplyFilters,
+      runTerms, tunerIngredients, filterCounts, previewActive, openInTuner,
+      applyToast, dismissApplyToast, openToastSummary,
       job, jobRunning, overallPct, elapsedDisplay, terminalTitle, consoleLines, result,
       resultsSection,
       settings, hardLimits, clampOverrides,

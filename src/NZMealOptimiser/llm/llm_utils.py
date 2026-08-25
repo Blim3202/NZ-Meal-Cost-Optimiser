@@ -556,8 +556,10 @@ def parse_optimiser_columns(row: dict) -> dict:
             scaling_ratio = None
 
     # --- Compute purchase decisions ---
+    units_match = not (unit_approximate or used_approx_fallback)
     if scaling_ratio is None:
         # Incompatible units — product can't be used
+        units_match = False
         used_price = None
         purchase_quantity = 0
         purchase_price = None
@@ -589,5 +591,5 @@ def parse_optimiser_columns(row: dict) -> dict:
         "purchase_price": None if purchase_price is None else round(purchase_price, 2),
         "status": status,
         "unit_approximate": unit_approximate,
-        "units_match": (not unit_approximate and not used_approx_fallback),
+        "units_match": units_match,
     }

@@ -897,6 +897,68 @@ async def reapply_optimisation(job_id: str, req: ReapplyFiltersRequest):
     return result
 
 
+@app.post("/optimise/{job_id}/filter_preview")
+def filter_preview(job_id: str, req: ReapplyFiltersRequest) -> dict:
+    """Dry-run ingredient filters against a completed run's cached products.
+
+    Returns the per-term match counts and per-product validity that a reapply
+    WOULD produce — without recomputing store costs or touching ``job.result``
+    / ``pipeline_cache``. Powers the filter tuner's live "n/N matched" counters
+    and matched/filtered pills while keywords are being edited.
+
+    Response shape::
+
+        {"terms": {term: {"total": int, "matched": int}},
+         "products": [{company, store, sku, search_ingredient, returned_ingredient,
+                       brand, quantity, measurement_unit, price, valid, reason}],
+          "unmatched_terms": [...]}
+    """
+    job = JOBS.get(job_id)
+    if job is None:
+        raise HTTPException(404, f"Unknown job '{job_id}'")
+    if job.status != "complete":
+        raise HTTPException(409, f"Job '{job_id}' has not completed (status: {job.status})")
+    if not job.pipeline_cache or not job.pipeline_cache.get("rows"):
+        raise HTTPException(409, f"Job '{job_id}' has no cached products to preview against")
+
+    cache = job.pipeline_cache
+    rows = copy.deepcopy(cache["rows"])
+    ing_lookup = copy.deepcopy(cache["ing_lookup"])
+    _matched_terms, unmatched_terms = _merge_request_filters(
+        ing_lookup, _clean_ingredient_filters(req.ingredient_filters)
+    )
+    _apply_ingredient_validity(rows, ing_lookup)
+
+    counts: dict[str, dict[str, int]] = {}
+    products = []
+    for row in rows:
+        term = row.get("search_ingredient", "")
+        entry = counts.setdefault(term, {"total": 0, "matched": 0})
+        entry["total"] += 1
+        valid = row.get("valid_ingredient") is not False
+        if valid:
+            entry["matched"] += 1
+        products.append({
+            "company": row.get("company", ""),
+            "store": row.get("store", ""),
+            "sku": row.get("sku", ""),
+            "search_ingredient": term,
+            "returned_ingredient": row.get("returned_ingredient", ""),
+            "brand": row.get("brand", ""),
+            "quantity": row.get("quantity", ""),
+            "measurement_unit": row.get("measurement_unit", ""),
+            "price": row.get("price", ""),
+            "valid": valid,
+            "reason": "" if valid else (row.get("filter_reason") or ""),
+        })
+
+    return {
+        "terms": counts,
+        "products": products,
+        "unmatched_terms": unmatched_terms,
+    }
+
+
 def _new_job(req: DishRequest) -> JobState:
     _enforce_hard_limits(req.distance_km, req.max_stores_per_company)
     if req.companies is not None:
