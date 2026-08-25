@@ -107,8 +107,19 @@ Mutable progress object created per optimisation request (`_new_job`). Key attri
 | `latitude` | `float \| None` | `None` | Device GPS latitude — bypasses Nominatim when set |
 | `longitude` | `float \| None` | `None` | Device GPS longitude — must accompany `latitude` |
 | `custom_dish` | `CustomDish \| None` | `None` | Hand-built recipe from the dish builder (see below) |
+| `ingredient_filters` | `dict[str, IngredientFilterSet] \| None` | `None` | Per-search-term product-title filters: `{term: {includes: [...], excludes: [...]}}`. Include = ≥1 keyword must fuzzy-match the returned title (Levenshtein word ratio ≤ 0.35, singular/plural aware, multi-word needs all words); exclude = none may match. Failing rows get `valid_ingredient=False` + `filter_reason` and are skipped by store costs/winner (strictly — an empty result surfaces as a `filtered_out` store issue + placeholder row). Keywords capped 8/list, 40 chars (400 beyond); unknown terms are ignored with a console note. Works uniformly across preset/custom/shopping-list. |
 
 GPS coordinates are validated against a rough NZ bounding box (`NZ_LAT_RANGE = (-47.6, -34.2)`, `NZ_LON_RANGE = (166.2, 178.9)`): out-of-bounds or half-specified coords fail with 400 before any search work starts.
+
+### `IngredientFilterSet`
+
+```python
+class IngredientFilterSet(BaseModel):
+    includes: list[str] = Field(default_factory=list)
+    excludes: list[str] = Field(default_factory=list)
+```
+
+Matcher lives in `optimiser_utils.py` (`matches_ingredient_filters` / `contains_word` / `word_matches` / `levenshtein`) — ported verbatim from `exploration/llm/validate_dish_filters.py`, so curated rules in `data/dish_filters.json` behave identically at runtime.
 
 ### `CustomDish` / `CustomIngredient` (dish builder input)
 
@@ -176,6 +187,8 @@ Each row dict matches `full_results.csv` columns:
 | `status` | "ok", "approximate", or "incompatible_units" |
 | `units_match` | True if recipe and pack units are in the same base category |
 | `unit_approximate` | True if 1ml≈1g cross-category approximation was applied |
+| `valid_ingredient` | `false` when the ingredient's include/exclude keyword filters reject this product title (absent/`true` = flows through the optimisation normally) |
+| `filter_reason` | Why the row was rejected (`"INCLUDE [...] missing"` / `"EXCLUDE hit: [...]"`); empty for valid rows |
 
 ### Store cost format (`store_costs[]`)
 | Field | Description |
@@ -187,7 +200,7 @@ Each row dict matches `full_results.csv` columns:
 | `ingredients_total` | Number of ingredients REQUESTED for the dish (not just those that returned rows) |
 | `complete` | `true` when every requested ingredient has a valid scaled price at this store. Only complete baskets are directly comparable |
 | `best_per_ingredient` | Detail list — one entry per REQUESTED ingredient per store: the cheapest product with a valid `used_price`, or a **placeholder row** when nothing usable exists. Placeholder rows fill only `search_ingredient` (+ "Recipe Needed" ≈ fallbacks), leave all product columns blank, and carry `status: "not_found"`; they add nothing to totals or match counts |
-| `issues` | Unavailable ingredients for this store: `{search_ingredient, status: "error"\|"no_match"\|"incompatible_units", detail}`. Kept alongside placeholder rows so the *reason* stays visible |
+| `issues` | Unavailable ingredients for this store: `{search_ingredient, status: "error"\|"no_match"\|"incompatible_units"\|"filtered_out", detail}`. Kept alongside placeholder rows so the *reason* stays visible (`filtered_out` = every returned product was rejected by ingredient filters — respected strictly, never auto-relaxed) |
 | `lat` / `lon` | Store coordinates (from the brand store CSVs) — consumed by the dashboard map pins |
 | `distance_km` | Haversine distance from the resolved origin, rounded to 2 dp |
 
@@ -207,6 +220,8 @@ Each row dict matches `full_results.csv` columns:
 | `/dishes` | GET | Dishes from `data/dishes.json` — curated presets plus saved builder dishes (`portion` key = base portions; `"source": "user"` marks builder-saved entries, absent = curated) |
 | `/dishes/save` | POST | Upsert a builder dish as a preset in `data/dishes.json` (`SaveDishRequest{name, base_portions, ingredients}`); validates via `_validate_custom_dish`, tags `"source": "user"`, writes atomically (tmp file + `os.replace`) |
 | `/dishes/{key}` | DELETE | Remove a preset dish from `data/dishes.json` → `{ok, was_user, dishes_count}`; 404 on unknown keys |
+| `/dish_filters` | GET | Curated include/exclude keyword presets from `data/dish_filters.json` (`{dish: {search_term: {includes, excludes}}}`, underscored metadata keys included); `{}` when the file is missing. Feeds the dashboard's product-filter seeding — user edits stay browser-side |
+| `/optimise/{job_id}/reapply` | POST | Post-run filter recalculation for a **completed** job: body `{"ingredient_filters": {term: {includes, excludes}}}` (full replace). Rebuilds validity flags + store costs + winner from the run's cached product rows via `_recompute_with_filters` (deep-copied — first-run cache stays untouched and deterministic), replaces `job.result`, logs a console event, returns the fresh `OptimisationResult`. No supermarket calls. 404 unknown job · 409 not-complete or no cached rows |
 | `/tech-docs` | GET | List the whitelisted manuals → `[{name, title}]` |
 | `/tech-docs/{name}` | GET | Serve one manual as raw markdown (`text/markdown`) for client-side rendering; whitelisted names only |
 | `/geocode` | GET | `?address=...` → `{lat, lon, cached}` — standalone Nominatim lookup for the dashboard's resolve step (LRU-cached, NZ-bbox validated) |

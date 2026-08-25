@@ -1,0 +1,72 @@
+{
+  "beef mince": {
+    "includes": "beef",
+    "excludes": [
+      "burger",
+      "meatball",
+      "sausage",
+      "patty",
+      "seasoned"
+    ]
+  },
+  "spaghetti pasta": {
+    "includes": "spaghetti",
+    "excludes": [
+      "canned",
+      "sauce",
+      "meal",
+      "ready",
+      "tinned"
+    ]
+  },
+  "canned tomatoes": {
+    "includes": "tomato",
+    "excludes": [
+      "soup",
+      "paste",
+      "sauce",
+      "juice",
+      "ketchup"
+    ]
+  },
+  "onion": {
+    "includes": "onion",
+    "excludes": [
+      "powder",
+      "salt",
+      "dip",
+      "chips",
+      "flakes"
+    ]
+  },
+  "carrot": {
+    "includes": "carrot",
+    "excludes": [
+      "juice",
+      "cake",
+      "snack",
+      "chips",
+      "frozen"
+    ]
+  },
+  "garlic": {
+    "includes": "garlic",
+    "excludes": [
+      "powder",
+      "salt",
+      "bread",
+      "crushed",
+      "paste"
+    ]
+  },
+  "mixed herbs": {
+    "includes": "herb",
+    "excludes": [
+      "tea",
+      "oil",
+      "supplement",
+      "capsule",
+      "spray"
+    ]
+  }
+}

@@ -703,6 +703,73 @@ def build_woolworths_row(company, store, store_id, search_ingredient, product, n
     }
 
 
+# ── Ingredient include/exclude keyword filters (data/dish_filters.json) ──────
+
+def levenshtein(s1: str, s2: str) -> int:
+    """Pure-python Levenshtein distance."""
+    if len(s1) < len(s2):
+        return levenshtein(s2, s1)
+    if len(s2) == 0:
+        return len(s1)
+    previous = list(range(len(s2) + 1))
+    for i, c1 in enumerate(s1):
+        current = [i + 1]
+        for j, c2 in enumerate(s2):
+            insertions = previous[j + 1] + 1
+            deletions = current[j] + 1
+            substitutions = previous[j] + (c1 != c2)
+            current.append(min(insertions, deletions, substitutions))
+        previous = current
+    return previous[-1]
+
+
+def word_matches(haystack_word: str, needle_word: str, max_ratio: float = 0.35) -> bool:
+    """True if two words fuzzy-match (Levenshtein ratio <= max_ratio, or exact).
+
+    The ratio tolerance absorbs singular/plural and small spelling variants
+    ("carrot" vs "carrots", "tomato" vs "tomatoes") without a stemmer.
+    """
+    if haystack_word == needle_word:
+        return True
+    d = levenshtein(haystack_word, needle_word)
+    max_len = max(len(haystack_word), len(needle_word))
+    if max_len == 0:
+        return True
+    return (d / max_len) <= max_ratio
+
+
+def contains_word(haystack: str, needle: str) -> bool:
+    """Multi-word aware fuzzy match of ``needle`` inside ``haystack``.
+
+    For single words: any word in the haystack within ratio 0.35 passes.
+    For multi-word needles: ALL words must fuzzy-match somewhere in the title.
+    """
+    needle = needle.lower().strip()
+    if not needle:
+        return True
+    haystack_words = re.findall(r"[a-z]+", haystack.lower())
+    for n_word in needle.split():
+        if not any(word_matches(hw, n_word) for hw in haystack_words):
+            return False
+    return True
+
+
+def matches_ingredient_filters(returned_title: str, includes: list[str], excludes: list[str]) -> tuple[bool, str]:
+    """Apply one ingredient's include/exclude keywords to a product title.
+
+    Returns ``(passed, reason)``. A product passes when at least one include
+    keyword matches (vacuously true when no includes are set) AND no exclude
+    keyword matches. Mirrors the validated exploration matcher exactly so the
+    curated rules in dish_filters.json behave identically at runtime.
+    """
+    if includes and not any(contains_word(returned_title, inc) for inc in includes):
+        return False, f"INCLUDE {includes} missing"
+    matched_excludes = [exc for exc in excludes if contains_word(returned_title, exc)]
+    if matched_excludes:
+        return False, f"EXCLUDE hit: {matched_excludes}"
+    return True, ""
+
+
 def foodstuffs_querier_edge(api_class, find_nearby_stores, company_id, company_name,
                             user_address, dish_name, requery, max_dist_km=5.0):
     """Phase 1 (query): shared Edge API pipeline for Pak'nSave and New World.

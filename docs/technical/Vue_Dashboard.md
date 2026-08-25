@@ -4,7 +4,7 @@
 
 ## Overview
 
-Vue 3 (Composition API) frontend for the optimiser, served by FastAPI at `/app` (standard dashboard) and `/test` (dish-builder workspace). The `/test` entry is a full **app shell**: a fixed left sidebar switches between the optimiser dashboard (preset/custom/shopping-list recipe modes), My Dishes, an LLM Recipe Builder stub, a Documentation viewer and a multi-section Settings page. Both pages share form → resolve setup → live job progress → results, with a Leaflet/OSM map, live pipeline console, and GPS support. They are the only consumers of the job-based API (`POST /optimise/jobs` / `GET /optimise/{id}`).
+Vue 3 (Composition API) frontend for the optimiser, served by FastAPI at `/app` (production) and `/test` (sandbox). Both entries render the same **app shell**: a fixed left sidebar switches between the optimiser dashboard (preset/custom/shopping-list recipe modes), My Dishes, an LLM Recipe Builder stub, a Documentation viewer and a multi-section Settings page, with a Leaflet/OSM map, live pipeline console, and GPS support. They are the only consumers of the job-based API (`POST /optimise/jobs` / `GET /optimise/{id}`).
 
 ## Build & Toolchain
 
@@ -16,6 +16,7 @@ Vue 3 (Composition API) frontend for the optimiser, served by FastAPI at `/app` 
 | Map | Leaflet 1.9.4 + OSM tiles |
 | Build | `npm run lint` → `npm run build` (run inside `frontend/`) |
 | Pages | Multi-page via `vue.config.js`: `index` → `static/vue/index.html` (`main.js`/`App.vue`, served at `/app`), `test` → `static/vue/test.html` (`test-main.js`/`TestApp.vue`, served at `/test`) |
+| Dual trees | **Deliberately independent copies**: `src/` = production `/app`, `src/test/` = sandbox `/test` (identical file set: shell, views, components, composables, styles.css, settings.js, resultUtils.js, unitOptions.js). Edit the sandbox, then promote with `tools/frontend/promote_test_to_app.ps1` (rewrites topbar subtitle to `/app`) and rebuild both pages |
 | Output | `src/NZMealOptimiser/web/static/vue/` — **never hand-edit; always rebuild after editing `src/`** |
 | Public path | `/static/vue/` (absolute — pages only work through uvicorn, not `file://`) |
 
@@ -24,49 +25,54 @@ ESLint config lives inline in `package.json`; keep `no-console` clean.
 ## Source Map
 
 ```
-src/
-├── App.vue                    # /app page: all state in one setup()
-├── TestApp.vue                # /test shell: AppSidebar + <component :is> view switcher
-├── main.js / test-main.js     # entry points (create app, import styles.css)
-├── styles.css                 # ALL styling (SFCs have no <style> block)
-├── settings.js                # reactive settings store → localStorage 'meal-settings';
-│                              #   applies --content-max / --font-scale CSS vars to :root
-├── views/                     # /test sidebar pages (switched by TestApp shell, no router)
-│   ├── DashboardView.vue      # the optimiser (ex-TestApp body); exposes loadPreset(key, edit)
-│   ├── MyDishesView.vue       # dish library: Open/Edit/Delete + User/Curated badges
-│   ├── RecipeBuilderView.vue  # LLM recipe-from-URL stub (disabled form + roadmap)
-│   ├── DocsView.vue           # markdown viewer over GET /tech-docs (+ marked)
-│   └── SettingsView.vue       # display / units / advanced / danger-zone sections
-├── composables/
-│   ├── useJobRunner.js        # shared job engine: POST /optimise/jobs, cursor polling,
-│   │                          #   elapsed ticker, console feed + event merge
-│   └── useViewport.js         # shared resize listener → {width, isMobile, isCompact}
+src/                            # PRODUCTION tree → /app (edit only via promote script)
+├── App.vue                     # shell: AppSidebar + <component :is> view switcher
+├── main.js                     # entry point (create app, import styles.css)
+├── styles.css                  # ALL styling (SFCs have no <style> block)
+├── settings.js                 # reactive settings store → localStorage 'meal-settings';
+│                               #   applies --content-max / --font-scale CSS vars to :root
+├── views/                      # sidebar pages (switched by App.vue shell, no router)
+│   ├── DashboardView.vue       # the optimiser; exposes loadPreset(key, edit)
+│   ├── MyDishesView.vue        # dish library: Open/Edit/Delete + User/Curated badges
+│   ├── RecipeBuilderView.vue   # LLM recipe-from-URL stub (disabled form + roadmap)
+│   ├── DocsView.vue            # markdown viewer over GET /tech-docs (+ marked)
+│   └── SettingsView.vue        # display / units / advanced / danger-zone sections
 ├── components/
-│   ├── AppSidebar.vue         # dark ink nav rail; gear/Settings pinned bottom;
-│   │                          #   icon rail ≤1080px, overlay drawer ≤768px (pure CSS widths)
-│   ├── DishBuilder.vue        # /test recipe editor (rows of ingredient/qty/unit/search term)
-│   ├── PipelineConsole.vue    # terminal-style event log
-│   ├── ProgressStrip.vue      # overall bar + per-brand SVG ring tiles
-│   ├── ResultsSection.vue     # store cards + all-results table (shared by both pages)
-│   └── MapPanel.vue           # Leaflet map, props in / events out
-├── resultUtils.js             # winnerKeyOf / storesOf — result-vs-preview pin selection
-└── unitOptions.js             # unit list + aliases mirrored from backend UNIT_ALIASES
-                               #   (ALIASES exported — Settings unit-reference table reads it)
+│   ├── AppSidebar.vue          # dark ink nav rail; gear/Settings pinned bottom;
+│   │                           #   icon rail ≤1080px, overlay drawer ≤768px (pure CSS widths)
+│   ├── DishBuilder.vue         # recipe editor (rows of ingredient/qty/unit/search term)
+│   ├── FilterEditor.vue        # per-ingredient include/exclude keyword chips
+│   │                           #   (product filters; parent owns the term→filters map)
+│   ├── PipelineConsole.vue     # terminal-style event log
+│   ├── ProgressStrip.vue       # overall bar + per-brand SVG ring tiles
+│   ├── ResultsSection.vue      # store cards + all-results table
+│   └── MapPanel.vue            # Leaflet map, props in / events out
+├── composables/
+│   ├── useJobRunner.js         # shared job engine: POST /optimise/jobs, cursor polling,
+│   │                           #   elapsed ticker, console feed + event merge
+│   └── useViewport.js          # shared resize listener → {width, isMobile, isCompact}
+├── resultUtils.js              # winnerKeyOf / storesOf — result-vs-preview pin selection
+└── unitOptions.js              # unit list + aliases mirrored from backend UNIT_ALIASES
+                                #   (ALIASES exported — Settings unit-reference table reads it)
+
+src/test/                       # SANDBOX tree → /test (edit here, then promote);
+    …                           # identical file set + TestApp.vue instead of App.vue
 ```
 
-Shared components serve both pages; page-specific differences live in `App.vue` vs `views/DashboardView.vue`. Prefer extracting components over growing either file.
+The two trees are independent copies — changes in one never affect the other until promoted. `test-main.js` mounts `src/test/TestApp.vue` with `src/test/styles.css`.
 
 ## Behaviour Notes (brief)
 
-- **App shell (/test)**: `TestApp.vue` is a thin shell — `AppSidebar` + `<component :is>` view switcher over `views/`. No vue-router: navigation is a plain ref (`currentView`), so there are no deep links; the dashboard stays at `/test`. My Dishes → Dashboard handoff: `open-dish` event `{key, edit}` → shell navigates then calls the dashboard's exposed `loadPreset(key, edit)` after `nextTick`.
+- **App shell**: `App.vue` (production) / `TestApp.vue` (sandbox) are thin shells — `AppSidebar` + `<component :is>` view switcher over `views/`. No vue-router: navigation is a plain ref (`currentView`), so there are no deep links. My Dishes → Dashboard handoff: `open-dish` event `{key, edit}` → shell navigates then calls the dashboard's exposed `loadPreset(key, edit)` after `nextTick`.
 - **Responsive**: layout is pure CSS — fluid `clamp()` type/padding, `auto-fit/minmax` grids, three breakpoints (768 / 1080 / 1440) mirroring `useViewport.js`. Sidebar: full labels on desktop, icon rail ≤1080px, hamburger + overlay drawer ≤768px. Content width and UI scale come from CSS vars (`--content-max`, `--font-scale`) that `settings.js` writes to `:root`.
-- **Two-step flow (/app)**: dual-use submit button — "Resolve setup" (`GET /geocode` or GPS lock) until dish + location are verified, then "Compare prices". Settings changes after resolve flip it back (stale notice) and refresh a `/stores/nearby` map preview.
-- **Dish builder (/test)**: edit ingredients inline (quantity/unit/search term, optional ≈ fallbacks), run immediately, or "Save as preset" → `POST /dishes/save`. Runs send the recipe as `custom_dish` with its `base_portions`; the server scales to requested portions. "Clear all" (confirm-guarded) wipes the rows plus dish name/base portions.
-- **Shopping list (/test)**: third recipe-source mode. Reuses the builder rows but submits `custom_dish {dish_name: "Shopping list", base_portions: 1, source_label: "shopping_list"}` with `portions: 1` — quantities priced as-is, no scaling; the Portions input is hidden and results show a teal "Shopping list" chip. Draft rows carry over between custom ↔ shopping modes.
-- **CSV export (/test only)**: "Download CSV ⭳" on the All-results heading exports the current *filtered/sorted* view via a client-side `Blob` → `<a download>` click (native browser save dialog). UTF-8 BOM for Excel; raw numeric price columns; filename `<slugified-dish>-<date>.csv`. Gated behind the `csvDownload` prop so `/app` doesn't show it.
-- **My Dishes (/test)**: card grid from `GET /dishes`; badge derives from each entry's `source` field (`"user"` = saved via the builder, absent = curated). Edit/Open emit the shell handoff above; Delete → `DELETE /dishes/{key}` with an extra warning line when deleting curated dishes.
-- **Documentation (/test)**: lists `GET /tech-docs`, fetches raw markdown per file, renders with `marked` into `.doc-body` (v-html of trusted repo content). Code blocks go through a `highlight.js` renderer (python/bash/json registered — add more via `hljs.registerLanguage`); the `github-dark` theme is imported at the top of `styles.css`.
-- **Settings (/test)**: four sections persisted as one JSON blob in localStorage (`meal-settings`). Display = content-width presets + UI-scale slider (applied instantly via CSS vars); Units = read-only alias table from `unitOptions.js`; Advanced = API-key stub + live thread-pool info from `GET /system-info`; Danger zone = overrides toggle gated behind an accept-risk modal ("I accept" required; disarming needs no confirm).
+- **Two-step flow**: dual-use submit button — "Resolve setup" (`GET /geocode` or GPS lock) until dish + location are verified, then "Compare prices". Settings changes after resolve flip it back (stale notice) and refresh a `/stores/nearby` map preview.
+- **Dish builder**: edit ingredients inline (quantity/unit/search term, optional ≈ fallbacks), run immediately, or "Save as preset" → `POST /dishes/save`. Runs send the recipe as `custom_dish` with its `base_portions`; the server scales to requested portions. "Clear all" (confirm-guarded) wipes the rows plus dish name/base portions.
+- **Shopping list**: third recipe-source mode. Reuses the builder rows but submits `custom_dish {dish_name: "Shopping list", base_portions: 1, source_label: "shopping_list"}` with `portions: 1` — quantities priced as-is, no scaling; the Portions input is hidden and results show a teal "Shopping list" chip. Draft rows carry over between custom ↔ shopping modes.
+- **CSV export**: "Download CSV ⭳" on the All-results heading exports the current *filtered/sorted* view via a client-side `Blob` → `<a download>` click (native browser save dialog). UTF-8 BOM for Excel; raw numeric price columns; filename `<slugified-dish>-<date>.csv`. Gated behind the `csvDownload` prop (`ResultsSection` default false; `DashboardView.vue` binds it on).
+- **My Dishes**: card grid from `GET /dishes`; badge derives from each entry's `source` field (`"user"` = saved via the builder, absent = curated). Edit/Open emit the shell handoff above; Delete → `DELETE /dishes/{key}` with an extra warning line when deleting curated dishes.
+- **Documentation**: lists `GET /tech-docs`, fetches raw markdown per file, renders with `marked` into `.doc-body` (v-html of trusted repo content). Code blocks go through a `highlight.js` renderer (python/bash/json registered — add more via `hljs.registerLanguage`); the `github-dark` theme is imported at the top of `styles.css`.
+- **Settings**: four sections persisted as one JSON blob in localStorage (`meal-settings`). Display = content-width presets + UI-scale slider (applied instantly via CSS vars); Units = read-only alias table from `unitOptions.js`; Advanced = API-key stub + live thread-pool info from `GET /system-info`; Danger zone = overrides toggle gated behind an accept-risk modal ("I accept" required; disarming needs no confirm).
+- **Product filters**: every ingredient row (all three recipe modes) has a collapsible "Product filters" editor (`FilterEditor.vue`) with include/exclude keyword chips. Preset scopes seed once from `GET /dish_filters` (`data/dish_filters.json`); edits live in a per-user localStorage store (`meal-filters-v1`, `_seen` marker prevents deleted keywords resurrecting) and "Reset filters" restores the curated baseline when it drifts. Runs send the active keywords as `ingredient_filters`; rejected products come back flagged (`valid_ingredient: false` + reason) and are skipped by store costs — shown dimmed with a red "filtered" badge in the All-results table. After a run, editing chips surfaces an amber **Reapply filters** bar → `POST /optimise/{id}/reapply` recalculates costs/winner from cached products without new API calls.
 - **Danger-zone overrides**: when armed, the dashboard swaps Distance/Max-stores selects for number inputs (caps 50 km / 20 stores, clamped client-side and enforced server-side by `HARD_LIMITS`), and shows an amber "Overrides active" chip. Disarming clamps values back into the standard ranges.
 - **Polling**: ~700 ms `setTimeout` loop with an incremental `events_since` cursor; a monotonic `pollRun` token guards against stale polls across runs.
 - **Results**: store cards ranked complete-basket-first; missing ingredients render as blank "not found" rows (`status: "not_found"` → red label) plus the amber ⚠ issues banner; ★ winner pin goes to the first complete store.
@@ -94,7 +100,7 @@ Shared components serve both pages; page-specific differences live in `App.vue` 
 - Reactive singleton `{contentWidth, uiScale, overridesArmed}` persisted wholesale to localStorage on every change; `applyDisplaySettings()` mirrors display values onto `:root` as `--content-max` / `--font-scale` CSS vars (the shell re-applies on window resize so hard refreshes and tab restores stay consistent).
 - `overridesArmed` is only ever set true through SettingsView's accept-risk modal — treat it as a user consent flag, not a preference.
 
-### App shell (`TestApp.vue`) + `AppSidebar.vue`
+### App shell (`App.vue` / `TestApp.vue`) + `AppSidebar.vue`
 - `VIEWS` registry maps ids → components; sidebar emits `navigate(id)`, shell swaps `<component :is>`. Adding a page = new view file + one registry entry + one nav item.
 - Sidebar icons are inline SVG strings (`ICONS` map); active item gets an orange left bar. Rail/drawer behaviour is pure CSS media queries — JS only closes the drawer when leaving mobile widths.
 
@@ -103,7 +109,7 @@ Shared components serve both pages; page-specific differences live in `App.vue` 
 - Store sort re-implements the server ranking client-side: incomplete stores last, then ascending `total_used_cost`.
 - Numeric sorts sink rows lacking the chosen value to the bottom regardless of direction.
 - Statuses are snake_case in the payload: `statusLabel()` renders them spaced ("not found"), `statusClass()` maps to CSS (`not_found` → red `.status-not-found`).
-- `downloadCsv()` (only mounted when the `csvDownload` prop is set — `/test` passes it): serialises `filteredRows` with proper quote/comma escaping, prefixes a UTF-8 BOM, and triggers the download via a temporary object-URL anchor.
+- `downloadCsv()` (only mounted when the `csvDownload` prop is set — `DashboardView.vue` binds it): serialises `filteredRows` with proper quote/comma escaping, prefixes a UTF-8 BOM, and triggers the download via a temporary object-URL anchor.
 
 ### `MapPanel.vue`
 - `BRAND_COLORS` / `COMPANY_LABELS` are the single source for pin + legend colours; pins are inline-styled `L.divIcon`s (winner gets ★).
@@ -165,7 +171,7 @@ Same rule as type: repeated colour roles use `:root` tokens; raw hex only for si
 
 `--sp-1`(4px) → `--sp-8`(32px). Apply to `padding`/`gap`/`margin` **only when every component lands on-grid** (e.g. `padding: var(--sp-3) var(--sp-5)`); off-lattice legacy values (`11px 12px`, `14px 16px`, `9px 13px`…) stay raw until a visual-consolidation pass snaps them — do not auto-snap. Spacing is fixed px and deliberately NOT multiplied by `--font-scale`.
 
-> **App.vue ↔ DashboardView.vue duplication is deliberate**: resolve/GPS/preview/stale-signature logic (~150 lines) exists in both pages so each can diverge freely. Mirror any edits to this logic in **both files** (or extract into a composable later).
+> The pre-shell single-page `App.vue` was retired when the sandbox UI was promoted to `/app`. DashboardView is the only optimiser implementation per tree; intentional divergence now happens between the `src/` and `src/test/` trees — reconcile via the promote script, never by editing production files ad hoc.
 
 ## Backend Contract
 
@@ -174,12 +180,14 @@ Same rule as type: repeated colour roles use `:root` tokens; raw hex only for si
 | `GET /dishes` | on mount | Preset dropdown + ingredient preview (+ `source` badge in My Dishes) |
 | `GET /geocode?address=…` | "Resolve setup" (non-GPS) | `{lat, lon, cached}` |
 | `GET /stores/nearby?…` | resolve success / settings change | Pre-run map preview pins |
-| `POST /dishes/save` | "Save as preset" (/test) | Upsert into `data/dishes.json` (tags `"source": "user"`) |
+| `POST /dishes/save` | "Save as preset" | Upsert into `data/dishes.json` (tags `"source": "user"`) |
 | `DELETE /dishes/{key}` | My Dishes delete | Removes the preset; returns `{was_user, dishes_count}` |
 | `GET /system-info` | Settings mount | Effective/configured thread-pool workers + `HARD_LIMITS` |
 | `GET /tech-docs[/{name}]` | Documentation view | Manual list / raw markdown (whitelisted files only) |
 | `POST /optimise/jobs` | submit | `{ job_id }` |
 | `GET /optimise/{id}?events_since=N` | every ~700 ms | Snapshot: status/phase/counters/events/result |
+| `GET /dish_filters` | on mount | Curated include/exclude presets for seeding preset scopes |
+| `POST /optimise/{id}/reapply` | "Reapply filters" bar | Recalculated result from cached rows (no new API calls) |
 
 Event shape `{i, t, kind, co, text}`; full field reference in `FastAPI.md`.
 
@@ -190,14 +198,13 @@ Planned functionality that the current structure anticipates. UI hooks already i
 1. **LLM requery of generated ingredients** with an approval step before hitting supermarket APIs — the two-step button ("Resolve setup" → "Compare prices") is the seam: the resolve phase can grow an ingredient-resolution call + approval UI inside the ingredient-preview card, and only then unlock "Compare prices".
 2. **NLP refiltering of brands / product names** (e.g. organic only), updatable post-run — the all-results filter bar is the natural host; `excluded`/`textFilters` state shape generalises to rule objects, and rows already carry `brand`/`returned_ingredient`.
 3. **Proper best-price optimisation + repicking interface** for approved ingredients — store-card `best_per_ingredient` rows become selectable pickers; `storeKey` identity and per-store grouping carry over unchanged.
-4. **Download / email recipe + shopping list** — actions bar on the results heading; backend gains an export endpoint, frontend just POSTs current selection. *(Partially shipped: client-side CSV export of the all-results table is live on `/test` — see ResultsSection; email/recipe-sheet export still open.)*
+4. **Download / email recipe + shopping list** — actions bar on the results heading; backend gains an export endpoint, frontend just POSTs current selection. *(Partially shipped: client-side CSV export of the all-results table is live — see ResultsSection; email/recipe-sheet export still open.)*
 
 ## Future plans / room to expand
 
 Decisions made during the app-shell build-out (Aug 2026) that leave deliberate room to grow:
 
-- **Navigation without a router**: `/test` switches views via a plain ref + `<component :is>`. When a page needs deep links or history (most likely the LLM Recipe Builder), introduce vue-router in the `test` entry only and map the existing view ids onto routes — the shell template needs almost no change. A FastAPI catch-all serving `test.html` for `/test/*` paths would be required for history-mode URLs; hash mode works with zero backend changes.
-- **Extending the sidebar to `/app`**: App.vue still has no shell. If adopted there, extract the shared resolve/GPS/preview logic from DashboardView into a composable first (the duplication note above), then reuse `AppSidebar` + the same CSS as-is.
+- **Navigation without a router**: both shells switch views via a plain ref + `<component :is>`. When a page needs deep links or history (most likely the LLM Recipe Builder), introduce vue-router in the sandbox (`test`) entry first and map the existing view ids onto routes — the shell template needs almost no change. A FastAPI catch-all serving `test.html` for `/test/*` paths would be required for history-mode URLs; hash mode works with zero backend changes.
 - **LLM Recipe Builder wiring**: `views/RecipeBuilderView.vue` is a styled stub with the intended flow documented on-page (fetch URL → LLM extraction → review → prefill builder). The handoff into the builder already exists: emit the dish rows through the same `loadPreset`-style path (or extend it to accept raw ingredient rows) once extraction lands. Backend seam: a new endpoint calling `resolve_ingredients()` against fetched recipe text.
 - **Settings persistence**: settings live in localStorage (`meal-settings`) by design — nothing user-specific is trusted server-side yet. If settings must follow a user across devices, add a small key/value config endpoint and sync on mount; keep secrets out either way.
 - **Runtime thread-pool resize**: workers are fixed at startup via `WEB_MAX_WORKERS` (see FastAPI.md). A live-resize endpoint is feasible (create pool → `loop.set_default_executor` → `old.shutdown(wait=False)` so in-flight jobs drain) but was deliberately deferred as risky-for-little-gain; the Settings page already shows effective vs configured values so the UI won't need changes if it lands.

@@ -1,4 +1,4 @@
-// User settings store for the dashboard — reactive singleton persisted
+// User settings store for the /test dashboard — reactive singleton persisted
 // to localStorage under one key. Display settings are applied as CSS custom
 // properties on :root (--content-max / --font-scale) so every stylesheet
 // rule reads them without per-component plumbing.

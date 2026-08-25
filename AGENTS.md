@@ -31,6 +31,7 @@ opencode/
 │   ├── observed_category1_newworld.json        # Category1 values from New World Algolia index
 │   ├── observed_category1_paknsave.json        # Category1 values from Pak'nSave Algolia index
 │   ├── dishes.json                             # 21 hand-curated dishes with structured ingredients
+│   ├── dish_filters.json                       # Per-dish include/exclude keyword filters (served via GET /dish_filters; runtime matcher in optimiser_utils.py)
 │   └── full_results.csv                        # Append-only results with pk_hash deduplication + is_valid column
 ├── src/NZMealOptimiser/
 │   ├── __init__.py                             # PROJECT_ROOT + DATA_DIR resolved once (shared path contract)
@@ -46,7 +47,7 @@ opencode/
 │       ├── main.py                             # FastAPI app: /optimise/jobs + GET /optimise/{id} (live progress), legacy POST /optimise, /app (Vue) + /dishes, thread pool
 │       ├── config.py                           # Supabase settings loaded from .env
 │       ├── static/                             # index_old.html + generated Vue build (served at / and /app)
-│       └── frontend/                           # Vue CLI dashboard source (npm run build → static/vue/)
+│       └── frontend/                           # Vue CLI source: src/ = /app prod tree, src/test/ = /test sandbox (npm run build → static/vue/)
 ├── tools/
 │   ├── paknsave/                               # paknsave_setup.py, paknsave_optimiser_edge.py, paknsave_optimiser_mobile.py, paknsave_search_demo_*.py
 │   ├── newworld/                               # newworld_setup.py, newworld_optimiser_edge.py, newworld_optimiser_mobile.py, newworld_search_demo_*.py
@@ -85,8 +86,8 @@ opencode/
 | `src/NZMealOptimiser/pricing/woolworths_api.py` | Cookie-based Woolworths API module. Session, store context, product search. Constructs `cw-lrkswrdjp` cookie from `extra1` in store data. No Playwright needed at runtime. |
 | `src/NZMealOptimiser/llm/llm_client.py` | Mistral API client: model aliases (small/medium/large), rate limiting, JSON parsing with retries. |
 | `src/NZMealOptimiser/llm/llm_utils.py` | Ingredient resolution (curated `dishes.json` → LLM → fallback), dish parsing/validation (`parse_and_validate`), and quantity scaling (`parse_optimiser_columns` with `approx_quantity`/`approx_unit` fallback for non-standard units). |
-| `src/NZMealOptimiser/web/main.py` | FastAPI app + background-job optimisation API (`POST /optimise/jobs`, `GET /optimise/{id}` with per-company progress + event log) + legacy sync `/optimise` + frontend serving. HTTP logging middleware. Runs via `uvicorn NZMealOptimiser.web.main:app`. |
-| `src/NZMealOptimiser/web/frontend/` | Vue CLI dashboard source. Run `npm install` then `npm run build`; output is written to `src/NZMealOptimiser/web/static/vue/`. |
+| `src/NZMealOptimiser/web/main.py` | FastAPI app + background-job optimisation API (`POST /optimise/jobs`, `GET /optimise/{id}` with per-company progress + event log) + legacy sync `/optimise` + frontend serving. Also: `/dish_filters` (curated keyword presets) and `POST /optimise/{id}/reapply` (recalculate store costs from cached rows with edited ingredient filters — no new API calls). HTTP logging middleware. Runs via `uvicorn NZMealOptimiser.web.main:app`. |
+| `src/NZMealOptimiser/web/frontend/` | Vue CLI dashboard source. **Dual trees**: `src/` = production `/app`, `src/test/` = sandbox `/test` (independent copies). Edit the sandbox, then promote with `tools/frontend/promote_test_to_app.ps1` and run `npm run lint && npm run build`; output is written to `src/NZMealOptimiser/web/static/vue/`. Never hand-edit generated output. |
 | `src/NZMealOptimiser/web/static/index_old.html` | Original vanilla dashboard, still served at `/`. |
 | `src/NZMealOptimiser/web/static/vue/` | Generated Vue dashboard assets, served at `/app`; do not edit generated files directly. |
 | `tools/paknsave/paknsave_setup.py` | **Unified store builder**: Edge (57 stores) + Mobile (60 stores) + store_finder (60 stores, paknsave only). Callable module + CLI with `source` param. |
