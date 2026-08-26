@@ -129,6 +129,7 @@
 /* ---- Dish builder ---- */
 .seg-toggle { display: inline-flex; gap: var(--sp-1); background: var(--surface-dim); border-radius: 10px; padding: var(--sp-1); width: fit-content; } .seg-btn { border: 0; background: transparent; color: var(--muted); font-weight: 800; font-size: var(--fs-label); padding: var(--sp-2) var(--sp-4); border-radius: 8px; cursor: pointer; } .seg-btn:hover { color: var(--ink); } .seg-btn.active { background: var(--surface); color: var(--ink); box-shadow: 0 1px 5px rgba(23,33,43,.14); }
 .field-name { grid-column: span 4; } .field-base { grid-column: span 2; }
+.generate-row { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
 .mode-note { margin: 12px 2px 0; color: var(--amber-text); background: var(--amber-bg); border: 1px solid var(--amber-line); border-radius: 8px; padding: 9px 12px; font-size: var(--fs-ui); font-weight: 700; }
 .heading-actions { display: inline-flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 .ghost-small { padding: 7px 12px; font-size: var(--fs-ui); }

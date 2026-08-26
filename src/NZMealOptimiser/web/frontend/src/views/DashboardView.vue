@@ -21,14 +21,18 @@
             <template v-else-if="recipeMode === 'custom'">
               <label class="field field-name"><span>Dish name</span><input v-model.trim.lazy="draft.name" placeholder="e.g. kumara &amp; chorizo hash" maxlength="80"></label>
               <label class="field field-base"><span>Base portions</span><input v-model.number="draft.basePortions" type="number" min="1" max="24" required></label>
+              <div class="field field-wide generate-row">
+                <button type="button" class="ghost-button" :disabled="generating || !canGenerate" title="Ask Mistral to draft ingredients and Gemini to seed product-filter rules from the dish name (10-20 s)" @click="generateIngredients"><span v-if="generating" class="spinner"></span>{{ generating ? 'Generating…' : 'Generate custom ingredients' }}</button>
+                <span v-if="generating" class="hint">Mistral is drafting the recipe, then Gemini seeds the filter rules — this can take 10-20 s.</span>
+              </div>
             </template>
             <label class="field field-wide"><span>NZ address</span><input v-model.trim="form.address" list="address-history" placeholder="Auckland CBD" :disabled="gpsActive" :required="!gpsActive"><datalist id="address-history"><option v-for="address in addressHistory" :key="address" :value="address" /></datalist></label>
             <label class="field field-sm"><span>Distance</span><input v-if="settings.overridesArmed" v-model.number="form.distance_km" type="number" min="1" max="50" step="1" required @change="clampOverrides"><select v-else v-model.number="form.distance_km"><option v-for="km in 8" :key="km" :value="km">{{ km }} km</option></select></label>
             <label v-if="recipeMode !== 'shopping'" class="field field-sm"><span>Portions</span><input v-model.number="form.portions" type="number" min="2" max="12" required></label>
-            <label class="field field-sm"><span>Max stores / company</span><input v-if="settings.overridesArmed" v-model.number="form.max_stores_per_company" type="number" min="1" max="20" step="1" required @change="clampOverrides"><select v-else v-model.number="form.max_stores_per_company"><option v-for="count in 5" :key="count" :value="count">{{ count }}</option></select></label>
+            <label class="field field-sm"><span>Max stores per company</span><input v-if="settings.overridesArmed" v-model.number="form.max_stores_per_company" type="number" min="1" max="20" step="1" required @change="clampOverrides"><select v-else v-model.number="form.max_stores_per_company"><option v-for="count in 5" :key="count" :value="count">{{ count }}</option></select></label>
           </div>
           <p v-if="recipeMode === 'custom'" class="mode-note">Quantities above are scaled ×{{ scaleDisplay }} onto the {{ Number(draft.basePortions) || 1 }}-portion base recipe.</p>
-          <p v-else-if="recipeMode === 'shopping'" class="mode-note">Each row is one store search — quantities are exactly what you need to buy, priced at a single portion with no scaling.</p>
+          <p v-else-if="recipeMode === 'shopping'" class="mode-note">Each ingredient is one store search. Quantities are exactly what you need to buy, priced at a single portion with no scaling.</p>
           <div class="gps-row">
             <button type="button" class="ghost-button" :disabled="gpsBusy || gpsActive" @click="useGps"><span v-if="gpsBusy" class="spinner"></span>{{ gpsBusy ? 'Locating…' : 'Use my location' }}</button>
             <span v-if="gpsActive" class="chip chip-gps">📍 GPS · {{ gpsDisplay }}<button type="button" class="chip-x" title="Clear GPS location" @click="clearGps">✕</button></span>
@@ -52,12 +56,13 @@
             <button v-if="canResetFilters" type="button" class="ghost-button ghost-small" title="Restore the curated include/exclude keywords for this dish" @click="resetFiltersToPreset">Reset filters</button>
             <button v-if="recipeMode === 'preset'" type="button" class="ghost-button ghost-small" :disabled="!form.dish" title="Copy this preset into the builder and edit it" @click="customiseFromPreset">Customise ✎</button>
             <template v-else>
+              <button v-if="showUpdateButton" type="button" class="ghost-button ghost-small" :disabled="!canUpdatePrices" :title="canUpdatePrices ? 'Re-query only the changed ingredients across the same stores — quantity-only edits recalculate without new searches' : 'Resolve blank or duplicate search terms first'" @click="updateIngredientPrices"><span v-if="updatingPrices" class="spinner"></span>{{ updatingPrices ? 'Updating…' : `Update ingredient prices (${priceDiff.count})` }}</button>
               <button type="button" class="ghost-button ghost-small" :disabled="!draft.ingredients.length" :title="recipeMode === 'shopping' ? 'Remove every item from the shopping list' : 'Remove every ingredient row (dish name and base portions reset too)'" @click="clearBuilder">Clear all</button>
               <button v-if="recipeMode === 'custom'" type="button" class="ghost-button ghost-small" :disabled="savingPreset || !canSavePreset" :title="canSavePreset ? 'Store this recipe in data/dishes.json' : 'Complete the dish name and at least one ingredient row first'" @click="savePreset">{{ savingPreset ? 'Saving…' : 'Save as preset' }}</button>
             </template>
           </div>
         </div>
-        <DishBuilder :mode="recipeMode === 'preset' ? 'locked' : 'edit'" :ingredients="builderIngredients" :duplicate-terms="duplicateTerms" :base-portions="builderBasePortions" :requested-portions="builderRequestedPortions" :filters="scopeFilters" @update-filters="onUpdateFilters" @add="addIngredient" @remove="removeIngredient" @patch="patchIngredient" />
+        <DishBuilder :mode="recipeMode === 'preset' ? 'locked' : 'edit'" :ingredients="builderIngredients" :duplicate-terms="duplicateTerms" :base-portions="builderBasePortions" :requested-portions="builderRequestedPortions" :filter-counts="filterCounts" @add="addIngredient" @remove="removeIngredient" @patch="patchIngredient" @open-filters="openInTuner" />
         <p class="hint">{{ recipeHint }}</p>
       </section>
 
@@ -71,12 +76,17 @@
 
     <ProgressStrip :job="job" :running="jobRunning" :pct="overallPct" :elapsed="elapsedDisplay" />
 
-    <section v-if="canReapply" class="reapply-bar">
-      <span>⚙ Product filters changed since this run — store costs are out of date.</span>
-      <button type="button" class="ghost-button" :disabled="reaplying" title="Recalculate ingredient validity, store costs and the winner from the cached products — no new supermarket queries" @click="reapplyFilters">{{ reaplying ? 'Recalculating…' : 'Reapply filters' }}</button>
-    </section>
+    <ResultsTabs ref="resultsSection" :result="result" :companies="companies" :terms="runTerms" :tuner-ingredients="tunerIngredients" :filters="scopeFilters" :job-id="job.id || ''" :preview-active="previewActive" :can-reapply="canReapply" :applying="reaplying" @apply="reapplyFilters" @update-filters="onUpdateFilters" />
 
-    <ResultsSection ref="resultsSection" :result="result" :companies="companies" csv-download />
+    <transition name="toast-slide">
+      <aside v-if="applyToast" class="apply-toast" role="status">
+        <p><strong>{{ applyToast.count }} filter change{{ applyToast.count === 1 ? '' : 's' }}</strong> applied — check <em>Summary</em> for updated comparisons.</p>
+        <div class="toast-actions">
+          <button type="button" class="ghost-button ghost-small" @click="openToastSummary">Open summary →</button>
+          <button type="button" class="kw-x toast-x" title="Dismiss" @click="dismissApplyToast">✕</button>
+        </div>
+      </aside>
+    </transition>
   </main>
 </template>
 
@@ -85,7 +95,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import MapPanel from '../components/MapPanel.vue';
 import PipelineConsole from '../components/PipelineConsole.vue';
 import ProgressStrip from '../components/ProgressStrip.vue';
-import ResultsSection from '../components/ResultsSection.vue';
+import ResultsTabs from '../components/ResultsTabs.vue';
 import DishBuilder from '../components/DishBuilder.vue';
 import { useJobRunner } from '../composables/useJobRunner.js';
 import { normaliseUnit } from '../unitOptions.js';
@@ -98,7 +108,7 @@ const NORMAL_CAPS = { distance: 8, stores: 5 };
 const OVERRIDE_CAPS = { distance: 50, stores: 20 };
 
 export default {
-  components: { MapPanel, PipelineConsole, ProgressStrip, ResultsSection, DishBuilder },
+  components: { MapPanel, PipelineConsole, ProgressStrip, ResultsTabs, DishBuilder },
   setup(_props, { expose }) {
     const {
       job, result, loading, error, logLine, start,
@@ -121,6 +131,7 @@ export default {
     // ── Recipe source: preset dropdown vs hand-built dish ──────────────────
     const recipeMode = ref('preset');
     const savingPreset = ref(false);
+    const generating = ref(false);
     let rowSeq = 0;
     const emptyRow = () => ({ id: `row-${++rowSeq}`, search_term: '', quantity: '', unit: 'g', approx_quantity: '', approx_unit: '' });
     const draft = reactive({ name: '', basePortions: 4, ingredients: [] });
@@ -158,6 +169,7 @@ export default {
     });
     const canResolve = computed(() => canResolveBase.value && (gpsActive.value || !!form.address));
     const canSavePreset = computed(() => !!String(draft.name || '').trim() && validRows.value.length > 0 && duplicateTerms.value.size === 0);
+    const canGenerate = computed(() => !!String(draft.name || '').trim());
 
     function addIngredient() { draft.ingredients.push(emptyRow()); }
     function removeIngredient(index) { draft.ingredients.splice(index, 1); }
@@ -201,14 +213,70 @@ export default {
     function setMode(mode) {
       if (mode === recipeMode.value) return;
       recipeMode.value = mode;
-      // First visit to the builder: seed it with the currently selected preset.
-      if (mode === 'custom' && !draft.ingredients.length && form.dish) {
-        loadIntoDraft(form.dish);
-        logLine('ok', 'DISH', `builder seeded from "${draft.name}" — edit freely or clear rows`);
-      } else if (mode === 'custom') {
-        logLine('phase', 'DISH', 'builder open — add ingredients manually');
+      // Entering custom mode is always a blank slate: any previous builder
+      // content AND the shared 'custom' filter scope (one scope across all
+      // custom dishes) are wiped so stale rules can't leak into a new dish.
+      // "Customise ✎" bypasses setMode, so preset copying still works.
+      if (mode === 'custom') {
+        const hadContent = draft.ingredients.length > 0 || String(draft.name || '').trim() || Number(draft.basePortions) !== 4;
+        draft.name = '';
+        draft.basePortions = 4;
+        draft.ingredients = [];
+        filterStore.value = { ...filterStore.value, custom: {} };
+        logLine('phase', 'DISH', hadContent
+          ? 'custom dish — builder reset for a new recipe'
+          : 'builder open — name a dish, then generate or add ingredients');
       } else if (mode === 'shopping') {
         logLine('phase', 'DISH', 'shopping list — add items with the exact quantity you need');
+      }
+    }
+
+    // ── LLM custom-dish generation (POST /dishes/generate) ──────────────────
+    // Mistral drafts the ingredient rows; Gemini seeds include/exclude filter
+    // rules for each search term. Generated rules replace the whole 'custom'
+    // scope (it is shared across all custom dishes, so leftovers from a
+    // previous dish must never leak in). Rules stay fully editable afterwards.
+    function applyGeneratedFilters(filters) {
+      const clean = Object.fromEntries(Object.entries(filters || {})
+        .map(([term, f]) => [term, { includes: [...(f.includes || [])], excludes: [...(f.excludes || [])] }])
+        .filter(([, f]) => f.includes.length || f.excludes.length));
+      filterStore.value = { ...filterStore.value, custom: clean };
+      return Object.keys(clean).length;
+    }
+
+    async function generateIngredients() {
+      if (generating.value || !canGenerate.value) return;
+      const name = String(draft.name).trim();
+      const existing = draft.ingredients.filter((row) => String(row.search_term || '').trim()).length;
+      if (existing && !window.confirm(`Replace the current ${existing} ingredient row${existing === 1 ? '' : 's'} with AI-generated ones?`)) return;
+      generating.value = true;
+      error.value = '';
+      logLine('phase', 'DISH', `generating ingredients for "${name}" via Mistral…`);
+      try {
+        const response = await fetch('/dishes/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dish_name: name, base_portions: Number(draft.basePortions) || 4 }),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || 'Could not generate ingredients');
+        draft.ingredients = data.ingredients.map((ing) => ({
+          id: `row-${++rowSeq}`,
+          search_term: ing.search_term || '',
+          quantity: ing.quantity ?? '',
+          unit: normaliseUnit(ing.unit) || 'g',
+          approx_quantity: ing.approx_quantity ?? '',
+          approx_unit: normaliseUnit(ing.approx_unit || ''),
+        }));
+        const rulesCount = applyGeneratedFilters(data.filters);
+        for (const warning of data.warnings || []) logLine('warn', 'LLM', warning);
+        logLine('ok', 'LLM', `generated ${draft.ingredients.length} ingredients · ${rulesCount} filter rule${rulesCount === 1 ? '' : 's'} seeded — review them in the filter editor`);
+        if (origin.value) staleNotice.value = true; // recipe changed vs resolved setup
+      } catch (err) {
+        error.value = err.message;
+        logLine('err', 'LLM', `generation failed — ${err.message}`);
+      } finally {
+        generating.value = false;
       }
     }
 
@@ -220,6 +288,38 @@ export default {
     const presetFilters = ref({}); // dish key -> { search_term: {includes, excludes} }
     const reaplying = ref(false);
     let appliedFilterSig = ''; // filter payload baked into the latest run/reapply
+    let appliedFiltersSnapshot = {}; // keyword copy of the payload baked into the latest run/reapply
+
+    // ── Apply-filters toast ─────────────────────────────────────────────────
+    const applyToast = ref(null); // { count } while visible
+    let toastTimer = null;
+    function countFilterChanges(before, after) {
+      let changes = 0;
+      for (const term of new Set([...Object.keys(before), ...Object.keys(after)])) {
+        const a = before[term] || { includes: [], excludes: [] };
+        const b = after[term] || { includes: [], excludes: [] };
+        for (const kind of ['includes', 'excludes']) {
+          const prev = new Set((a[kind] || []).map((w) => w.toLowerCase()));
+          const next = new Set((b[kind] || []).map((w) => w.toLowerCase()));
+          for (const w of next) if (!prev.has(w)) changes += 1;
+          for (const w of prev) if (!next.has(w)) changes += 1;
+        }
+      }
+      return changes;
+    }
+    function showApplyToast(count) {
+      applyToast.value = { count };
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { applyToast.value = null; }, 6000);
+    }
+    function dismissApplyToast() {
+      if (toastTimer) clearTimeout(toastTimer);
+      applyToast.value = null;
+    }
+    function openToastSummary() {
+      dismissApplyToast();
+      resultsSection.value?.openSummary();
+    }
 
     function loadFilterStore() {
       try {
@@ -304,6 +404,31 @@ export default {
     const canReapply = computed(() => !!result.value && !!job.id && !jobRunning.value
       && !reaplying.value && filterSignature.value !== appliedFilterSig);
 
+    // ── Results card handoff (tabs / tuner) ────────────────────────────────
+    // Requested ingredient order for Summary rankings + tuner card 1.
+    const runTerms = computed(() => builderIngredients.value
+      .map((row) => String(row.search_term || '').trim())
+      .filter(Boolean));
+    function displayQty(ing) {
+      const qty = ing.quantity === null || ing.quantity === undefined ? '' : `${ing.quantity} `;
+      const approx = ing.approx_quantity ? ` · ~${ing.approx_quantity} ${ing.approx_unit}` : '';
+      return `${qty}${ing.unit}${approx}`;
+    }
+    const tunerIngredients = computed(() => builderIngredients.value
+      .map((row) => ({ term: String(row.search_term || '').trim(), row }))
+      .filter((entry) => entry.term)
+      .map((entry) => ({ term: entry.term, qty: displayQty(entry.row) })));
+    const filterCounts = computed(() => {
+      const counts = {};
+      for (const [term, entry] of Object.entries(scopeFilters.value || {})) {
+        const n = (entry.includes?.length || 0) + (entry.excludes?.length || 0);
+        if (n) counts[term] = n;
+      }
+      return counts;
+    });
+    const previewActive = computed(() => !!result.value && !jobRunning.value);
+    function openInTuner(term) { resultsSection.value?.openTuner(term); }
+
     async function reapplyFilters() {
       if (!canReapply.value) return;
       reaplying.value = true;
@@ -316,14 +441,121 @@ export default {
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.detail || 'Could not reapply the filters');
+        const changes = countFilterChanges(appliedFiltersSnapshot, currentIngredientFilters());
+        resultsSection.value?.suppressJumpOnce();
         result.value = data;
         appliedFilterSig = filterSignature.value;
+        appliedFiltersSnapshot = JSON.parse(JSON.stringify(currentIngredientFilters()));
+        showApplyToast(changes);
         const winner = data.store_costs?.[0];
         logLine('ok', 'SYS', `filters reapplied · ${data.rows.length} products recalculated · winner ${winner ? `${winner.store} $${winner.total_used_cost.toFixed(2)}` : '—'}`);
       } catch (err) {
         error.value = err.message;
       } finally {
         reaplying.value = false;
+      }
+    }
+
+    // ── Partial ingredient updates ("Update ingredient prices") ────────────
+    // After a completed run, builder edits diff against a snapshot taken at
+    // submit time (stable per-row ids). Renames are detected so their filter
+    // rules carry over; the server decides per term whether to re-query
+    // (added/renamed terms) or purely rescale (quantity/unit edits).
+    const updatingPrices = ref(false);
+    let runBaseline = null; // [{id, key, term}] baked into the last run/update
+    const rowKeyOf = (row) => JSON.stringify([
+      String(row.search_term || '').trim(),
+      Number(row.quantity),
+      normaliseUnit(row.unit),
+      Number(row.approx_quantity) > 0 ? Number(row.approx_quantity) : null,
+      Number(row.approx_quantity) > 0 ? normaliseUnit(row.approx_unit || '') : null,
+    ]);
+    function snapshotBuilderRows() {
+      return draft.ingredients.map((row) => ({ id: row.id, key: rowKeyOf(row), term: String(row.search_term || '').trim() }));
+    }
+    const priceDiff = computed(() => {
+      const out = { terms: [], renames: [], removedCount: 0, count: 0 };
+      if (!runBaseline || !result.value || jobRunning.value) return out;
+      const baseById = new Map(runBaseline.map((row) => [row.id, row]));
+      const seenIds = new Set();
+      for (const row of draft.ingredients) {
+        seenIds.add(row.id);
+        const term = String(row.search_term || '').trim();
+        const base = baseById.get(row.id);
+        if (!base) {
+          if (term) out.terms.push(term); // brand-new row
+          continue;
+        }
+        if (base.key !== rowKeyOf(row)) {
+          if (base.term && term && base.term !== term) out.renames.push([base.term, term]);
+          if (term) out.terms.push(term); // renamed or quantity/unit edit
+        }
+      }
+      for (const base of runBaseline) if (!seenIds.has(base.id)) out.removedCount += 1;
+      out.count = out.terms.length + out.removedCount;
+      return out;
+    });
+    const showUpdateButton = computed(() => !!result.value && !jobRunning.value && !staleNotice.value && priceDiff.value.count > 0);
+    const canUpdatePrices = computed(() => showUpdateButton.value && !updatingPrices.value
+      && duplicateTerms.value.size === 0
+      && draft.ingredients.every((row) => String(row.search_term || '').trim())
+      && (recipeMode.value !== 'custom' || !!String(draft.name || '').trim()));
+
+    // Renamed ingredient → move its generated/edited filter rules onto the
+    // new term so tuning survives a rename (rules are never regenerated).
+    function applyRuleRenames() {
+      const pairs = priceDiff.value.renames;
+      if (!pairs.length) return;
+      const scope = { ...(filterStore.value[activeScopeKey.value] || {}) };
+      let moved = 0;
+      for (const [from, to] of pairs) {
+        const fromKey = Object.keys(scope).find((key) => key.toLowerCase() === from.toLowerCase());
+        if (fromKey && !Object.keys(scope).some((key) => key.toLowerCase() === to.toLowerCase())) {
+          scope[to] = scope[fromKey];
+          moved += 1;
+        }
+        if (fromKey) delete scope[fromKey];
+      }
+      filterStore.value = { ...filterStore.value, [activeScopeKey.value]: scope };
+      if (moved) logLine('ok', 'DISH', `carried ${moved} filter rule${moved === 1 ? '' : 's'} over to the renamed search term${pairs.length === 1 ? '' : 's'}`);
+    }
+
+    async function updateIngredientPrices() {
+      if (!canUpdatePrices.value) return;
+      updatingPrices.value = true;
+      error.value = '';
+      const diff = priceDiff.value;
+      logLine('phase', 'SYS', `updating ${diff.count} changed ingredient${diff.count === 1 ? '' : 's'}`
+        + `${diff.renames.length ? ` · rename${diff.renames.length === 1 ? '' : 's'} detected` : ''}`);
+      try {
+        const response = await fetch(`/optimise/${job.id}/update_ingredients`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            custom_dish: {
+              dish_name: recipeMode.value === 'shopping' ? 'Shopping list' : String(draft.name).trim(),
+              base_portions: recipeMode.value === 'shopping' ? 1 : (Number(draft.basePortions) || 4),
+              ingredients: builderPayloadRows(),
+              source_label: recipeMode.value === 'shopping' ? 'shopping_list' : 'custom',
+            },
+            ingredient_filters: currentIngredientFilters(),
+          }),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || 'Could not update the ingredient prices');
+        applyRuleRenames();
+        resultsSection.value?.suppressJumpOnce();
+        result.value = data;
+        runBaseline = snapshotBuilderRows();
+        appliedFilterSig = filterSignature.value;
+        appliedFiltersSnapshot = JSON.parse(JSON.stringify(currentIngredientFilters()));
+        const winner = data.store_costs?.[0];
+        logLine('ok', 'SYS', `ingredient prices updated · ${data.rows.length} products recalculated · winner ${winner ? `${winner.store} $${winner.total_used_cost.toFixed(2)}` : '—'}`);
+      } catch (err) {
+        error.value = err.message;
+        logLine('err', 'SYS', `ingredient update failed — ${err.message}`);
+      } finally {
+        updatingPrices.value = false;
       }
     }
 
@@ -371,9 +603,9 @@ export default {
     }
 
     const recipeHint = computed(() => {
-      if (recipeMode.value === 'custom') return 'Each row becomes one search per store. The ≈ fields give cans/items a gram or ml equivalent so used-costs can be scaled.';
-      if (recipeMode.value === 'shopping') return 'List the items you need with the quantity you want — each row is one search per store, priced as-is.';
-      return 'These are the searches the price comparison will run. Use Customise to tweak them.';
+      if (recipeMode.value === 'custom') return 'Each ingredient is one search per store. The ≈ fields give non-standard units a gram or ml equivalent so used-costs can be scaled.';
+      if (recipeMode.value === 'shopping') return 'List the items you need with the quantity you want. Each ingredient is one search per store, without scaling.';
+      return 'These are the searches the price comparison will run. Use "Customise" to tweak them.';
     });
 
     // ── Location / map plumbing (shared behaviour with the standard page) ──
@@ -392,13 +624,13 @@ export default {
       if (resolving.value) return 'Checking dish and location…';
       if (recipeMode.value === 'custom') {
         if (!String(draft.name || '').trim()) return 'Name your dish first.';
-        if (!validRows.value.length) return 'Add at least one ingredient with a term and quantity.';
+        if (!validRows.value.length) return 'Add ingredients manually or click "Generate custom ingredients".';
         if (duplicateTerms.value.size) return 'Merge the highlighted duplicate search terms.';
       } else if (recipeMode.value === 'shopping') {
         if (!validRows.value.length) return 'Add at least one item with a term and quantity.';
         if (duplicateTerms.value.size) return 'Merge the highlighted duplicate search terms.';
       } else if (!form.dish) return 'Choose a dish first.';
-      if (!resolved.value) return 'Step 1 — verify the dish and location first.';
+      if (!resolved.value) return 'Please verify the dish and location first.';
       if (staleNotice.value) return 'Parameters changed — resolve again to continue.';
       if (!previewStores.value.length) return 'No stores in range — increase the distance or select more supermarkets.';
       return 'Dish and location verified — ready to compare.';
@@ -451,13 +683,16 @@ export default {
       else logLine('warn', 'DISH', `recipe unavailable (${key})`);
     });
 
-    const recipeSignature = computed(() => {
-      if (recipeMode.value === 'preset') return ['preset', form.dish].join('|');
-      if (recipeMode.value === 'shopping') return ['shopping', JSON.stringify(draft.ingredients)].join('|');
-      return ['custom', draft.name, draft.basePortions, JSON.stringify(draft.ingredients)].join('|');
-    });
-    const settingsSignature = computed(() => [recipeSignature.value, form.address, form.portions, form.max_stores_per_company, form.distance_km, form.companies.join()].join('|'));
-    watch(settingsSignature, () => { if (origin.value) { staleNotice.value = true; logLine('warn', 'SYS', 'parameters changed — check to resolve settings'); } });
+    // Stale-state trigger: ONLY location/store parameters force a re-resolve.
+    // Ingredient edits stay live — with a completed result they arm the
+    // partial "Update ingredient prices" flow instead of invalidating setup,
+    // and a full "Compare prices" rerun is always one click away anyway.
+    const locationSettingsSignature = computed(() => [
+      recipeMode.value === 'preset' ? `preset:${form.dish}` : recipeMode.value,
+      origin.value ? `${origin.value.lat},${origin.value.lon},${origin.value.source}` : '',
+      form.portions, form.max_stores_per_company, form.distance_km, form.companies.join(),
+    ].join('|'));
+    watch(locationSettingsSignature, () => { if (origin.value) { staleNotice.value = true; logLine('warn', 'SYS', 'location or store settings changed — resolve again to continue'); } });
 
     const previewSignature = computed(() => [origin.value ? `${origin.value.lat},${origin.value.lon}` : '', form.distance_km, form.companies.join(), form.max_stores_per_company].join('|'));
     watch(previewSignature, () => { fetchPreview(); });
@@ -543,6 +778,8 @@ export default {
       resultsSection.value?.resetFilters();
       payload.ingredient_filters = currentIngredientFilters();
       appliedFilterSig = filterSignature.value;
+      appliedFiltersSnapshot = JSON.parse(JSON.stringify(currentIngredientFilters()));
+      runBaseline = snapshotBuilderRows(); // baseline for post-run partial updates
       logLine('phase', 'DISH', recipeMode.value === 'custom'
         ? `submitting custom dish "${payload.dish}" · ${payload.custom_dish.ingredients.length} searches · ×${scaleFactor.value} portions`
         : recipeMode.value === 'shopping'
@@ -575,9 +812,13 @@ export default {
       recipeMode, setMode, draft, builderIngredients, builderBasePortions,
       builderRequestedPortions, duplicateTerms, validRows,
       addIngredient, removeIngredient, patchIngredient, clearBuilder, customiseFromPreset,
+      generateIngredients, generating, canGenerate,
       savePreset, savingPreset, canSavePreset, recipeHint, scaleDisplay,
       scopeFilters, onUpdateFilters, canResetFilters, resetFiltersToPreset,
       canReapply, reaplying, reapplyFilters,
+      updatingPrices, showUpdateButton, canUpdatePrices, priceDiff, updateIngredientPrices,
+      runTerms, tunerIngredients, filterCounts, previewActive, openInTuner,
+      applyToast, dismissApplyToast, openToastSummary,
       job, jobRunning, overallPct, elapsedDisplay, terminalTitle, consoleLines, result,
       resultsSection,
       settings, hardLimits, clampOverrides,

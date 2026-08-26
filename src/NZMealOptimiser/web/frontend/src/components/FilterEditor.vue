@@ -15,7 +15,7 @@
         <span v-for="(word, i) in current.excludes" :key="`exc-${i}`" class="kw-chip kw-exclude">{{ word }}<button type="button" class="kw-x" :title="`Remove '${word}'`" @click="drop('excludes', i)">✕</button></span>
         <input v-model="draftExc" class="kw-add" placeholder="add keyword ↵" @keydown.enter.prevent="push('excludes')">
       </div>
-      <p class="fg-hint">Include: at least one keyword must appear in the product name (fuzzy singular/plural match). Exclude: none may appear. Filtered-out products are skipped by the store costs.</p>
+      <p class="fg-hint">Include: every keyword must appear in the product name (fuzzy singular/plural match). Exclude: none may appear. Filtered-out products are skipped by the store costs.</p>
     </div>
   </div>
 </template>

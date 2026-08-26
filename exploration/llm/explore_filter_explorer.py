@@ -38,7 +38,8 @@ from exploration.llm.validate_dish_filters import contains_word, matches_filters
 
 load_dotenv(PROJECT_ROOT / ".env")
 
-MISTRAL_FILTER_MODEL = "mistral-large-2512"
+# MISTRAL_FILTER_MODEL = "mistral-large-2512"
+MISTRAL_FILTER_MODEL = "mistral-medium-latest"
 GOOGLE_FILTER_MODEL = "gemini-3.1-flash-lite"
 
 MAX_EXCLUDES = 5

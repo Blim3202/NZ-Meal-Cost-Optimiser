@@ -757,13 +757,15 @@ def contains_word(haystack: str, needle: str) -> bool:
 def matches_ingredient_filters(returned_title: str, includes: list[str], excludes: list[str]) -> tuple[bool, str]:
     """Apply one ingredient's include/exclude keywords to a product title.
 
-    Returns ``(passed, reason)``. A product passes when at least one include
-    keyword matches (vacuously true when no includes are set) AND no exclude
-    keyword matches. Mirrors the validated exploration matcher exactly so the
-    curated rules in dish_filters.json behave identically at runtime.
+    Returns ``(passed, reason)``. A product passes when EVERY include keyword
+    matches (AND semantics; vacuously true when no includes are set) AND no
+    exclude keyword matches. Mirrors the exploration matcher so curated rules
+    in dish_filters.json and user-edited rules behave identically at runtime.
     """
-    if includes and not any(contains_word(returned_title, inc) for inc in includes):
-        return False, f"INCLUDE {includes} missing"
+    if includes:
+        missing = [inc for inc in includes if not contains_word(returned_title, inc)]
+        if missing:
+            return False, f"INCLUDE missing {missing}"
     matched_excludes = [exc for exc in excludes if contains_word(returned_title, exc)]
     if matched_excludes:
         return False, f"EXCLUDE hit: {matched_excludes}"

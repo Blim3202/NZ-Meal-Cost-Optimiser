@@ -85,6 +85,11 @@ from NZMealOptimiser.llm.llm_utils import (
     resolve_ingredients,
     parse_optimiser_columns,
 )
+from NZMealOptimiser.llm.generation import (
+    GenerationConfigError,
+    GenerationError,
+    generate_custom_dish,
+)
 from NZMealOptimiser.pricing import optimiser_utils
 from NZMealOptimiser.pricing.optimiser_utils import (
     build_edge_row,
@@ -262,12 +267,13 @@ class CustomIngredient(BaseModel):
 class IngredientFilterSet(BaseModel):
     """Per-search-term include/exclude keywords for product-title filtering.
 
-    ``includes`` — at least one keyword must fuzzy-match the returned product
-    title (Levenshtein word ratio <= 0.35, singular/plural aware; multi-word
-    keywords need every word matched). ``excludes`` — no keyword may match.
-    Rows that fail get ``valid_ingredient=False`` and are skipped by the
-    store-cost/winner computation (strictly — an over-eager filter can empty
-    a search, which is surfaced as a store issue rather than auto-relaxed).
+    ``includes`` — EVERY keyword must fuzzy-match the returned product title
+    (AND semantics; Levenshtein word ratio <= 0.35, singular/plural aware;
+    multi-word keywords need every word matched). ``excludes`` — no keyword
+    may match. Rows that fail get ``valid_ingredient=False`` and are skipped
+    by the store-cost/winner computation (strictly — an over-eager filter can
+    empty a search, which is surfaced as a store issue rather than
+    auto-relaxed).
     """
 
     includes: list[str] = Field(default_factory=list)
@@ -358,6 +364,47 @@ def _apply_ingredient_validity(rows: list[dict], ing_lookup: dict[str, dict]) ->
             row["valid_ingredient"] = True
             row["filter_reason"] = ""
     return rejected
+
+
+def _enrich_and_scale_rows(rows: list[dict], ing_lookup: dict[str, dict]) -> int:
+    """Shared row post-processing for the main pipeline and the partial
+    ingredient update (Phases 3b/3b+/3c): stamp each row's ingredient
+    quantities, include/exclude filter validity, and parse_optimiser_columns
+    quantity scaling — all in place. Returns the number of filter-rejected
+    rows so callers can surface it.
+    """
+    for row in rows:
+        ing = ing_lookup.get(row.get("search_ingredient", ""), {})
+        row["ingredient_quantity"] = ing.get("quantity") if ing.get("quantity") is not None else ""
+        row["ingredient_measurement"] = ing.get("unit", "")
+        row["ingredient_approx_quantity"] = ing.get("approx_quantity")
+        row["ingredient_approx_unit"] = ing.get("approx_unit")
+        row["is_valid"] = ""
+
+    rejected_rows = _apply_ingredient_validity(rows, ing_lookup)
+
+    for row in rows:
+        try:
+            scaled = parse_optimiser_columns(row)
+            row["used_price"] = scaled.get("used_price")
+            row["purchase_quantity"] = scaled.get("purchase_quantity")
+            row["purchase_price"] = scaled.get("purchase_price")
+            row["scaling_ratio"] = scaled.get("scaling_ratio")
+            row["status"] = scaled.get("status")
+            row["units_match"] = scaled.get("units_match")
+            row["unit_approximate"] = scaled.get("unit_approximate")
+            row["pack_price"] = float(row.get("price", 0)) if row.get("price") not in ("", None) else 0.0
+        except Exception as e:  # noqa: BLE001 — a bad row must not sink the run
+            log.warning("Scaling error for row sku=%s: %s", row.get("sku", "?"), e)
+            row["used_price"] = None
+            row["purchase_quantity"] = 0
+            row["purchase_price"] = None
+            row["scaling_ratio"] = None
+            row["status"] = "error"
+            row["units_match"] = False
+            row["unit_approximate"] = False
+            row["pack_price"] = float(row.get("price", 0)) if row.get("price") not in ("", None) else 0.0
+    return rejected_rows
 
 
 class CustomDish(BaseModel):
@@ -714,6 +761,45 @@ async def delete_dish(key: str) -> dict:
     return {"ok": True, "key": key, "was_user": removed.get("source") == "user", "dishes_count": len(data)}
 
 
+class GenerateDishRequest(BaseModel):
+    """Body for POST /dishes/generate — an LLM-drafted custom recipe."""
+
+    dish_name: str
+    base_portions: int = 4
+
+
+@app.post("/dishes/generate")
+async def generate_dish(req: GenerateDishRequest) -> dict:
+    """Draft a custom dish's ingredients + product-filter rules via LLM.
+
+    Backs the /test dashboard's "Generate custom ingredients" button.
+    Ingredients come from Mistral (LLMClient "medium" alias); include/exclude
+    keyword rules come from Gemini flash-lite over the generated search terms,
+    shaped exactly like data/dish_filters.json entries so they can be seeded
+    into the dashboard's per-scope filter editor. Runs in the thread pool —
+    two sequential LLM calls, typically ~5-20 s total.
+
+    Ingredient-generation failures are fatal (502 after retries exhausted,
+    503 when an API key is missing). Filter-rule failures are soft: the
+    response carries empty rules plus a warning entry instead of erroring.
+    """
+    name = req.dish_name.strip()
+    if not name:
+        raise HTTPException(400, "The dish needs a name before generating")
+    base = max(1, min(int(req.base_portions) or 4, 24))
+    try:
+        payload = await asyncio.to_thread(generate_custom_dish, name, base)
+    except GenerationConfigError as exc:
+        raise HTTPException(503, str(exc))
+    except GenerationError as exc:
+        raise HTTPException(502, str(exc))
+    log.info(
+        "Generated custom dish '%s': %d ingredients, %d filter rule(s), %d warning(s)",
+        name, len(payload["ingredients"]), len(payload["filters"]), len(payload["warnings"]),
+    )
+    return payload
+
+
 _GEOCODE_CACHE: OrderedDict[str, tuple[float, float]] = OrderedDict()
 _GEOCODE_CACHE_MAX = 200
 
@@ -957,6 +1043,245 @@ def filter_preview(job_id: str, req: ReapplyFiltersRequest) -> dict:
         "products": products,
         "unmatched_terms": unmatched_terms,
     }
+
+
+class UpdateIngredientsRequest(BaseModel):
+    """Body for POST /optimise/{job_id}/update_ingredients — the edited
+    builder recipe plus the client's full (never regenerated) filter state."""
+
+    custom_dish: CustomDish
+    ingredient_filters: dict[str, IngredientFilterSet] = Field(default_factory=dict)
+
+
+def _diff_run_ingredients(
+    cache: dict, new_ing_lookup: dict[str, dict]
+) -> dict:
+    """Compare a submitted builder recipe against a completed run's cached
+    ingredients (pure — no network, no mutation).
+
+    Returns ``{"added", "removed", "kept", "qty_changed"}`` where the first
+    three are search-term lists and ``qty_changed`` lists kept terms whose
+    quantity/unit/approx fields differ (those need a pure rescale, never a
+    re-query). Matching is case-insensitive on term text.
+    """
+    old_terms = list(cache.get("search_terms", []))
+    old_by_lower = {t.lower(): t for t in old_terms}
+    old_lookup = cache.get("ing_lookup", {})
+    new_terms = list(new_ing_lookup)
+    new_lower = {t.lower() for t in new_terms}
+
+    added = [t for t in new_terms if t.lower() not in old_by_lower]
+    removed = [t for t in old_terms if t.lower() not in new_lower]
+    kept = [t for t in new_terms if t.lower() in old_by_lower]
+
+    def _sig(ing: dict) -> tuple:
+        return (
+            ing.get("quantity"), ing.get("unit"),
+            ing.get("approx_quantity"), ing.get("approx_unit"),
+        )
+
+    qty_changed = [
+        t for t in kept if _sig(old_lookup.get(old_by_lower[t.lower()], {})) != _sig(new_ing_lookup[t])
+    ]
+    return {"added": added, "removed": removed, "kept": kept, "qty_changed": qty_changed}
+
+
+def _stores_from_cache_rows(rows: list[dict]) -> list[tuple[str, str, str]]:
+    """Fallback store snapshot for caches written before ``stores``/``regions``
+    were cached: derive ordered unique (company, store_id, store_name) tuples
+    from the product rows themselves."""
+    seen: list[tuple[str, str, str]] = []
+    found: set[tuple[str, str, str]] = set()
+    for row in rows:
+        key = (row.get("company", ""), row.get("store_id", ""), row.get("store", ""))
+        if key not in found:
+            found.add(key)
+            seen.append(key)
+    return seen
+
+
+async def _update_job_ingredients(job: JobState, req: UpdateIngredientsRequest) -> OptimisationResult:
+    """Partially refresh a completed run after builder edits.
+
+    Only ADDED/RENAMED search terms hit the supermarket APIs — each is
+    queried against the exact stores of the original run. Removed terms have
+    their rows dropped; quantity/unit-only edits trigger a pure rescale.
+    Filters ride along from the client untouched (rules are never
+    regenerated). On success ``job.result`` AND ``job.pipeline_cache`` are
+    advanced so later previews/reapplies operate on fresh data.
+    """
+    cache = job.pipeline_cache
+    assert cache is not None
+    start = time.time()
+
+    # Validate + portion-scale the edited recipe exactly like a full run,
+    # but against the ORIGINAL request's portions/companies/distance.
+    base_name, base_portions, custom_ingredients = _validate_custom_dish(req.custom_dish)
+    dish_dict = {
+        "dish_name": base_name,
+        "portion": base_portions,
+        "ingredients": custom_ingredients,
+    }
+    dish_dict = _scale_ingredients_to_portions(dish_dict, job.req.portions)
+    dish_dict.pop("_scale_factor", None)
+    ingredients = dish_dict.get("ingredients", [])
+    for ing in ingredients:
+        if isinstance(ing, dict):
+            if ing.get("unit"):
+                ing["unit"] = normalise_unit(ing["unit"])
+            if ing.get("approx_unit"):
+                ing["approx_unit"] = normalise_unit(ing["approx_unit"])
+    new_ing_lookup = {
+        ing["search_term"]: ing for ing in ingredients
+        if isinstance(ing, dict) and "search_term" in ing
+    }
+    new_search_terms = [t for t in (i.get("search_term", "") for i in ingredients) if t]
+    if not new_search_terms:
+        raise HTTPException(400, "The updated recipe needs at least one ingredient")
+
+    # Attach the client's full filter state — unknown terms reported, never fatal.
+    matched_filter_terms, unmatched_terms = _merge_request_filters(
+        new_ing_lookup, _clean_ingredient_filters(req.ingredient_filters)
+    )
+
+    diff = _diff_run_ingredients(cache, new_ing_lookup)
+    added_terms = diff["added"]
+    removed_lower = {t.lower() for t in diff["removed"]}
+    run_stores = cache.get("stores") or _stores_from_cache_rows(cache["rows"])
+    regions = cache.get("regions", {})
+
+    # --- Re-query ONLY the added/renamed terms across the cached stores ----
+    fetched_rows: list[dict] = []
+    new_outcomes: dict[tuple, dict] = {}
+    if added_terms:
+        job.phase = f"Re-searching {len(added_terms)} changed ingredient(s)"
+        job.log_event(
+            "phase",
+            f"Re-searching '{' ,'.join(added_terms)}' across "
+            f"{len(run_stores)} cached store(s)…",
+        )
+        api_instances: dict[str, object] = {}
+        for company_name in sorted({s[0] for s in run_stores}):
+            cfg = BRANDS[company_name]
+            if "api_class" in cfg:
+                job.log_event("info", "Authenticating Edge API…", company_name)
+                api_instances[company_name] = await asyncio.to_thread(
+                    _make_authenticated_api, cfg["api_class"]
+                )
+                job.log_event("ok", "Authenticated", company_name)
+
+        metas = [
+            (company, store_id, store_name, term)
+            for (company, store_id, store_name) in run_stores
+            for term in added_terms
+        ]
+
+        async def _run_one(meta):
+            company, store_id, store_name, ingredient = meta
+            try:
+                rows = await _fetch_ingredient(
+                    company, api_instances.get(company), store_id, store_name,
+                    ingredient, regions.get((company, store_id), ""),
+                )
+                return meta, rows, None
+            except Exception as exc:  # noqa: BLE001 — recorded as a failed search
+                return meta, [], exc
+
+        for fut in asyncio.as_completed([_run_one(m) for m in metas]):
+            meta, rows, exc = await fut
+            company, _sid, store_name, ingredient = meta
+            if exc is not None:
+                new_outcomes[meta] = {"status": "error", "products": 0, "detail": f"{type(exc).__name__}: {exc}"}
+                log.warning("Error fetching %s@%s during update: %s", ingredient, store_name, exc)
+                job.log_event("err", f"{ingredient} @ {store_name} — {new_outcomes[meta]['detail']}", company)
+            elif not rows:
+                new_outcomes[meta] = {"status": "no_match", "products": 0, "detail": "no products returned"}
+                job.log_event("warn", f"{ingredient} @ {store_name} — no results", company)
+            else:
+                new_outcomes[meta] = {"status": "ok", "products": len(rows), "detail": ""}
+                fetched_rows.extend(rows)
+                job.log_event("ok", f"{ingredient} @ {store_name} → {len(rows)} products", company)
+
+    # --- Splice cached + fetched rows, then re-enrich/rescale everything ---
+    rows = [r for r in cache["rows"] if r.get("search_ingredient", "").lower() not in removed_lower]
+    rows.extend(fetched_rows)
+    rejected_rows = _enrich_and_scale_rows(rows, new_ing_lookup)
+
+    outcomes = {
+        key: value for key, value in cache["outcomes"].items()
+        if key[3].lower() not in removed_lower
+    }
+    outcomes.update(new_outcomes)
+
+    store_costs = _build_store_costs(
+        new_search_terms, new_ing_lookup, rows, outcomes, cache["store_geo"],
+    )
+    result = OptimisationResult(
+        dish=cache["dish_name"],
+        companies_checked=cache["companies"],
+        rows=rows,
+        store_costs=store_costs,
+        timestamp=datetime.now().isoformat(),
+        duration_seconds=round(time.time() - start, 2),
+        origin=cache["origin"],
+        dish_source=cache["source"],
+    )
+
+    # Advance the cached state so filter_preview / later reapplies / further
+    # partial updates all see the refreshed recipe.
+    cache["rows"] = rows
+    cache["search_terms"] = new_search_terms
+    cache["ing_lookup"] = new_ing_lookup
+    cache["outcomes"] = outcomes
+    job.result = result
+
+    parts = []
+    if added_terms:
+        parts.append(f"queried {len(added_terms)} new term(s)")
+    if diff["removed"]:
+        parts.append(f"dropped {len(diff['removed'])} term(s)")
+    if diff["qty_changed"]:
+        parts.append(f"rescaled {len(diff['qty_changed'])} term(s)")
+    note = f"Ingredients updated ({', '.join(parts) or 'no changes'}) · filters active on {matched_filter_terms} term(s)"
+    if unmatched_terms:
+        note += f" · unknown filter terms ignored: {', '.join(unmatched_terms)}"
+    if rejected_rows:
+        note += f" · {rejected_rows} product(s) excluded by filters"
+    if store_costs:
+        best = store_costs[0]
+        note += f" · winner {best['store']} ${best['total_used_cost']:.2f}"
+    job.log_event("ok", note)
+    log.info(
+        "Job %s updated ingredients (+%d/-%d/~%d) -> %d rows, %d stores",
+        job.id, len(added_terms), len(diff["removed"]), len(diff["qty_changed"]),
+        len(rows), len(store_costs),
+    )
+    return result
+
+
+@app.post("/optimise/{job_id}/update_ingredients", response_model=OptimisationResult)
+async def update_job_ingredients(job_id: str, req: UpdateIngredientsRequest):
+    """Re-query only the changed ingredients of a completed run ("Update
+    ingredient prices" button).
+
+    Body carries the full edited builder recipe plus the client's current
+    include/exclude filter state (rules are NEVER regenerated here). Added or
+    renamed search terms are re-queried against the original run's stores;
+    removed terms drop out of the comparison; quantity/unit-only edits just
+    recalculate costs with zero network calls.
+
+    The client serialises updates per job (like /reapply); concurrent calls
+    on one job are rejected only by the same completeness guards.
+    """
+    job = JOBS.get(job_id)
+    if job is None:
+        raise HTTPException(404, f"Unknown job '{job_id}'")
+    if job.status != "complete":
+        raise HTTPException(409, f"Job '{job_id}' has not completed (status: {job.status})")
+    if not job.pipeline_cache or not job.pipeline_cache.get("rows"):
+        raise HTTPException(409, f"Job '{job_id}' has no cached products to update")
+    result = await _update_job_ingredients(job, req)
+    return result
 
 
 def _new_job(req: DishRequest) -> JobState:
@@ -1278,6 +1603,7 @@ async def _execute_pipeline(job: JobState) -> OptimisationResult:
 
     job.phase = "Finding nearby stores"
     metas: list[tuple[str, str, str, str]] = []  # (company, store_id, store_name, ingredient)
+    run_stores: list[tuple[str, str, str]] = []  # ordered (company, store_id, store_name)
     regions: dict[tuple[str, str], str] = {}  # (company, store_id) -> NI/SI
     store_geo: dict[tuple[str, str], dict] = {}  # (company, store_name) -> map pin data
     for company_name in companies:
@@ -1316,6 +1642,7 @@ async def _execute_pipeline(job: JobState) -> OptimisationResult:
         for store in nearby:
             store_id = store["store_id"]
             store_name = store["name"]
+            run_stores.append((company_name, store_id, store_name))
             regions[(company_name, store_id)] = store.get("region", "")
             # Foodstuffs CSVs use latitude/longitude; Woolworths uses lat/lon.
             store_geo[(company_name, store_name)] = {
@@ -1393,50 +1720,19 @@ async def _execute_pipeline(job: JobState) -> OptimisationResult:
             dish_source=source,
         )
 
-    # --- Phase 3b: Enrich rows with LLM ingredient quantities ---
+    # --- Phases 3b/3b+/3c: enrich, validity-stamp and scale every row ---
+    # Every row is scaled regardless (cheap, pure) so a later "reapply" /
+    # partial ingredient update can recompute validity from cached rows
+    # without re-scaling; invalid rows are excluded from store costs by
+    # _build_store_costs, not here.
     job.phase = "Scaling quantities"
     job.log_event("phase", f"Computing scaled used-costs for {len(all_rows)} products")
-    for row in all_rows:
-        ing = ing_lookup.get(row.get("search_ingredient", ""), {})
-        row["ingredient_quantity"] = ing.get("quantity") if ing.get("quantity") is not None else ""
-        row["ingredient_measurement"] = ing.get("unit", "")
-        row["ingredient_approx_quantity"] = ing.get("approx_quantity")
-        row["ingredient_approx_unit"] = ing.get("approx_unit")
-        row["is_valid"] = ""
-
-    # --- Phase 3b+: Stamp include/exclude filter validity per row ---
-    # Every row is scaled regardless (cheap, pure) so a later "reapply" can
-    # recompute validity from cached rows without re-scaling; invalid rows are
-    # excluded from store costs by _build_store_costs, not here.
-    rejected_rows = _apply_ingredient_validity(all_rows, ing_lookup)
+    rejected_rows = _enrich_and_scale_rows(all_rows, ing_lookup)
     if rejected_rows:
         job.log_event(
             "warn",
             f"{rejected_rows} product(s) failed ingredient filters — excluded from store costs",
         )
-
-    # --- Phase 3c: Run parse_optimiser_columns for quantity scaling ---
-    for row in all_rows:
-        try:
-            scaled = parse_optimiser_columns(row)
-            row["used_price"] = scaled.get("used_price")
-            row["purchase_quantity"] = scaled.get("purchase_quantity")
-            row["purchase_price"] = scaled.get("purchase_price")
-            row["scaling_ratio"] = scaled.get("scaling_ratio")
-            row["status"] = scaled.get("status")
-            row["units_match"] = scaled.get("units_match")
-            row["unit_approximate"] = scaled.get("unit_approximate")
-            row["pack_price"] = float(row.get("price", 0)) if row.get("price") not in ("", None) else 0.0
-        except Exception as e:
-            log.warning("Scaling error for row sku=%s: %s", row.get("sku", "?"), e)
-            row["used_price"] = None
-            row["purchase_quantity"] = 0
-            row["purchase_price"] = None
-            row["scaling_ratio"] = None
-            row["status"] = "error"
-            row["units_match"] = False
-            row["unit_approximate"] = False
-            row["pack_price"] = float(row.get("price", 0)) if row.get("price") not in ("", None) else 0.0
 
     # --- Phase 4: Build per-store cost summary (see _build_store_costs) ---
     store_costs = _build_store_costs(search_terms, ing_lookup, all_rows, outcomes, store_geo)
@@ -1452,7 +1748,9 @@ async def _execute_pipeline(job: JobState) -> OptimisationResult:
     log.info("Job %s complete in %.2fs: %d products, %d stores", job.id, duration, len(all_rows), len(store_costs))
 
     # Keep the run's products + context so POST /optimise/{id}/reapply can
-    # recalculate costs with edited filters without hitting the APIs again.
+    # recalculate costs with edited filters without hitting the APIs again,
+    # and POST /optimise/{id}/update_ingredients can re-query only changed
+    # ingredients against this exact store set.
     job.pipeline_cache = {
         "rows": all_rows,
         "search_terms": search_terms,
@@ -1463,6 +1761,8 @@ async def _execute_pipeline(job: JobState) -> OptimisationResult:
         "dish_name": dish_name_resolved,
         "source": source,
         "origin": origin,
+        "regions": regions,      # (company, store_id) -> NI/SI for the Edge cookie
+        "stores": run_stores,    # ordered (company, store_id, store_name)
     }
 
     return OptimisationResult(

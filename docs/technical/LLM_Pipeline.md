@@ -38,8 +38,20 @@ llm_interactive.py  (CLI orchestration, 6 steps)
 |--------|------|
 | `src/NZMealOptimiser/llm/llm_client.py` | Mistral API client. Enforces rate limiting and JSON parsing with retries. |
 | `src/NZMealOptimiser/llm/llm_utils.py` | Ingredient resolution (curated → LLM), dish parsing/validation, quantity scaling math. |
+| `src/NZMealOptimiser/llm/generation.py` | Custom-dish draft service for the web dashboard: Mistral ingredients + Gemini filter rules (see "Custom-Dish Generation Service" below). |
 | `tools/llm/llm_interactive.py` | End-to-end interactive CLI that ties ingredient resolution → optimiser queries → results. |
 | `tools/llm/llm_validate.py` | Post-run validator: sends batches of CSV rows to the LLM to mark `is_valid` (True/False). |
+
+## Custom-Dish Generation Service (`generation.py`, web dashboard)
+
+Backs the `/test` dashboard's **"Generate custom ingredients"** button via `POST /dishes/generate`. Two sequential calls:
+
+1. **Ingredients — Mistral ("medium" alias)**: `generate_dish_ingredients()` reuses `LLMClient.generate_ingredients` + `parse_and_validate`, then cleans the output — units folded through `UNIT_ALIASES`, case-insensitive duplicates merged, empty-term/non-positive-quantity rows dropped (each intervention reported as a warning), count capped at 20 rows.
+2. **Filter rules — Gemini flash-lite** (`GOOGLE_API_KEY`, model via `GOOGLE_FILTER_MODEL`, default `gemini-3.1-flash-lite`, OpenAI-compatible endpoint): `generate_ingredient_filters()` ports the generic labelling prompt from `exploration/llm/explore_filter_explorer.py` and returns `{search_term: {includes: [word], excludes: [...]}}` — the exact shape of `data/dish_filters.json` entries / `IngredientFilterSet`.
+
+Error model: missing API key → `GenerationConfigError` → HTTP 503; ingredient generation/validation failure after retries → `IngredientGenerationError` → HTTP 502; **filter failures are non-fatal** — the response carries empty rules plus a warning so a Gemini outage never blocks usable ingredients.
+
+The generated rules are seeded into the dashboard's shared `custom` filter scope and remain fully user-editable before the run; at runtime they flow through the same `matches_ingredient_filters` machinery as curated presets.
 
 ## Ingredient Resolution
 

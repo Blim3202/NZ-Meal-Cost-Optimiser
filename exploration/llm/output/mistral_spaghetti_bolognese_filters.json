@@ -3,70 +3,70 @@
     "includes": "mince",
     "excludes": [
       "sausage",
-      "patty",
-      "meatball",
+      "pie",
       "burger",
-      "kebab"
+      "patty",
+      "soup"
     ]
   },
   "spaghetti pasta": {
     "includes": "spaghetti",
     "excludes": [
-      "lasagne",
-      "penne",
-      "macaroni",
+      "sauce",
+      "soup",
       "noodles",
-      "instant"
+      "instant",
+      "meal"
     ]
   },
   "canned tomatoes": {
     "includes": "tomatoes",
     "excludes": [
       "sauce",
-      "paste",
       "soup",
-      "diced",
-      "puree"
+      "paste",
+      "juice",
+      "ketchup"
     ]
   },
   "onion": {
     "includes": "onion",
     "excludes": [
       "powder",
-      "flakes",
-      "salt",
+      "soup",
       "dip",
-      "rings"
+      "flakes",
+      "seasoning"
     ]
   },
   "carrot": {
     "includes": "carrot",
     "excludes": [
       "juice",
-      "cake",
       "soup",
+      "cake",
       "chips",
-      "flakes"
+      "dip"
     ]
   },
   "garlic": {
     "includes": "garlic",
     "excludes": [
       "powder",
-      "salt",
-      "paste",
-      "bread",
-      "butter"
+      "soup",
+      "sauce",
+      "seasoning",
+      "paste"
     ]
   },
   "mixed herbs": {
     "includes": "herbs",
     "excludes": [
+      "soup",
+      "sauce",
       "seasoning",
-      "salt",
-      "pepper",
-      "blend",
-      "rub"
+      "dip",
+      "sachet"
     ]
   }
 }

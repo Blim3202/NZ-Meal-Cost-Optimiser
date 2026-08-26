@@ -1,7 +1,7 @@
 <template>
   <div class="app-frame" :class="{ 'drawer-open': drawerOpen }">
     <header class="mobile-topbar">
-      <button type="button" class="ghost-button ghost-small" aria-label="Open navigation" @click="drawerOpen = true">☰</button>
+      <button type="button" class="ghost-button ghost-small" aria-label="Open navigation" @click="drawerOpen = true">â˜°</button>
       <span class="topbar-brand"><strong>Meal Optimiser</strong><small>/app</small></span>
     </header>
 
@@ -50,7 +50,7 @@ export default {
       window.scrollTo({ top: 0 });
     }
 
-    // My Dishes → dashboard handoff (optionally straight into edit mode).
+    // My Dishes â†’ dashboard handoff (optionally straight into edit mode).
     function openDish({ key, edit }) {
       navigate('dashboard');
       nextTick(() => activeView.value?.loadPreset(key, edit));

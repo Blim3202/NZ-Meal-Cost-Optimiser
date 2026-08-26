@@ -36,7 +36,7 @@
       "salt",
       "dip",
       "chips",
-      "flakes"
+      "crisps"
     ]
   },
   "carrot": {
@@ -52,21 +52,21 @@
   "garlic": {
     "includes": "garlic",
     "excludes": [
+      "bread",
       "powder",
       "salt",
-      "bread",
-      "crushed",
+      "crush",
       "paste"
     ]
   },
   "mixed herbs": {
     "includes": "herb",
     "excludes": [
-      "tea",
       "oil",
+      "tea",
       "supplement",
-      "capsule",
-      "spray"
+      "spray",
+      "seasoning"
     ]
   }
 }

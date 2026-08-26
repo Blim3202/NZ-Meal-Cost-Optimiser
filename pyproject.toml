@@ -15,6 +15,7 @@ dependencies = [
     "numpy",
     "python-dotenv",
     "mistralai",
+    "openai",
     "playwright",
     "pydantic-settings",
     "supabase",

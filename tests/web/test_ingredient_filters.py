@@ -66,6 +66,10 @@ def test_contains_word_blank_needle_vacuous():
     ("Pork Mince 500g", ["mince"], ["pork"], False),        # exclude hit
     ("Anything At All", [], ["nope"], True),                # excludes only
     ("Garlic Powder 100g", ["garlic"], ["powder"], False),
+    # AND semantics: EVERY include keyword must match the title.
+    ("Beef Mince Premium 500g", ["beef", "mince"], [], True),
+    ("Beef Mince Premium 500g", ["beef", "lamb"], [], False),   # one include missing
+    ("Chicken Thigh 500g", ["chicken", "thigh", "breast"], [], False),
 ])
 def test_matches_ingredient_filters(returned, includes, excludes, expected):
     passed, _ = matches_ingredient_filters(returned, includes, excludes)
@@ -76,7 +80,10 @@ def test_matches_ingredient_filters_reason_strings():
     ok, reason = matches_ingredient_filters("Beef Mince", ["mince"], [])
     assert ok and reason == ""
     _, inc_reason = matches_ingredient_filters("Diced Beef", ["mince"], [])
-    assert "INCLUDE" in inc_reason
+    assert "INCLUDE" in inc_reason and "mince" in inc_reason
+    # AND semantics: only the genuinely missing keywords are reported.
+    _, multi_reason = matches_ingredient_filters("Beef Mince", ["beef", "lamb"], [])
+    assert "INCLUDE" in multi_reason and "lamb" in multi_reason
     _, exc_reason = matches_ingredient_filters("Pork Mince", ["mince"], ["pork"])
     assert "EXCLUDE" in exc_reason
 

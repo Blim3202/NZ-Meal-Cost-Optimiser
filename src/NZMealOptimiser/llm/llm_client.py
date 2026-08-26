@@ -41,7 +41,7 @@ DEFAULT_RATE_LIMITS = {
 }
 
 INGREDIENT_PROMPT = """You are a recipe ingredient generator. Given a classic or user stylised dish and portion count,
-return a JSON object with ingredients and quantities.
+return a JSON object with its core ingredients and quantities.
 
 Dish: {dish}
 Portions: {portions}
@@ -67,6 +67,7 @@ Rules:
 - "unit" must be a string (e.g. "g", "ml", "tbsp", "cloves", "unit").
 - For ingredients with non-standard units (e.g. "1 medium onion", "1 can", "1 head of broccoli", "2 medium carrots", "1 bunch"), also include "approx_quantity" (in g or ml) and "approx_unit" ("g" or "ml"). Omit these fields for ingredients with standard weight/volume units (g, kg, mg, ml, l, cl, cup, tbsp, tsp, cloves, etc.).
 - OMIT small or condiment ingredients like "water", "oil", "salt", "pepper" UNLESS the dish is centred around them (e.g. "deep fried chicken" keeps oil for frying, "pepper crab" keeps pepper).
+- Generate up to a strict maximum of 10 ingredients, ordered by most significant ingredient first. Simple dishes may have fewer ingredients.
 - Do not include notes or extra fields.
 """
 

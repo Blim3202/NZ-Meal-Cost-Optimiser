@@ -1,0 +1,250 @@
+"""Tests for NZMealOptimiser.llm.generation — the custom-dish LLM draft service.
+
+Both LLM backends are faked at module boundaries: Mistral via a stub LLMClient,
+Gemini via monkeypatched call_gemini(). No network access.
+"""
+import json
+
+import pytest
+
+from NZMealOptimiser.llm import generation as gen
+from NZMealOptimiser.llm.generation import (
+    FilterGenerationError,
+    GenerationConfigError,
+    IngredientGenerationError,
+    call_gemini,
+    generate_custom_dish,
+    generate_dish_ingredients,
+    generate_ingredient_filters,
+    parse_filters,
+)
+
+
+class FakeLLMClient:
+    """Stands in for LLMClient; returns a canned raw recipe payload."""
+
+    def __init__(self, raw):
+        self._raw = raw
+        self.calls = []
+
+    def generate_ingredients(self, dish_name, portion=4):
+        self.calls.append((dish_name, portion))
+        return self._raw
+
+
+# ── Ingredient generation ─────────────────────────────────────────────────────
+
+def _raw_recipe(**overrides):
+    raw = {
+        "dish_name": "kumara hash",
+        "portion": 4,
+        "ingredients": [
+            {"quantity": 600, "unit": "grams", "search_term": "kumara"},
+            {"quantity": 1, "unit": "pk", "search_term": "chorizo",
+             "approx_quantity": 200, "approx_unit": "g"},
+        ],
+    }
+    raw.update(overrides)
+    return raw
+
+
+def test_generate_dish_ingredients_happy_path(monkeypatch):
+    client = FakeLLMClient(_raw_recipe())
+    monkeypatch.setattr(gen, "LLMClient", lambda model_alias="medium": client)
+
+    ingredients, warnings = generate_dish_ingredients("Kumara & Chorizo Hash", 4)
+
+    assert client.calls == [("Kumara & Chorizo Hash", 4)]
+    assert ingredients == [
+        {"quantity": 600.0, "unit": "g", "search_term": "kumara"},
+        {"quantity": 1.0, "unit": "pack", "search_term": "chorizo",
+         "approx_quantity": 200.0, "approx_unit": "g"},
+    ]
+    assert warnings == []
+
+
+def test_generate_dish_ingredients_drops_and_merges_rows(monkeypatch):
+    raw = {
+        "dish_name": "messy",
+        "portion": 4,
+        "ingredients": [
+            {"quantity": 0, "unit": "g", "search_term": "salt"},       # qty <= 0 -> dropped
+            {"quantity": 2, "unit": "", "search_term": "   "},         # blank term -> dropped
+            {"quantity": 100, "unit": "ml", "search_term": "Kumara"},  # duplicate of below? no:
+            {"quantity": 500, "unit": "g", "search_term": "kumara"},   # case-insensitive dupe
+        ],
+    }
+    client = FakeLLMClient(raw)
+    monkeypatch.setattr(gen, "LLMClient", lambda model_alias="medium": client)
+
+    ingredients, warnings = generate_dish_ingredients("messy")
+
+    assert [i["search_term"] for i in ingredients] == ["Kumara"]  # first occurrence wins
+    assert len(warnings) == 3
+    assert any("duplicate search term 'kumara'" in w for w in warnings)
+
+
+def test_generate_dish_ingredients_caps_runaway_recipes(monkeypatch):
+    raw = {
+        "dish_name": "everything",
+        "portion": 4,
+        "ingredients": [{"quantity": 10, "unit": "g", "search_term": f"item {n}"} for n in range(30)],
+    }
+    monkeypatch.setattr(gen, "LLMClient", lambda model_alias="medium": FakeLLMClient(raw))
+
+    ingredients, warnings = generate_dish_ingredients("everything")
+
+    assert len(ingredients) == gen.MAX_INGREDIENTS
+    assert any(f"capped the recipe at {gen.MAX_INGREDIENTS}" in w for w in warnings)
+
+
+def test_generate_dish_ingredients_rejects_all_unusable(monkeypatch):
+    raw = {"dish_name": "x", "portion": 4,
+           "ingredients": [{"quantity": -5, "unit": "g", "search_term": "ghost"}]}
+    monkeypatch.setattr(gen, "LLMClient", lambda model_alias="medium": FakeLLMClient(raw))
+
+    with pytest.raises(IngredientGenerationError):
+        generate_dish_ingredients("ghost dish")
+
+
+def test_missing_mistral_key_is_config_error(monkeypatch):
+    monkeypatch.delenv("MISTRAL_API_KEY", raising=False)
+    with pytest.raises(GenerationConfigError):
+        generate_dish_ingredients("anything")
+
+
+def test_llm_json_failure_maps_to_ingredient_error(monkeypatch):
+    class BrokenClient(FakeLLMClient):
+        def generate_ingredients(self, dish_name, portion=4):
+            raise gen.LLMGenerationError("no json after 3 attempts")
+
+    monkeypatch.setattr(gen, "LLMClient", lambda model_alias="medium": BrokenClient(None))
+    with pytest.raises(IngredientGenerationError, match="Mistral could not generate"):
+        generate_dish_ingredients("x")
+
+
+def test_malformed_recipe_maps_to_ingredient_error(monkeypatch):
+    # portion as string -> parse_and_validate raises LLMParseError
+    monkeypatch.setattr(
+        gen, "LLMClient",
+        lambda model_alias="medium": FakeLLMClient({"dish_name": "x", "portion": "four", "ingredients": []}),
+    )
+    with pytest.raises(IngredientGenerationError, match="invalid recipe"):
+        generate_dish_ingredients("x")
+
+
+# ── Filter-rule parsing / Gemini call ─────────────────────────────────────────
+
+def test_parse_filters_normalises_shape():
+    parsed = {"filters": [
+        {"search_term": "Kumara", "includes": ["KUMARA"], "excludes": ["Chips"]},
+        {"search_term": "chorizo", "includes": "chorizo", "excludes": "pork"},
+        {"search_term": "not requested", "includes": ["x"], "excludes": []},
+    ]}
+    filters, warnings = parse_filters(parsed, ["kumara", "chorizo"])
+
+    assert filters == {
+        "kumara": {"includes": ["kumara"], "excludes": ["chips"]},
+        "chorizo": {"includes": ["chorizo"], "excludes": ["pork"]},
+    }
+    assert any("ignored unknown search_term" in w for w in warnings)
+
+
+def test_parse_filters_caps_excludes_and_reports_gaps():
+    excludes = ["a", "b", "c", "d", "e", "f", "g"]
+    parsed = [{"search_term": "rice", "includes": ["rice"], "excludes": excludes}]
+    filters, warnings = parse_filters(parsed, ["rice", "nori"])
+
+    assert len(filters["rice"]["excludes"]) == gen.MAX_EXCLUDES
+    assert any("trimmed excludes" in w for w in warnings)
+    assert any("no filter generated for: nori" in w for w in warnings)
+
+
+def test_parse_filters_accepts_bare_list_and_empty_includes():
+    filters, _warnings = parse_filters([{"search_term": "oil", "excludes": []}], ["oil"])
+    assert filters == {"oil": {"includes": [], "excludes": []}}
+
+
+def test_generate_ingredient_filters_parses_fenced_gemini_output(monkeypatch):
+    fenced = "```json\n" + json.dumps({"filters": [
+        {"search_term": "kumara", "includes": ["kumara"], "excludes": ["chips"]},
+    ]}) + "\n```"
+    captured = {}
+
+    def fake_call(prompt):
+        captured["prompt"] = prompt
+        return fenced
+
+    monkeypatch.setattr(gen, "call_gemini", fake_call)
+    filters, warnings = generate_ingredient_filters(["kumara"])
+
+    assert "kumara" in captured["prompt"]  # search terms embedded in prompt
+    assert filters == {"kumara": {"includes": ["kumara"], "excludes": ["chips"]}}
+    assert warnings == []
+
+
+def test_generate_ingredient_filters_empty_terms_short_circuits(monkeypatch):
+    def boom(_prompt):
+        raise AssertionError("Gemini must not be called for an empty term list")
+
+    monkeypatch.setattr(gen, "call_gemini", boom)
+    assert generate_ingredient_filters([]) == ({}, [])
+
+
+def test_gemini_wrapped_errors_become_filter_error(monkeypatch):
+    def broken(_prompt):
+        raise ValueError("502 bad gateway")
+
+    monkeypatch.setattr(gen, "call_gemini", broken)
+    with pytest.raises(FilterGenerationError, match="Gemini filter generation failed"):
+        generate_ingredient_filters(["rice"])
+
+
+def test_missing_google_key_propagates_as_config_error(monkeypatch):
+    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    with pytest.raises(GenerationConfigError):
+        call_gemini("prompt")
+
+
+# ── Orchestrator ──────────────────────────────────────────────────────────────
+
+def test_generate_custom_dish_combines_both_backends(monkeypatch):
+    monkeypatch.setattr(gen, "generate_dish_ingredients",
+                        lambda name, portions: ([{"quantity": 600.0, "unit": "g",
+                                                  "search_term": name.split()[0].lower()}], []))
+    monkeypatch.setattr(gen, "generate_ingredient_filters",
+                        lambda terms: ({terms[0]: {"includes": [terms[0]], "excludes": ["chips"]}}, []))
+
+    payload = generate_custom_dish("Kumara Hash", 4)
+
+    assert payload["dish_name"] == "Kumara Hash"
+    assert payload["base_portions"] == 4
+    assert payload["source"] == "llm"
+    assert payload["ingredients"][0]["search_term"] == "kumara"
+    assert payload["filters"]["kumara"]["excludes"] == ["chips"]
+    assert payload["warnings"] == []
+
+
+def test_filter_failure_softens_into_warning(monkeypatch):
+    monkeypatch.setattr(gen, "generate_dish_ingredients",
+                        lambda name, portions: ([{"quantity": 1.0, "unit": "each",
+                                                  "search_term": "egg"}], []))
+    def failing(_terms):
+        raise FilterGenerationError("gemini down")
+    monkeypatch.setattr(gen, "generate_ingredient_filters", failing)
+
+    payload = generate_custom_dish("omelette", 2)
+
+    assert payload["ingredients"]  # usable despite the outage
+    assert payload["filters"] == {}
+    assert any("filter rules unavailable" in w for w in payload["warnings"])
+
+
+def test_base_portions_clamped_in_payload(monkeypatch):
+    monkeypatch.setattr(gen, "generate_dish_ingredients",
+                        lambda name, portions: ([{"quantity": 1.0, "unit": "each",
+                                                  "search_term": "egg"}], []))
+    monkeypatch.setattr(gen, "generate_ingredient_filters", lambda terms: ({}, []))
+    assert generate_custom_dish("x", 999)["base_portions"] == 24
+    assert generate_custom_dish("x", 0)["base_portions"] == 4  # falsy -> default 4

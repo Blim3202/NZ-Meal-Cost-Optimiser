@@ -1,4 +1,4 @@
-// User settings store for the dashboard — reactive singleton persisted
+// User settings store for the /test dashboard — reactive singleton persisted
 // to localStorage under one key. Display settings are applied as CSS custom
 // properties on :root (--content-max / --font-scale) so every stylesheet
 // rule reads them without per-component plumbing.
@@ -30,8 +30,16 @@ export const settings = reactive({
   uiScale: 1,
   // Danger zone — armed only after the accept-risk modal is confirmed.
   overridesArmed: false,
+  // Summary tab preferences (results card): which price drives rankings and
+  // whether the shopper buys everything at one store or mixes and matches.
+  summaryBasis: 'used', // 'used' | 'purchase'
+  basketMode: 'single', // 'single' | 'multi'
   ...loadStored(),
 });
+
+// Sanitise persisted values against stale/garbage localStorage.
+if (!['used', 'purchase'].includes(settings.summaryBasis)) settings.summaryBasis = 'used';
+if (!['single', 'multi'].includes(settings.basketMode)) settings.basketMode = 'single';
 
 watch(
   settings,
@@ -40,6 +48,8 @@ watch(
       contentWidth: settings.contentWidth,
       uiScale: settings.uiScale,
       overridesArmed: settings.overridesArmed,
+      summaryBasis: settings.summaryBasis,
+      basketMode: settings.basketMode,
     }));
     applyDisplaySettings();
   },
