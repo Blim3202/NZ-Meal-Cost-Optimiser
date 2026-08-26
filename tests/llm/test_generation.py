@@ -32,6 +32,16 @@ class FakeLLMClient:
         return self._raw
 
 
+@pytest.fixture(autouse=True)
+def _fake_mistral_key(monkeypatch):
+    """Hermetic tests: inject a dummy key so results never depend on a local .env.
+
+    Tests that exercise the missing-key path call monkeypatch.delenv themselves,
+    which overrides this for that test.
+    """
+    monkeypatch.setenv("MISTRAL_API_KEY", "test-mistral-key")
+
+
 # ── Ingredient generation ─────────────────────────────────────────────────────
 
 def _raw_recipe(**overrides):
