@@ -286,6 +286,8 @@ code { background: var(--code-bg); border: 1px solid var(--line); border-radius:
 .builder-clear { margin-left: auto; }
 .rejection-banner { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); margin-top: 18px; }
 .rejection-x { color: inherit; padding: 0 0 0 var(--sp-2); }
+.save-banner { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); margin-top: 0; }
+.save-x { color: inherit; padding: 0 0 0 var(--sp-2); }
 .result-block { margin-top: 26px; display: grid; gap: var(--sp-3); }
 .warning-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; color: var(--amber-text); background: var(--amber-bg); border-radius: 8px; padding: 10px 12px; font-size: var(--fs-small); }
 
@@ -294,6 +296,15 @@ code { background: var(--code-bg); border: 1px solid var(--line); border-radius:
 .dish-notes { color: var(--muted); font-size: var(--fs-small); font-style: italic; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .dish-notes.open { -webkit-line-clamp: unset; display: block; overflow: visible; }
 .link-button { border: 0; background: none; color: var(--orange); font-size: var(--fs-micro); font-weight: 800; cursor: pointer; padding: 0; }
+
+/* My Dishes — inline recipe editor */
+.dish-grid > .dish-card.editing { grid-column: 1 / -1; }
+.edit-fields { margin-bottom: var(--sp-4); }
+.term-filters { margin-top: var(--sp-3); display: grid; gap: var(--sp-2); }
+.rules-hint { margin: 0; }
+.term-filter-block { border: 1px solid var(--line); border-radius: 9px; padding: var(--sp-2) var(--sp-3); background: var(--surface-soft); }
+.term-filter-block.term-focus { border-color: var(--border-hover); box-shadow: 0 0 0 3px var(--focus-ring); }
+.term-name { color: var(--ink); font-size: var(--fs-ui); font-weight: 800; margin: 0 0 var(--sp-1); }
 
 /* Product filters — per-ingredient include/exclude keywords */
 .row-filters { margin-top: var(--sp-2); }

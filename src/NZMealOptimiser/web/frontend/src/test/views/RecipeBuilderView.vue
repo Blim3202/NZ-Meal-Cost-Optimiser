@@ -40,8 +40,17 @@
       <section v-if="result" class="result-block">
         <div class="section-heading">
           <div><p class="eyebrow">Extracted breakdown</p><h3>{{ form.name }}</h3><small class="muted-meta">{{ result.ingredients.length }} ingredient searches · {{ rulesCount }} filter rule{{ rulesCount === 1 ? '' : 's' }} seeded · base {{ Number(form.basePortions) || 4 }} portions</small></div>
-          <button type="button" class="primary-button is-ready" @click="openInBuilder">Open in dish builder →</button>
+          <div class="heading-actions">
+            <button type="button" class="ghost-button ghost-small" :disabled="savingPreset" title="Store this recipe (with its generated filter rules) as a preset in My Dishes" @click="saveAsPreset">{{ savingPreset ? 'Saving…' : 'Save as preset' }}</button>
+            <button type="button" class="primary-button is-ready" @click="openInBuilder">Open in dish builder →</button>
+          </div>
         </div>
+        <transition name="toast-slide">
+          <aside v-if="savedNotice" class="notice-banner save-banner" role="status">
+            <span>✓ {{ savedNotice }}</span>
+            <button type="button" class="chip-x save-x" title="Dismiss" @click="savedNotice = ''">✕</button>
+          </aside>
+        </transition>
         <ul class="ingredient-list">
           <li v-for="(ing, index) in result.ingredients" :key="index"><span class="ing-name">{{ ing.search_term }}</span><span class="ing-qty">{{ displayQty(ing) }}</span></li>
         </ul>
@@ -56,6 +65,7 @@
 
 <script>
 import { computed, reactive, ref } from 'vue';
+import { seedPresetRules } from '../filterStore.js';
 
 const TEXT_LIMIT = 1000;
 const NOTES_LIMIT = 100;
@@ -69,6 +79,8 @@ export default {
     const error = ref('');
     const rejected = ref('');
     const result = ref(null);
+    const savingPreset = ref(false);
+    const savedNotice = ref('');
 
     const canBuild = computed(() => !!form.text.trim() && !!String(form.name || '').trim());
     const rulesCount = computed(() => Object.keys(result.value?.filters || {}).length);
@@ -88,6 +100,7 @@ export default {
       error.value = '';
       rejected.value = '';
       result.value = null;
+      savedNotice.value = '';
       try {
         const response = await fetch('/dishes/import_text', {
           method: 'POST',
@@ -124,6 +137,43 @@ export default {
       });
     }
 
+    // Direct save from the builder: the recipe lands in dishes.json AND the
+    // freshly generated keyword rules are attached to preset:<name> in the
+    // shared filter store — a fresh import always overwrites existing rules.
+    async function saveAsPreset() {
+      if (savingPreset.value || !result.value) return;
+      const name = String(form.name || '').trim();
+      if (!name) { error.value = 'Give the recipe a name before saving'; return; }
+      savingPreset.value = true;
+      error.value = '';
+      savedNotice.value = '';
+      try {
+        const dishesResponse = await fetch('/dishes');
+        if (!dishesResponse.ok) throw new Error('Could not check saved recipes');
+        const dishes = await dishesResponse.json();
+        if (Object.prototype.hasOwnProperty.call(dishes, name.toLowerCase())
+          && !window.confirm(`"${name}" already exists as a preset.\nOverwrite it (including its product-filter rules)?`)) return;
+        const response = await fetch('/dishes/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dish_name: name,
+            base_portions: Number(form.basePortions) || 4,
+            ingredients: result.value.ingredients,
+            notes: form.notes.trim().slice(0, NOTES_LIMIT),
+          }),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || 'Could not save the preset');
+        const seeded = seedPresetRules(name.toLowerCase(), result.value.filters);
+        savedNotice.value = `"${name}" saved to My Dishes — ${seeded} product-filter rule set${seeded === 1 ? '' : 's'} seeded.`;
+      } catch (err) {
+        error.value = err.message;
+      } finally {
+        savingPreset.value = false;
+      }
+    }
+
     function clearAll() {
       if (!hasContent.value) return;
       if (!window.confirm('Clear the recipe builder?\nThe pasted ingredients, recipe details and the extracted breakdown will be removed.')) return;
@@ -133,12 +183,14 @@ export default {
       form.notes = '';
       result.value = null;
       rejected.value = '';
+      savedNotice.value = '';
       error.value = '';
     }
 
     return {
-      TEXT_LIMIT, form, importing, error, rejected, result,
-      canBuild, rulesCount, hasContent, displayQty, buildBreakdown, openInBuilder, clearAll,
+      TEXT_LIMIT, form, importing, error, rejected, result, savingPreset, savedNotice,
+      canBuild, rulesCount, hasContent, displayQty, buildBreakdown, openInBuilder,
+      saveAsPreset, clearAll,
     };
   },
 };

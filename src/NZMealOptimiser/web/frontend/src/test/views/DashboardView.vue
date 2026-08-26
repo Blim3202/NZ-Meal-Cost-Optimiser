@@ -101,6 +101,7 @@ import DishBuilder from '../components/DishBuilder.vue';
 import { useJobRunner } from '../composables/useJobRunner.js';
 import { normaliseUnit } from '../unitOptions.js';
 import { storesOf, winnerKeyOf } from '../resultUtils.js';
+import { filterStore, seedPresetRules } from '../filterStore.js';
 import { settings } from '../settings.js';
 
 const companyData = [{ id: 'PaknSave', label: "Pak'nSave" }, { id: 'NewWorld', label: 'New World' }, { id: 'Woolworths', label: 'Woolworths' }];
@@ -286,9 +287,9 @@ export default {
 
     // ── Product filters: dish_filters.json presets + per-user keyword edits ─
     // One scope per mode: "preset:<key>" for curated dishes, "custom" and
-    // "shopping" for the builder modes. Everything persists to localStorage so
-    // edits survive reloads; data/dish_filters.json stays the clean baseline.
-    const FILTERS_LS_KEY = 'meal-filters-v1';
+    // "shopping" for the builder modes. The store lives in ../filterStore.js —
+    // a single shared ref persisted to localStorage, also imported by the My
+    // Dishes inline editor so rule edits from either page stay in sync.
     const presetFilters = ref({}); // dish key -> { search_term: {includes, excludes} }
     const reaplying = ref(false);
     let appliedFilterSig = ''; // filter payload baked into the latest run/reapply
@@ -324,17 +325,6 @@ export default {
       dismissApplyToast();
       resultsSection.value?.openSummary();
     }
-
-    function loadFilterStore() {
-      try {
-        const raw = JSON.parse(localStorage.getItem(FILTERS_LS_KEY));
-        return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
-      } catch { return {}; }
-    }
-    const filterStore = ref(loadFilterStore());
-    watch(filterStore, (store) => {
-      try { localStorage.setItem(FILTERS_LS_KEY, JSON.stringify(store)); } catch { /* storage full/blocked */ }
-    }, { deep: true });
 
     const activeScopeKey = computed(() => (recipeMode.value === 'preset' ? `preset:${form.dish}` : recipeMode.value));
     const seenScopes = computed(() => new Set(filterStore.value._seen || []));
@@ -604,6 +594,7 @@ export default {
       const name = String(draft.name).trim();
       const key = name.toLowerCase();
       if (dishes.value.some((d) => d.key === key) && !window.confirm(`"${name}" already exists as a preset.\nOverwrite it?`)) return;
+      const wasCustom = recipeMode.value === 'custom'; // captured pre-switch
       savingPreset.value = true;
       error.value = '';
       try {
@@ -619,11 +610,16 @@ export default {
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.detail || 'Could not save the preset');
+        // Carry the builder's keyword rules onto the named preset — otherwise
+        // Gemini-seeded / hand-tuned rules die with the scratch 'custom'
+        // scope on the next setMode('custom').
+        let rulesSeeded = 0;
+        if (wasCustom) rulesSeeded = seedPresetRules(data.key, filterStore.custom);
         await fetchDishes();
         form.dish = data.key;
         recipeMode.value = 'preset';
         if (origin.value) staleNotice.value = true; // recipe changed vs resolved setup
-        logLine('ok', 'DISH', `preset ${data.updated ? 'updated' : 'created'}: "${data.key}" · ${validRows.value.length} ingredients @ ${Number(draft.basePortions)} portions`);
+        logLine('ok', 'DISH', `preset ${data.updated ? 'updated' : 'created'}: "${data.key}" · ${validRows.value.length} ingredients @ ${Number(draft.basePortions)} portions${wasCustom ? ` · ${rulesSeeded} filter rule set(s) carried over` : ''}`);
       } catch (err) {
         error.value = err.message;
       } finally {
