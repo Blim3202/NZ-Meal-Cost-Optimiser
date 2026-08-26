@@ -72,36 +72,30 @@ class FilterGenerationError(GenerationError):
     """Gemini failed to produce filter rules (soft-failed by the orchestrator)."""
 
 
+class RecipeRejectedError(GenerationError):
+    """The LLM refused the pasted text (not a recipe / prompt injection).
+
+    Not fatal like IngredientGenerationError: POST /dishes/import_text maps it
+    to a 200 {"status": "rejected", "reason"} payload so the UI can show a
+    gentle notice instead of an error banner.
+    """
+
+    def __init__(self, reason: str):
+        super().__init__(reason)
+        self.reason = reason
+
+
 # ─── Ingredient generation (Mistral) ─────────────────────────────────────────
 
-def generate_dish_ingredients(dish_name: str, portions: int = 4) -> tuple[list[dict], list[str]]:
-    """Generate validated ingredient rows for *dish_name* via Mistral.
+def _clean_parsed_rows(parsed) -> tuple[list[dict], list[str]]:
+    """Turn ParsedDish rows into clean dishes.json-schema rows (+ warnings).
 
-    Returns ``(ingredients, warnings)`` where ingredients follow the curated
-    dishes.json schema: ``{quantity, unit, search_term[, approx_quantity,
-    approx_unit]}`` — units folded through UNIT_ALIASES, duplicates merged
-    (first wins), unusable rows dropped, count capped at MAX_INGREDIENTS.
-    Every quality intervention appends a human-readable warning so the UI can
-    show exactly what the model's raw output was trimmed to.
-
-    Raises:
-        GenerationConfigError: MISTRAL_API_KEY not configured.
-        IngredientGenerationError: generation/validation failed after retries,
-            or the model produced no usable rows.
+    Shared by name-based generation and pasted-text import: drops blank terms
+    and non-positive quantities, merges duplicate search terms (first wins),
+    folds approx fields through normalise_unit, caps at MAX_INGREDIENTS.
+    Every intervention appends a human-readable warning so the UI can show
+    exactly what the model's raw output was trimmed to.
     """
-    if not os.getenv("MISTRAL_API_KEY"):
-        raise GenerationConfigError(
-            "MISTRAL_API_KEY is not set — add it to .env to enable ingredient generation"
-        )
-    try:
-        client = LLMClient(model_alias="medium")
-        raw = client.generate_ingredients(dish_name, portion=portions)
-        parsed = parse_and_validate(raw)
-    except LLMGenerationError as exc:
-        raise IngredientGenerationError(f"Mistral could not generate ingredients: {exc}") from exc
-    except LLMParseError as exc:
-        raise IngredientGenerationError(f"Mistral returned an invalid recipe: {exc}") from exc
-
     ingredients: list[dict] = []
     seen: set[str] = set()
     warnings: list[str] = []
@@ -136,9 +130,97 @@ def generate_dish_ingredients(dish_name: str, portions: int = 4) -> tuple[list[d
                 warnings.append(f"capped the recipe at {MAX_INGREDIENTS} ingredients ({dropped} dropped)")
             break
 
+    return ingredients, warnings
+
+
+def generate_dish_ingredients(dish_name: str, portions: int = 4) -> tuple[list[dict], list[str]]:
+    """Generate validated ingredient rows for *dish_name* via Mistral.
+
+    Returns ``(ingredients, warnings)`` where ingredients follow the curated
+    dishes.json schema: ``{quantity, unit, search_term[, approx_quantity,
+    approx_unit]}`` — units folded through UNIT_ALIASES, duplicates merged
+    (first wins), unusable rows dropped, count capped at MAX_INGREDIENTS.
+
+    Raises:
+        GenerationConfigError: MISTRAL_API_KEY not configured.
+        IngredientGenerationError: generation/validation failed after retries,
+            or the model produced no usable rows.
+    """
+    if not os.getenv("MISTRAL_API_KEY"):
+        raise GenerationConfigError(
+            "MISTRAL_API_KEY is not set — add it to .env to enable ingredient generation"
+        )
+    try:
+        client = LLMClient(model_alias="medium")
+        raw = client.generate_ingredients(dish_name, portion=portions)
+        parsed = parse_and_validate(raw)
+    except LLMGenerationError as exc:
+        raise IngredientGenerationError(f"Mistral could not generate ingredients: {exc}") from exc
+    except LLMParseError as exc:
+        raise IngredientGenerationError(f"Mistral returned an invalid recipe: {exc}") from exc
+
+    ingredients, warnings = _clean_parsed_rows(parsed)
     if not ingredients:
         raise IngredientGenerationError(
             f"Mistral returned no usable ingredients for '{dish_name}'"
+        )
+    return ingredients, warnings
+
+
+def generate_dish_ingredients_from_text(
+        recipe_text: str, dish_name: str, portions: int = 4,
+) -> tuple[list[dict], list[str]]:
+    """Extract validated ingredient rows from pasted recipe text via Mistral.
+
+    The model answers with a dual-status contract (see
+    LLMClient.generate_ingredients_from_text): ``status: "ok"`` carries the
+    ingredient rows, ``status: "rejected"`` flags non-recipe or injection
+    attempts. The user-typed *dish_name*/*portions* are used for validation —
+    anything the model echoes back is never trusted.
+
+    Returns ``(ingredients, warnings)`` shaped exactly like
+    :func:`generate_dish_ingredients`.
+
+    Raises:
+        GenerationConfigError: MISTRAL_API_KEY not configured.
+        RecipeRejectedError: the model refused the text; ``.reason`` holds a
+            short lowercase phrase for the UI.
+        IngredientGenerationError: generation/validation failed after retries,
+            or extraction produced no usable rows.
+    """
+    if not os.getenv("MISTRAL_API_KEY"):
+        raise GenerationConfigError(
+            "MISTRAL_API_KEY is not set — add it to .env to enable recipe import"
+        )
+    try:
+        client = LLMClient(model_alias="medium")
+        data = client.generate_ingredients_from_text(
+            recipe_text, portion=portions, dish_name=dish_name,
+        )
+    except LLMGenerationError as exc:
+        raise IngredientGenerationError(f"Mistral could not read the pasted recipe: {exc}") from exc
+
+    status = data.get("status")
+    if status == "rejected":
+        reason = str(data.get("reason") or "text is not a recipe").strip().lower()
+        raise RecipeRejectedError(reason[:120])
+
+    # ok path — re-home the model's rows under user-supplied identity so
+    # parse_and_validate sees its usual contract.
+    raw = {
+        "dish_name": dish_name,
+        "portion": portions,
+        "ingredients": data.get("ingredients"),
+    }
+    try:
+        parsed = parse_and_validate(raw)
+    except LLMParseError as exc:
+        raise IngredientGenerationError(f"Mistral returned an invalid recipe: {exc}") from exc
+
+    ingredients, warnings = _clean_parsed_rows(parsed)
+    if not ingredients:
+        raise IngredientGenerationError(
+            f"Mistral extracted no usable ingredients from the pasted text for '{dish_name}'"
         )
     return ingredients, warnings
 
@@ -322,6 +404,49 @@ def generate_custom_dish(dish_name: str, base_portions: int = 4) -> dict:
         filters = {}
         warnings.append(f"filter rules unavailable: {exc}")
     return {
+        "dish_name": dish_name,
+        "base_portions": max(1, min(int(base_portions) or 4, 24)),
+        "source": "llm",
+        "ingredients": ingredients,
+        "filters": filters,
+        "warnings": warnings,
+    }
+
+
+def generate_custom_dish_from_text(
+        recipe_text: str, dish_name: str, base_portions: int = 4,
+) -> dict:
+    """Full pasted-recipe draft: extract ingredients (Mistral) then rules (Gemini).
+
+    Same shape as :func:`generate_custom_dish` plus a ``status`` field, so
+    POST /dishes/import_text can answer a refusal with HTTP 200:
+
+    - ``{"status": "ok", ...}`` on success (filter generation stays best-effort:
+      a Gemini failure yields empty rules plus a warning).
+    - ``{"status": "rejected", "reason": ..., "ingredients": [], "filters": {},
+      "warnings": []}`` when the model refused the text.
+    """
+    try:
+        ingredients, warnings = generate_dish_ingredients_from_text(
+            recipe_text, dish_name, base_portions,
+        )
+    except RecipeRejectedError as exc:
+        return {
+            "status": "rejected",
+            "reason": exc.reason,
+            "ingredients": [],
+            "filters": {},
+            "warnings": [],
+        }
+    terms = [ing["search_term"] for ing in ingredients]
+    try:
+        filters, filter_warnings = generate_ingredient_filters(terms)
+        warnings.extend(filter_warnings)
+    except GenerationError as exc:
+        filters = {}
+        warnings.append(f"filter rules unavailable: {exc}")
+    return {
+        "status": "ok",
         "dish_name": dish_name,
         "base_portions": max(1, min(int(base_portions) or 4, 24)),
         "source": "llm",

@@ -21,6 +21,7 @@
             <template v-else-if="recipeMode === 'custom'">
               <label class="field field-name"><span>Dish name</span><input v-model.trim.lazy="draft.name" placeholder="e.g. kumara &amp; chorizo hash" maxlength="80"></label>
               <label class="field field-base"><span>Base portions</span><input v-model.number="draft.basePortions" type="number" min="1" max="24" required></label>
+              <label class="field field-wide"><span>Notes (optional)</span><input v-model.trim="draft.notes" maxlength="100" placeholder="Chocolate chip cookies — bbcgoodfood.com"></label>
               <div class="field field-wide generate-row">
                 <button type="button" class="ghost-button" :disabled="generating || !canGenerate" title="Ask Mistral to draft ingredients and Gemini to seed product-filter rules from the dish name (10-20 s)" @click="generateIngredients"><span v-if="generating" class="spinner"></span>{{ generating ? 'Generating…' : 'Generate custom ingredients' }}</button>
                 <span v-if="generating" class="hint">Mistral is drafting the recipe, then Gemini seeds the filter rules — this can take 10-20 s.</span>
@@ -134,7 +135,7 @@ export default {
     const generating = ref(false);
     let rowSeq = 0;
     const emptyRow = () => ({ id: `row-${++rowSeq}`, search_term: '', quantity: '', unit: 'g', approx_quantity: '', approx_unit: '' });
-    const draft = reactive({ name: '', basePortions: 4, ingredients: [] });
+    const draft = reactive({ name: '', basePortions: 4, notes: '', ingredients: [] });
 
     const scaleFactor = computed(() => (Number(draft.basePortions) > 0 ? Math.round((form.portions / Number(draft.basePortions)) * 1000) / 1000 : 1));
     const scaleDisplay = computed(() => (Number.isInteger(scaleFactor.value) ? String(scaleFactor.value) : scaleFactor.value.toFixed(2).replace(/0$/, '')));
@@ -177,14 +178,15 @@ export default {
 
     function clearBuilder() {
       const count = draft.ingredients.length;
-      if (!count && !String(draft.name || '').trim() && Number(draft.basePortions) === 4) return;
+      if (!count && !String(draft.name || '').trim() && Number(draft.basePortions) === 4 && !String(draft.notes || '').trim()) return;
       const message = recipeMode.value === 'shopping'
         ? `Clear all ${count} item${count === 1 ? '' : 's'} from the shopping list?`
-        : 'Clear all ingredients?\nThe dish name and base portions will be reset too.';
+        : 'Clear all ingredients?\nThe dish name, notes and base portions will be reset too.';
       if (!window.confirm(message)) return;
       draft.ingredients = [];
       draft.name = '';
       draft.basePortions = 4;
+      draft.notes = '';
       logLine('warn', 'DISH', `builder cleared — ${count} row${count === 1 ? '' : 's'} removed`);
     }
 
@@ -193,6 +195,7 @@ export default {
       if (!dish) return false;
       draft.name = dish.label;
       draft.basePortions = Number(dish.portion) || 4;
+      draft.notes = String(dish.notes || '').slice(0, 100);
       draft.ingredients = dish.ingredients.map((ing) => ({
         id: `row-${++rowSeq}`,
         search_term: ing.search_term || '',
@@ -218,9 +221,10 @@ export default {
       // custom dishes) are wiped so stale rules can't leak into a new dish.
       // "Customise ✎" bypasses setMode, so preset copying still works.
       if (mode === 'custom') {
-        const hadContent = draft.ingredients.length > 0 || String(draft.name || '').trim() || Number(draft.basePortions) !== 4;
+        const hadContent = draft.ingredients.length > 0 || String(draft.name || '').trim() || Number(draft.basePortions) !== 4 || String(draft.notes || '').trim();
         draft.name = '';
         draft.basePortions = 4;
+        draft.notes = '';
         draft.ingredients = [];
         filterStore.value = { ...filterStore.value, custom: {} };
         logLine('phase', 'DISH', hadContent
@@ -559,13 +563,37 @@ export default {
       }
     }
 
-    // ── Cross-view entry point (My Dishes → dashboard) ─────────────────────
+    // ── Cross-view entry points ─────────────────────────────────────────────
     function loadPreset(key, edit = false) {
       if (!dishes.value.some((d) => d.key === key)) return;
       form.dish = key;
       if (edit) customiseFromPreset();
     }
-    expose({ loadPreset });
+
+    // LLM Recipe Builder → dashboard: fill the custom-mode draft from a fresh
+    // /dishes/import_text payload. Bypasses setMode's blank-slate wipe the
+    // same way customiseFromPreset does; applyGeneratedFilters replaces the
+    // shared 'custom' filter scope wholesale, so no stale rules can leak.
+    function loadDraft(payload = {}) {
+      const rows = Array.isArray(payload.ingredients) ? payload.ingredients : [];
+      if (!rows.length) return;
+      recipeMode.value = 'custom';
+      draft.name = String(payload.name || '').trim();
+      draft.basePortions = Number(payload.basePortions) > 0 ? Math.min(Number(payload.basePortions), 24) : 4;
+      draft.notes = String(payload.notes || '').trim().slice(0, 100);
+      draft.ingredients = rows.map((ing) => ({
+        id: `row-${++rowSeq}`,
+        search_term: ing.search_term || '',
+        quantity: ing.quantity ?? '',
+        unit: normaliseUnit(ing.unit) || 'g',
+        approx_quantity: ing.approx_quantity ?? '',
+        approx_unit: normaliseUnit(ing.approx_unit || ''),
+      }));
+      const rulesCount = applyGeneratedFilters(payload.filters);
+      logLine('ok', 'LLM', `imported "${draft.name}" — ${draft.ingredients.length} ingredient${draft.ingredients.length === 1 ? '' : 's'} · ${rulesCount} filter rule${rulesCount === 1 ? '' : 's'} seeded — review before pricing`);
+      if (origin.value) staleNotice.value = true;
+    }
+    expose({ loadPreset, loadDraft });
 
     const builderPayloadRows = () => validRows.value.map((row) => (row.approx_quantity === null
       ? { search_term: row.search_term, quantity: row.quantity, unit: row.unit }
@@ -586,6 +614,7 @@ export default {
             dish_name: name,
             base_portions: Number(draft.basePortions) || 4,
             ingredients: builderPayloadRows(),
+            notes: String(draft.notes || '').trim().slice(0, 100),
           }),
         });
         const data = await response.json();
@@ -792,7 +821,7 @@ export default {
       const response = await fetch('/dishes');
       if (!response.ok) throw new Error('Could not load dishes');
       const data = await response.json();
-      dishes.value = Object.entries(data).map(([key, dish]) => ({ key, label: dish.dish_name || key, portion: dish.portion || 4, ingredients: dish.ingredients || [], source: dish.source || 'curated' }));
+      dishes.value = Object.entries(data).map(([key, dish]) => ({ key, label: dish.dish_name || key, portion: dish.portion || 4, ingredients: dish.ingredients || [], source: dish.source || 'curated', notes: dish.notes || '' }));
     }
 
     onMounted(async () => {

@@ -15,6 +15,10 @@
           <div><h3>{{ dish.label }}</h3><small class="muted-meta">{{ dish.ingredients.length }} ingredient searches · base {{ dish.portion }} portions</small></div>
           <span class="badge" :class="dish.source === 'user' ? 'badge-user' : 'badge-curated'" :title="dish.source === 'user' ? 'Saved by you from the dish builder' : 'Hand-curated preset shipped with the project'">{{ dish.source === 'user' ? 'User' : 'Curated' }}</span>
         </div>
+        <div v-if="dish.notes" class="notes-wrap">
+          <p class="dish-notes" :class="{ open: expanded.has(dish.key) }">{{ dish.notes }}</p>
+          <button v-if="dish.notes.length > NOTES_CLAMP" type="button" class="link-button" @click="toggleNotes(dish.key)">{{ expanded.has(dish.key) ? 'See less ▴' : 'See more ▾' }}</button>
+        </div>
         <ul class="ingredient-list">
           <li v-for="(ing, index) in dish.ingredients.slice(0, 6)" :key="index"><span class="ing-name">{{ ing.search_term }}</span><span class="ing-qty">{{ ing.quantity }} {{ ing.unit }}</span></li>
         </ul>
@@ -30,7 +34,9 @@
 </template>
 
 <script>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
+
+const NOTES_CLAMP = 64; // ~2 clamped lines in a card; longer notes get a toggle
 
 export default {
   name: 'MyDishesView',
@@ -40,6 +46,7 @@ export default {
     const loading = ref(true);
     const error = ref('');
     const deleting = ref('');
+    const expanded = reactive(new Set());
 
     const dishes = computed(() => Object.entries(raw.value).map(([key, dish]) => ({
       key,
@@ -47,7 +54,13 @@ export default {
       portion: dish.portion || 4,
       ingredients: Array.isArray(dish.ingredients) ? dish.ingredients : [],
       source: dish.source || 'curated',
+      notes: String(dish.notes || ''),
     })));
+
+    function toggleNotes(key) {
+      if (expanded.has(key)) expanded.delete(key);
+      else expanded.add(key);
+    }
 
     async function fetchDishes() {
       loading.value = true;
@@ -84,7 +97,7 @@ export default {
 
     onMounted(fetchDishes);
 
-    return { dishes, loading, error, deleting, removeDish };
+    return { dishes, loading, error, deleting, removeDish, expanded, toggleNotes, NOTES_CLAMP };
   },
 };
 </script>

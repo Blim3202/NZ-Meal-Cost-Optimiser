@@ -18,13 +18,15 @@ Frontends:
     GET /test   Vue dish-builder dashboard (static/vue/test.html, second
                 multi-page entry) — app shell with a left sidebar switching
                 between: optimiser dashboard (preset/custom/shopping-list
-                modes + full ingredient editor), My Dishes, LLM Recipe
-                Builder stub, Documentation viewer and a multi-section
-                Settings page.
+                modes + full ingredient editor), My Dishes, the LLM Recipe
+                Builder (paste an ingredient list -> LLM breakdown), a
+                Documentation viewer and a multi-section Settings page.
 
 Supporting endpoints:
     GET  /system-info        effective thread-pool size + danger-zone caps
     GET  /tech-docs[/{name}] whitelisted markdown manuals for the docs page
+    POST /dishes/import_text paste recipe text -> LLM ingredient breakdown
+                             ({"status": "rejected"} on non-recipe/injection)
     DELETE /dishes/{key}     remove a preset dish
 
 Dish sources:
@@ -88,7 +90,9 @@ from NZMealOptimiser.llm.llm_utils import (
 from NZMealOptimiser.llm.generation import (
     GenerationConfigError,
     GenerationError,
+    RecipeRejectedError,
     generate_custom_dish,
+    generate_custom_dish_from_text,
 )
 from NZMealOptimiser.pricing import optimiser_utils
 from NZMealOptimiser.pricing.optimiser_utils import (
@@ -694,12 +698,15 @@ class SaveDishRequest(BaseModel):
     """Upsert payload for the dish builder's "Save as preset" button.
 
     Stored verbatim at its base portions — run-time scaling to the requested
-    portions happens per-request in _scale_ingredients_to_portions.
+    portions happens per-request in _scale_ingredients_to_portions. ``notes``
+    is optional user metadata (source site, reminders) capped at 100 chars;
+    it never reaches the optimiser.
     """
 
     dish_name: str
     base_portions: int = 4
     ingredients: list[CustomIngredient]
+    notes: str = ""
 
 
 def _load_dishes_file() -> dict:
@@ -733,12 +740,16 @@ async def save_dish(req: SaveDishRequest) -> dict:
     key = name.lower()
     data = await asyncio.to_thread(_load_dishes_file)
     existed = key in data
-    data[key] = {
+    entry = {
         "dish_name": name,
         "portion": base_portions,
         "ingredients": ingredients,
         "source": "user",
     }
+    notes = req.notes.strip()[:100]
+    if notes:
+        entry["notes"] = notes
+    data[key] = entry
     await asyncio.to_thread(_write_dishes_file, data)
     log.info("Saved preset dish '%s' (%s)", name, "updated" if existed else "new")
     return {"ok": True, "key": key, "updated": existed, "dishes_count": len(data)}
@@ -795,6 +806,59 @@ async def generate_dish(req: GenerateDishRequest) -> dict:
         raise HTTPException(502, str(exc))
     log.info(
         "Generated custom dish '%s': %d ingredients, %d filter rule(s), %d warning(s)",
+        name, len(payload["ingredients"]), len(payload["filters"]), len(payload["warnings"]),
+    )
+    return payload
+
+
+class ImportRecipeRequest(BaseModel):
+    """Body for POST /dishes/import_text — pasted recipe text -> LLM breakdown.
+
+    ``recipe_text`` is capped at 1000 chars (Pydantic 422s beyond that) to keep
+    prompts small and discourage pasting whole pages. ``notes`` is NOT part of
+    extraction — it rides along so the Recipe Builder can hand a complete
+    draft to the dashboard builder in one shot.
+    """
+
+    recipe_text: str = Field(max_length=1000)
+    dish_name: str
+    base_portions: int = 4
+    notes: str = Field(default="", max_length=100)
+
+
+@app.post("/dishes/import_text")
+async def import_recipe_text(req: ImportRecipeRequest) -> dict:
+    """Draft ingredients + product-filter rules from pasted recipe text.
+
+    Backs the /test dashboard's LLM Recipe Builder page. The Mistral call uses
+    an injection-guarded prompt: the pasted text is wrapped in << >> and the
+    model must answer either {"status": "ok", ...} or {"status": "rejected",
+    "reason": ...}. A rejection is returned as HTTP 200 with the reason so the
+    UI can show a gentle notice instead of an error banner; only genuine
+    pipeline failures map to 502/503 like /dishes/generate.
+    """
+    text = req.recipe_text.strip()
+    if not text:
+        raise HTTPException(400, "Paste the recipe's ingredient list first")
+    name = req.dish_name.strip()
+    if not name:
+        raise HTTPException(400, "The dish needs a name before importing")
+    base = max(1, min(int(req.base_portions) or 4, 24))
+    notes = req.notes.strip()[:100]
+    try:
+        payload = await asyncio.to_thread(
+            generate_custom_dish_from_text, text, name, base,
+        )
+    except GenerationConfigError as exc:
+        raise HTTPException(503, str(exc))
+    except GenerationError as exc:
+        raise HTTPException(502, str(exc))
+    if payload.get("status") == "rejected":
+        log.info("Rejected pasted recipe for '%s': %s", name, payload.get("reason"))
+        return {**payload, "base_portions": base}
+    payload["notes"] = notes
+    log.info(
+        "Imported custom dish '%s' from pasted text: %d ingredients, %d filter rule(s), %d warning(s)",
         name, len(payload["ingredients"]), len(payload["filters"]), len(payload["warnings"]),
     )
     return payload
