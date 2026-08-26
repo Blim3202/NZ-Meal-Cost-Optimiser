@@ -63,12 +63,13 @@
         <p v-if="basket.missing.length" class="issue-note">⚠ No eligible product anywhere for: {{ basket.missing.join(', ') }}</p>
         <div class="detail-scroll">
           <table>
-            <thead><tr><th>Ingredient</th><th>Source Store</th><th>Returned Product</th><th>Used Price</th><th>Purch Cost</th><th>Status</th></tr></thead>
+            <thead><tr><th>Ingredient</th><th>Source Store</th><th>Returned Product</th><th>Brand</th><th>Used Price</th><th>Purch Cost</th><th>Status</th></tr></thead>
             <tbody>
               <tr v-for="item in basket.items" :key="item.term">
                 <td>{{ item.term }}</td>
                 <td><span class="badge" :class="badgeClass(item.company)">{{ companyLabel(item.company) }}</span> {{ item.store }}</td>
                 <td>{{ item.title }}</td>
+                <td>{{ item.brand || '-' }}</td>
                 <td :class="{ 'cell-primary': settings.summaryBasis === 'used' }">{{ item.usedDisplay }}</td>
                 <td :class="{ 'cell-primary': settings.summaryBasis === 'purchase' }">{{ item.purchDisplay }}</td>
                 <td>{{ item.statusLabel }}</td>
