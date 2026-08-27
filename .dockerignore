@@ -1,0 +1,26 @@
+# Node / Python local state
+.venv/
+node_modules/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.env
+*.sqlite
+*.db
+*.log
+
+# Built Vue dashboard (regenerated in the Dockerfile frontend stage).
+src/NZMealOptimiser/web/static/vue/
+
+# VCS / editor noise
+.git/
+.legacy/
+.opencode/
+.vscode/
+.Temp/
+.kilo/
+
+# Dev-only exploration & tools (not imported at runtime; shrinks build context).
+exploration/
+tools/
