@@ -1,8 +1,5 @@
-const path = require('path');
-
 module.exports = {
   publicPath: '/static/vue/',
-  outputDir: path.resolve(__dirname, '../static/vue'),
   lintOnSave: false,
   // Multi-page: index → /app (production dashboard), test → /test (sandbox copy).
   // The two trees are deliberately independent: src/ = production, src/test/ = sandbox.
