@@ -1,12 +1,23 @@
 """
-Parser parity test: verify that parse_foodstuffs_volume_size and
-parse_foodstuffs_mobile_unit produce correct results for both
-Pak'nSave and New World Edge/Mobile APIs.
+Parser idempotence probe: verify that parse_foodstuffs_volume_size and
+parse_foodstuffs_mobile_unit are IDEMPOTENT on live New World Edge + Mobile
+API products. Idempotence, not correctness — for correctness see
+tests/combined/test_parser_utils.py.
 
 Since the Foodstuffs Edge and Mobile backends are shared between
 Pak'nSave and New World, the product data structures are identical.
-This test fetches real products from both APIs and confirms the
-parsers work correctly for both brands.
+This script fetches real products from both APIs and confirms the
+parsers return the same tuple on repeated calls with the same input.
+
+This script was previously tests/combined/test_parser_parity.py — moved
+to scripts/api_claims/ because it hits the live API on every invocation
+and was masquerading as a pytest test (it had a `return True` skip path
+and printed PASS/FAIL instead of asserting).
+
+Source docs: docs/technical/NewWorld_API.md §6 (Edge) and §10 (Mobile).
+
+Usage:
+    python -m scripts.api_claims.foodstuffs_parser_parity
 """
 
 import sys
@@ -20,8 +31,8 @@ EDGE_STORE_ID = "f95243ac-bfc9-483a-b10a-b681f4fc4ba2"  # New World Te Puke (als
 INGREDIENT = "beef mince"
 
 
-def test_edge_parser():
-    """Test that parse_foodstuffs_volume_size works on real New World Edge products."""
+def verify_edge_parser():
+    """Verify parse_foodstuffs_volume_size is idempotent on real NW Edge products."""
     import requests
 
     WEB_BASE = "https://www.newworld.co.nz"
@@ -40,7 +51,7 @@ def test_edge_parser():
     token = session.cookies.get("fs-user-token")
     if not token:
         print("SKIP: could not obtain fs-user-token")
-        return True
+        return
 
     headers = {
         "Authorization": f"Bearer {token}",
@@ -62,7 +73,7 @@ def test_edge_parser():
     )]
     if not product_ids:
         print("SKIP: no relevance-matched products found")
-        return True
+        return
 
     filter_str = " OR ".join(f"productID:{pid}" for pid in product_ids[:10])
     payload2 = {"algoliaQuery": {"query": INGREDIENT, "filters": filter_str}, "page": 0, "hitsPerPage": 50, "storeId": EDGE_STORE_ID, "sortOrder": "PRICE_ASC"}
@@ -72,9 +83,8 @@ def test_edge_parser():
 
     if not products:
         print("SKIP: no products returned from Pass 2")
-        return True
+        return
 
-    all_pass = True
     for p in products:
         display_name = p.get("displayName", "")
         single_price = p.get("singlePrice", {})
@@ -85,15 +95,12 @@ def test_edge_parser():
 
         if orig != copy:
             print(f"  MISMATCH edge: {display_name!r} orig={orig} copy={copy}")
-            all_pass = False
         else:
             print(f"  OK edge: {display_name!r} -> {orig}")
 
-    return all_pass
 
-
-def test_mobile_parser():
-    """Test that parse_foodstuffs_mobile_unit works on real New World Mobile products."""
+def verify_mobile_parser():
+    """Verify parse_foodstuffs_mobile_unit is idempotent on real NW Mobile products."""
     import cloudscraper
 
     MOBILE_BASE = "https://api-prod.prod.fsniwaikato.kiwi/prod"
@@ -120,15 +127,14 @@ def test_mobile_parser():
     )
     if r.status_code != 200:
         print(f"SKIP: mobile search returned {r.status_code}")
-        return True
+        return
 
     data = r.json()
     products = data if isinstance(data, list) else data.get("products", [])
     if not products:
         print("SKIP: no mobile products returned")
-        return True
+        return
 
-    all_pass = True
     for p in products[:10]:
         units = p.get("units", "") or ""
         unit_price = p.get("unitPrice", "") or ""
@@ -139,29 +145,22 @@ def test_mobile_parser():
 
         if orig != copy:
             print(f"  MISMATCH mobile: units={units!r} unitPrice={unit_price!r} orig={orig} copy={copy}")
-            all_pass = False
         else:
             print(f"  OK mobile: units={units!r} unitPrice={unit_price!r} -> {orig}")
 
-    return all_pass
-
 
 def main():
-    print("=== Parser parity test ===")
+    print("=== Parser idempotence probe ===")
     print(f"Edge store: {EDGE_STORE_ID}, ingredient: {INGREDIENT}")
 
     print("\n--- Edge parser ---")
-    edge_ok = test_edge_parser()
+    verify_edge_parser()
 
     print("\n--- Mobile parser ---")
-    mobile_ok = test_mobile_parser()
+    verify_mobile_parser()
 
     print("\n" + "=" * 60)
-    if edge_ok and mobile_ok:
-        print("ALL PASSED: parse_foodstuffs_* works for both Pak'nSave and New World data.")
-    else:
-        print("FAILURES: parsers diverge — review needed.")
-        sys.exit(1)
+    print("Probe complete (idempotence check only — correctness is in tests/).")
 
 
 if __name__ == "__main__":

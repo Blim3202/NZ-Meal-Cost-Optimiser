@@ -142,3 +142,41 @@ def test_delete_unknown_dish_404(tmp_path, monkeypatch, client):
     monkeypatch.setattr(web_main, "DATA_DIR", tmp_path)
     (tmp_path / "dishes.json").write_text("{}", encoding="utf-8")
     assert client.delete("/dishes/nope").status_code == 404
+
+
+def test_save_persists_notes_top_level_key(tmp_path, monkeypatch, client):
+    """POST /dishes/save with a notes field persists it as a top-level
+    key on the entry (trimmed to <=100 chars); omitting notes leaves
+    the key absent. See main.py:849-851."""
+    monkeypatch.setattr(web_main, "DATA_DIR", tmp_path)
+    (tmp_path / "dishes.json").write_text("{}", encoding="utf-8")
+
+    save = client.post("/dishes/save", json=SaveDishRequest(
+        dish_name="Kumara Hash",
+        base_portions=4,
+        ingredients=[CustomIngredient(search_term="kumara", quantity=300, unit="g")],
+        notes="  from bbcgoodfood.com ",
+    ).model_dump())
+    assert save.status_code == 200
+    stored = json.loads((tmp_path / "dishes.json").read_text(encoding="utf-8"))
+    assert stored["kumara hash"]["notes"] == "from bbcgoodfood.com"
+
+    save2 = client.post("/dishes/save", json=SaveDishRequest(
+        dish_name="No Notes Dish",
+        base_portions=2,
+        ingredients=[CustomIngredient(search_term="rice", quantity=500, unit="g")],
+    ).model_dump())
+    assert save2.status_code == 200
+    stored = json.loads((tmp_path / "dishes.json").read_text(encoding="utf-8"))
+    assert "notes" not in stored["no notes dish"]
+
+    long_notes = "x" * 200
+    save3 = client.post("/dishes/save", json=SaveDishRequest(
+        dish_name="Truncated Notes",
+        base_portions=2,
+        ingredients=[CustomIngredient(search_term="rice", quantity=500, unit="g")],
+        notes=long_notes,
+    ).model_dump())
+    assert save3.status_code == 200
+    stored = json.loads((tmp_path / "dishes.json").read_text(encoding="utf-8"))
+    assert len(stored["truncated notes"]["notes"]) == 100

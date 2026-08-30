@@ -76,3 +76,23 @@ def test_generation_failure_maps_to_502(monkeypatch):
     with pytest.raises(HTTPException) as exc:
         asyncio.run(web_main.generate_dish(GenerateDishRequest(dish_name="x")))
     assert exc.value.status_code == 502
+
+
+def test_filter_soft_fail_passes_through_with_empty_rules_and_warning(monkeypatch):
+    """When generate_custom_dish returns empty filters + a filter warning,
+    the route must surface both untouched (not 502) — filter failure is
+    non-fatal by design (see generation.py:441-444)."""
+    def soft_fail(name, base):
+        return {
+            "dish_name": name,
+            "base_portions": base,
+            "source": "llm",
+            "ingredients": [{"quantity": 100.0, "unit": "g", "search_term": "kumara"}],
+            "filters": {},
+            "warnings": ["filter rules unavailable: filter model google/gemini-3.1-flash-lite failed: timeout"],
+        }
+    monkeypatch.setattr(web_main, "generate_custom_dish", soft_fail)
+    out = asyncio.run(web_main.generate_dish(GenerateDishRequest(dish_name="kumara hash")))
+    assert out["filters"] == {}
+    assert len(out["warnings"]) == 1
+    assert "filter rules unavailable" in out["warnings"][0]

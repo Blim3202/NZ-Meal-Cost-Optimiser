@@ -96,18 +96,16 @@ class TestGetNearbyStores:
 
     @patch("NZMealOptimiser.pricing.woolworths_api.STORE_CSV", FIXTURE_DIR / "stores_fixture.csv")
     def test_nearby_stores_from_reference_point(self):
-        """All 5 fixture stores are within 5 km of Nelson Junction.
-
-        Using Nelson Junction's coordinates as the query point, we expect
-        at least 3 stores within 5 km (Nelson Junction itself + nearby
-        Nelson stores). The result should be sorted by distance ascending.
+        """4 fixture stores are within 5 km of Nelson Junction. The result
+        must be sorted by distance ascending; Nelson Junction itself is
+        the closest (~0 km) and is keyed by its fulfilmentStoreId (extra1).
         """
         ref = _load_json("nearby_stores_example.json")
         user_lat = ref["reference_point"]["lat"]
         user_lon = ref["reference_point"]["lon"]
 
         nearby = get_nearby_stores(user_lat, user_lon, max_dist_km=5)
-        assert len(nearby) >= 3
+        assert len(nearby) == 4
 
         # Results must be sorted by distance ascending
         distances = [s["distance_km"] for s in nearby]
@@ -211,8 +209,8 @@ class TestSearchProductsFiltering:
             if p["department"]:
                 assert p["department"] in ("Fridge & Deli", "Pantry")  # Food depts in fixture
 
-    def test_search_products_no_sku_items_excluded_with_food_filter(self):
-        """With food_only=True, items with empty SKU are NOT excluded.
+    def test_search_products_empty_sku_included_with_food_filter(self):
+        """With food_only=True, items with empty SKU are still included.
 
         search_products only filters by department, not SKU. The ad item
         (index 4) has empty SKU and empty departments, which is treated
@@ -364,22 +362,19 @@ class TestSetStoreContext:
 
         set_store_context(session, "9290")
 
-        # Verify call order: cookies.set called before session.get
-        # In MagicMock, call order is preserved in mock_calls
-        mock_calls = session.mock_calls
-
-        # Find indices of the relevant calls
-        cookie_set_idx = None
-        shell_get_idx = None
-        for i, call in enumerate(mock_calls):
-            if call[0] == "cookies.set":
-                cookie_set_idx = i
-            elif call[0] == "get" and cookie_set_idx is not None:
-                shell_get_idx = i
-                break
+        # Verify call order: cookies.set called before session.get(shell URL)
+        # Use mock_calls to find each call's position in the recorded sequence.
+        mock_calls = [repr(c) for c in session.mock_calls]
+        cookie_set_idx = next(
+            (i for i, c in enumerate(mock_calls) if "cookies.set" in c), None,
+        )
+        shell_get_idx = next(
+            (i for i, c in enumerate(mock_calls)
+             if ".get(" in c and "/shell" in c and i > (cookie_set_idx or 0)), None,
+        )
 
         assert cookie_set_idx is not None, "cookies.set was not called"
-        assert shell_get_idx is not None, "session.get was not called"
+        assert shell_get_idx is not None, "session.get(shell) was not called"
         assert cookie_set_idx < shell_get_idx, "Cookie must be set before shell validation GET"
 
     def test_shell_is_called_with_correct_url(self):
@@ -392,10 +387,10 @@ class TestSetStoreContext:
 
         result = set_store_context(session, "9290")
 
-        # Verify the shell endpoint was called
+        # Verify the shell endpoint was called with the exact /api/v1/shell URL.
         session.get.assert_called_once()
-        call_args = session.get.call_args
-        assert "/shell" in call_args[0][0] or "/shell" in str(call_args)
+        called_url = session.get.call_args[0][0]
+        assert called_url == "https://www.woolworths.co.nz/api/v1/shell"
 
     def test_cookie_takes_int_fulfilment_store_id(self):
         """set_store_context accepts fulfilmentStoreId as an int (extra1)."""

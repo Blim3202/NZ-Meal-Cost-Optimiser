@@ -913,6 +913,24 @@ layout. New `data/` path contract: `DATA_DIR = PROJECT_ROOT / "data"` resolved i
 `scripts/...`) predate the restructure and are left as-is — they are records of
 what existed at the time. This entry marks the transition point.
 
+## 65. AGENTS.md "Research Status" offload
 
+**Symptom**: `AGENTS.md` had grown three verbose "Research Status" sections
+(Woolworths, New World, Pak'nSave) totalling ~30 lines that duplicated the
+"what works" prose already living in `docs/technical/{Woolworths,NewWorld,PaknSave}_API.md`.
+
+**Resolution**: Collapsed the three blocks into a single "Confirmed Research"
+checklist in `AGENTS.md` (~14 lines), referring out to the relevant API doc §N
+for full detail. Historical narrative (store-count deltas, cookie experiments,
+Playwright-vs-curl work) stays here and in `docs/technical/*.md` — these remain
+the canonical record; `AGENTS.md` is the quick-reference. Per-brand CLI notes
+(57/60/148/150 store counts, `s-38` constant, hardcoded `EXCLUDED_STORE_IDS`,
+`x-requested-with` `"??"`) migrated into the per-brand API docs where they
+belong; only the truly load-bearing gotchas stay in `AGENTS.md` "Key Gotchas".
+The "Nominatim not needed" claim was qualified: Nominatim is **not** used for
+store coordinates anymore (Foodstuffs APIs ship them), but **is** still used for
+user-address geocoding (typed address → lat/lon for the 5 km radius), rate
+limited 1 req/sec. See `FastAPI.md` §`_resolve_origin` and `optimiser_utils.py`
+`geocode()`.
 
 

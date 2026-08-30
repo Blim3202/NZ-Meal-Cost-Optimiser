@@ -130,8 +130,7 @@ def list_google_models(api_key: Optional[str] = None) -> dict:
         methods = entry.get("supportedGenerationMethods") or []
         if not isinstance(methods, list):
             continue
-        required_methods = {"generateContent", "countTokens", "createCachedContent", "batchGenerateContent"}
-        if not required_methods.issubset(methods):
+        if "generateContent" not in methods:
             continue
         full_name = entry.get("name", "")
         if not full_name.startswith("models/"):
@@ -153,11 +152,25 @@ def list_google_models(api_key: Optional[str] = None) -> dict:
 
 
 def fetch_all_providers() -> dict:
-    """Call both providers in series. Failures are isolated per provider."""
-    return {
-        PROVIDER_MISTRAL: list_mistral_models(),
-        PROVIDER_GOOGLE: list_google_models(),
-    }
+    """Call both providers in series. Failures are isolated per provider.
+
+    A raising provider yields ``{"available": False, "models": [],
+    "error": "..."}`` for that key; the other provider is still queried.
+    """
+    results: dict = {}
+    for provider_key, fetcher in (
+        (PROVIDER_MISTRAL, list_mistral_models),
+        (PROVIDER_GOOGLE, list_google_models),
+    ):
+        try:
+            results[provider_key] = fetcher()
+        except Exception as exc:  # noqa: BLE001 — isolated per provider
+            results[provider_key] = {
+                "available": False,
+                "models": [],
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+    return results
 
 
 def load_models_cache() -> Optional[dict]:
@@ -189,10 +202,18 @@ def save_models_cache(providers: dict) -> dict:
         "providers": providers,
     }
     tmp = CACHE_PATH.with_suffix(".json.tmp")
-    with open(tmp, "w", encoding="utf-8") as handle:
-        json.dump(payload, handle, indent=2, ensure_ascii=False)
-        handle.write("\n")
-    os.replace(tmp, CACHE_PATH)
+    try:
+        with open(tmp, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle, indent=2, ensure_ascii=False)
+            handle.write("\n")
+        os.replace(tmp, CACHE_PATH)
+    except OSError:
+        if tmp.exists():
+            try:
+                tmp.unlink()
+            except OSError:
+                pass
+        raise
     return payload
 
 

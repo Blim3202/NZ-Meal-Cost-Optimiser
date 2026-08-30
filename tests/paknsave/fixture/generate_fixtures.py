@@ -14,28 +14,21 @@ Fixtures produced:
     fixture/
     ├── edge_store_list_example.json     Edge API store list
     │                                     (GET {EDGE_BASE}/store)
-    ├── edge_store_list_example_meta.json Metadata tracing endpoint/store count
     ├── edge_search_pass1_example.json   Edge Pass 1 relevance search ("milk")
     │                                     (POST {EDGE_BASE}/search/products/query/index/products-index)
-    ├── edge_search_pass1_meta.json      Metadata tracing Pass 1 capture (endpoint, store)
     ├── edge_search_pass2_example.json   Edge Pass 2 per-store pricing ("milk")
     │                                     (POST {EDGE_BASE}/search/paginated/products)
-    ├── edge_search_pass2_meta.json      Metadata tracing Pass 2 capture (endpoint, filters)
     ├── mobile_login_example.json        Mobile guest login response
     │                                     (POST {MOBILE_BASE}/mobile/user/login/guest)
-    ├── mobile_login_meta.json           Metadata tracing mobile auth endpoint
     ├── mobile_stores_example.json       Mobile physical store list
     │                                     (GET {MOBILE_BASE}/mobile/store/physical)
-    ├── mobile_stores_meta.json          Metadata tracing mobile store endpoint/store count
     ├── mobile_search_example.json       Mobile product search ("milk")
     │                                     (POST {MOBILE_BASE}/mobile/ecomm-products/PNS/{store_id}/search)
-    ├── mobile_search_meta.json          Metadata tracing mobile search endpoint (store, query)
-    ├── store_finder_page_example.json   Website store-finder HTML containing __NEXT_DATA__
-    │                                     (GET {WEB_BASE}/store-finder)
-    └── store_finder_meta.json           Metadata tracing store-finder capture
+    └── store_finder_page_example.json   Website store-finder HTML containing __NEXT_DATA__
+                                          (GET {WEB_BASE}/store-finder)
 
 Usage (requires internet access to Pak'nSave APIs):
-    python scripts/paknsave/fixture/generate_fixtures.py
+    python -m tests.paknsave.fixture.generate_fixtures
 
 The script is idempotent: re-running it overwrites all fixture files.
 """
@@ -161,18 +154,6 @@ def capture_edge_fixtures():
         json.dump(stores_data, f, indent=2, ensure_ascii=False)
     print(f"    Wrote {path}")
 
-    # Trace metadata so tests can identify which endpoint/store produced this.
-    meta_path = FIXTURE_DIR / "edge_store_list_example_meta.json"
-    with open(meta_path, "w", encoding="utf-8") as f:
-        json.dump({
-            "endpoint": f"{EDGE_BASE}/store",
-            "store_count": len(stores),
-            "first_store_id": store_id,
-            "first_store_name": store_name,
-            "notes": "Edge API store list captured from live Pak'nSave API."
-        }, f, indent=2)
-    print(f"    Wrote {meta_path}")
-
     # Cookies required for Edge search requests (per-store context)
     store_cookies = {
         "eCom_STORE_ID": store_id,
@@ -213,17 +194,6 @@ def capture_edge_fixtures():
         json.dump(p1_data, f, indent=2, ensure_ascii=False)
     print(f"    Wrote {path1}")
 
-    with open(FIXTURE_DIR / "edge_search_pass1_meta.json", "w", encoding="utf-8") as f:
-        json.dump({
-            "endpoint": f"{EDGE_BASE}/search/products/query/index/products-index",
-            "store_id": store_id,
-            "store_name": store_name,
-            "query": "milk",
-            "hits_count": len(p1_data.get("hits", [])),
-            "notes": "Edge Pass 1 relevance search captured from live API."
-        }, f, indent=2)
-    print(f"    Wrote {FIXTURE_DIR / 'edge_search_pass1_meta.json'}")
-
     # Extract productIDs for the Pass 2 filter query
     hits = p1_data.get("hits", [])
     product_ids = [h["productID"] for h in hits[:10]]
@@ -254,17 +224,6 @@ def capture_edge_fixtures():
     with open(path2, "w", encoding="utf-8") as f:
         json.dump(p2_data, f, indent=2, ensure_ascii=False)
     print(f"    Wrote {path2}")
-
-    with open(FIXTURE_DIR / "edge_search_pass2_meta.json", "w", encoding="utf-8") as f:
-        json.dump({
-            "endpoint": f"{EDGE_BASE}/search/paginated/products",
-            "store_id": store_id,
-            "store_name": store_name,
-            "filters": filter_str,
-            "products_count": len(p2_data.get("products", [])),
-            "notes": "Edge Pass 2 per-store pricing captured from live API."
-        }, f, indent=2)
-    print(f"    Wrote {FIXTURE_DIR / 'edge_search_pass2_meta.json'}")
 
     return store_id
 
@@ -320,13 +279,6 @@ def capture_mobile_fixtures(store_id):
         json.dump(login_data, f, indent=2, ensure_ascii=False)
     print(f"    Wrote {path}")
 
-    with open(FIXTURE_DIR / "mobile_login_meta.json", "w", encoding="utf-8") as f:
-        json.dump({
-            "endpoint": f"{MOBILE_BASE}/mobile/user/login/guest",
-            "notes": "Mobile guest token authentication captured from live API."
-        }, f, indent=2)
-    print(f"    Wrote {FIXTURE_DIR / 'mobile_login_meta.json'}")
-
     # Auth headers for subsequent Mobile requests
     auth_headers = {
         "Authorization": f"Bearer {token}",
@@ -346,14 +298,6 @@ def capture_mobile_fixtures(store_id):
         json.dump(stores_data, f, indent=2, ensure_ascii=False)
     print(f"    Wrote {path2}")
 
-    with open(FIXTURE_DIR / "mobile_stores_meta.json", "w", encoding="utf-8") as f:
-        json.dump({
-            "endpoint": f"{MOBILE_BASE}/mobile/store/physical",
-            "store_count": len(stores_data.get("stores", [])),
-            "notes": "Mobile store list captured from live API."
-        }, f, indent=2)
-    print(f"    Wrote {FIXTURE_DIR / 'mobile_stores_meta.json'}")
-
     # --- Mobile Product Search ("milk") ---
     # Searches for "milk" under the PNS banner for the specified store.
     print(f"  Fetching Mobile product search ('milk') for store {store_id}...")
@@ -369,16 +313,6 @@ def capture_mobile_fixtures(store_id):
     with open(path3, "w", encoding="utf-8") as f:
         json.dump(search_data, f, indent=2, ensure_ascii=False)
     print(f"    Wrote {path3}")
-
-    with open(FIXTURE_DIR / "mobile_search_meta.json", "w", encoding="utf-8") as f:
-        json.dump({
-            "endpoint": f"{MOBILE_BASE}/mobile/ecomm-products/PNS/{store_id}/search",
-            "store_id": store_id,
-            "query": "milk",
-            "products_count": len(search_data) if isinstance(search_data, list) else len(search_data.get("products", [])),
-            "notes": "Mobile product search response captured from live API."
-        }, f, indent=2)
-    print(f"    Wrote {FIXTURE_DIR / 'mobile_search_meta.json'}")
 
 
 # ---------------------------------------------------------------------------
@@ -418,13 +352,6 @@ def capture_store_finder_fixtures():
     with open(path, "w", encoding="utf-8") as f:
         json.dump(next_data, f, indent=2, ensure_ascii=False)
     print(f"    Wrote {path}")
-
-    with open(FIXTURE_DIR / "store_finder_meta.json", "w", encoding="utf-8") as f:
-        json.dump({
-            "endpoint": f"{WEB_BASE}/store-finder",
-            "notes": "__NEXT_DATA__ extracted from Pak'nSave store-finder page."
-        }, f, indent=2)
-    print(f"    Wrote {FIXTURE_DIR / 'store_finder_meta.json'}")
 
 
 def main():

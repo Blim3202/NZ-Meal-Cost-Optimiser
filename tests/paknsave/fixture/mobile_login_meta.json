@@ -1,4 +1,0 @@
-{
-  "endpoint": "https://api-prod.prod.fsniwaikato.kiwi/prod/mobile/user/login/guest",
-  "notes": "Mobile guest token authentication captured from live API."
-}

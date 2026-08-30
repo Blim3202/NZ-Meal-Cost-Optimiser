@@ -184,7 +184,7 @@ class TestFetchStoresFromEdgeAPI:
 
         coords = list(zip(df["latitude"], df["longitude"]))
         unique_coords = set(coords)
-        assert len(unique_coords) > 10
+        assert len(unique_coords) == len(self.edge_stores["stores"])
 
     @patch("tools.newworld.newworld_setup.get_website_jwt")
     @patch("tools.newworld.newworld_setup.requests.get")
@@ -308,8 +308,11 @@ class TestFetchStoresDispatch:
         mock_fetch.assert_called_once()
         assert list(df.columns) == EXPECTED_COLUMNS
 
-    @patch("tools.newworld.newworld_setup.fetch_stores_from_store_finder", create=True)
-    def test_fetch_stores_store_finder_raises_valueerror(self, mock_fetch):
-        """New World has no store_finder source — verify ValueError is raised."""
-        with pytest.raises(ValueError):
+    def test_fetch_stores_store_finder_raises_valueerror(self):
+        """New World has no store_finder source — the function is genuinely
+        absent from the module namespace, and fetch_stores must reject the
+        invalid source without a phantom-patch side-effect."""
+        import tools.newworld.newworld_setup as nw_setup
+        assert not hasattr(nw_setup, "fetch_stores_from_store_finder")
+        with pytest.raises(ValueError, match="store_finder"):
             fetch_stores(source="store_finder", verbose=False)

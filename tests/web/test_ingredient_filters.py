@@ -88,6 +88,18 @@ def test_matches_ingredient_filters_reason_strings():
     assert "EXCLUDE" in exc_reason
 
 
+def test_multi_keyword_includes_narrow_harder_than_single():
+    """A 2-keyword include set must reject matches that a 1-keyword subset
+    would accept — adding a keyword always narrows, never widens."""
+    title = "Beef Mince 500g"
+    one_kw, _ = matches_ingredient_filters(title, ["mince"], [])
+    two_kw, _ = matches_ingredient_filters(title, ["beef", "mince"], [])
+    two_kw_failing, _ = matches_ingredient_filters(title, ["mince", "lamb"], [])
+    assert one_kw is True
+    assert two_kw is True       # both keywords present
+    assert two_kw_failing is False  # second keyword absent → harder to match
+
+
 # ── Filter cleaning ───────────────────────────────────────────────────────────
 
 def test_clean_strips_drops_empty_sets():

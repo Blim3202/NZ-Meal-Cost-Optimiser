@@ -109,10 +109,19 @@ def save_llm_settings(payload: dict) -> dict:
 
     SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
     tmp = SETTINGS_PATH.with_suffix(".json.tmp")
-    with open(tmp, "w", encoding="utf-8") as handle:
-        json.dump(canonical, handle, indent=2, ensure_ascii=False)
-        handle.write("\n")
-    os.replace(tmp, SETTINGS_PATH)
+    try:
+        with open(tmp, "w", encoding="utf-8") as handle:
+            json.dump(canonical, handle, indent=2, ensure_ascii=False)
+            handle.write("\n")
+        os.replace(tmp, SETTINGS_PATH)
+    except OSError:
+        # Clean up the temp file so it doesn't leak into the data dir.
+        if tmp.exists():
+            try:
+                tmp.unlink()
+            except OSError:
+                pass
+        raise
     return canonical
 
 

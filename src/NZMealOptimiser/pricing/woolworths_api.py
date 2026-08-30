@@ -11,7 +11,6 @@ Key functions:
     create_session()            - Create a seeded requests.Session with required headers
     set_store_context()         - Inject per-store cookie for pricing (takes fulfilment_store_id)
     search_products()           - Keyword search against the product catalogue
-    find_cheapest()             - Search and return the lowest-priced result
     get_nearby_stores()         - Haversine distance filter on store coordinates
 
 Data files:
@@ -127,16 +126,6 @@ def set_store_context(session, fulfilment_store_id):
     return result
 
 
-def create_session_and_set_store(fulfilment_store_id):
-    """Convenience: create a fresh session and inject per-store cookie.
-
-    Returns (session, store_context_dict).
-    """
-    session = create_session()
-    context = set_store_context(session, fulfilment_store_id)
-    return session, context
-
-
 def search_products(session, query, size=20, food_only=True):
     """Search for products with the current store context.
 
@@ -182,25 +171,6 @@ def search_products(session, query, size=20, food_only=True):
             "department": dept_name,
         })
     return results
-
-
-def find_cheapest(session, query, food_only=True, size=20):
-    """Search for products and return the cheapest valid result.
-
-    Args:
-        session: a requests.Session with store context set
-        query: search term
-        food_only: if True, exclude non-food departments
-        size: number of products to fetch before picking cheapest
-
-    Returns:
-        The cheapest product dict, or None if no priced products found.
-    """
-    products = search_products(session, query, size=size, food_only=food_only)
-    priced = [p for p in products if p["salePrice"] is not None]
-    if not priced:
-        return None
-    return min(priced, key=lambda p: p["salePrice"])
 
 
 def get_nearby_stores(user_lat, user_lon, max_dist_km=5):

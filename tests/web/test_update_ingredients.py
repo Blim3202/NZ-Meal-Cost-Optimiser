@@ -120,6 +120,26 @@ def test_diff_qty_only_edit_detected_without_term_change():
     assert diff["kept"] == ["beef mince"] and diff["qty_changed"] == ["beef mince"]
 
 
+def test_diff_no_changes_returns_empty_lists():
+    """An identical builder payload diffs to all-empty lists (no-op path)."""
+    cache = {
+        "search_terms": ["beef mince", "onion"],
+        "ing_lookup": {
+            "beef mince": {"quantity": 250, "unit": "g"},
+            "onion": {"quantity": 100, "unit": "g"},
+        },
+    }
+    new_lookup = {
+        "beef mince": {"search_term": "beef mince", "quantity": 250, "unit": "g"},
+        "onion": {"search_term": "onion", "quantity": 100, "unit": "g"},
+    }
+    diff = _diff_run_ingredients(cache, new_lookup)
+    assert diff["added"] == []
+    assert diff["removed"] == []
+    assert diff["kept"] == ["beef mince", "onion"]
+    assert diff["qty_changed"] == []
+
+
 # ── Endpoint behaviour ────────────────────────────────────────────────────────
 
 def test_added_term_is_queried_per_cached_store(client, monkeypatch):

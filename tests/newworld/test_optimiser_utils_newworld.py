@@ -510,10 +510,12 @@ class TestNewWorldSpecific:
             assert cat1 not in NON_FOOD_CATEGORIES or not cat1
 
     def test_haversine_within_new_zealand(self):
-        """Haversine between two NZ cities returns a sensible distance (~600 km Auckland-Wellington)."""
+        """Haversine Auckland-Wellington is ~495 km; allow ±15 km for
+        coordinate rounding so the test catches off-by-10x bugs but stays
+        stable under minor refactors."""
         # Auckland ≈ -36.8485, 174.7635; Wellington ≈ -41.2865, 174.7762
         dist = haversine(-36.8485, 174.7635, -41.2865, 174.7762)
-        assert 400 < dist < 800
+        assert 480 < dist < 510
 
     def test_find_nearby_stores_returns_empty_when_no_csv(self):
         """find_nearby_stores returns empty list when stores CSV is missing."""

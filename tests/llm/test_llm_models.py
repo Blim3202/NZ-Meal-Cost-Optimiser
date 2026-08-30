@@ -164,8 +164,9 @@ def test_ensure_cache_seeded_returns_existing_without_calling_fetch(isolated_cac
 def test_fetch_all_providers_isolates_failures(monkeypatch):
     """Mistral raising must not prevent Google from being queried."""
     monkeypatch.setenv(MISTRAL_API_KEY_ENV, "k")
-    with patch.object(llm_models, "list_mistral_models", return_value={"available": True, "models": [], "error": None}), \
-         patch.object(llm_models, "list_google_models", return_value={"available": True, "models": [{"id": "g"}], "error": None}):
+    with patch.object(llm_models, "list_mistral_models", side_effect=RuntimeError("mistral down")), \
+         patch.object(llm_models, "list_google_models", return_value={"available": True, "models": [{"id": "g"}], "error": None}) as google_mock:
         result = llm_models.fetch_all_providers()
-    assert result["mistral"]["available"] is True
+    assert google_mock.called, "Google must still be queried when Mistral raises"
     assert result["google"]["available"] is True
+    assert result["google"]["models"] == [{"id": "g"}]

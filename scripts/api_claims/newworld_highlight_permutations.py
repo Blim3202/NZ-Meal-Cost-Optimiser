@@ -27,7 +27,7 @@ Every JSON response is printed in full, except the store-availability fields
 "TRUNCATED FOR TEST" so the rest of the payload stays readable.
 
 Usage:
-    python -m tests.combined.test_highlight_permutations
+    python -m scripts.api_claims.newworld_highlight_permutations
 """
 
 import json

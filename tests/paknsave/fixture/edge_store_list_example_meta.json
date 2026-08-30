@@ -1,5 +1,0 @@
-{
-  "endpoint": "https://api-prod.paknsave.co.nz/v1/edge/store",
-  "store_count": 57,
-  "notes": "Edge API store list captured from live Pak'nSave API."
-}

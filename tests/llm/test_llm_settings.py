@@ -106,5 +106,33 @@ def test_save_is_atomic(isolated_settings_path):
     assert not isolated_settings_path.with_suffix(".json.tmp").exists()
 
 
+def test_save_recovers_from_replace_failure(monkeypatch, isolated_settings_path):
+    """If os.replace fails mid-save, the .tmp file is cleaned up and the
+    pre-existing settings file is left untouched. This is the recovery
+    path that justifies the temp+replace pattern in save_llm_settings."""
+    import os as os_mod
+
+    payload = {
+        "ingredient_model": dict(llm_settings.DEFAULT_INGREDIENT_MODEL),
+        "filter_model": dict(llm_settings.DEFAULT_FILTER_MODEL),
+    }
+    llm_settings.save_llm_settings(payload)
+    pre_existing = isolated_settings_path.read_text(encoding="utf-8")
+
+    def boom(src, dst):
+        raise OSError("simulated replace failure")
+
+    monkeypatch.setattr(os_mod, "replace", boom)
+    with pytest.raises(OSError):
+        llm_settings.save_llm_settings({
+            "ingredient_model": {"provider": "google", "model_id": "x"},
+            "filter_model": dict(llm_settings.DEFAULT_FILTER_MODEL),
+        })
+    # pre-existing file untouched
+    assert isolated_settings_path.read_text(encoding="utf-8") == pre_existing
+    # no .tmp file leaked
+    assert not isolated_settings_path.with_suffix(".json.tmp").exists()
+
+
 def test_get_active_models_matches_load(isolated_settings_path):
     assert llm_settings.get_active_models() == llm_settings.load_llm_settings()

@@ -1,4 +1,4 @@
-# OpenCode — NZ Meal Cost Optimiser
+# NZ Meal Cost Optimiser
 
 Finds the cheapest Pak'nSave, New World, or Woolworths for a given dish by comparing ingredient prices across nearby stores (within 5 km of a NZ address).
 
@@ -12,144 +12,157 @@ pip install -e ".[dev]"   # dev extras (pytest)
 
 Runtime pins still live in `requirements.txt`. No path-bootstrap hacks — imports resolve via the installed `NZMealOptimiser` package.
 
+## How to Read This Repo
+
+| If you want to … | Start here |
+|---|---|
+| Find the cheapest store for a dish | CLI: `python -m tools.<brand>.<brand>_optimiser_edge "<addr>" "<dish>"`. Web: `/app` → Optimiser dashboard → Run. See `docs/technical/FastAPI.md` §API Endpoints. |
+| Develop the FastAPI / Vue frontend | `src/NZMealOptimiser/web/main.py` + `src/NZMealOptimiser/web/frontend/`. Full reference: `docs/technical/FastAPI.md`, `docs/technical/Vue_Dashboard.md`. |
+| Add/extend a brand API integration | `src/NZMealOptimiser/pricing/<brand>_api.py` (clients) + `src/NZMealOptimiser/pricing/optimiser_utils.py` (cross-brand helpers). Full per-brand reference: `docs/technical/<Brand>_API.md`. |
+| Use the LLM ingredient generator | CLI: `python -m tools.llm.llm_interactive`. Web: `/app` → LLM Recipe Builder. See `docs/technical/LLM_Pipeline.md`. |
+| Refresh / seed store data | `python -m tools.<brand>.<brand>_setup` (per-brand; see CLI block below). |
+| Run / extend the test suite | `python -m pytest` (469 tests, ~10 s). Per-folder layout: see `Tests` section. |
+
 ## Project Layout
 
 ```
 opencode/
-├── data/
-│   ├── newworld_stores.csv                     # 148 stores (Edge, default) or 150 (Mobile): store_id, name, address, city, region, lat, lon, banner, click_and_collect, delivery
-│   ├── paknsave_stores.csv                     # 57 stores (Edge, default) / 60 (store_finder): store_id, name, address, city, region, lat, lon, banner, click_and_collect, delivery
-│   ├── paknsave_stores.json                    # Same data as CSV, JSON format
-│   ├── woolworths_stores.csv                   # Merged Woolworths store list with lat/lon (keyed on extra1 = fulfilmentStoreId)
-│   ├── woolworths_store_choices.csv            # Woolworths pickup location IDs (from pickup-addresses API, legacy/detached)
-│   ├── woolworths_store_choices.json           # Same data as CSV, JSON format
-│   ├── woolworths_store_data.csv               # Woolworths store details from CDX API
-│   ├── woolworths_store_data.json              # Store details with extra1 (fulfilmentStoreId), extra2 (pickupAddressId)
-│   ├── woolworths_latest_results.csv           # Last optimiser output for woolworths optimiser
-│   ├── paknsave_latest_results.csv             # Last Edge optimiser output
-│   ├── paknsave_mobile_latest_results.csv      # Last Mobile optimiser output
-│   ├── observed_category1_newworld.json        # Category1 values from New World Algolia index
-│   ├── observed_category1_paknsave.json        # Category1 values from Pak'nSave Algolia index
-│   ├── dishes.json                             # 21 hand-curated dishes with structured ingredients (user-saved presets may carry a "notes" field)
-│   ├── dish_filters.json                       # Per-dish include/exclude keyword filters (served via GET /dish_filters; runtime matcher in optimiser_utils.py)
-│   ├── llm_settings.json                       # Active ingredient + filter model selection (provider+model_id); written by Settings page (PUT /llm/settings)
-│   ├── llm_models_cache.json                   # Last-fetched Mistral + Google model catalog with fetched_at; seeded by GET /llm/models, refreshed by POST /llm/models/refresh
-│   └── full_results.csv                        # Append-only results with pk_hash deduplication + is_valid column
+├── data/                               # All CSVs/JSON. DATA_DIR is src/NZMealOptimiser/__init__.py.
+│   ├── dishes.json                     # 21 hand-curated dishes (LLM can extend). Regenerate from LLM.
+│   ├── dish_filters.json               # Per-dish include/exclude keywords (AND-semantics).
+│   ├── full_results.csv                # Append-only optimisation log; pk_hash dedup + is_valid column.
+│   ├── llm_settings.json / llm_models_cache.json   # LLM model selection + catalog cache.
+│   └── <brand>_stores.csv              # 57/60 (PNS) · 148/150 (NW) · 162 (Woolworths, keyed on extra1).
 ├── src/NZMealOptimiser/
-│   ├── __init__.py                             # PROJECT_ROOT + DATA_DIR resolved once (shared path contract)
-│   ├── pricing/
-│   │   ├── optimiser_utils.py                  # **Cross-brand helpers**: foodstuffs_querier_edge/mobile, woolworths_querier, build_edge_row/mobile_row/build_woolworths_row, parsing, geocoding, haversine, DISHES, get_ingredients, _resolve_dish_terms, _resolve_dish_data, _build_quantity_map, optimise(), append_rows, _compute_pk_hash
-│   │   ├── paknsave_api.py                     # **Unified API module**: Edge API (two-pass) + Mobile API (single-pass) with shared utilities
-│   │   ├── newworld_api.py                     # **Unified API module**: Edge API (two-pass) + Mobile API (single-pass) with shared utilities
-│   │   └── woolworths_api.py                   # Cookie-based API module: session, store context, product search
-│   ├── llm/
-│   │   ├── llm_client.py                       # Multi-provider chat client (Mistral + Google); provider+model_id explicit form, legacy model_alias shim
-│   │   ├── llm_models.py                       # Live model catalog + file cache (data/llm_models_cache.json)
-│   │   ├── llm_settings.py                     # LLM model settings store (data/llm_settings.json)
-│   │   ├── generation.py                       # Custom-dish LLM drafts: configured ingredient model + configured filter model (POST /dishes/generate, POST /dishes/import_text)
-│   │   └── llm_utils.py                        # Ingredient resolution (curated JSON → LLM), dish parsing/validation, quantity scaling
-│   └── web/
-│       ├── main.py                             # FastAPI app: /optimise/jobs + GET /optimise/{id} (live progress), legacy POST /optimise, /app (Vue) + /dishes, thread pool
-│       ├── config.py                           # Supabase settings loaded from .env
-│       ├── static/                             # index_old.html + generated Vue build (served at / and /app)
-│       └── frontend/                           # Vue CLI source: src/ = /app prod tree, src/test/ = /test sandbox (npm run build → static/vue/)
+│   ├── pricing/                        # optimiser_utils.py (cross-brand) + per-brand *_api.py.
+│   ├── llm/                            # llm_client / llm_models / llm_settings / llm_utils / generation.
+│   └── web/                            # main.py (FastAPI) + frontend/ (Vue source) + static/ (built + vanilla).
 ├── tools/
-│   ├── paknsave/                               # paknsave_setup.py, paknsave_optimiser_edge.py, paknsave_optimiser_mobile.py, paknsave_search_demo_*.py
-│   ├── newworld/                               # newworld_setup.py, newworld_optimiser_edge.py, newworld_optimiser_mobile.py, newworld_search_demo_*.py
-│   ├── woolworths/                             # woolworths_setup.py, woolworths_optimiser.py, woolworths_search_demo.py
-│   ├── llm/                                    # llm_interactive.py, llm_validate.py
-│   └── combined/                               # initialize_full_results.py
-├── tests/                                      # test suites + fixtures per brand (paknsave/, newworld/, woolworths/, combined/)
-├── exploration/                                # per-brand exploration scripts (paknsave/, newworld/, woolworths/, llm/)
+│   ├── <brand>/                        # *_setup.py (store builder) + *_optimiser_{edge,mobile}.py (CLI).
+│   ├── llm/                            # llm_interactive.py, llm_validate.py.
+│   ├── combined/                       # initialize_full_results.py (one-time schema setup).
+│   └── frontend/promote_test_to_app.ps1   # Promotes src/test/ → src/ after sandbox QA.
+├── scripts/api_claims/                 # Live API verification probes (developer-only, not pytest).
+├── tests/                              # 33 files, 469 tests. Per-brand + web/ + llm/ + combined/ (1 file).
+├── exploration/                        # Per-brand scratch scripts (HTTP probes, JSON dumps).
 ├── docs/
-│   ├── migration_plan.md                       # This migration handoff
-│   ├── project/                                # decision.md, design.md, logs.md
-│   └── technical/                              # PaknSave_API.md, NewWorld_API.md, Woolworths_API.md, LLM_Pipeline.md, FastAPI.md, Vue_Dashboard.md
-├── AGENTS.md                                   # This file
-├── Dockerfile                                  # Container image for Google Cloud Run (repo root)
-├── pyproject.toml                              # src-layout package metadata + deps
-├── requirements.txt                            # Pinned dependencies
-└── README.md                                   # Project readme
+│   ├── project/                        # decision.md, design.md, logs.md.
+│   └── technical/                      # <Brand>_API.md, LLM_Pipeline.md, FastAPI.md, Vue_Dashboard.md.
+├── pyproject.toml                      # src-layout package + [tool.pytest.ini_options] (addopts: -ra --strict-markers).
+├── requirements.txt                    # Pinned runtime deps.
+├── Dockerfile                          # Google Cloud Run image.
+└── AGENTS.md                           # This file.
 ```
+
+## Data Layout
+
+`data/` is the single source of truth. All paths come from `DATA_DIR` in `src/NZMealOptimiser/__init__.py`.
+
+- **Store CSVs** regenerated by per-brand setup CLIs (`tools/<brand>/<brand>_setup.py`).
+- **dishes.json / dish_filters.json** hand-curated; extended via `POST /dishes/save` (Dashboard) or LLM Recipe Builder.
+- **full_results.csv** append-only; never hand-edit in Excel (blank rows corrupt pk_hash dedup).
+- **llm_settings.json** written by Settings page (`PUT /llm/settings`); falls back to defaults on missing/malformed.
+- **llm_models_cache.json** seeded by `GET /llm/models`, refreshed by `POST /llm/models/refresh`.
+
+## CLI vs Dashboard
+
+| Task | CLI | Dashboard page | Endpoint |
+|---|---|---|---|
+| Run one optimisation | `python -m tools.<brand>.<brand>_optimiser_edge "<addr>" "<dish>"` | Optimiser dashboard → Run | `POST /optimise/jobs` (progress: `GET /optimise/{id}`) |
+| Refresh store list | `python -m tools.<brand>.<brand>_setup` | — | — |
+| Generate custom dish from name | — | LLM Recipe Builder | `POST /dishes/generate` |
+| Import pasted recipe | — | LLM Recipe Builder | `POST /dishes/import_text` (≤1000-char text; rejection returns 200 `{"status": "rejected"}`) |
+| Save custom dish | — | My Dishes | `POST /dishes/save` |
+| Edit ingredient filters post-run | — | Tuner sidebar | `POST /optimise/{id}/filter_preview` (dry-run) + `reapply` |
+| Partial ingredient refresh | — | Tuner | `POST /optimise/{id}/update_ingredients` (no network for quantity edits) |
+| Choose LLM model | `tools/llm/llm_interactive` (in-session) | Settings → Models | `PUT /llm/settings` |
+| Browse available LLM models | — | Settings → Models | `GET /llm/models`, `POST /llm/models/refresh` |
+| Validate cached results | `python -m tools.llm.llm_validate --max-rows N` | — | — |
+| Replay / sanity-check the API | `python -m scripts.api_claims.<probe>` | — | — |
+| Run the test suite | `python -m pytest` | — | — |
+| Read in-tree docs | — | Documentation view (renders `docs/technical/*.md`) | `GET /tech-docs/<filename>` |
 
 ## File Contents
 
 | File | Purpose |
 |---|---|
-| `docs/technical/PaknSave_API.md` | Foodstuffs Pak'nSave API docs — primary reference for shared Foodstuffs mobile API + Edge API structure; New World references this for common content |
-| `docs/technical/NewWorld_API.md` | Foodstuffs New World API docs — shared structure referenced from PaknSave_API.md; New World-specific Edge API, dishes, store data sources |
-| `docs/technical/Woolworths_API.md` | Full /api/v1 endpoint documentation |
-| `docs/technical/LLM_Pipeline.md` | LLM ingredient generation, post-run validation, and quantity scaling pipeline |
-| `docs/technical/FastAPI.md` | FastAPI web app architecture (endpoints, thread pool, scaling) |
-| `docs/project/decision.md` | Key decisions and rationale (src-layout restructure = #40) |
-| `docs/project/design.md` | Technical design (API, auth, pipeline) |
-| `docs/project/logs.md` | Major errors and resolutions (src-layout restructure = #64) |
-| `src/NZMealOptimiser/__init__.py` | Resolves `PROJECT_ROOT` and `DATA_DIR = PROJECT_ROOT / "data"` once for the whole package |
-| `src/NZMealOptimiser/pricing/optimiser_utils.py` | **Cross-brand helpers**: foodstuffs_querier_edge/mobile, woolworths_querier, build_edge_row/mobile_row/build_woolworths_row, parsing, geocoding, haversine, DISHES, get_ingredients, _resolve_dish_terms, _resolve_dish_data, _build_quantity_map, optimise(), append_rows, _compute_pk_hash |
-| `src/NZMealOptimiser/pricing/paknsave_api.py` | **Unified Pak'nSave API module**: Edge API (two-pass) + Mobile API (single-pass) with shared utilities |
-| `src/NZMealOptimiser/pricing/newworld_api.py` | **Unified New World API module**: Edge API (two-pass) + Mobile API (single-pass) with shared utilities |
-| `src/NZMealOptimiser/pricing/woolworths_api.py` | Cookie-based Woolworths API module. Session, store context, product search. Constructs `cw-lrkswrdjp` cookie from `extra1` in store data. No Playwright needed at runtime. |
-| `src/NZMealOptimiser/llm/llm_client.py` | **Multi-provider chat client** (Mistral via `mistralai` SDK, Google via OpenAI-compat). `LLMClient(provider, model_id)` for new code; legacy `model_alias` shim preserved. Shared 3-retry / rate-limit / JSON-parse loop. Also `generate_ingredients_from_text()` — pasted-recipe extraction with a dual-status JSON contract (`status: "ok"/"rejected"`); user text is wrapped in `<< >>` and the prompt rejects non-recipe/injection content. |
-| `src/NZMealOptimiser/llm/llm_models.py` | **Live model catalog + file cache**: `list_mistral_models` (filters `completion_chat`, not fine-tuned, not archived), `list_google_models` (filters `generateContent`). Cache persisted to `data/llm_models_cache.json` with `fetched_at` timestamp; `ensure_cache_seeded` is called by `GET /llm/models` so the cache is populated on first request. |
-| `src/NZMealOptimiser/llm/llm_settings.py` | **LLM model settings store** — `load_llm_settings` / `save_llm_settings` against `data/llm_settings.json` (atomic temp+replace). Holds `{ingredient_model: {provider, model_id}, filter_model: {provider, model_id}}`. Falls back to hard-coded defaults on missing/malformed file. |
-| `src/NZMealOptimiser/llm/llm_utils.py` | Ingredient resolution (curated `dishes.json` → LLM → fallback), dish parsing/validation (`parse_and_validate`), and quantity scaling (`parse_optimiser_columns` with `approx_quantity`/`approx_unit` fallback for non-standard units). |
-| `src/NZMealOptimiser/llm/generation.py` | Custom-dish LLM drafts (`POST /dishes/generate`, `POST /dishes/import_text`): the configured ingredient model (any chat model from Mistral or Google, picked in the Settings page — default `mistral-medium-latest`) generates validated ingredient rows (name-based or from pasted text via `_clean_parsed_rows`, shared); the configured filter model (any chat model — default Google Gemini `gemini-3.1-flash-lite` via the OpenAI-compat endpoint) generates include/exclude filter rules in the `dish_filters.json` shape. Each function accepts an optional `model: {provider, model_id}` override; default falls back to `llm_settings.get_active_models()`. Filter failures are soft (empty rules + warning); missing keys → 503, ingredient failure → 502, model refusal of pasted text → `RecipeRejectedError` surfaced as HTTP 200 `{"status": "rejected", "reason"}`. |
-| `src/NZMealOptimiser/web/main.py` | FastAPI app + background-job optimisation API (`POST /optimise/jobs`, `GET /optimise/{id}` with per-company progress + event log) + legacy sync `/optimise` + frontend serving. Also: `/dish_filters` (curated keyword presets), `POST /dishes/generate` (LLM custom-dish drafts via `llm/generation.py`), `POST /dishes/import_text` (pasted recipe text → ingredient breakdown; ≤1000-char text, ≤100-char notes; rejections come back as HTTP 200 `{"status": "rejected"}` for gentle UI notices), `POST /optimise/{id}/reapply` (recalculate store costs from cached rows with edited ingredient filters — no new API calls), `POST /optimise/{id}/filter_preview` (non-mutating dry-run powering the tuner's live match counts), and `POST /optimise/{id}/update_ingredients` (partial refresh: re-queries only added/renamed terms against the cached store set, drops removed terms, pure-rescales quantity edits). Include keywords are AND-semantics (EVERY keyword must match); excludes stay none-may-match (`matches_ingredient_filters` in optimiser_utils.py). HTTP logging middleware. Runs via `uvicorn NZMealOptimiser.web.main:app`. |
-| `src/NZMealOptimiser/web/frontend/` | Vue CLI dashboard source. **Dual trees**: `src/` = production `/app`, `src/test/` = sandbox `/test` (independent copies). Edit the sandbox, then promote with `tools/frontend/promote_test_to_app.ps1` and run `npm run lint && npm run build`; output is written to `src/NZMealOptimiser/web/static/vue/`. Never hand-edit generated output. |
-| `src/NZMealOptimiser/web/static/index_old.html` | Original vanilla dashboard, still served at `/`. |
-| `src/NZMealOptimiser/web/static/vue/` | Generated Vue dashboard assets, served at `/app`; do not edit generated files directly. |
-| `tools/paknsave/paknsave_setup.py` | **Unified store builder**: Edge (57 stores) + Mobile (60 stores) + store_finder (60 stores, paknsave only). Callable module + CLI with `source` param. |
-| `tools/paknsave/paknsave_optimiser_edge.py` | **Edge API optimiser**: CLI with geocoding, 5km radius, two-pass search, unit-price selection. Thin wrapper over shared `foodstuffs_querier_edge` in `optimiser_utils.py`. |
-| `tools/paknsave/paknsave_optimiser_mobile.py` | **Mobile API optimiser**: CLI with geocoding, 5km radius, single-pass search, unit-price selection. Thin wrapper over shared `foodstuffs_querier_mobile` in `optimiser_utils.py`. |
-| `tools/newworld/newworld_setup.py` | **Unified store builder**: Edge API (148 stores), Mobile API (150 stores). Callable module + CLI with `source` param. Mirrors paknsave_setup.py structure. |
-| `tools/newworld/newworld_optimiser_edge.py` | **Edge API optimiser**: CLI with geocoding, 5km radius, two-pass search, unit-price selection. Thin wrapper over shared `foodstuffs_querier_edge` in `optimiser_utils.py`. |
-| `tools/newworld/newworld_optimiser_mobile.py` | **Mobile API optimiser**: CLI with geocoding, 5km radius, single-pass search, unit-price selection. Thin wrapper over shared `foodstuffs_querier_mobile` in `optimiser_utils.py`. |
-| `tools/woolworths/woolworths_setup.py` | **Unified store pipeline**: fetch choices (legacy/detached), fetch data from CDX, build woolworths_stores.csv keyed on extra1. |
-| `tools/woolworths/woolworths_optimiser.py` | **Thin CLI**: Step 1 query via shared `woolworths_querier` in `optimiser_utils.py`, then Step 2 `optimise()`. `--requery`/`--distance` flags, 5km default. |
-| `tools/combined/initialize_full_results.py` | Creates data/full_results.csv with 19-column schema (18 + brand) + pk_hash for deduplication |
-| `tools/llm/llm_validate.py` | Post-run validator: batches rows through `ministral-3b-2512`, writes `is_valid` back to `data/full_results.csv`. Skips already-validated rows. |
-| `tools/llm/llm_interactive.py` | Interactive CLI: Step 1 inputs → Step 2 resolve ingredients → Step 3 review → Step 4 query optimisers → Step 5 optimise → Step 6 scaling (enriches CSV rows with `ingredient_approx_*` fields). |
-| `data/woolworths_store_data.json` | Store details with `extra1` (=fulfilmentStoreId) and `extra2` (=pickupAddressId) |
-| `requirements.txt` | Pinned deps. Core: `cloudscraper`, `requests`, `pandas`, `numpy`, `beautifulsoup4`, `playwright`, `jupyterlab`. |
+| `docs/technical/PaknSave_API.md` | Foodstuffs Pak'nSave API — primary reference for shared Foodstuffs mobile + Edge API structure. |
+| `docs/technical/NewWorld_API.md` | Foodstuffs New World API — shared structure referenced from PaknSave_API.md; NW-specific Edge API + store data sources. |
+| `docs/technical/Woolworths_API.md` | Full `/api/v1` endpoint documentation + cookie architecture. |
+| `docs/technical/LLM_Pipeline.md` | LLM ingredient generation, post-run validation, quantity scaling. |
+| `docs/technical/FastAPI.md` | FastAPI architecture: endpoints, thread pool, job model, models. |
+| `docs/technical/Vue_Dashboard.md` | Vue 3 dual-tree (prod `/app` + sandbox `/test`), build flow, backend contract. |
+| `docs/project/decision.md` | Key decisions and rationale (chronological, decision #1 → #26+). |
+| `docs/project/design.md` | Technical design (API, auth, pipeline, data flow). |
+| `docs/project/logs.md` | Major errors and resolutions (#1 → #65). |
+| `src/NZMealOptimiser/pricing/optimiser_utils.py` | **Cross-brand helpers**: `foodstuffs_querier_edge/mobile`, `woolworths_querier`, `build_edge_row/mobile_row/build_woolworths_row`, parsing, geocoding (Nominatim, 1 req/sec), haversine, `DISHES`, `get_ingredients`, `resolve_ingredients`, `optimise()`, `append_rows`, `_compute_pk_hash`, `matches_ingredient_filters`. |
+| `src/NZMealOptimiser/pricing/<brand>_api.py` | Per-brand client (Edge two-pass + Mobile single-pass). Brand-specific banners, Algolia filters, store-source strategy. |
+| `src/NZMealOptimiser/pricing/woolworths_api.py` | Cookie-based Woolworths API: session, store context via `cw-lrkswrdjp`, product search. No Playwright at runtime. |
+| `src/NZMealOptimiser/llm/llm_client.py` | Multi-provider chat client (Mistral + Google). `LLMClient(provider, model_id)` for new code; legacy `model_alias` shim. 3-retry / rate-limit / JSON-parse loop. `generate_ingredients_from_text()` with dual-status JSON contract. |
+| `src/NZMealOptimiser/llm/llm_models.py` | Live model catalog + file cache (`data/llm_models_cache.json`). `list_mistral_models`, `list_google_models` (filters `generateContent`). |
+| `src/NZMealOptimiser/llm/llm_settings.py` | LLM model settings store (`data/llm_settings.json`). Atomic temp+replace with cleanup on failure. |
+| `src/NZMealOptimiser/llm/llm_utils.py` | Ingredient resolution, `parse_and_validate`, `parse_optimiser_columns` (with `approx_quantity`/`approx_unit` fallback). |
+| `src/NZMealOptimiser/llm/generation.py` | Custom-dish LLM drafts: `POST /dishes/generate` + `POST /dishes/import_text`. Filter failures are soft; missing keys → 503, ingredient failure → 502, recipe rejection → HTTP 200 `{"status": "rejected"}`. |
+| `src/NZMealOptimiser/web/main.py` | FastAPI app + job-based optimise API + frontend serving. All endpoints listed in `FastAPI.md` §API Endpoints. |
+| `src/NZMealOptimiser/web/frontend/` | Vue 3 source. **Dual trees**: `src/` = prod `/app`, `src/test/` = sandbox `/test`. Edit sandbox → `tools/frontend/promote_test_to_app.ps1` → `npm run lint && npm run build`. |
+| `src/NZMealOptimiser/web/static/vue/` | **Generated** Vue dashboard assets. Never hand-edit; always rebuild. |
+| `src/NZMealOptimiser/web/static/index_old.html` | Original vanilla dashboard, served at `/`. |
+| `tools/woolworths/woolworths_optimiser.py` | Production CLI bridge: Step 1 `woolworths_querier` → Step 2 `optimise()`. Other brands' optimisers live in `tools/<brand>/` as thin wrappers. |
+| `tools/llm/llm_interactive.py` | Interactive CLI: 6-step dish flow (inputs → resolve → review → query → optimise → scaling). |
+| `tools/llm/llm_validate.py` | Post-run validator: batches `full_results.csv` rows through `ministral-3b-2512` to fill `is_valid`. Skips already-validated rows. |
+| `tools/combined/initialize_full_results.py` | One-time `full_results.csv` schema setup (19 cols, pk_hash). |
+| `tools/frontend/promote_test_to_app.ps1` | Promote `frontend/src/test/` → `frontend/src/` (strips `/test` subtitle marker). |
+| `scripts/api_claims/` | Live API verification probes. See `scripts/api_claims/README.md`. NOT pytest; mutate `data/*.csv` as a side effect. |
+| `tests/` | 33 test files, 469 tests. See `Tests` section. |
+| `pyproject.toml` | Package metadata + `[tool.pytest.ini_options]` (addopts: `-ra --strict-markers`, testpaths: `tests`, marker: `network`). |
 
 ## Key Gotchas
 
-### Pak'nSave
-- Guest API token expires after 30 min — auto-refreshed by the `PaknSaveAPI` class.
-- Prices from the Pak'nSave API are in **cents** — divide by 100 for dollars.
-- `PaknSaveAPI.get_stores()` returns `{"stores": [...]}`, not a bare list.
-- Nominatim geocoding rate limit: 1 req/sec.
-- **Edge API two-pass pipeline**: Uses website JWT (`fs-user-token` cookie) for auth — works.
-- **Edge API pet food filtering**: Filter by `category1` to exclude `{"Dog", "Cat", "Pet"}` categories in Pass 1.
-- **store_finder source**: Only valid for Pak'nSave (New World has no `contentstackStores` in `__NEXT_DATA__`).
+- **`full_results.csv` is append-only.** Duplicates detected via `pk_hash` (SHA-256 of `store_id|sku|date_created`). Never hand-edit in Excel — blank rows corrupt the file.
+- **`--distance` flag** sets search radius in km (default **5**; applies to all 4 brand/source optimisers).
+- **`is_valid` column** is blank for new rows. `tools/llm/llm_validate.py` fills it in incrementally; never overwrite True/False rows.
+- **Include keywords are AND-semantics.** `matches_ingredient_filters()` requires **every** include keyword to fuzzy-match the product title; excludes remain none-may-match. Check curated `dish_filters.json` before adding second keywords — they narrow harder.
+- **Woolworths `extra1` collisions** (§63 in `logs.md`): `extra1` is a *fulfilment store ID*, not unique. 3 pairs share `extra1`; only 3 of those 6 stores are reachable via the `cw-lrkswrdjp` cookie. See `Woolworths_API.md` §8.
+- **Woolworths `cw-lrkswrdjp` cookie** must be injected into a **fresh `requests.Session`** per store — the server's `Set-Cookie` overwrites injected values on reused sessions. `x-requested-with: "??"` header is mandatory (literal string works). See `Woolworths_API.md` §3, §8.
+- **Hardcoded Woolworths exclusions**: `EXCLUDED_STORE_IDS` skips `9285` (Te Atatu, shut 24/04/2025) and `9035` (Kaikohe, shut 15/02/2026). See `Woolworths_API.md` §10.
+- **Nominatim = user-address geocoding only.** Rate-limited 1 req/sec. Store coordinates come from brand APIs (no Nominatim needed for stores). LRU-cached via `GET /geocode`. See `FastAPI.md` §`_resolve_origin` and `optimiser_utils.py:geocode()`.
+- **Pak'nSave + New World prices are in cents** — divide by 100 for dollars. Woolworths prices are already in dollars.
+- **`POST /optimise/{id}/update_ingredients`** re-queries only added/renamed terms; quantity edits are pure-rescale, zero network. Renames carry filter rules client-side. See `FastAPI.md` §API Endpoints.
 
-### New World
-- Uses the same Foodstuffs mobile API as Pak'nSave with `banner: "MNW"` and `User-Agent: NewWorldApp/4.32.0`. API client: `src/NZMealOptimiser/pricing/newworld_api.py`. Cross-brand helpers (parsing, geocoding, optimisers) live in `src/NZMealOptimiser/pricing/optimiser_utils.py`.
-- Prices from the New World API are in **cents** — divide by 100 for dollars.
-- All sources (Edge 148 / Mobile 150) provide coordinates and store IDs — no Nominatim geocoding needed.
-- **Edge API two-pass pipeline**: Uses website JWT (`fs-user-token` cookie) for auth — works.
-- **New World store setup**: `tools/newworld/newworld_setup.py` defaults to `source="edge"` (148 stores), with `source="mobile"` as the legacy fallback (150 stores). Mirrors `paknsave_setup.py` structure. NW has no `store_finder` source. Output CSV is 10 columns (`store_id, name, address, city, region, lat, lon, banner, click_and_collect, delivery`); the legacy `url` column is no longer produced — store identity is via `store_id` UUIDs.
+## Confirmed Research
 
-### Woolworths
-- **Canonical store_id = extra1 (fulfilmentStoreId)**: Store identity keys directly on `extra1` everywhere — `data/woolworths_stores.csv` (from CDX via `fetch_store_data()`), `full_results.csv` `store_id`, and the `cw-lrkswrdjp` cookie's `f-{extra1}` field. **The legacy `pickupAddressId` (extra2) → `extra1` mapping indirection is retired** (`get_store_mapping()` is marked legacy in `woolworths_api.py`; `fetch_store_data()` now reads CDX directly, filtering null-extra1 sites and shut-down stores). The `cw-lrkswrdjp` cookie therefore builds as `dm-Pickup,f-{extra1},s-38` with no lookup. See `docs/technical/Woolworths_API.md` section 8 for full detail.
-- **extra1 collisions (§63 in logs.md)**: `extra1` is a *fulfilment store ID*, not a unique store identifier. 3 pairs of stores share extra1 (Nelson Junction/Motueka, Te Puke/Bureta Park, Bridge Street/Matamata). Only 3 of those 6 stores are reachable via the cookie.
-- **Hardcoded exclusions**: `fetch_store_data()` skips `9285` (Te Atatu Woolworths, shut down 24/04/2025) and `9035` (Kaikohe Woolworths, shut down 15/02/2026) via `EXCLUDED_STORE_IDS`.
-- **Fresh session required per store**: Reusing a `requests.Session` causes the server's `Set-Cookie` to overwrite the injected `cw-lrkswrdjp`. Create a new session (with `GET /`) for each store.
-- **`extra1` != `extra2`**: `extra1` is the internal `fulfilmentStoreId` (cookie field); `extra2` is the legacy `pickupAddressId` (from the now-legacy `fetch_store_choices()`). Use `extra1` for the cookie and as `store_id`. (`fetch_store_choices()` code is kept but marked legacy in its docstring — it only regenerates `woolworths_store_choices.csv`.)
-- **`areaId` is optional**: The cookie works with just `dm-Pickup,f-{extra1}`. The `a-` and `s-` fields are not required.
-- **`s-38` is constant**: Confirmed across all tested stores. Safe to hardcode.
-- **x-requested-with header mandatory**: Omitting it returns HTTP 400. The literal string `"??"` works.
-- **Session seeding**: A single `GET /` with browser-like headers establishes cookies. No login needed for public endpoints.
-- **Playwright headless=False required**: If you do use Playwright, the site blocks headless Chromium.
-- Search returns first/most-relevant result per query, not cheapest (avoids pet food for "beef mince").
-  - 21 dishes are hand-curated in `DISHES` (dict format with quantity/unit/search_term) loaded from `data/dishes.json` via `optimiser_utils.py`. LLM-backed dish generation available via `src/NZMealOptimiser/llm/llm_utils.py`.
-  - Ingredients with non-standard units (`can`, `medium`, `fillets`, `bag`, `head`, etc.) carry `approx_quantity`/`approx_unit` (in g or ml) for fallback scaling in `parse_optimiser_columns` when the pack is sold by weight/volume.
-  - **Pasted-recipe import** (`POST /dishes/import_text`, /test LLM Recipe Builder page): user pastes an ingredient list (≤1000 chars) + name/portions/notes (≤100 chars); Mistral extracts rows under an injection-guarded prompt — text is wrapped in `<< >>` and must be treated as data only. The model answers a dual-status JSON contract: `"ok"` carries ingredients, `"rejected"` carries a short reason surfaced as HTTP 200 so the UI shows a gentle amber notice instead of an error banner. The user-typed dish name/portions are always used for validation, never the model's echo. Rejections and generation failures never touch dishes.json; notes only persist via `POST /dishes/save` as a top-level `"notes"` key that all backend dish readers ignore.
-- **`full_results.csv` is append-only**: New rows are added per run; duplicates detected via `pk_hash` (SHA-256 of `store_id|sku|date_created`). Avoid editing in Excel — blank rows corrupt the file.
-- **`--distance` flag**: `--distance 5` sets search radius in km (default 2).
-- **`is_valid` column**: `data/full_results.csv` includes an `is_valid` column (blank for new rows). The `llm_validate.py` script fills it in incrementally — it skips rows already marked True/False and only writes back to rows that are blank. Validation runs **after** optimisation as a separate step; it is not integrated into the optimiser at runtime.
-- **Include keywords are AND-semantics**: `matches_ingredient_filters()` (optimiser_utils.py) requires EVERY include keyword to fuzzy-match the product title; excludes stay none-may-match. Multi-keyword includes narrow harder than a single keyword — check curated `dish_filters.json` rules before adding second keywords.
-- **Post-run partial updates**: `POST /optimise/{job_id}/update_ingredients` re-queries ONLY added/renamed search terms against the original run's cached store set (`pipeline_cache.stores`/`regions`), drops removed terms, and pure-rescales quantity/unit edits with zero network calls. Both `job.result` and `pipeline_cache` advance, so later previews/reapplies see fresh data. Frontend arms "Update ingredient prices" when builder rows drift from the run baseline; renames carry filter rules over client-side.
+| Item | Status | Reference |
+|---|---|---|
+| Per-store pricing — all 3 brands | ✅ Confirmed (e.g. Greymouth Milk 3L = $7.15, Glenfield = $7.33) | `Woolworths_API.md` §1, `NewWorld_API.md` §1, `PaknSave_API.md` §1 |
+| Playwright-free runtime | ✅ All brands (cookie-only for Woolworths) | `Woolworths_API.md` §3, §8 |
+| Edge API replaces mobile | ✅ PNS + NW | `NewWorld_API.md` §6, `PaknSave_API.md` §6 |
+| Store CSVs unified (10-col schema) | ✅ Store identity = `store_id` UUID; `url` column retired | `NewWorld_API.md` §9, `PaknSave_API.md` §9 |
+| Algolia two-pass (relevance + per-store price) | ✅ PNS + NW. `category1` filter excludes pet food | `NewWorld_API.md` §6, `PaknSave_API.md` §6 |
+| 148 vs 150 NW store count | Known delta: Foodie Mart + Te Atatu only in mobile | `NewWorld_API.md` §9, `logs.md` #24 |
+| Woolworths hardcoded exclusions | 9285 (Te Atatu), 9035 (Kaikohe) | `Woolworths_API.md` §10, `logs.md` §63 |
+| LLM-backed custom dishes | ✅ `mistral-medium-latest` default; Gemini flash-lite default for filters | `LLM_Pipeline.md` |
+| Post-run validation | ✅ `ministral-3b-2512` via `llm_validate.py` | `LLM_Pipeline.md` |
+| Live job polling | ✅ `POST /optimise/jobs` → `GET /optimise/{id}` with phase + event log | `FastAPI.md` §API Endpoints |
+
+## FastAPI + Web Status
+
+- **Job model**: `POST /optimise/jobs` returns `job_id` immediately; `GET /optimise/{id}?events_since=-1` streams phase + per-company progress + event log. Thread pool runs the pipeline. See `FastAPI.md` §Thread Pool Setup, §API Endpoints.
+- **Optimise endpoints**: `/optimise/jobs` (POST), `/optimise/{id}` (GET), `/optimise/{id}/reapply` (POST), `/optimise/{id}/filter_preview` (POST), `/optimise/{id}/update_ingredients` (POST). Legacy sync `POST /optimise` still alive.
+- **Dish endpoints**: `/dish_filters` (GET), `/dishes/generate` (POST), `/dishes/import_text` (POST, ≤1000 chars; rejection → HTTP 200 `{"status": "rejected"}`), `/dishes/save` (POST).
+- **LLM endpoints**: `/llm/models` (GET), `/llm/models/refresh` (POST), `/llm/settings` (GET/PUT).
+- **Misc**: `/geocode` (GET, Nominatim LRU), `/tech-docs/<filename>` (GET, served to the Vue Documentation view), `/docs` (Swagger).
+- **Frontend pages**: `/` (vanilla `index_old.html`), `/app` (Vue prod), `/test` (Vue sandbox, identical file set, independent copy). `frontend/src/` → `/app`; `frontend/src/test/` → `/test`. Build: `npm run lint && npm run build` inside `frontend/` → output to `src/NZMealOptimiser/web/static/vue/`. See `Vue_Dashboard.md` §Build & Toolchain, §Source Map.
+- **Promote flow**: edit `src/test/`, QA at `/test`, then `tools/frontend/promote_test_to_app.ps1` to overwrite `src/`, then rebuild both pages.
+- **Backend contract** (row shape, payload, model catalog) is the source of truth for the Vue frontend: see `Vue_Dashboard.md` §Backend Contract and `FastAPI.md` §Pydantic Models.
+
+## Tests
+
+- **469 tests, 0 warnings, ~10 s.** `python -m pytest` (configured via `pyproject.toml` `[tool.pytest.ini_options]`).
+- **Layout**: `tests/{paknsave,newworld,woolworths}/` (per-brand API + optimiser tests), `tests/web/` (FastAPI + LLM HTTP layer), `tests/llm/` (LLM client/models/settings/utils), `tests/combined/` (1 file — `test_parser_utils.py`, cross-brand parsing). Per-folder `__init__.py`-free; pytest auto-discovers.
+- **Fixtures**: per-brand `tests/<brand>/fixture/` holds JSON of real API responses. Generator scripts (`generate_fixtures.py`) re-record them. **Stale `*_meta.json` files were deleted** in the suite-review pass (see `logs.md` #64).
+- **Live network probes** live in `scripts/api_claims/` — NOT pytest targets. Run them via `python -m scripts.api_claims.<probe>`. They mutate `data/*.csv` as a side effect.
+- **Pytest markers**: `network` (deselect with `-m "not network"`).
+- **Future**: dedicated `docs/technical/Tests.md` deferred — current size still fits in this section.
 
 ## Running the CLIs
 
@@ -162,6 +175,7 @@ python -m tools.newworld.newworld_optimiser_edge "Botany Town Centre, Auckland" 
 python -m tools.woolworths.woolworths_optimiser "123 Queen Street, Auckland" "spaghetti bolognese"
 python -m tools.llm.llm_interactive
 python -m tools.llm.llm_validate --max-rows 20 --batch-size 20
+python -m scripts.api_claims.foodstuffs_parser_parity   # live API verification
 ```
 
 Web app:
@@ -169,47 +183,12 @@ Web app:
 .venv\Scripts\uvicorn NZMealOptimiser.web.main:app --host 0.0.0.0 --port 8000
 ```
 
-Tests: `python -m pytest tests` (from repo root).
-
-## Woolworths Research Status
-
-- **Per-store pricing CONFIRMED**: The `cw-lrkswrdjp` cookie controls store context. Different stores return different prices (e.g., Greymouth Milk 3L = $7.15, Glenfield = $7.33). 21/21 products show price differences between stores.
-- **Playwright NOT needed at runtime**: The `cw-lrkswrdjp` cookie can be constructed from `extra1` in `woolworths_store_data.json` (verified 3/3 stores). No browser automation needed for product search or store switching.
-- **`woolworths_api.py` module built and tested**: End-to-end pipeline working — geocode address, find nearby stores, inject per-store cookies, search products, compare costs. See `src/NZMealOptimiser/pricing/woolworths_api.py`.
-- **Fresh session per store required**: The server's `Set-Cookie` response overwrites injected cookies on reused sessions. Each store needs a fresh `requests.Session`.
-- **All 67 cookies unnecessary**: Only `cw-lrkswrdjp` carries store context. The other 66 cookies (session_state, RT, Akamai, analytics, ads) are not needed for API calls.
-- **`areaId` not in any data source**: The `a-field` in the cookie is optional and would require Playwright to capture per-store. Not needed for per-store pricing.
-- **Full API documentation**: `docs/technical/Woolworths_API.md` covers all endpoints, cookie architecture, and production usage.
-- **`full_results.csv` pipeline working**: Two-phase query→optimise with append-only CSV, `pk_hash` dedup, `--requery`/`--distance` flags. Step 1 (`woolworths_querier`) and `build_woolworths_row` live in `src/NZMealOptimiser/pricing/optimiser_utils.py`; the CLI is `tools/woolworths/woolworths_optimiser.py`.
-
-## New World Research Status
-
-- **Per-store pricing CONFIRMED**: Native per-store pricing via store ID in URL path — no cookie tricks needed (unlike Woolworths). Different stores return different prices (e.g., beef mince: $9.49 at Shore City vs $26.99 at Metro Auckland).
-- **Mobile API working**: `api-prod.prod.fsniwaikato.kiwi/prod` with `banner: "MNW"` and `User-Agent: NewWorldApp/4.32.0` returns 150 stores with coordinates and store IDs.
-- **No Nominatim geocoding needed**: All 150 stores have coordinates from the mobile API — eliminates the 22 stores that were missing coordinates via Nominatim.
-- **Store count difference (Edge vs Mobile)**: Edge returns 148 stores; Mobile returns 150. The 2 stores absent from Edge are `Foodie Mart` (35 Landing Drive, Mangere) and `New World Te Atatu` (575 Te Atatū Road, Te Atatū Peninsula). See `docs/technical/NewWorld_API.md` section 9.
-- **New World Edge API two-pass pipeline**: Pass 1 uses Algolia `products-index` (relevance matching via `_highlightResult.matchedWords`); Pass 2 uses `paginated/products` with Algolia `filters` for per-store pricing. Pet food filtering via `category1` to exclude `Dog/Cat/Pet`. See `docs/technical/NewWorld_API.md` section 6 for full details.
-- **Store listing**: `GET /v1/edge/store` — 148 stores (HTTP 200)
-- **Categories**: `GET /v1/edge/store/{id}/categories` — works
-- **Category1 exposed in Algolia hits**: enables category-based filtering (e.g., excluding pet food for "beef mince")
-- **Auth**: Website JWT (from `POST /api/user/get-current-user` → `fs-user-token` cookie) OR mobile API token
-- **Store context**: Cookies `eCom_STORE_ID`, `STORE_ID_V2`, `Region`
-- **Sort**: `PRICE_ASC`, `PRICE_DESC`
-- **Edge API can fully replace mobile API** — no dependency on Foodstuffs mobile endpoint
-- **2 stores missing from Edge API**: `Foodie Mart` (35 Landing Drive, Mangere) and `New World Te Atatu` (575 Te Atatū Road, Te Atatū Peninsula) appear only in the Mobile API. Store identity is via Edge/mobile `store_id` UUIDs — website URLs are no longer used.
-- **Store setup defaults to Edge**: `tools/newworld/newworld_setup.py` uses `source="edge"` (148 stores); `source="mobile"` is the legacy fallback (150 stores).
-- **Store CSV schema (10 cols)**: `store_id, name, address, city, region, lat, lon, banner, click_and_collect, delivery`. The legacy `url` column is no longer produced — per-store identity/pricing comes from the Edge/mobile `store_id` UUIDs, not website URLs.
-- **Two-pass pipeline implementation**: See `docs/technical/NewWorld_API.md` section 6 and `exploration/newworld/`.
-
-## Pak'nSave Research Status
-
-- **Per-store pricing CONFIRMED**: Native per-store pricing via store ID in URL path — no cookie tricks needed. Different stores return different prices.
-- **Mobile API working**: `api-prod.prod.fsniwaikato.kiwi/prod` with `banner: "PNS"` and `User-Agent: PAKnSAVEApp/4.32.0` returns 60 stores with coordinates and store IDs.
-- **Pak'nSave Edge API two-pass pipeline**: Pass 1 uses Algolia `products-index` (relevance sorted, `_highlightResult.matchedWords`); Pass 2 uses `paginated/products` with Algolia `filters` for per-store pricing. Pet food filtering via `category1` to exclude `Dog/Cat/Pet`. See `docs/technical/PaknSave_API.md` section 6 for full details.
-- **Edge API can fully replace mobile API** — no dependency on Foodstuffs mobile endpoint
-- **Unified production modules**: `paknsave_api.py` (both backends), `paknsave_optimiser_edge.py` (two-pass + unit-price), `paknsave_optimiser_mobile.py` (single-pass) — all are thin wrappers over shared helpers in `src/NZMealOptimiser/pricing/optimiser_utils.py`.
-- store_finder is only valid for Pak'nSave
-- See `docs/technical/PaknSave_API.md` section 9 for store setup details and `docs/technical/PaknSave_API.md` section 6 for the full Edge API endpoint reference.
+Tests:
+```powershell
+python -m pytest tests        # all
+python -m pytest tests/llm    # one folder
+python -m pytest -m "not network"   # skip live-network tests
+```
 
 ## NZ Scope
 
@@ -219,6 +198,7 @@ All addresses, supermarkets, and data are New Zealand only. All three brands (Pa
 
 - **Always pause and ask for confirmation** before running `git push` or `git pull`. Never auto-execute these commands.
 
-## File permission rules
+## File Permission Rules
 
-- **Never access an external directory unless invoking skills**. All files runs must be in the project directory. Always access files from the project root, and never read files from the user directory.
+- **Never access an external directory unless invoking skills.** All file ops must be in the project directory. Always access files from the project root, never read from the user directory.
+

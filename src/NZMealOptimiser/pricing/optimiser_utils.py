@@ -348,7 +348,7 @@ def parse_woolworths_volume_size(volume_size, cup_measure=""):
     Examples:
         ("500g", "")            -> (500, "g")         # volumeSize has number
         ("", "1kg")             -> (1, "kg")          # fallback to cupMeasure
-        ("null", "1L")          -> (1, "L")           # volumeSize is "null"
+        ("null", "1L")          -> (1, "l")           # volumeSize is "null"
         ("2 pack", "")          -> (2, "pack")        # multi-word unit
         ("for frying", "500ml") -> (500, "ml")        # no number, use fallback
         ("", "")                -> (None, "")         # both empty

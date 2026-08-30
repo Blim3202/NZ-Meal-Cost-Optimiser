@@ -145,3 +145,33 @@ def test_retry_exhausts_and_raises(monkeypatch):
         with pytest.raises(LLMGenerationError, match="Failed to get valid JSON"):
             client.generate_ingredients("x")
     assert fake_mistral.chat.complete.call_count == 3
+
+
+def test_retry_on_rate_limit_succeeds_after_two_429s(monkeypatch):
+    """Two Mistral 429s followed by a successful response — the retry
+    loop must sleep between attempts and ultimately succeed.
+
+    Sleep patches both the rate-limit-per-request sleep and the
+    exponential backoff (`20 * attempt`) so the test stays fast.
+    """
+    from NZMealOptimiser.llm.llm_client import MistralError
+
+    monkeypatch.setenv("MISTRAL_API_KEY", "k")
+    fake_mistral = MagicMock()
+    err_429 = MistralError("rate limited", raw_response=MagicMock())
+    err_429.status_code = 429
+    fake_mistral.chat.complete.side_effect = [
+        err_429,
+        err_429,
+        MagicMock(choices=[MagicMock(message=MagicMock(content='{"ingredients": []}'))]),
+    ]
+    sleeps = []
+    with patch("NZMealOptimiser.llm.llm_client.Mistral", return_value=fake_mistral), \
+         patch("NZMealOptimiser.llm.llm_client.time.sleep", side_effect=lambda s: sleeps.append(s)):
+        client = LLMClient(provider="mistral", model_id="mistral-medium-latest")
+        out = client.generate_ingredients("x")
+
+    assert out == {"ingredients": []}
+    assert fake_mistral.chat.complete.call_count == 3
+    # 2 rate-limit backoff sleeps: 20*1=20, 20*2=40
+    assert 20 in sleeps and 40 in sleeps

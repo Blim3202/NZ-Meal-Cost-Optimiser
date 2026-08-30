@@ -1,7 +1,0 @@
-{
-  "endpoint": "https://api-prod.prod.fsniwaikato.kiwi/prod/mobile/ecomm-products/PNS/3bb30799-82ce-4648-8c02-5113228963ed/search",
-  "store_id": "3bb30799-82ce-4648-8c02-5113228963ed",
-  "query": "milk",
-  "products_count": 20,
-  "notes": "Mobile product search response captured from live API."
-}

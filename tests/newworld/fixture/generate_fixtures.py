@@ -14,25 +14,19 @@ Fixtures produced:
     fixture/
     ├── edge_store_list_example.json     Edge API store list
     │                                      (GET {EDGE_BASE}/store)
-    ├── edge_store_list_example_meta.json Metadata tracing endpoint/store count
     ├── edge_search_pass1_example.json   Edge Pass 1 relevance search ("milk")
     │                                      (POST {EDGE_BASE}/search/products/query/index/products-index)
-    ├── edge_search_pass1_meta.json      Metadata tracing Pass 1 capture (endpoint, store)
     ├── edge_search_pass2_example.json   Edge Pass 2 per-store pricing ("milk")
     │                                      (POST {EDGE_BASE}/search/paginated/products)
-    ├── edge_search_pass2_meta.json      Metadata tracing Pass 2 capture (endpoint, filters)
     ├── mobile_login_example.json        Mobile guest login response
     │                                      (POST {MOBILE_BASE}/mobile/user/login/guest, banner=MNW)
-    ├── mobile_login_meta.json           Metadata tracing mobile auth endpoint
     ├── mobile_stores_example.json       Mobile physical store list
     │                                      (GET {MOBILE_BASE}/mobile/store/physical)
-    ├── mobile_stores_meta.json          Metadata tracing mobile store endpoint/store count
-    ├── mobile_search_example.json       Mobile product search ("milk")
-    │                                      (POST {MOBILE_BASE}/mobile/ecomm-products/MNW/{store_id}/search)
-    └── mobile_search_meta.json          Metadata tracing mobile search endpoint (store, query)
+    └── mobile_search_example.json       Mobile product search ("milk")
+                                           (POST {MOBILE_BASE}/mobile/ecomm-products/MNW/{store_id}/search)
 
 Usage (requires internet access to New World APIs):
-    python scripts/newworld/fixture/generate_fixtures.py
+    python -m tests.newworld.fixture.generate_fixtures
 
 The script is idempotent: re-running it overwrites all fixture files.
 """
@@ -131,17 +125,6 @@ def capture_edge_fixtures():
         json.dump(stores_data, f, indent=2, ensure_ascii=False)
     print(f"    Wrote {path}")
 
-    meta_path = FIXTURE_DIR / "edge_store_list_example_meta.json"
-    with open(meta_path, "w", encoding="utf-8") as f:
-        json.dump({
-            "endpoint": f"{EDGE_BASE}/store",
-            "store_count": len(stores),
-            "first_store_id": store_id,
-            "first_store_name": store_name,
-            "notes": "Edge API store list captured from live New World API."
-        }, f, indent=2)
-    print(f"    Wrote {meta_path}")
-
     store_cookies = {
         "eCom_STORE_ID": store_id,
         "STORE_ID_V2": f"{store_id}|False",
@@ -179,17 +162,6 @@ def capture_edge_fixtures():
         json.dump(p1_data, f, indent=2, ensure_ascii=False)
     print(f"    Wrote {path1}")
 
-    with open(FIXTURE_DIR / "edge_search_pass1_meta.json", "w", encoding="utf-8") as f:
-        json.dump({
-            "endpoint": f"{EDGE_BASE}/search/products/query/index/products-index",
-            "store_id": store_id,
-            "store_name": store_name,
-            "query": "milk",
-            "hits_count": len(p1_data.get("hits", [])),
-            "notes": "Edge Pass 1 relevance search captured from live New World API."
-        }, f, indent=2)
-    print(f"    Wrote {FIXTURE_DIR / 'edge_search_pass1_meta.json'}")
-
     # Extract productIDs for the Pass 2 filter query
     hits = p1_data.get("hits", [])
     product_ids = [h["productID"] for h in hits[:10]]
@@ -219,18 +191,6 @@ def capture_edge_fixtures():
         json.dump(p2_data, f, indent=2, ensure_ascii=False)
     print(f"    Wrote {path2}")
 
-    with open(FIXTURE_DIR / "edge_search_pass2_meta.json", "w", encoding="utf-8") as f:
-        json.dump({
-            "endpoint": f"{EDGE_BASE}/search/paginated/products",
-            "store_id": store_id,
-            "store_name": store_name,
-            "query": "milk",
-            "filters": filter_str,
-            "products_count": len(p2_data.get("products", [])),
-            "notes": "Edge Pass 2 per-store pricing captured from live New World API."
-        }, f, indent=2)
-    print(f"    Wrote {FIXTURE_DIR / 'edge_search_pass2_meta.json'}")
-
     return store_id
 
 
@@ -259,14 +219,6 @@ def capture_mobile_fixtures(store_id):
         json.dump(login_data, f, indent=2, ensure_ascii=False)
     print(f"    Wrote {path}")
 
-    with open(FIXTURE_DIR / "mobile_login_meta.json", "w", encoding="utf-8") as f:
-        json.dump({
-            "endpoint": f"{MOBILE_BASE}/mobile/user/login/guest",
-            "banner": BANNER,
-            "notes": "Mobile guest token authentication captured from live New World API."
-        }, f, indent=2)
-    print(f"    Wrote {FIXTURE_DIR / 'mobile_login_meta.json'}")
-
     auth_headers = {
         "Authorization": f"Bearer {token}",
         "access_token": token,
@@ -285,14 +237,6 @@ def capture_mobile_fixtures(store_id):
         json.dump(stores_data, f, indent=2, ensure_ascii=False)
     print(f"    Wrote {path2}")
 
-    with open(FIXTURE_DIR / "mobile_stores_meta.json", "w", encoding="utf-8") as f:
-        json.dump({
-            "endpoint": f"{MOBILE_BASE}/mobile/store/physical",
-            "store_count": len(stores_data.get("stores", [])),
-            "notes": "Mobile store list captured from live New World API."
-        }, f, indent=2)
-    print(f"    Wrote {FIXTURE_DIR / 'mobile_stores_meta.json'}")
-
     # --- Mobile Product Search ("milk") ---
     print(f"  Fetching Mobile product search ('milk') for store {store_id}...")
     r3 = scraper.post(
@@ -308,17 +252,6 @@ def capture_mobile_fixtures(store_id):
     with open(path3, "w", encoding="utf-8") as f:
         json.dump(search_data, f, indent=2, ensure_ascii=False)
     print(f"    Wrote {path3}")
-
-    with open(FIXTURE_DIR / "mobile_search_meta.json", "w", encoding="utf-8") as f:
-        json.dump({
-            "endpoint": f"{MOBILE_BASE}/mobile/ecomm-products/{BANNER}/{store_id}/search",
-            "store_id": store_id,
-            "banner": BANNER,
-            "query": "milk",
-            "products_count": len(search_data) if isinstance(search_data, list) else len(search_data.get("products", [])),
-            "notes": "Mobile product search response captured from live New World API."
-        }, f, indent=2)
-    print(f"    Wrote {FIXTURE_DIR / 'mobile_search_meta.json'}")
 
 
 def main():
