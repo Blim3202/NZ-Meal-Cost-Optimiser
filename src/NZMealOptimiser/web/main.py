@@ -70,6 +70,7 @@ import concurrent.futures
 import copy
 import json
 import logging
+import os
 import time
 import uuid
 from datetime import datetime
@@ -93,6 +94,17 @@ from NZMealOptimiser.llm.generation import (
     RecipeRejectedError,
     generate_custom_dish,
     generate_custom_dish_from_text,
+)
+from NZMealOptimiser.llm.llm_client import LLMConfigError
+from NZMealOptimiser.llm.llm_models import (
+    ensure_cache_seeded,
+    fetch_all_providers,
+    load_models_cache,
+    save_models_cache,
+)
+from NZMealOptimiser.llm.llm_settings import (
+    load_llm_settings,
+    save_llm_settings,
 )
 from NZMealOptimiser.pricing import optimiser_utils
 from NZMealOptimiser.pricing.optimiser_utils import (
@@ -614,12 +626,100 @@ def health() -> dict:
 def system_info() -> dict:
     """Runtime facts for the settings page: effective thread-pool size and
     the server-side danger-zone ceilings. Worker changes need a restart, so
-    both the configured and effective values are reported."""
+    both the configured and effective values are reported. Also reports
+    which LLM providers have API keys configured so the Settings page can
+    show a 'Not configured' badge without an extra round-trip.
+    """
     return {
         "max_workers": EFFECTIVE_MAX_WORKERS,
         "configured_workers": int(settings.WEB_MAX_WORKERS),
         "hard_limits": HARD_LIMITS,
+        "llm_providers": {
+            "mistral": bool(os.getenv("MISTRAL_API_KEY")),
+            "google": bool(os.getenv("GOOGLE_API_KEY")),
+        },
     }
+
+
+# ─── LLM model catalog + settings ────────────────────────────────────────────
+
+class _LLMSettingsRequest(BaseModel):
+    """Body for PUT /llm/settings — choose the ingredient + filter models."""
+
+    ingredient_model: dict
+    filter_model: dict
+
+
+@app.get("/llm/models")
+def llm_models_get() -> dict:
+    """Return the cached model catalog plus the active settings.
+
+    The catalog is file-cached (``data/llm_models_cache.json``) and is only
+    re-fetched when the user clicks the Settings page's "Refresh model list"
+    button. The first call after a fresh deploy seeds the cache automatically
+    so the dropdowns are populated on first open.
+    """
+    cache = ensure_cache_seeded()
+    return {
+        "fetched_at": cache.get("fetched_at"),
+        "providers": cache.get("providers", {}),
+        "settings": load_llm_settings(),
+    }
+
+
+@app.post("/llm/models/refresh")
+def llm_models_refresh() -> dict:
+    """Re-fetch the model catalog from both providers and persist to cache.
+
+    Provider failures are isolated: each provider returns its own
+    ``{available, models, error}`` block, so a Mistral outage doesn't block
+    the Google dropdown (and vice versa). The user always sees a clear
+    per-provider status.
+    """
+    providers = fetch_all_providers()
+    cache = save_models_cache(providers)
+    return {
+        "fetched_at": cache.get("fetched_at"),
+        "providers": cache.get("providers", {}),
+        "settings": load_llm_settings(),
+    }
+
+
+@app.get("/llm/settings")
+def llm_settings_get() -> dict:
+    """Return the active ingredient + filter model selection."""
+    return load_llm_settings()
+
+
+@app.put("/llm/settings")
+async def llm_settings_put(req: _LLMSettingsRequest) -> dict:
+    """Validate and persist the model selection.
+
+    Validation:
+      * ``provider`` must be ``mistral`` or ``google``.
+      * ``model_id`` must be a non-empty string.
+      * ``model_id`` must exist in the cached catalog for that provider, so
+        a typo can't silently break every future generation. If the cache
+        is empty for a provider (e.g. key missing or first deploy before a
+        refresh), the write is still allowed — the user can save now and
+        refresh the catalog later.
+
+    No server restart required: settings are read per request.
+    """
+    payload = {
+        "ingredient_model": req.ingredient_model,
+        "filter_model": req.filter_model,
+    }
+    try:
+        saved = await asyncio.to_thread(save_llm_settings, payload)
+    except LLMConfigError as exc:
+        raise HTTPException(400, str(exc))
+    log.info(
+        "LLM settings updated: ingredient=%s/%s filter=%s/%s",
+        saved["ingredient_model"]["provider"], saved["ingredient_model"]["model_id"],
+        saved["filter_model"]["provider"], saved["filter_model"]["model_id"],
+    )
+    return saved
 
 
 # Whitelisted markdown manuals served to the /test Documentation viewer.

@@ -2,16 +2,18 @@
 
 Two sequential calls power ``POST /dishes/generate``:
 
-1. :func:`generate_dish_ingredients` — Mistral (the "medium" alias) turns a
-   dish name into validated ingredient rows (``search_term`` / ``quantity`` /
-   ``unit`` / optional ``approx_quantity`` + ``approx_unit``) using the same
-   INGREDIENT_PROMPT + parse_and_validate pipeline as resolve_ingredients().
-2. :func:`generate_ingredient_filters` — Google Gemini flash-lite produces
-   include/exclude keyword rules per generated search term (prompt + parsing
-   ported from exploration/llm/explore_filter_explorer.py), shaped to match
-   the runtime IngredientFilterSet contract so the run filters products with
-   the same matches_ingredient_filters() machinery used for curated presets
-   from data/dish_filters.json.
+1. :func:`generate_dish_ingredients` — the configured ingredient model (any
+   chat-capable model from Mistral or Google, picked in the Settings page)
+   turns a dish name into validated ingredient rows (``search_term`` /
+   ``quantity`` / ``unit`` / optional ``approx_quantity`` + ``approx_unit``)
+   using the same INGREDIENT_PROMPT + parse_and_validate pipeline as
+   resolve_ingredients().
+2. :func:`generate_ingredient_filters` — the configured filter model (any
+   chat-capable model from Mistral or Google) produces include/exclude
+   keyword rules per generated search term, shaped to match the runtime
+   IngredientFilterSet contract so the run filters products with the same
+   matches_ingredient_filters() machinery used for curated presets from
+   data/dish_filters.json.
 
 Error model:
     GenerationConfigError       missing API key — endpoint maps to HTTP 503
@@ -38,14 +40,18 @@ from typing import Callable
 
 from dotenv import load_dotenv
 
-from NZMealOptimiser.llm.llm_client import LLMClient, LLMGenerationError
+from NZMealOptimiser.llm.llm_client import (
+    GOOGLE_API_KEY_ENVS,
+    GOOGLE_FILTER_MODEL_DEFAULT,
+    LLMClient,
+    LLMGenerationError,
+)
 from NZMealOptimiser.llm.llm_utils import LLMParseError, normalise_unit, parse_and_validate
+from NZMealOptimiser.llm.llm_settings import get_active_models
 
 load_dotenv()
 
-GOOGLE_API_KEY_ENVS = ("GOOGLE_API_KEY", "GEMINI_API_KEY")
 GOOGLE_FILTER_MODEL_ENV = "GOOGLE_FILTER_MODEL"
-GOOGLE_FILTER_MODEL_DEFAULT = "gemini-3.1-flash-lite"
 
 # Upper bound on generated ingredient rows. Each row becomes one search per
 # selected store per company, so an unbounded LLM response could fan out into
@@ -65,11 +71,11 @@ class GenerationConfigError(GenerationError):
 
 
 class IngredientGenerationError(GenerationError):
-    """Mistral failed to produce usable ingredients after retries (HTTP 502)."""
+    """The configured ingredient model failed to produce usable rows (HTTP 502)."""
 
 
 class FilterGenerationError(GenerationError):
-    """Gemini failed to produce filter rules (soft-failed by the orchestrator)."""
+    """The configured filter model failed to produce filter rules (soft)."""
 
 
 class RecipeRejectedError(GenerationError):
@@ -133,8 +139,13 @@ def _clean_parsed_rows(parsed) -> tuple[list[dict], list[str]]:
     return ingredients, warnings
 
 
-def generate_dish_ingredients(dish_name: str, portions: int = 4) -> tuple[list[dict], list[str]]:
-    """Generate validated ingredient rows for *dish_name* via Mistral.
+def generate_dish_ingredients(
+    dish_name: str, portions: int = 4, *, model: dict | None = None,
+) -> tuple[list[dict], list[str]]:
+    """Generate validated ingredient rows for *dish_name* via the configured model.
+
+    *model* is an optional ``{"provider", "model_id"}`` override; when
+    omitted the value comes from :func:`llm_settings.get_active_models`.
 
     Returns ``(ingredients, warnings)`` where ingredients follow the curated
     dishes.json schema: ``{quantity, unit, search_term[, approx_quantity,
@@ -142,63 +153,78 @@ def generate_dish_ingredients(dish_name: str, portions: int = 4) -> tuple[list[d
     (first wins), unusable rows dropped, count capped at MAX_INGREDIENTS.
 
     Raises:
-        GenerationConfigError: MISTRAL_API_KEY not configured.
+        GenerationConfigError: required API key not configured.
         IngredientGenerationError: generation/validation failed after retries,
             or the model produced no usable rows.
     """
-    if not os.getenv("MISTRAL_API_KEY"):
+    spec = model or get_active_models()["ingredient_model"]
+    provider = spec["provider"]
+    api_key_env = "MISTRAL_API_KEY" if provider == "mistral" else "GOOGLE_API_KEY"
+    if not os.getenv(api_key_env) and provider == "mistral":
         raise GenerationConfigError(
             "MISTRAL_API_KEY is not set — add it to .env to enable ingredient generation"
         )
+    if provider == "google" and not os.getenv(GOOGLE_API_KEY_ENVS[0]):
+        raise GenerationConfigError(
+            "GOOGLE_API_KEY is not set — add it to .env"
+        )
     try:
-        client = LLMClient(model_alias="medium")
+        client = LLMClient(provider=provider, model_id=spec["model_id"])
         raw = client.generate_ingredients(dish_name, portion=portions)
         parsed = parse_and_validate(raw)
     except LLMGenerationError as exc:
-        raise IngredientGenerationError(f"Mistral could not generate ingredients: {exc}") from exc
+        raise IngredientGenerationError(f"{provider} could not generate ingredients: {exc}") from exc
     except LLMParseError as exc:
-        raise IngredientGenerationError(f"Mistral returned an invalid recipe: {exc}") from exc
+        raise IngredientGenerationError(f"{provider} returned an invalid recipe: {exc}") from exc
 
     ingredients, warnings = _clean_parsed_rows(parsed)
     if not ingredients:
         raise IngredientGenerationError(
-            f"Mistral returned no usable ingredients for '{dish_name}'"
+            f"{provider} returned no usable ingredients for '{dish_name}'"
         )
     return ingredients, warnings
 
 
 def generate_dish_ingredients_from_text(
-        recipe_text: str, dish_name: str, portions: int = 4,
+        recipe_text: str, dish_name: str, portions: int = 4, *, model: dict | None = None,
 ) -> tuple[list[dict], list[str]]:
-    """Extract validated ingredient rows from pasted recipe text via Mistral.
+    """Extract validated ingredient rows from pasted recipe text.
 
-    The model answers with a dual-status contract (see
-    LLMClient.generate_ingredients_from_text): ``status: "ok"`` carries the
-    ingredient rows, ``status: "rejected"`` flags non-recipe or injection
+    The model answers with a dual-status contract: ``status: "ok"`` carries
+    the ingredient rows, ``status: "rejected"`` flags non-recipe or injection
     attempts. The user-typed *dish_name*/*portions* are used for validation —
     anything the model echoes back is never trusted.
+
+    *model* is an optional ``{"provider", "model_id"}`` override; when
+    omitted the value comes from :func:`llm_settings.get_active_models`.
 
     Returns ``(ingredients, warnings)`` shaped exactly like
     :func:`generate_dish_ingredients`.
 
     Raises:
-        GenerationConfigError: MISTRAL_API_KEY not configured.
+        GenerationConfigError: required API key not configured.
         RecipeRejectedError: the model refused the text; ``.reason`` holds a
             short lowercase phrase for the UI.
         IngredientGenerationError: generation/validation failed after retries,
             or extraction produced no usable rows.
     """
-    if not os.getenv("MISTRAL_API_KEY"):
+    spec = model or get_active_models()["ingredient_model"]
+    provider = spec["provider"]
+    if provider == "mistral" and not os.getenv("MISTRAL_API_KEY"):
         raise GenerationConfigError(
             "MISTRAL_API_KEY is not set — add it to .env to enable recipe import"
         )
+    if provider == "google" and not os.getenv(GOOGLE_API_KEY_ENVS[0]):
+        raise GenerationConfigError(
+            "GOOGLE_API_KEY is not set — add it to .env"
+        )
     try:
-        client = LLMClient(model_alias="medium")
+        client = LLMClient(provider=provider, model_id=spec["model_id"])
         data = client.generate_ingredients_from_text(
             recipe_text, portion=portions, dish_name=dish_name,
         )
     except LLMGenerationError as exc:
-        raise IngredientGenerationError(f"Mistral could not read the pasted recipe: {exc}") from exc
+        raise IngredientGenerationError(f"{provider} could not read the pasted recipe: {exc}") from exc
 
     status = data.get("status")
     if status == "rejected":
@@ -215,12 +241,12 @@ def generate_dish_ingredients_from_text(
     try:
         parsed = parse_and_validate(raw)
     except LLMParseError as exc:
-        raise IngredientGenerationError(f"Mistral returned an invalid recipe: {exc}") from exc
+        raise IngredientGenerationError(f"{provider} returned an invalid recipe: {exc}") from exc
 
     ingredients, warnings = _clean_parsed_rows(parsed)
     if not ingredients:
         raise IngredientGenerationError(
-            f"Mistral extracted no usable ingredients from the pasted text for '{dish_name}'"
+            f"{provider} extracted no usable ingredients from the pasted text for '{dish_name}'"
         )
     return ingredients, warnings
 
@@ -281,38 +307,41 @@ def _loads_json(content: str):
 
 
 def call_gemini(prompt: str) -> str:
-    """Send one chat completion to Google Gemini via its OpenAI-compatible API.
+    """Legacy alias for :func:`call_filter_model` with no override.
 
-    Module-level so tests can monkeypatch it; kept in sync with the proven
-    invocation in exploration/llm/explore_filter_explorer.py.
+    Kept for backward compatibility with tests that monkeypatched this name.
     """
-    from openai import OpenAI
+    return call_filter_model(prompt, model=None)
 
-    api_key = os.getenv(GOOGLE_API_KEY_ENVS[0]) or os.getenv(GOOGLE_API_KEY_ENVS[1])
-    if not api_key:
+
+def call_filter_model(prompt: str, *, model: dict | None = None) -> str:
+    """Send one chat completion to the configured filter model.
+
+    The model spec is an optional ``{"provider", "model_id"}`` dict; when
+    omitted, falls back to ``llm_settings.get_active_models()['filter_model']``.
+    The Mistral path uses the native ``mistralai`` SDK; the Google path uses
+    the OpenAI-compat endpoint already proven in
+    ``exploration/llm/explore_filter_explorer.py``.
+
+    Module-level so tests can monkeypatch it.
+    """
+    spec = model or get_active_models()["filter_model"]
+    provider = spec["provider"]
+    if provider == "google" and not os.getenv(GOOGLE_API_KEY_ENVS[0]):
         raise GenerationConfigError(
-            "Neither GOOGLE_API_KEY nor GEMINI_API_KEY is set — "
-            "add one to .env to enable filter-rule generation"
+            "GOOGLE_API_KEY is not set — add it to .env"
         )
-    client = OpenAI(
-        api_key=api_key,
-        base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+    if provider == "mistral" and not os.getenv("MISTRAL_API_KEY"):
+        raise GenerationConfigError(
+            "MISTRAL_API_KEY is not set — add it to .env to enable filter-rule generation"
+        )
+    client = LLMClient(
+        provider=provider,
+        model_id=spec["model_id"],
+        temperature=0.1,
+        max_tokens=4096,
     )
-
-    def send():
-        resp = client.chat.completions.create(
-            model=os.getenv(GOOGLE_FILTER_MODEL_ENV, GOOGLE_FILTER_MODEL_DEFAULT),
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            temperature=0.1,
-            max_tokens=4096,
-        )
-        return resp.choices[0].message.content
-
-    def is_rate_limit(e: Exception) -> bool:
-        return type(e).__name__ == "RateLimitError"
-
-    return _chat_with_retry(send, is_rate_limit)
+    return client._send(prompt, response_format=True)
 
 
 def parse_filters(parsed, search_terms: list[str]) -> tuple[dict, list[str]]:
@@ -363,42 +392,51 @@ def parse_filters(parsed, search_terms: list[str]) -> tuple[dict, list[str]]:
     return filters, warnings
 
 
-def generate_ingredient_filters(search_terms: list[str]) -> tuple[dict, list[str]]:
-    """Generate include/exclude keyword rules for *search_terms* via Gemini.
+def generate_ingredient_filters(search_terms: list[str], *, model: dict | None = None) -> tuple[dict, list[str]]:
+    """Generate include/exclude keyword rules for *search_terms*.
+
+    *model* is an optional ``{"provider", "model_id"}`` override; when
+    omitted, the value comes from :func:`llm_settings.get_active_models`.
 
     Raises:
-        GenerationConfigError: no Google/Gemini API key configured.
+        GenerationConfigError: required API key not configured.
         FilterGenerationError: the response could not be parsed after retries.
     """
     if not search_terms:
         return {}, []
+    spec = model or get_active_models()["filter_model"]
     prompt = FILTER_PROMPT_TEMPLATE.format(
         max_excludes=MAX_EXCLUDES,
         search_terms_json=json.dumps(search_terms, ensure_ascii=False),
     )
     try:
-        content = call_gemini(prompt)
+        content = call_filter_model(prompt, model=spec)
         parsed = _loads_json(content)
     except GenerationConfigError:
         raise
     except Exception as exc:  # noqa: BLE001 — normalised into FilterGenerationError
-        raise FilterGenerationError(f"Gemini filter generation failed: {exc}") from exc
+        raise FilterGenerationError(f"filter model {spec['provider']}/{spec['model_id']} failed: {exc}") from exc
     return parse_filters(parsed, search_terms)
 
 
 # ─── Orchestrator ─────────────────────────────────────────────────────────────
 
 def generate_custom_dish(dish_name: str, base_portions: int = 4) -> dict:
-    """Full custom-dish draft: ingredients (Mistral) then rules (Gemini).
+    """Full custom-dish draft: ingredients then filter rules.
 
-    Filter generation is best-effort: a Gemini failure yields empty rules plus
-    a warning instead of discarding perfectly good ingredients. Response shape
-    matches POST /dishes/generate.
+    The model spec for each leg is read from
+    :func:`llm_settings.get_active_models` on every call so Settings changes
+    take effect immediately. Filter generation is best-effort: a failure
+    yields empty rules plus a warning instead of discarding perfectly good
+    ingredients. Response shape matches POST /dishes/generate.
     """
-    ingredients, warnings = generate_dish_ingredients(dish_name, base_portions)
+    active = get_active_models()
+    ingredients, warnings = generate_dish_ingredients(
+        dish_name, base_portions, model=active["ingredient_model"],
+    )
     terms = [ing["search_term"] for ing in ingredients]
     try:
-        filters, filter_warnings = generate_ingredient_filters(terms)
+        filters, filter_warnings = generate_ingredient_filters(terms, model=active["filter_model"])
         warnings.extend(filter_warnings)
     except GenerationError as exc:
         filters = {}
@@ -416,19 +454,19 @@ def generate_custom_dish(dish_name: str, base_portions: int = 4) -> dict:
 def generate_custom_dish_from_text(
         recipe_text: str, dish_name: str, base_portions: int = 4,
 ) -> dict:
-    """Full pasted-recipe draft: extract ingredients (Mistral) then rules (Gemini).
+    """Full pasted-recipe draft: extract ingredients then filter rules.
 
     Same shape as :func:`generate_custom_dish` plus a ``status`` field, so
     POST /dishes/import_text can answer a refusal with HTTP 200:
 
-    - ``{"status": "ok", ...}`` on success (filter generation stays best-effort:
-      a Gemini failure yields empty rules plus a warning).
+    - ``{"status": "ok", ...}`` on success (filter generation stays best-effort).
     - ``{"status": "rejected", "reason": ..., "ingredients": [], "filters": {},
       "warnings": []}`` when the model refused the text.
     """
+    active = get_active_models()
     try:
         ingredients, warnings = generate_dish_ingredients_from_text(
-            recipe_text, dish_name, base_portions,
+            recipe_text, dish_name, base_portions, model=active["ingredient_model"],
         )
     except RecipeRejectedError as exc:
         return {
@@ -440,7 +478,7 @@ def generate_custom_dish_from_text(
         }
     terms = [ing["search_term"] for ing in ingredients]
     try:
-        filters, filter_warnings = generate_ingredient_filters(terms)
+        filters, filter_warnings = generate_ingredient_filters(terms, model=active["filter_model"])
         warnings.extend(filter_warnings)
     except GenerationError as exc:
         filters = {}

@@ -38,6 +38,86 @@
       </div>
     </section>
 
+    <!-- ── LLM models ────────────────────────────────────────────────────── -->
+    <section class="panel settings-section">
+      <div class="settings-head">
+        <h3>LLM models</h3>
+        <div class="llm-actions">
+          <span v-if="llm.state.fetchedAt" class="llm-fetched">Last fetched {{ formatFetched(llm.state.fetchedAt) }}</span>
+          <button type="button" class="ghost-button ghost-small" :disabled="llm.state.refreshing" @click="llm.refresh">
+            {{ llm.state.refreshing ? 'Refreshing…' : 'Refresh model list' }}
+          </button>
+        </div>
+      </div>
+      <p class="hint">Pick which chat-capable model from Mistral or Google powers each step. Live-fetched from <code>/v1/models</code> and <code>/v1beta/models</code> on first load; click <strong>Refresh model list</strong> to pick up new releases. Saved server-side in <code>data/llm_settings.json</code> — survives restarts and Cloud Run container recreation.</p>
+
+      <div v-if="llm.state.error" class="mode-note danger-note">{{ llm.state.error }}</div>
+      <div v-else-if="llm.state.notice" class="mode-note ok-note">{{ llm.state.notice }}</div>
+
+      <div class="llm-grid">
+        <div class="llm-card">
+          <h4>Ingredient model</h4>
+          <p class="llm-status">
+            Powers the Mistral "Generate custom ingredients" + "Import recipe" paths in the Dish Builder.
+            <span :class="statusBadge(llm.mistralStatus.state)">{{ llm.mistralStatus.label }}</span>
+          </p>
+          <label class="field">
+            <span>Provider + model</span>
+            <select v-model="llm.state.settings.ingredient_model.provider" @change="onProviderChange('ingredient')">
+              <option value="mistral">Mistral</option>
+              <option value="google" :disabled="!googleReady">Google Gemini</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Model</span>
+            <select v-model="llm.state.settings.ingredient_model.model_id">
+              <optgroup v-if="mistralModelOptions.length" label="Mistral">
+                <option v-for="m in mistralModelOptions" :key="m.id" :value="m.id">{{ optionLabel(m) }}</option>
+              </optgroup>
+              <optgroup v-if="googleModelOptions.length" label="Google Gemini">
+                <option v-for="m in googleModelOptions" :key="m.id" :value="m.id">{{ optionLabel(m) }}</option>
+              </optgroup>
+            </select>
+          </label>
+        </div>
+
+        <div class="llm-card">
+          <h4>Filter model</h4>
+          <p class="llm-status">
+            Generates the include/exclude keyword rules for each generated search term.
+            <span :class="statusBadge(llm.googleStatus.state)">{{ llm.googleStatus.label }}</span>
+          </p>
+          <label class="field">
+            <span>Provider + model</span>
+            <select v-model="llm.state.settings.filter_model.provider" @change="onProviderChange('filter')">
+              <option value="mistral">Mistral</option>
+              <option value="google" :disabled="!googleReady">Google Gemini</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Model</span>
+            <select v-model="llm.state.settings.filter_model.model_id">
+              <optgroup v-if="mistralModelOptions.length" label="Mistral">
+                <option v-for="m in mistralModelOptions" :key="m.id" :value="m.id">{{ optionLabel(m) }}</option>
+              </optgroup>
+              <optgroup v-if="googleModelOptions.length" label="Google Gemini">
+                <option v-for="m in googleModelOptions" :key="m.id" :value="m.id">{{ optionLabel(m) }}</option>
+              </optgroup>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div class="llm-actions" style="margin-top: 14px;">
+        <button type="button" class="primary-button" :disabled="llm.state.saving" @click="llm.save">
+          {{ llm.state.saving ? 'Saving…' : 'Save model selection' }}
+        </button>
+        <button type="button" class="ghost-button ghost-small" :disabled="llm.state.saving" @click="llm.resetDefaults">
+          Reset to defaults
+        </button>
+      </div>
+    </section>
+
     <!-- ── Advanced ──────────────────────────────────────────────────────── -->
     <section class="panel settings-section">
       <div class="settings-head"><h3>Advanced</h3></div>
@@ -105,6 +185,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { ALIASES, isScalableUnit } from '../unitOptions.js';
 import { CONTENT_WIDTHS, resetDisplaySettings, settings } from '../settings.js';
+import { useLlmModels } from '../composables/useLlmModels.js';
 
 export default {
   name: 'SettingsView',
@@ -112,6 +193,7 @@ export default {
     const systemInfo = ref(null);
     const showRiskModal = ref(false);
     const overridesWanted = ref(settings.overridesArmed);
+    const llm = useLlmModels();
 
     const unitRows = computed(() => Object.entries(ALIASES).map(([canonical, aliases]) => ({
       canonical,
@@ -120,6 +202,36 @@ export default {
     })));
 
     const overrideCaps = computed(() => (systemInfo.value?.hard_limits) || { max_distance_km: 50, max_stores_per_company: 20 });
+
+    const mistralModelOptions = computed(() => llm.state.providers.mistral?.models || []);
+    const googleModelOptions = computed(() => llm.state.providers.google?.models || []);
+    const googleReady = computed(() => !!systemInfo.value?.llm_providers?.google);
+
+    function onProviderChange(slot) {
+      const target = slot === 'ingredient' ? 'ingredient_model' : 'filter_model';
+      const spec = llm.state.settings[target];
+      const list = spec.provider === 'mistral' ? mistralModelOptions.value : googleModelOptions.value;
+      if (list.length && !list.find((m) => m.id === spec.model_id)) {
+        spec.model_id = list[0].id;
+      }
+    }
+
+    function optionLabel(m) {
+      if (m.max_context_length) return `${m.id} — ${m.max_context_length.toLocaleString()} ctx`;
+      if (m.input_token_limit) return `${m.id} — ${m.input_token_limit.toLocaleString()} in`;
+      return m.display_name || m.id;
+    }
+
+    function statusBadge(state) {
+      return ['llm-status', 'badge', `badge-${state}`].join(' ');
+    }
+
+    function formatFetched(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return iso;
+      return d.toLocaleString();
+    }
 
     function onToggleOverrides() {
       if (overridesWanted.value && !settings.overridesArmed) {
@@ -142,12 +254,15 @@ export default {
         const response = await fetch('/system-info');
         if (response.ok) systemInfo.value = await response.json();
       } catch { /* settings page still works without it */ }
+      llm.load();
     });
 
     return {
       CONTENT_WIDTHS, settings, resetDisplaySettings,
       unitRows, systemInfo, overrideCaps,
       showRiskModal, overridesWanted, onToggleOverrides, cancelRisk, acceptRisk,
+      llm, mistralModelOptions, googleModelOptions, googleReady,
+      onProviderChange, optionLabel, statusBadge, formatFetched,
     };
   },
 };

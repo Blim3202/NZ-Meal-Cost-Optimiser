@@ -24,7 +24,7 @@
               <label class="field field-wide"><span>Notes (optional)</span><input v-model.trim="draft.notes" maxlength="100" placeholder="Chocolate chip cookies — bbcgoodfood.com"></label>
               <div class="field field-wide generate-row">
                 <button type="button" class="ghost-button" :disabled="generating || !canGenerate" title="Ask Mistral to draft ingredients and Gemini to seed product-filter rules from the dish name (10-20 s)" @click="generateIngredients"><span v-if="generating" class="spinner"></span>{{ generating ? 'Generating…' : 'Generate custom ingredients' }}</button>
-                <span v-if="generating" class="hint">Mistral is drafting the recipe, then Gemini seeds the filter rules — this can take 10-20 s.</span>
+                <span v-if="generating" class="hint">Building your ingredient list and filters — this usually takes a few seconds.</span>
               </div>
             </template>
             <label class="field field-wide"><span>NZ address</span><input v-model.trim="form.address" list="address-history" placeholder="Auckland CBD" :disabled="gpsActive" :required="!gpsActive"><datalist id="address-history"><option v-for="address in addressHistory" :key="address" :value="address" /></datalist></label>

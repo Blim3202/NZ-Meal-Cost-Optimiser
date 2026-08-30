@@ -46,12 +46,50 @@ llm_interactive.py  (CLI orchestration, 6 steps)
 
 Backs the `/test` dashboard's **"Generate custom ingredients"** button via `POST /dishes/generate`. Two sequential calls:
 
-1. **Ingredients — Mistral ("medium" alias)**: `generate_dish_ingredients()` reuses `LLMClient.generate_ingredients` + `parse_and_validate`, then cleans the output — units folded through `UNIT_ALIASES`, case-insensitive duplicates merged, empty-term/non-positive-quantity rows dropped (each intervention reported as a warning), count capped at 20 rows.
-2. **Filter rules — Gemini flash-lite** (`GOOGLE_API_KEY`, model via `GOOGLE_FILTER_MODEL`, default `gemini-3.1-flash-lite`, OpenAI-compatible endpoint): `generate_ingredient_filters()` ports the generic labelling prompt from `exploration/llm/explore_filter_explorer.py` and returns `{search_term: {includes: [word], excludes: [...]}}` — the exact shape of `data/dish_filters.json` entries / `IngredientFilterSet`.
+1. **Ingredients — configured model** (any chat-capable model from Mistral or Google Gemini, picked in the Settings page; default `mistral-medium-latest`). `generate_dish_ingredients()` reuses `LLMClient.generate_ingredients` + `parse_and_validate`, then cleans the output — units folded through `UNIT_ALIASES`, case-insensitive duplicates merged, empty-term/non-positive-quantity rows dropped (each intervention reported as a warning), count capped at `MAX_INGREDIENTS` (10).
+2. **Filter rules — configured model** (any chat-capable model from either provider; default Google Gemini `gemini-3.1-flash-lite` over the OpenAI-compat endpoint). `generate_ingredient_filters()` ports the generic labelling prompt from `exploration/llm/explore_filter_explorer.py` and returns `{search_term: {includes: [word], excludes: [...]}}` — the exact shape of `data/dish_filters.json` entries / `IngredientFilterSet`.
 
-Error model: missing API key → `GenerationConfigError` → HTTP 503; ingredient generation/validation failure after retries → `IngredientGenerationError` → HTTP 502; **filter failures are non-fatal** — the response carries empty rules plus a warning so a Gemini outage never blocks usable ingredients.
+Error model: missing API key → `GenerationConfigError` → HTTP 503; ingredient generation/validation failure after retries → `IngredientGenerationError` → HTTP 502; **filter failures are non-fatal** — the response carries empty rules plus a warning so a provider outage never blocks usable ingredients.
 
 The generated rules are seeded into the dashboard's shared `custom` filter scope and remain fully user-editable before the run; at runtime they flow through the same `matches_ingredient_filters` machinery as curated presets.
+
+### Model selection
+
+The model used for each leg is **user-selectable** from the Settings page. The choice is persisted server-side in `data/llm_settings.json` (atomic temp+replace write, parallels `dishes.json`). No `.env` rewrite is needed and no server restart is required — settings are read per request, so swapping models takes effect on the next generation call.
+
+The model catalog is fetched from each provider:
+
+- **Mistral** — `GET /v1/models`. Filtered to `capabilities.completion_chat == true`, `type != "fine-tuned"`, `archived == false`.
+- **Google Gemini** — `GET /v1beta/models`. Filtered to models whose `supportedGenerationMethods` contains `generateContent` (the method the OpenAI-compat chat surface maps to). The `models/` prefix is stripped from each id.
+
+The catalog is **file-cached** in `data/llm_models_cache.json` with a `fetched_at` timestamp. The Settings page shows the last-fetched time and a "Refresh model list" button (`POST /llm/models/refresh`) that re-fetches from both providers and overwrites the cache. This keeps provider quota use minimal: the catalog is fetched once on first load and only again on a manual refresh.
+
+The active selection shape:
+
+```json
+{
+  "ingredient_model": {"provider": "mistral", "model_id": "mistral-medium-latest"},
+  "filter_model": {"provider": "google", "model_id": "gemini-3.1-flash-lite"}
+}
+```
+
+### Settings page endpoints
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/llm/models` | Returns the cached catalog + active selection. Seeds the cache on first call. |
+| `POST` | `/llm/models/refresh` | Re-fetches both providers, overwrites the cache, returns the new catalog + selection. |
+| `GET` | `/llm/settings` | Returns the active selection only. |
+| `PUT` | `/llm/settings` | Validates the body (provider ∈ {mistral, google}, non-empty model_id) and writes the file. |
+
+The `/test` Settings page reads `/llm/models` on mount and uses the Settings page "Refresh model list" button for the cache refresh. "Save model selection" issues `PUT /llm/settings`. "Reset to defaults" restores the seeded defaults and re-saves.
+
+### Storage location
+
+| File | Purpose |
+|------|---------|
+| `data/llm_settings.json` | Active ingredient + filter model selection. |
+| `data/llm_models_cache.json` | Last-fetched model catalog with `fetched_at` timestamp. |
 
 ## Ingredient Resolution
 

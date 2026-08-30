@@ -1,0 +1,275 @@
+{
+  "fetched_at": "2026-08-30T08:10:03Z",
+  "providers": {
+    "mistral": {
+      "available": true,
+      "models": [
+        {
+          "id": "codestral-2508",
+          "display_name": "codestral-2508",
+          "max_context_length": 256000,
+          "owned_by": "mistralai"
+        },
+        {
+          "id": "labs-leanstral-1-5",
+          "display_name": "labs-leanstral-1-5",
+          "max_context_length": 262144,
+          "owned_by": "mistralai"
+        },
+        {
+          "id": "ministral-14b-2512",
+          "display_name": "ministral-14b-2512",
+          "max_context_length": 262144,
+          "owned_by": "mistralai"
+        },
+        {
+          "id": "ministral-3b-2512",
+          "display_name": "ministral-3b-2512",
+          "max_context_length": 131072,
+          "owned_by": "mistralai"
+        },
+        {
+          "id": "ministral-8b-2512",
+          "display_name": "ministral-8b-2512",
+          "max_context_length": 262144,
+          "owned_by": "mistralai"
+        },
+        {
+          "id": "mistral-large-2512",
+          "display_name": "mistral-large-2512",
+          "max_context_length": 262144,
+          "owned_by": "mistralai"
+        },
+        {
+          "id": "mistral-medium-3-5",
+          "display_name": "mistral-medium-3-5",
+          "max_context_length": 262144,
+          "owned_by": "mistralai"
+        },
+        {
+          "id": "mistral-small-2603",
+          "display_name": "mistral-small-2603",
+          "max_context_length": 262144,
+          "owned_by": "mistralai"
+        },
+        {
+          "id": "voxtral-small-2507",
+          "display_name": "voxtral-small-2507",
+          "max_context_length": 32768,
+          "owned_by": "mistralai"
+        }
+      ],
+      "error": null
+    },
+    "google": {
+      "available": true,
+      "models": [
+        {
+          "id": "gemini-2.5-flash",
+          "display_name": "Gemini 2.5 Flash",
+          "input_token_limit": 1048576,
+          "output_token_limit": 65536,
+          "supported_methods": [
+            "generateContent",
+            "countTokens",
+            "createCachedContent",
+            "batchGenerateContent"
+          ]
+        },
+        {
+          "id": "gemini-2.5-flash-lite",
+          "display_name": "Gemini 2.5 Flash-Lite",
+          "input_token_limit": 1048576,
+          "output_token_limit": 65536,
+          "supported_methods": [
+            "generateContent",
+            "countTokens",
+            "createCachedContent",
+            "batchGenerateContent"
+          ]
+        },
+        {
+          "id": "gemini-2.5-pro",
+          "display_name": "Gemini 2.5 Pro",
+          "input_token_limit": 1048576,
+          "output_token_limit": 65536,
+          "supported_methods": [
+            "generateContent",
+            "countTokens",
+            "createCachedContent",
+            "batchGenerateContent"
+          ]
+        },
+        {
+          "id": "gemini-3-flash-preview",
+          "display_name": "Gemini 3 Flash Preview",
+          "input_token_limit": 1048576,
+          "output_token_limit": 65536,
+          "supported_methods": [
+            "generateContent",
+            "countTokens",
+            "createCachedContent",
+            "batchGenerateContent"
+          ]
+        },
+        {
+          "id": "gemini-3.1-flash-lite",
+          "display_name": "Gemini 3.1 Flash Lite",
+          "input_token_limit": 1048576,
+          "output_token_limit": 65536,
+          "supported_methods": [
+            "generateContent",
+            "countTokens",
+            "createCachedContent",
+            "batchGenerateContent"
+          ]
+        },
+        {
+          "id": "gemini-3.1-flash-lite-preview",
+          "display_name": "Gemini 3.1 Flash Lite Preview",
+          "input_token_limit": 1048576,
+          "output_token_limit": 65536,
+          "supported_methods": [
+            "generateContent",
+            "countTokens",
+            "createCachedContent",
+            "batchGenerateContent"
+          ]
+        },
+        {
+          "id": "gemini-3.1-pro-preview",
+          "display_name": "Gemini 3.1 Pro Preview",
+          "input_token_limit": 1048576,
+          "output_token_limit": 65536,
+          "supported_methods": [
+            "generateContent",
+            "countTokens",
+            "createCachedContent",
+            "batchGenerateContent"
+          ]
+        },
+        {
+          "id": "gemini-3.1-pro-preview-customtools",
+          "display_name": "Gemini 3.1 Pro Preview Custom Tools",
+          "input_token_limit": 1048576,
+          "output_token_limit": 65536,
+          "supported_methods": [
+            "generateContent",
+            "countTokens",
+            "createCachedContent",
+            "batchGenerateContent"
+          ]
+        },
+        {
+          "id": "gemini-3.5-flash",
+          "display_name": "Gemini 3.5 Flash",
+          "input_token_limit": 1048576,
+          "output_token_limit": 65536,
+          "supported_methods": [
+            "generateContent",
+            "countTokens",
+            "createCachedContent",
+            "batchGenerateContent"
+          ]
+        },
+        {
+          "id": "gemini-3.5-flash-lite",
+          "display_name": "Gemini 3.5 Flash Lite",
+          "input_token_limit": 1048576,
+          "output_token_limit": 65536,
+          "supported_methods": [
+            "generateContent",
+            "countTokens",
+            "createCachedContent",
+            "batchGenerateContent"
+          ]
+        },
+        {
+          "id": "gemini-3.6-flash",
+          "display_name": "Gemini 3.6 Flash",
+          "input_token_limit": 1048576,
+          "output_token_limit": 65536,
+          "supported_methods": [
+            "generateContent",
+            "countTokens",
+            "createCachedContent",
+            "batchGenerateContent"
+          ]
+        },
+        {
+          "id": "gemini-3.7-flash",
+          "display_name": "Gemini 3.7 Flash",
+          "input_token_limit": 1048576,
+          "output_token_limit": 65536,
+          "supported_methods": [
+            "generateContent",
+            "countTokens",
+            "createCachedContent",
+            "batchGenerateContent"
+          ]
+        },
+        {
+          "id": "gemini-flash-latest",
+          "display_name": "Gemini Flash Latest",
+          "input_token_limit": 1048576,
+          "output_token_limit": 65536,
+          "supported_methods": [
+            "generateContent",
+            "countTokens",
+            "createCachedContent",
+            "batchGenerateContent"
+          ]
+        },
+        {
+          "id": "gemini-flash-lite-latest",
+          "display_name": "Gemini Flash-Lite Latest",
+          "input_token_limit": 1048576,
+          "output_token_limit": 65536,
+          "supported_methods": [
+            "generateContent",
+            "countTokens",
+            "createCachedContent",
+            "batchGenerateContent"
+          ]
+        },
+        {
+          "id": "gemini-pro-latest",
+          "display_name": "Gemini Pro Latest",
+          "input_token_limit": 1048576,
+          "output_token_limit": 65536,
+          "supported_methods": [
+            "generateContent",
+            "countTokens",
+            "createCachedContent",
+            "batchGenerateContent"
+          ]
+        },
+        {
+          "id": "gemini-robotics-er-1.6-preview",
+          "display_name": "Gemini Robotics-ER 1.6 Preview",
+          "input_token_limit": 131072,
+          "output_token_limit": 65536,
+          "supported_methods": [
+            "generateContent",
+            "countTokens",
+            "createCachedContent",
+            "batchGenerateContent"
+          ]
+        },
+        {
+          "id": "gemini-robotics-er-2-preview",
+          "display_name": "Gemini Robotics-ER 2 Preview",
+          "input_token_limit": 131072,
+          "output_token_limit": 65536,
+          "supported_methods": [
+            "generateContent",
+            "countTokens",
+            "createCachedContent",
+            "batchGenerateContent"
+          ]
+        }
+      ],
+      "error": null
+    }
+  }
+}
