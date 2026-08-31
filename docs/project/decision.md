@@ -439,3 +439,17 @@ exploration/                 # Exploration scripts per brand
 `pip install -e ".[dev]"`) and run CLIs via `python -m tools.<brand>.<module>`.
 `tools/` is the CLI layer distinct from the `src/NZMealOptimiser/` library —
 optimisers/setup/validation scripts thin-wrap the shared library helpers.
+
+## 41. FastAPI app-shell consolidation (2026-08)
+
+During the FastAPI app-shell build-out (the rewrite that introduced `/app` + `/test` Vue trees + job-based `POST /optimise/jobs`), the following were deliberately removed from `main.py`:
+
+- `workers/` folder — queueing system for serialized processing (sessions are now isolated naturally via fresh `requests.Session()` per call).
+- `services/supabase_client.py` — Supabase write client (persistence is optional, can be re-added later).
+- `seed_phase1.py`, `schema_phase1.sql` — database seeding files (we start with local storage).
+- `models/` folder — Pydantic models (consolidated into `main.py`).
+- `routes/` folder — separate route files (consolidated to single `main.py`).
+- Custom price extraction — replaced with `build_edge_row` / `build_woolworths_row` to reuse the existing row format.
+- "Best price per ingredient" logic — removed; the API now returns ALL product results, with quantity-scaled "used cost" computed via `parse_optimiser_columns`.
+
+Context: the original docs (pre-rewrite) had been describing these as active modules. After consolidation, the listed items should not appear in any current `src/` or `tools/` tree — this entry exists so future readers don't try to re-add them.

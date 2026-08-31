@@ -4,20 +4,36 @@ parse_foodstuffs_mobile_unit are IDEMPOTENT on live New World Edge + Mobile
 API products. Idempotence, not correctness — for correctness see
 tests/combined/test_parser_utils.py.
 
-Since the Foodstuffs Edge and Mobile backends are shared between
-Pak'nSave and New World, the product data structures are identical.
-This script fetches real products from both APIs and confirms the
-parsers return the same tuple on repeated calls with the same input.
+What this script does
+---------------------
+The Foodstuffs Edge and Mobile backends are shared between Pak'nSave and
+New World, so the product data structures are identical. This script:
 
-This script was previously tests/combined/test_parser_parity.py — moved
-to scripts/api_claims/ because it hits the live API on every invocation
-and was masquerading as a pytest test (it had a `return True` skip path
-and printed PASS/FAIL instead of asserting).
+  1. Authenticates anonymously against the New World website to get a
+     public `fs-user-token` JWT.
+  2. Calls the Edge Algolia `products-index` endpoint for "beef mince"
+     against New World Te Puke, filters to the relevance-matched hits
+     (those whose `_highlightResult` carries `matchedWords` on a scalar
+     field — the same rule the production code uses), then fetches the
+     full product records via the Pass-2 `paginated/products` endpoint.
+  3. For each product, runs `parse_foodstuffs_volume_size(displayName,
+     singlePrice, promotions)` twice on the same input and prints
+     "MISMATCH" if the two calls return different tuples, "OK" otherwise.
+  4. Repeats the same idempotence check via the Foodstuffs mobile API
+     using `cloudscraper` (Cloudflare-protected), running
+     `parse_foodstuffs_mobile_unit(units, unitPrice, price)` twice on
+     the first ten returned products.
+
+This is an exploration probe, not a regression test. It is the live
+companion to the deterministic parser tests in
+`tests/combined/test_parser_utils.py` — re-run it when the New World
+Edge or Mobile product schema changes to confirm the parsers remain
+idempotent against real data.
 
 Source docs: docs/technical/NewWorld_API.md §6 (Edge) and §10 (Mobile).
 
 Usage:
-    python -m scripts.api_claims.foodstuffs_parser_parity
+    python -m exploration.paknsave.foodstuffs_parser_parity
 """
 
 import sys

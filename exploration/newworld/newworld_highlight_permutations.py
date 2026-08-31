@@ -1,33 +1,48 @@
 """
-Focused verification of the NewWorld_API.md claims about `_highlightResult`
+Live verification of the NewWorld_API.md claims about `_highlightResult`
 and `matchedWords` on the Algolia Edge API endpoint.
 
-Claims under test (NewWorld_API.md sections 6.3 / 6.4 / 6.8):
+What this script does
+---------------------
+Authenticated against New World via the public anonymous JWT flow, this
+script probes the Edge Algolia `products-index` endpoint for the
+following documented claims (NewWorld_API.md §6.3 / §6.4 / §6.8):
+
   1. `products-index` returns HTTP 200 and carries `_highlightResult`.
-  2. `_highlightResult` field values expose `value`, `matchLevel`, `matchedWords`.
-  3. Relevance hits have non-empty `matchedWords`; no-match queries do not.
+  2. `_highlightResult` field values expose `value`, `matchLevel`,
+     `matchedWords`.
+  3. Relevance hits have non-empty `matchedWords`; no-match queries do
+     not (probe query: "zzzqqq").
   4. `matchedWords` tokens are generally derivable from the query
      (Algolia may add taxonomy/brand tokens not literally in the query).
-  5. `<em>` emphasis markers appear in `value` wherever `matchedWords` is non-empty.
-  6. The 8 "dead" indices (price-asc/desc, relevance, name-asc/desc, newest,
-     bestselling, trending) return HTTP 500 as documented in section 6.4.
-  7. Pass 2 `paginated/products` returns pricing only — products carry no
-     `_highlightResult`.
+  5. `<em>` emphasis markers appear in `value` wherever `matchedWords`
+     is non-empty.
+  6. The 8 "dead" indices (price-asc/desc, relevance, name-asc/desc,
+     newest, bestselling, trending) return HTTP 500 as documented in
+     section 6.4.
+  7. Pass 2 `paginated/products` returns pricing only — products carry
+     no `_highlightResult`.
 
-NOTE on the production filter (scripts/newworld/newworld_api.py):
-  `any(isinstance(v, dict) and v.get("matchedWords") for v in hr.values())`
-  only inspects SCALAR dict values. Array fields (e.g. `category1`, `category2`)
-  are lists-of-dicts and are skipped by that logic. The test therefore records
-  matches under two lenses:
-    - "scalar match"  -> would the production filter flag this hit?
-    - "any match"     -> does ANY field (incl. list fields) hold a match?
+The production filter
+(`NZMealOptimiser/pricing/newworld_api.py`) only inspects SCALAR dict
+values of `_highlightResult` — array fields like `category1`/`category2`
+are lists-of-dicts and are skipped. This script therefore records each
+hit's matches under two lenses:
 
-Every JSON response is printed in full, except the store-availability fields
-`inStoreAvailable` and `onlineAvailable`, whose values are redacted with
-"TRUNCATED FOR TEST" so the rest of the payload stays readable.
+  - "scalar match"  — would the production filter flag this hit?
+  - "any match"     — does ANY field (incl. list fields) hold a match?
+
+The full JSON response is printed for every probe, except the
+store-availability fields `inStoreAvailable`, `onlineAvailable`, and
+`stores`, whose values are redacted with "TRUNCATED FOR TEST" so the
+rest of the payload stays readable.
+
+This is an exploration probe, not a regression test. Re-run it when the
+New World Edge Algolia contract changes to confirm the documented
+claims still hold against live behaviour.
 
 Usage:
-    python -m scripts.api_claims.newworld_highlight_permutations
+    python -m exploration.newworld.newworld_highlight_permutations
 """
 
 import json

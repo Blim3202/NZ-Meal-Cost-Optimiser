@@ -14,6 +14,25 @@ Then open `http://127.0.0.1:8000/` for the classic dashboard, `http://127.0.0.1:
 
 No manual path bootstrap is needed — the package is installed editable (`pip install -e .`) and all imports resolve from `NZMealOptimiser.*`.
 
+**See also:** [CLI_vs_Dashboard.md](CLI_vs_Dashboard.md) for the canonical CLI↔Dashboard↔Endpoint equivalence table (22 tasks), and [Vue_Dashboard.md](Vue_Dashboard.md) for the per-component behaviour reference.
+
+---
+
+## Contents
+
+- [Overview](#overview)
+- [Imports & Bootstrap](#imports--bootstrap)
+- [Thread Pool Setup](#thread-pool-setup)
+- [Global Constants](#global-constants)
+- [Job State (`JobState`)](#job-state-jobstate)
+- [Pydantic Models](#pydantic-models)
+- [API Endpoints](#api-endpoints)
+- [Functions](#functions)
+- [Concurrency Model](#concurrency-model)
+- [Concurrency Pipeline Diagram](#concurrency-pipeline-diagram)
+- [Data Flow Summary](#data-flow-summary)
+- [Google Cloud Run Deployment](#google-cloud-run-deployment)
+
 ---
 
 ## Imports & Bootstrap
@@ -147,7 +166,7 @@ When `custom_dish` is set it **replaces** the `dish`-name resolution path entire
 | `dish` | `str` | Resolved display name of the dish |
 | `dish_source` | `str` | `"curated"`, `"custom"`, `"shopping_list"`, or `"llm"`/`"fallback"` — drives the results-header chip |
 | `companies_checked` | `list[str]` | Which brands were searched |
-| `rows` | `list[dict]` | All product result rows in CSV_COLUMNS format (18 fields per row) |
+| `rows` | `list[dict]` | All product result rows — 18 CSV columns + 9 enriched fields (LLM/scaling; not separate CSV columns) |
 | `store_costs` | `list[dict]` | Per-store cost summary sorted complete-basket-first, then by total used cost |
 | `timestamp` | `str` | ISO timestamp of when the result was generated |
 | `duration_seconds` | `float` | Wall-clock duration of the pipeline run |
@@ -220,8 +239,13 @@ Each row dict matches `full_results.csv` columns:
 | `/dishes` | GET | Dishes from `data/dishes.json` — curated presets plus saved builder dishes (`portion` key = base portions; `"source": "user"` marks builder-saved entries, absent = curated) |
 | `/dishes/save` | POST | Upsert a builder dish as a preset in `data/dishes.json` (`SaveDishRequest{name, base_portions, ingredients}`); validates via `_validate_custom_dish`, tags `"source": "user"`, writes atomically (tmp file + `os.replace`) |
 | `/dishes/generate` | POST | LLM-draft a custom dish (`GenerateDishRequest{dish_name, base_portions}`) — backs the dashboard's "Generate custom ingredients" button. Two sequential LLM calls in the thread pool via `NZMealOptimiser.llm.generation.generate_custom_dish`: Mistral ("medium") produces validated ingredient rows, Gemini flash-lite produces include/exclude keyword rules shaped like `data/dish_filters.json` entries. Returns `{dish_name, base_portions, source: "llm", ingredients, filters, warnings}` (~5-20 s). Ingredient failures are fatal: 400 blank name · 503 missing API key (`GenerationConfigError`) · 502 generation failed after retries. Filter-rule failures are soft — empty `filters` plus an entry in `warnings` |
+| `/dishes/import_text` | POST | Import pasted recipe text (≤1000 chars); rejection returns HTTP 200 `{"status": "rejected"}` (soft-fail, not an error). LLM extracts ingredients + filter rules from free-form recipe text. |
 | `/dishes/{key}` | DELETE | Remove a preset dish from `data/dishes.json` → `{ok, was_user, dishes_count}`; 404 on unknown keys |
 | `/dish_filters` | GET | Curated include/exclude keyword presets from `data/dish_filters.json` (`{dish: {search_term: {includes, excludes}}}`, underscored metadata keys included); `{}` when the file is missing. Feeds the dashboard's product-filter seeding — user edits stay browser-side |
+| `/llm/models` | GET | Cached model catalog from Mistral + Google providers (file-cached in `data/llm_models_cache.json`) + active selection from `data/llm_settings.json`. Seeds cache on first call. |
+| `/llm/models/refresh` | POST | Re-fetches both providers, overwrites the catalog cache, returns the new catalog + active selection. Settings page "Refresh model list" button. |
+| `/llm/settings` | GET | Returns the active ingredient + filter model selection only. |
+| `/llm/settings` | PUT | Validates the body (provider ∈ {mistral, google}, non-empty model_id) and writes `data/llm_settings.json` atomically. |
 | `/optimise/{job_id}/reapply` | POST | Post-run filter recalculation for a **completed** job: body `{"ingredient_filters": {term: {includes, excludes}}}` (full replace). Rebuilds validity flags + store costs + winner from the run's cached product rows via `_recompute_with_filters` (deep-copied — first-run cache stays untouched and deterministic), replaces `job.result`, logs a console event, returns the fresh `OptimisationResult`. No supermarket calls. 404 unknown job · 409 not-complete or no cached rows |
 | `/optimise/{job_id}/filter_preview` | POST | Dry-run of pending filters against a **completed** job's cached rows — same body as reapply. Returns `{terms: {term: {total, matched}}, products: [{company, store, sku, search_ingredient, returned_ingredient, brand, quantity, measurement_unit, price, valid, reason}], unmatched_terms}` without recomputing store costs or touching `job.result`/cache. Powers the filter tuner's live "n/N matched" counters and matched/filtered pills (debounced client-side). 404/409 semantics identical to reapply |
 | `/optimise/{job_id}/update_ingredients` | POST | Partial refresh of a **completed** run after builder edits ("Update ingredient prices" button): body `{custom_dish: CustomDish, ingredient_filters}`. Server diffs the submitted recipe against the cached run (`_diff_run_ingredients`) — added/renamed terms are re-queried against the original run's exact store set (`pipeline_cache.stores`/`regions`; Edge APIs re-authenticated per company), removed terms' rows/outcomes are dropped, quantity/unit-only edits trigger a pure rescale with zero network calls. Filters ride along untouched (never regenerated). Spliced rows go through `_enrich_and_scale_rows`, store costs/winner are rebuilt, and BOTH `job.result` and `job.pipeline_cache` advance so previews/reapplies/further updates see fresh data. 400 blank recipe · 404 unknown job · 409 not-complete or no cached rows |
@@ -380,16 +404,16 @@ POST /optimise/jobs  → {"job_id"}  (background task; poll GET /optimise/{id})
 │       ├── find_nearby_stores(lat, lon, radius_km=5) → [StoreA, StoreB, StoreC]
 │       └── metas += (company, store_id, store_name, ingredient) tuples
 │
-├── Phase 2b: asyncio.as_completed() → 20-worker thread pool
+├── Phase 3: Concurrent execution (asyncio.as_completed + 20-worker thread pool)
 │   ├── each finished search updates job counters + emits a console event
 │   ├── _fetch_foodstuffs_sync(...) → build_edge_row() for each product
 │   └── _fetch_woolworths_sync(...) → build_woolworths_row() for each product
 │
-├── Phase 3b: Enrich rows with ingredient quantities from dishes.json
+├── Phase 4: Enrich rows with ingredient quantities from dishes.json
 │
-├── Phase 3c: parse_optimiser_columns(row) → used_price, purchase_qty, status
+├── Phase 5: parse_optimiser_columns() — used_price, purchase_qty, status
 │
-└── Phase 4: Store cost summary (cheapest per ingredient per store, summed,
+└── Phase 6: Store cost summary (cheapest per ingredient per store, summed,
     failed searches attached as issues)
 ```
 
@@ -453,17 +477,7 @@ portions: 4                   → build_*_row() per product                 ├�
 
 Nothing is written to `full_results.csv` by default — the data is returned directly as JSON. The optional `_maybe_persist` function (not wired in) would write to Supabase if configured.
 
----
-
-## What Was Removed (and Why)
-
-- **`workers/` folder** — Queueing system for serialized processing. Removed because sessions are isolated naturally via `requests.Session()` per call.
-- **`services/supabase_client.py`** — Supabase write client. Removed because persistence is optional and can be added to `main.py` later.
-- **`seed_phase1.py`, `schema_phase1.sql`** — Database seeding files. Removed because we start with local storage; can add later if Supabase is used.
-- **`models/` folder** — Pydantic request/response models. Consolidated into `main.py` for simplicity.
-- **`routes/` folder** — Separate route files. Consolidated to single `main.py` since we only have 2 endpoints (`/optimise`, `/health`).
-- **Custom price extraction** — Replaced with `build_edge_row` / `build_woolworths_row` to reuse the existing row format from the CLI optimisers.
-- **"Best price per ingredient" logic** — Removed; the API now returns ALL product results, with quantity-scaled "used cost" computed via `parse_optimiser_columns`.
+> **Removed modules:** Items removed during the app-shell rewrite (workers/, services/supabase_client.py, models/, routes/, custom price extraction, "best price per ingredient" logic) are documented in `docs/project\decision.md` §41, not here.
 
 ## Google Cloud Run Deployment
 

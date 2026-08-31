@@ -32,6 +32,20 @@ llm_interactive.py  (CLI orchestration, 6 steps)
 
 **Key principle:** The LLM assists, but the user is always in the loop. No fully-automated dish-to-cost pipeline exists yet.
 
+## Contents
+
+- [Architecture & Data Flow](#architecture--data-flow)
+- [Components](#components)
+- [Custom-Dish Generation Service (`generation.py`, web dashboard)](#custom-dish-generation-service-generationpy-web-dashboard)
+- [Ingredient Resolution](#ingredient-resolution)
+- [LLM Validation](#llm-validation)
+- [Quantity Scaling](#quantity-scaling)
+- [Data Files](#data-files)
+- [Configuration](#configuration)
+- [Usage](#usage)
+- [Capabilities & Limitations](#capabilities--limitations)
+- [Future Work](#future-work)
+
 ## Components
 
 | Script | Role |

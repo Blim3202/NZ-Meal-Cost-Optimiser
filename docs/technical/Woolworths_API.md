@@ -6,6 +6,27 @@ infrastructure while returning Woolworths NZ product data and pricing.
 
 ---
 
+## Contents
+
+- [1. How This Documentation Was Discovered](#1-how-this-documentation-was-discovered)
+- [2. Base URL and Host](#2-base-url-and-host)
+- [3. Required Request Headers](#3-required-request-headers)
+- [4. Session Seeding](#4-session-seeding)
+- [5. Confirmed Working Endpoints](#5-confirmed-working-endpoints)
+- [6. DasFilter Syntax and Complete Taxonomy](#6-dasfilter-syntax-and-complete-taxonomy)
+- [7. Endpoints Tested That Do NOT Work](#7-endpoints-tested-that-do-not-work)
+- [8. Per-Store Pricing - Full Findings](#8-per-store-pricing---full-findings)
+- [9. Store ID Mapping [LEGACY - indirection retired]](#9-store-id-mapping-legacy---indirection-retired)
+- [10. Production Architecture](#10-production-architecture)
+- [11. Summary of API Capabilities](#11-summary-of-api-capabilities)
+- [12. Key Gotchas](#12-key-gotchas)
+- [13. Client-Side Department Filtering](#13-client-side-department-filtering)
+- [14. Exploration Scripts](#14-exploration-scripts)
+- [15. Woolworths Store Setup Process (Unified Pipeline)](#15-woolworths-store-setup-process-unified-pipeline)
+- [16. Files and Data Sources](#16-files-and-data-sources)
+
+---
+
 ## 1. How This Documentation Was Discovered
 
 Every finding in this document was produced by **black-box HTTP probing** — no source
@@ -1069,49 +1090,14 @@ for store in nearby_stores:
 
 ---
 
-## 9. Store ID Mapping [LEGACY - indirection retired]
+## 9. Store Identity (Current Model)
 
-> **Status**: Retained for historical reference only. The optimiser no longer
-> bridges `pickupAddressId`->`fulfilmentStoreId` via a mapping table. Store identity
-> now keys directly on `extra1` (fulfilmentStoreId) sourced from CDX. See section 15.3
-> (`fetch_store_data()` builds `woolworths_stores.csv` keyed on extra1) and `decision.md`
-> section 28.
-
-### 9.1 Three ID Types
-
-| ID Type | Source | Example (Greymouth) | Where found |
-|---------|--------|---------------------|-------------|
-| pickupAddressId (extra2) | `/api/v1/addresses/pickup-addresses` | 764300 | `storeAddresses[].id` |
-| fulfilmentStoreId (extra1) | woolworths_store_data.json | 9009 | `siteDetail[].site.extra1` |
-| site.id | woolworths_store_data.json | 9469 | `siteDetail[].site.id` |
-
-### 9.2 Mapping Table (3 stores verified via Playwright)
-
-| Store | pickupAddressId | fulfilmentStoreId (extra1) | areaId (from cookie) | site.id |
-|-------|-----------------|---------------------------|---------------------|---------|
-| Greymouth | 764300 | 9009 | 224 | 9469 |
-| Glenfield | 1190273 | 9443 | 440 | 9163 |
-| Birkenhead | 2124460 | 9101 | 720 | 9145 |
-
-**Note**: this mapping existed to translate `pickupAddressId`->`extra1` for cookie
-construction. It is no longer needed — the optimiser sources extra1 directly from
-CDX and uses it both as `store_id` and in the `cw-lrkswrdjp` cookie.
-
-### 9.3 How the (Legacy) Mapping Was Built
-
-1. Load `woolworths_store_data.json`
-2. For each siteDetail, extract: name, extra1 (fulfilmentStoreId), extra2 (pickupAddressId)
-3. Cross-reference with `woolworths_store_choices.csv` to get store names
-4. Save as a unified mapping: `pickupAddressId -> {fulfilmentStoreId, name}`
-5. Cookie construction: `dm-Pickup,f-{extra1},s-38`
-
-### 9.4 Data Sources for Store Data
-
-| File | Content | Source |
-|------|---------|--------|
-| woolworths_store_data.json | Site details incl. extra1 (fulfilmentStoreId) + extra2 (pickupAddressId) + lat/lon | woolworths_setup.py - `fetch_store_data()` (CDX API) |
-| woolworths_store_choices.csv | [LEGACY] pickup locations keyed on extra2 (pickupAddressId) | woolworths_setup.py - `fetch_store_choices()` (pickup-addresses API) - not consulted by optimiser |
-| woolworths_stores.csv | **Canonical** store list keyed on `id`=extra1 (fulfilmentStoreId) + lat/lon + name + address | woolworths_setup.py - `fetch_store_data()` (reads CDX directly) |
+> **Historical mapping removed.** Section 9 was previously titled "Store ID Mapping
+> [LEGACY - indirection retired]" and held the `pickupAddressId` →
+> `fulfilmentStoreId` mapping table. That content is now §15.4 (Historical Appendix).
+> Store identity currently keys directly on `extra1` (fulfilmentStoreId) sourced
+> from CDX. See §15.3 for the current pipeline and `decision.md` §39 for the
+> rationale.
 
 ---
 
@@ -1301,6 +1287,30 @@ Strategy:
 | Get session fulfilment context | [OK] Yes | `context.fulfilment` inside `/api/v1/shell` |
 | View trolley / cart | [FAIL] No (unauthenticated) | 401 |
 | Get delivery slot availability | [FAIL] No | 404 |
+
+---
+
+## 11.1 Exploration Timeline & Discoveries
+
+The complete cookie-based per-store pricing discovery was built through **5 main exploration scripts + 2 Playwright helpers** spanning a 4-phase black-box HTTP probing timeline (with a 7th phase for `extra1` collisions). All scripts live in [`exploration/woolworths/`](../../exploration/woolworths/) and are executable via `python -m exploration.woolworths.<script>`. Playwright helpers live in `exploration/woolworths/Playwright/`.
+
+| Phase | Script | What was discovered | Why it mattered |
+|-------|--------|---------------------|-----------------|
+| 1 | `explore_woolworths_api_part1.py` | Enumerated `/api/v1/*` endpoints; tested 6+ `dasFilter` formats; confirmed `/api/v1/shell.context.fulfilment.fulfilmentStoreId = 9171` by default; **9 POST store-switch endpoints all 404** (e.g. `/api/v1/addresses/set-store`, `/api/v1/store/context`, `/api/v1/fulfilment/store`) | Established that the API appeared to use **global pricing** via query params (later proven wrong) |
+| 2 | `explore_woolworths_api_part2.py` | **BREAKTHROUGH**: injecting Playwright-captured cookies (67 total) into a `requests.Session` produces DIFFERENT prices between stores (Greymouth Milk 3L = $7.15, Glenfield = $7.33); URL-param seeding (`?pickupStoreId=...`) FAILS; isolating `session_state` or `RT` cookie alone FAILS | Proved per-store pricing DOES exist, and is carried by cookies not URL params |
+| 3 | `explore_woolworths_api_part3.py` | Validated cookie jars via `/api/v1/shell` (correct `fulfilmentStoreId` per store: Greymouth=9009, Glenfield=9443); tested `fulfilmentStoreId` as query param (FAILED, stayed at 9171); isolated the `cw-lrkswrdjp` cookie — the **SOLE required cookie**; format decoded: `dm-Pickup,f-{fulfilmentStoreId},a-{areaId},s-38` (a- and s- fields optional) | Identified the minimum-viable per-store cookie and its format |
+| 4 | `explore_woolworths_api_part4.py` | Discovered `extra1` in `woolworths_store_data.json` (from CDX API) IS the `fulfilmentStoreId` (verified across 3 stores: Greymouth 9009, Glenfield 9443, Birkenhead 9101); programmatic `dm-Pickup,f-{extra1},s-38` cookie construction works for ALL 179 stores without Playwright; 21/21 milk products show price differences between Greymouth and Glenfield | **Production-ready at runtime — no Playwright needed** |
+| 7 | `explore_extra1_collisions.py` | Discovered 3 pairs of physically different stores share the same `extra1` (Nelson Junction/Motueka `9290`, Te Puke/Bureta Park `9112`, Bridge Street/Matamata `9511`); only 3 of those 6 are addressable via the cookie; the other 3 silently return their fulfilment partner's prices | See `logs.md` §63 for the full investigation |
+
+**Key outcomes that drove project architecture:**
+
+1. **`cw-lrkswrdjp` is the ONLY required per-store cookie** — 66 of the 67 Playwright-captured cookies are analytics/tracking/security (Akamai Bot Manager `AKA_A2`/`_abck`/`ak_bmsc`/`bm_sz`, Optimizely `session_state`, Adobe Analytics `RT`, Tealium `utag_main_*`, Google `_ga`/`_fbp`, plus ad-network cookies from DoubleClick/AppNexus/Rubicon/PubMatic/CasaleMedia/Bidswitch/adsrvr) and have no effect on pricing.
+2. **Fresh `requests.Session` per store** — the server's `Set-Cookie` from `GET /` overwrites any injected `cw-lrkswrdjp` on a reused session. This is why `optimiser_utils.woolworths_querier` creates a new session per store.
+3. **`extra1` = `fulfilmentStoreId`** (NOT `pickupAddressId` / `extra2`) — the legacy `get_store_mapping()` helper has been removed; `woolworths_setup.fetch_store_data()` now keys the store list directly on `extra1`.
+4. **3 pairs of `extra1` collisions** — only 3 of the 6 affected stores are addressable; the other 3 are silently dropped during setup.
+5. **No Playwright at runtime** — the `extra1` mapping from CDX data enables pure `requests` + constructed cookies for all 179 stores.
+
+**Full phase-by-phase exploration narrative** (with code snippets, response samples, cookie diffs, and the complete advantages table): [`exploration/woolworths/Exploration.md`](../../exploration/woolworths/Exploration.md) (196 lines).
 
 ---
 
@@ -1497,7 +1507,50 @@ collisions") and `logs.md` §63 for details. Only 3 of the 6 are reachable via
 the cookie; the other 3 are silently dropped (they share extra1 with a
 different physical store).
 
-### 15.4 Key Files
+### 15.4 Historical Appendix: Legacy `pickupAddressId` → `fulfilmentStoreId` Mapping
+
+> **Status**: Retained for historical reference only. The optimiser no longer
+> bridges `pickupAddressId`->`fulfilmentStoreId` via a mapping table. Store
+> identity now keys directly on `extra1` (fulfilmentStoreId) sourced from CDX
+> (see §15.3 above) and `decision.md` §39 ("Retire `pickupAddressId` indirection").
+
+#### 15.4.1 Three ID Types
+
+| ID Type | Source | Example (Greymouth) | Where found |
+|---------|--------|---------------------|-------------|
+| pickupAddressId (extra2) | `/api/v1/addresses/pickup-addresses` | 764300 | `storeAddresses[].id` |
+| fulfilmentStoreId (extra1) | woolworths_store_data.json | 9009 | `siteDetail[].site.extra1` |
+| site.id | woolworths_store_data.json | 9469 | `siteDetail[].site.id` |
+
+#### 15.4.2 Mapping Table (3 stores verified via Playwright)
+
+| Store | pickupAddressId | fulfilmentStoreId (extra1) | areaId (from cookie) | site.id |
+|-------|-----------------|---------------------------|---------------------|---------|
+| Greymouth | 764300 | 9009 | 224 | 9469 |
+| Glenfield | 1190273 | 9443 | 440 | 9163 |
+| Birkenhead | 2124460 | 9101 | 720 | 9145 |
+
+**Note**: this mapping existed to translate `pickupAddressId`->`extra1` for cookie
+construction. It is no longer needed — the optimiser sources extra1 directly from
+CDX and uses it both as `store_id` and in the `cw-lrkswrdjp` cookie.
+
+#### 15.4.3 How the (Legacy) Mapping Was Built
+
+1. Load `woolworths_store_data.json`
+2. For each siteDetail, extract: name, extra1 (fulfilmentStoreId), extra2 (pickupAddressId)
+3. Cross-reference with `woolworths_store_choices.csv` to get store names
+4. Save as a unified mapping: `pickupAddressId -> {fulfilmentStoreId, name}`
+5. Cookie construction: `dm-Pickup,f-{extra1},s-38`
+
+#### 15.4.4 Data Sources for Store Data
+
+| File | Content | Source |
+|------|---------|--------|
+| woolworths_store_data.json | Site details incl. extra1 (fulfilmentStoreId) + extra2 (pickupAddressId) + lat/lon | woolworths_setup.py - `fetch_store_data()` (CDX API) |
+| woolworths_store_choices.csv | [LEGACY] pickup locations keyed on extra2 (pickupAddressId) | woolworths_setup.py - `fetch_store_choices()` (pickup-addresses API) - not consulted by optimiser |
+| woolworths_stores.csv | **Canonical** store list keyed on `id`=extra1 (fulfilmentStoreId) + lat/lon + name + address | woolworths_setup.py - `fetch_store_data()` (reads CDX directly) |
+
+### 15.5 Key Files
 
 | File | Rows | Description |
 |------|------|-------------|
@@ -1510,7 +1563,7 @@ different physical store).
 > SiteDataID, latitude, longitude, Key Facilities). The full store data lives in
 > the JSON; only the 5-column `woolworths_stores.csv` is needed downstream.
 
-### 15.5 CLI Usage
+### 15.6 CLI Usage
 
 ```powershell
 # Full pipeline (produces both woolworths_store_data.json + woolworths_stores.csv)

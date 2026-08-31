@@ -21,7 +21,7 @@ Runtime pins still live in `requirements.txt`. No path-bootstrap hacks — impor
 | Add/extend a brand API integration | `src/NZMealOptimiser/pricing/<brand>_api.py` (clients) + `src/NZMealOptimiser/pricing/optimiser_utils.py` (cross-brand helpers). Full per-brand reference: `docs/technical/<Brand>_API.md`. |
 | Use the LLM ingredient generator | CLI: `python -m tools.llm.llm_interactive`. Web: `/app` → LLM Recipe Builder. See `docs/technical/LLM_Pipeline.md`. |
 | Refresh / seed store data | `python -m tools.<brand>.<brand>_setup` (per-brand; see CLI block below). |
-| Run / extend the test suite | `python -m pytest` (469 tests, ~10 s). Per-folder layout: see `Tests` section. |
+| Run / extend the test suite | `python -m pytest` (469 tests, ~10 s, 27 `test_*.py` files + 3 `generate_fixtures.py` generators). Per-folder layout: see `Tests` section. |
 
 ## Project Layout
 
@@ -42,9 +42,8 @@ opencode/
 │   ├── llm/                            # llm_interactive.py, llm_validate.py.
 │   ├── combined/                       # initialize_full_results.py (one-time schema setup).
 │   └── frontend/promote_test_to_app.ps1   # Promotes src/test/ → src/ after sandbox QA.
-├── scripts/api_claims/                 # Live API verification probes (developer-only, not pytest).
 ├── tests/                              # 33 files, 469 tests. Per-brand + web/ + llm/ + combined/ (1 file).
-├── exploration/                        # Per-brand scratch scripts (HTTP probes, JSON dumps).
+├── exploration/                        # Per-brand scratch scripts + live API verification probes (HTTP probes, JSON dumps, foodstuffs_parser_parity, newworld_highlight_permutations).
 ├── docs/
 │   ├── project/                        # decision.md, design.md, logs.md.
 │   └── technical/                      # <Brand>_API.md, LLM_Pipeline.md, FastAPI.md, Vue_Dashboard.md.
@@ -78,7 +77,9 @@ opencode/
 | Choose LLM model | `tools/llm/llm_interactive` (in-session) | Settings → Models | `PUT /llm/settings` |
 | Browse available LLM models | — | Settings → Models | `GET /llm/models`, `POST /llm/models/refresh` |
 | Validate cached results | `python -m tools.llm.llm_validate --max-rows N` | — | — |
-| Replay / sanity-check the API | `python -m scripts.api_claims.<probe>` | — | — |
+| Replay / sanity-check the API | `python -m exploration.paknsave.foodstuffs_parser_parity` (Foodstuffs parser idempotence)<br>`python -m exploration.newworld.newworld_highlight_permutations` (NW Edge `_highlightResult` / dead indices) | — | — |
+
+> For a 22-row canonical CLI↔Dashboard↔Endpoint equivalence table (with dashboard-only / CLI-only / cross-cutting flow sections), see [`docs/technical/CLI_vs_Dashboard.md`](docs/technical/CLI_vs_Dashboard.md).
 | Run the test suite | `python -m pytest` | — | — |
 | Read in-tree docs | — | Documentation view (renders `docs/technical/*.md`) | `GET /tech-docs/<filename>` |
 
@@ -112,7 +113,6 @@ opencode/
 | `tools/llm/llm_validate.py` | Post-run validator: batches `full_results.csv` rows through `ministral-3b-2512` to fill `is_valid`. Skips already-validated rows. |
 | `tools/combined/initialize_full_results.py` | One-time `full_results.csv` schema setup (19 cols, pk_hash). |
 | `tools/frontend/promote_test_to_app.ps1` | Promote `frontend/src/test/` → `frontend/src/` (strips `/test` subtitle marker). |
-| `scripts/api_claims/` | Live API verification probes. See `scripts/api_claims/README.md`. NOT pytest; mutate `data/*.csv` as a side effect. |
 | `tests/` | 33 test files, 469 tests. See `Tests` section. |
 | `pyproject.toml` | Package metadata + `[tool.pytest.ini_options]` (addopts: `-ra --strict-markers`, testpaths: `tests`, marker: `network`). |
 
@@ -160,7 +160,6 @@ opencode/
 - **469 tests, 0 warnings, ~10 s.** `python -m pytest` (configured via `pyproject.toml` `[tool.pytest.ini_options]`).
 - **Layout**: `tests/{paknsave,newworld,woolworths}/` (per-brand API + optimiser tests), `tests/web/` (FastAPI + LLM HTTP layer), `tests/llm/` (LLM client/models/settings/utils), `tests/combined/` (1 file — `test_parser_utils.py`, cross-brand parsing). Per-folder `__init__.py`-free; pytest auto-discovers.
 - **Fixtures**: per-brand `tests/<brand>/fixture/` holds JSON of real API responses. Generator scripts (`generate_fixtures.py`) re-record them. **Stale `*_meta.json` files were deleted** in the suite-review pass (see `logs.md` #64).
-- **Live network probes** live in `scripts/api_claims/` — NOT pytest targets. Run them via `python -m scripts.api_claims.<probe>`. They mutate `data/*.csv` as a side effect.
 - **Pytest markers**: `network` (deselect with `-m "not network"`).
 - **Future**: dedicated `docs/technical/Tests.md` deferred — current size still fits in this section.
 
@@ -175,7 +174,6 @@ python -m tools.newworld.newworld_optimiser_edge "Botany Town Centre, Auckland" 
 python -m tools.woolworths.woolworths_optimiser "123 Queen Street, Auckland" "spaghetti bolognese"
 python -m tools.llm.llm_interactive
 python -m tools.llm.llm_validate --max-rows 20 --batch-size 20
-python -m scripts.api_claims.foodstuffs_parser_parity   # live API verification
 ```
 
 Web app:
