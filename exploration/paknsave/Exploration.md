@@ -254,4 +254,4 @@ scripts/paknsave/Exploration/
 
 ## Credits
 
-This exploration builds on the New World Edge API discovery documented in `scripts/newworld/Exploration/`. The two-pass architecture pattern is identical between the two banners since they share the same backend infrastructure (Apigee + Algolia).
+This exploration builds on the New World Edge API discovery documented in `exploration/newworld/Exploration.md`. The two-pass architecture pattern is identical between the two banners since they share the same backend infrastructure (Apigee + Algolia).

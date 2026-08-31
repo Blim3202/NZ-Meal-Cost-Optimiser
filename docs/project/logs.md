@@ -209,8 +209,8 @@ The mobile token works because both APIs share the same IdP (`iss: "online-custo
 
 **Resolution**: The Edge API cannot replace the mobile API for the meal cost optimiser. Store listing works, but product search (essential for per-store pricing) does not exist. Continue using the Foodstuffs mobile API (`api-prod.prod.fsniwaikato.kiwi/prod`) for all New World operations.
 
-**Exploration scripts**: `scripts/newworld/Exploration/explore_edge_api.py`, `explore_edge_api2.py`, `explore_edge_api3.py`, `explore_edge_api4.py`, `explore_edge_api5.py`
-**Documentation**: `scripts/newworld/Exploration/EDGE_API_FINDINGS.md`
+**Exploration scripts**: `exploration/newworld/explore_edge_api1.py` through `explore_edge_api5.py`
+**Documentation**: `exploration/newworld/Exploration.md`
 
 ## 23. New World mobile API requires `NewWorldApp/4.32.0` User-Agent
 
@@ -274,7 +274,7 @@ The mobile token works because both APIs share the same IdP (`iss: "online-custo
 - Per-store pricing via cookies
 - Promotional pricing included
 
-See `scripts/newworld/Exploration/explore_edge_auth.py`, `edge_full_test.py`, `edge_optimiser_demo.py` for working implementations.
+See `exploration/newworld/explore_edge_api6_auth.py`, `demo_geographic_price_compare.py`, `demo_full_optimiser_single_pass.py` for working implementations.
 
 ## 28. New World Edge API — Two-Pass Pipeline for Relevance + Per-Store Pricing
 
@@ -308,7 +308,7 @@ PASS 2 (Pricing): POST /search/paginated/products with filters
 
 **Advantage over Mobile API**: Explicit relevance matching via `_highlightResult` (mobile API returns first result but no visibility into WHY it matched). Superior for ingredient search where we must avoid pet food matching "beef mince".
 
-See `scripts/newworld/Exploration/edge_api_relevance_exploration.py` (comprehensive) and `test_milk_metro_relevance.py` (focused test).
+See `exploration/newworld/explore_edge_api9_relevance.py` (comprehensive) and `check_two_pass_milk_metro.py` (focused test).
 
 ## 29. New World Edge API — Full Replacement Confirmed
 

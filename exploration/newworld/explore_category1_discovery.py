@@ -11,7 +11,7 @@ give us the actual category1 values that appear on products in the search
 index — these are what we filter on in Pass 1 of the two-pass pipeline.
 
 Usage:
-    python scripts/newworld/Exploration/explore_categories.py
+    python -m exploration.newworld.explore_category1_discovery
 """
 
 import sys

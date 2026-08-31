@@ -228,7 +228,7 @@ PASS 2 (Pricing): POST /search/paginated/products with filters
 - Promotional pricing included
 - Categories endpoint available for navigation
 
-See `exploration/newworld/` (`explore_edge_api*.py`, `check_milk_metro_relevance.py`, `demo_edge_full_test.py`, `demo_edge_optimiser.py`) for working implementations.
+See `exploration/newworld/` (`explore_edge_api*.py`, `check_two_pass_milk_metro.py`, `demo_geographic_price_compare.py`, `demo_full_optimiser_single_pass.py`) for working implementations.
 
 ## 28. New World store-finder page `__NEXT_DATA__` for URL slugs only
 

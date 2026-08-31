@@ -20,8 +20,8 @@ products via Pass 2.  Results are printed side-by-side so you can see
 exactly which products each filter removes or keeps.
 
 Usage:
-    python scripts/newworld/Exploration/filtering_example.py "123 Queen Street, Auckland CBD, 1010"
-    python scripts/newworld/Exploration/filtering_example.py  # uses default address
+    python -m exploration.newworld.demo_filtering_variants "123 Queen Street, Auckland CBD, 1010"
+    python -m exploration.newworld.demo_filtering_variants  # uses default address
 
 Requirements:
     - requests
@@ -29,7 +29,7 @@ Requirements:
       the website JWT flow which is fully automated in this script).
 
 Discovery:
-    Run `python scripts/newworld/Exploration/explore_categories.py` to re-discover
+    Run `python -m exploration.newworld.explore_category1_discovery` to re-discover
     all category1 values from the New World Algolia index.  The sets
     below were populated from actual API data (see observed_category1_newworld.json).
 """
@@ -58,13 +58,13 @@ MAX_RETAIL_PRICE = 50.00  # cap for display (skip absurdly priced items)
 # ─── Non-Ingredient Category Blacklist ─────────────────────────────
 # These category1 values represent products which are NOT raw cooking
 # ingredients.  Every value was confirmed to exist in the New World
-# Algolia products-index by running explore_categories.py and logging
+# Algolia products-index by running explore_category1_discovery.py and logging
 # the category1 arrays from broad search queries.
 #
 # The blacklist is additive — Variant B (pet food only) is a strict
 # subset of this set.
 #
-# To re-discover or update: python scripts/newworld/Exploration/explore_categories.py
+# To re-discover or update: python -m exploration.newworld.explore_category1_discovery
 # See also: data/observed_category1_newworld.json
 
 NON_INGREDIENT_CATEGORIES = {
@@ -380,7 +380,7 @@ def main():
     print("New World Algolia products-index.  They were discovered by running")
     print("broad search queries and collecting every category1 array seen.")
     print()
-    print("To re-discover: python scripts/newworld/Exploration/explore_categories.py")
+    print("To re-discover: python -m exploration.newworld.explore_category1_discovery")
     print(f"See also: data/observed_category1_newworld.json")
     print()
 
@@ -593,7 +593,7 @@ THE category1 FIELD:
   index — they come from the New World product taxonomy, not from us.
 
 To update the blacklist:
-  1. Run:  python scripts/newworld/Exploration/explore_categories.py
+  1. Run:  python -m exploration.newworld.explore_category1_discovery
   2. Review the output for any new category1 values.
   3. Add non-ingredient values to NON_INGREDIENT_CATEGORIES.
   4. Re-run this script to compare filtering variants.
@@ -614,7 +614,7 @@ Advantages of the full blacklist over pet-food-only filtering:
 
 Note: The blacklist is based on the Foodstuffs backend shared by
 New World and Pak'nSave, but New World may have slightly different
-category1 values.  Always verify with explore_categories.py.
+category1 values.  Always verify with explore_category1_discovery.py.
 
 FUTURE IMPROVEMENTS:
   - Whitelist approach: maintain a whitelist of ingredient-relevant
