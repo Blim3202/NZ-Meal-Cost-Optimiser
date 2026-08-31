@@ -123,11 +123,6 @@
       <div class="settings-head"><h3>Advanced</h3></div>
       <div class="adv-grid">
         <div class="adv-card">
-          <h4>API key</h4>
-          <p class="hint">Reserved for future server-side features. Not wired up yet — storage and provider are still undecided.</p>
-          <input type="password" placeholder="Not available yet" disabled autocomplete="off">
-        </div>
-        <div class="adv-card">
           <h4>Search thread pool</h4>
           <template v-if="systemInfo">
             <p class="worker-line"><strong>{{ systemInfo.max_workers }}</strong> workers active <small>(configured: {{ systemInfo.configured_workers }})</small></p>

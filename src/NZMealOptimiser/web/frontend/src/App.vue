@@ -1,7 +1,7 @@
 <template>
   <div class="app-frame" :class="{ 'drawer-open': drawerOpen }">
     <header class="mobile-topbar">
-      <button type="button" class="ghost-button ghost-small" aria-label="Open navigation" @click="drawerOpen = true">â˜°</button>
+      <button type="button" class="ghost-button ghost-small" aria-label="Open navigation" @click="drawerOpen = true">☰</button>
       <span class="topbar-brand"><strong>Meal Optimiser</strong><small>/app</small></span>
     </header>
 
@@ -9,7 +9,12 @@
     <div v-if="drawerOpen && isMobile" class="drawer-backdrop" @click="drawerOpen = false"></div>
 
     <div class="app-main">
-      <component :is="activeComponent" ref="activeView" @open-dish="openDish" />
+      <!-- Only the LLM Recipe Builder survives view switches: its pasted
+           recipe + generated breakdown stay filled while users run other
+           queries elsewhere in the app. Everything else remounts as before. -->
+      <keep-alive include="RecipeBuilderView">
+        <component :is="activeComponent" ref="activeView" @open-dish="openDish" @open-draft="openDraft" />
+      </keep-alive>
     </div>
   </div>
 </template>
@@ -50,10 +55,16 @@ export default {
       window.scrollTo({ top: 0 });
     }
 
-    // My Dishes â†’ dashboard handoff (optionally straight into edit mode).
+    // My Dishes → dashboard handoff (optionally straight into edit mode).
     function openDish({ key, edit }) {
       navigate('dashboard');
       nextTick(() => activeView.value?.loadPreset(key, edit));
+    }
+
+    // LLM Recipe Builder → dashboard handoff with a freshly generated draft.
+    function openDraft(draft) {
+      navigate('dashboard');
+      nextTick(() => activeView.value?.loadDraft(draft));
     }
 
     // Leaving mobile widths always closes the overlay drawer.
@@ -69,7 +80,7 @@ export default {
 
     return {
       currentView, drawerOpen, activeView, activeComponent, railMode, isMobile,
-      navigate, openDish,
+      navigate, openDish, openDraft,
     };
   },
 };

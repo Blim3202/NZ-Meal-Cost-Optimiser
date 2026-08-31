@@ -13,14 +13,14 @@ Optimisations run as background jobs so clients can watch live progress:
         the incremental event log (cursor-based), and the final result.
 
 Frontends:
-    GET /       classic dashboard (index_old.html)
-    GET /app    Vue dashboard (static/vue/index.html, single-page entry)
+    GET /       Vue dashboard (static/vue/index.html, single-page entry) —
+                the app shell with a left sidebar switching between: optimiser
+                dashboard (preset/custom/shopping-list modes + full ingredient
+                editor), My Dishes, the LLM Recipe Builder (paste an ingredient
+                list -> LLM breakdown), a Documentation viewer and a
+                multi-section Settings page.
     GET /test   Vue dish-builder dashboard (static/vue/test.html, second
-                multi-page entry) — app shell with a left sidebar switching
-                between: optimiser dashboard (preset/custom/shopping-list
-                modes + full ingredient editor), My Dishes, the LLM Recipe
-                Builder (paste an ingredient list -> LLM breakdown), a
-                Documentation viewer and a multi-section Settings page.
+                multi-page entry) — the sandbox copy of the same shell.
 
 Supporting endpoints:
     GET  /system-info        effective thread-pool size + danger-zone caps
@@ -753,12 +753,6 @@ def tech_doc_file(name: str):
 
 
 @app.get("/")
-def root():
-    return FileResponse(STATIC_DIR / "index_old.html")
-
-
-@app.get("/app")
-@app.get("/app/")
 def vue_app():
     return FileResponse(STATIC_DIR / "vue" / "index.html")
 
