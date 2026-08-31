@@ -126,7 +126,7 @@ def set_store_context(session, fulfilment_store_id):
     return result
 
 
-def search_products(session, query, size=20, food_only=True):
+def search_products(session, query, size=20, food_only=True, exclude_non_food=True):
     """Search for products with the current store context.
 
     Args:
@@ -149,7 +149,9 @@ def search_products(session, query, size=20, food_only=True):
     items = data.get("products", {}).get("items", [])
     results = []
     for item in items:
-        if food_only and not is_food_department(item):
+        # exclude_non_food controls filtering; default True excludes non-food departments
+        filter_active = exclude_non_food
+        if filter_active and not is_food_department(item):
             continue
         price_info = item.get("price", {})
         size_info = item.get("size", {})

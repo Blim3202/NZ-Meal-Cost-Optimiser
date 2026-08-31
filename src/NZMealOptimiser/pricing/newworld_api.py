@@ -190,13 +190,14 @@ class NewWorldEdgeAPI:
         query: str,
         max_hits: int = 20,
         region: str = "NI",
+        exclude_non_food: bool = True,
     ) -> list[str]:
         """
         Search products-index for relevance matches.
         Returns productIDs where _highlightResult has non-empty matchedWords.
         Filters out non-food category1 values via NON_FOOD_CATEGORIES.
         """
-        hits = self.pass1_relevance_search_hits(store_id, query, max_hits, region)
+        hits = self.pass1_relevance_search_hits(store_id, query, max_hits, region, exclude_non_food=exclude_non_food)
         return [h["productID"] for h in hits]
 
     def pass1_relevance_search_hits(
@@ -205,6 +206,7 @@ class NewWorldEdgeAPI:
         query: str,
         max_hits: int = 20,
         region: str = "NI",
+        exclude_non_food: bool = True,
     ) -> list[dict]:
         """
         Search products-index for relevance matches.
@@ -238,9 +240,12 @@ class NewWorldEdgeAPI:
                 for v in hr.values()
             )
             cat1 = h.get("category1", [])
-            # Keep only if Algolia matched AND not in non-food blacklist
-            if matched and not any(c in NON_FOOD_CATEGORIES for c in cat1):
-                filtered.append(h)
+            # Keep only if Algolia matched; optionally filter non-food by category1
+            if not matched:
+                continue
+            if exclude_non_food and any(c in NON_FOOD_CATEGORIES for c in cat1):
+                continue
+            filtered.append(h)
         return filtered
 
     # ── PASS 2: Per-Store Pricing ───────────────────────────────────
@@ -288,6 +293,7 @@ class NewWorldEdgeAPI:
         ingredient: str,
         max_relevance: int = 20,
         region: str = "NI",
+        exclude_non_food: bool = True,
     ) -> tuple[list[dict], list[dict]]:
         """Full two-pass search for one ingredient at one store.
 
@@ -296,7 +302,7 @@ class NewWorldEdgeAPI:
             - products: list of product dicts from Pass 2 (with pricing)
             - pass1_hits: list of Pass 1 hit dicts (with category0, category1, _highlightResult, etc.)
         """
-        pass1_hits = self.pass1_relevance_search_hits(store_id, ingredient, max_relevance, region)
+        pass1_hits = self.pass1_relevance_search_hits(store_id, ingredient, max_relevance, region, exclude_non_food=exclude_non_food)
         product_ids = [h["productID"] for h in pass1_hits]
         products = self.pass2_per_store_pricing(store_id, ingredient, product_ids, region=region)
         return products, pass1_hits
@@ -382,6 +388,7 @@ class NewWorldMobileAPI:
         query: str,
         hits_per_page: int = 20,
         food_only: bool = True,
+        exclude_non_food: bool = True,
     ) -> Optional[list[dict]]:
         """Search products at a store via mobile API. Returns raw product list.
 
@@ -398,7 +405,7 @@ class NewWorldMobileAPI:
             data = r.json()
             # Mobile API returns a wrapped dict (not a bare list)
             products = data.get("products", []) if isinstance(data, dict) else data
-            if food_only:
+            if exclude_non_food:
                 products = [p for p in products if self._is_food_product(p)]
             return products
         return None

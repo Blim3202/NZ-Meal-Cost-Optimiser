@@ -456,6 +456,9 @@ class DishRequest(BaseModel):
     # flagged valid_ingredient=False and excluded from store costs/winner
     # selection (they stay visible in the results table, marked invalid).
     ingredient_filters: Optional[dict[str, IngredientFilterSet]] = None
+    # When False, skips non-food category filtering across all brands
+    # (Pak'nSave, New World, Woolworths). Default True preserves existing behavior.
+    exclude_non_food: bool = True
 
 
 def _clean_custom_ingredients(ingredients: list[CustomIngredient]) -> list[dict]:
@@ -648,6 +651,7 @@ class _LLMSettingsRequest(BaseModel):
 
     ingredient_model: dict
     filter_model: dict
+    exclude_non_food: bool = True
 
 
 @app.get("/llm/models")
@@ -709,6 +713,7 @@ async def llm_settings_put(req: _LLMSettingsRequest) -> dict:
     payload = {
         "ingredient_model": req.ingredient_model,
         "filter_model": req.filter_model,
+        "exclude_non_food": req.exclude_non_food,
     }
     try:
         saved = await asyncio.to_thread(save_llm_settings, payload)
@@ -1339,7 +1344,7 @@ async def _update_job_ingredients(job: JobState, req: UpdateIngredientsRequest) 
             try:
                 rows = await _fetch_ingredient(
                     company, api_instances.get(company), store_id, store_name,
-                    ingredient, regions.get((company, store_id), ""),
+                    ingredient, regions.get((company, store_id), ""), job.req.exclude_non_food,
                 )
                 return meta, rows, None
             except Exception as exc:  # noqa: BLE001 — recorded as a failed search
@@ -1443,6 +1448,9 @@ async def update_job_ingredients(job_id: str, req: UpdateIngredientsRequest):
 
 
 def _new_job(req: DishRequest) -> JobState:
+    # Load the global non-food filter toggle from settings (defaults to True)
+    settings_data = load_llm_settings()
+    req.exclude_non_food = bool(settings_data.get("exclude_non_food", True))
     _enforce_hard_limits(req.distance_km, req.max_stores_per_company)
     if req.companies is not None:
         invalid = [c for c in req.companies if c not in BRANDS]
@@ -1832,7 +1840,7 @@ async def _execute_pipeline(job: JobState) -> OptimisationResult:
         try:
             rows = await _fetch_ingredient(
                 company, api_instances.get(company), store_id, store_name,
-                ingredient, regions.get((company, store_id), ""),
+                ingredient, regions.get((company, store_id), ""), req.exclude_non_food,
             )
             return meta, rows, None
         except Exception as exc:  # noqa: BLE001 — recorded as a failed search
@@ -1935,7 +1943,7 @@ async def _execute_pipeline(job: JobState) -> OptimisationResult:
     )
 
 
-def _fetch_woolworths_sync(store_id: str, store_name: str, ingredient: str) -> list[dict]:
+def _fetch_woolworths_sync(store_id: str, store_name: str, ingredient: str, exclude_non_food: bool = True) -> list[dict]:
     """Synchronous Woolworths search — called from a background thread.
 
     Creates a fresh session per call (cookie isolation), searches for the
@@ -1945,7 +1953,7 @@ def _fetch_woolworths_sync(store_id: str, store_name: str, ingredient: str) -> l
     session = woolworths_api.create_session()
     try:
         woolworths_api.set_store_context(session, store_id)
-        products = woolworths_api.search_products(session, ingredient, food_only=True, size=20)
+        products = woolworths_api.search_products(session, ingredient, food_only=True, exclude_non_food=exclude_non_food, size=20)
         if not products:
             return []
         now = datetime.now()
@@ -1974,7 +1982,7 @@ def _make_authenticated_api(api_class):
 
 
 def _fetch_foodstuffs_sync(
-    company: str, api, store_id: str, store_name: str, ingredient: str, region: str = "",
+    company: str, api, store_id: str, store_name: str, ingredient: str, region: str = "", exclude_non_food: bool = True,
 ) -> list[dict]:
     """Synchronous Foodstuffs (Pak'nSave/New World) Edge search — called from a background thread.
 
@@ -1989,7 +1997,7 @@ def _fetch_foodstuffs_sync(
     now = datetime.now()
     rows = []
     try:
-        products, pass1_hits = api.search_ingredient(store_id, ingredient, region=region)
+        products, pass1_hits = api.search_ingredient(store_id, ingredient, region=region, exclude_non_food=exclude_non_food)
         if not products:
             return rows
         pass1_by_id = {h["productID"]: h for h in pass1_hits}
@@ -2007,7 +2015,7 @@ def _fetch_foodstuffs_sync(
 
 
 async def _fetch_ingredient(
-    company: str, api, store_id: str, store_name: str, ingredient: str, region: str = "",
+    company: str, api, store_id: str, store_name: str, ingredient: str, region: str = "", exclude_non_food: bool = True,
 ) -> list[dict]:
     """Offload a blocking ingredient search to a background thread.
 
@@ -2018,9 +2026,9 @@ async def _fetch_ingredient(
     Woolworths); ``region`` feeds the Edge API Region cookie.
     """
     if company == "Woolworths":
-        return await asyncio.to_thread(_fetch_woolworths_sync, store_id, store_name, ingredient)
+        return await asyncio.to_thread(_fetch_woolworths_sync, store_id, store_name, ingredient, exclude_non_food)
     else:
-        return await asyncio.to_thread(_fetch_foodstuffs_sync, company, api, store_id, store_name, ingredient, region)
+        return await asyncio.to_thread(_fetch_foodstuffs_sync, company, api, store_id, store_name, ingredient, region, exclude_non_food)
 
 
 if __name__ == "__main__":

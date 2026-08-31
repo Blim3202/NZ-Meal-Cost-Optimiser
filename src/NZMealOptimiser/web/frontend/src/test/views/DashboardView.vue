@@ -1,12 +1,16 @@
 <template>
   <main class="shell">
     <header class="hero">
-      <div><p class="eyebrow">NZ grocery intelligence</p><h1>Meal cost optimiser</h1><p class="lede">Compare any dish — preset or built by you — across nearby supermarkets.</p></div>
+      <div><p class="eyebrow">NZ grocery intelligence</p><h1>Meal cost optimiser</h1>      <p class="lede">Compare any dish. Preset or built by you, across nearby supermarkets.</p></div>
       <a class="legacy-link" href="/app">Open standard dashboard</a>
     </header>
 
     <div class="home-grid">
       <section class="panel search-panel area-form">
+        <div class="section-heading">
+          <div><p class="eyebrow">Compare supermarkets</p><h3>Pick a dish or build your own</h3></div>
+        </div>
+        <p class="hint">Set your address and compare prices across Pak'nSave, New World and Woolworths.</p>
         <form @submit.prevent="primaryAction">
           <div class="form-grid">
             <div class="field field-wide">
@@ -24,7 +28,7 @@
               <label class="field field-wide"><span>Notes (optional)</span><input v-model.trim="draft.notes" maxlength="100" placeholder="Chocolate chip cookies — bbcgoodfood.com"></label>
               <div class="field field-wide generate-row">
                 <button type="button" class="ghost-button" :disabled="generating || !canGenerate" title="Ask Mistral to draft ingredients and Gemini to seed product-filter rules from the dish name (10-20 s)" @click="generateIngredients"><span v-if="generating" class="spinner"></span>{{ generating ? 'Generating…' : 'Generate custom ingredients' }}</button>
-                <span v-if="generating" class="hint">Building your ingredient list and filters — this usually takes a few seconds.</span>
+                <span v-if="generating" class="hint">Building your ingredient list and filters. This usually takes a few seconds.</span>
               </div>
             </template>
             <label class="field field-wide"><span>NZ address</span><input v-model.trim="form.address" list="address-history" placeholder="Auckland CBD" :disabled="gpsActive" :required="!gpsActive"><datalist id="address-history"><option v-for="address in addressHistory" :key="address" :value="address" /></datalist></label>
@@ -45,7 +49,7 @@
             <span class="hint">{{ actionHint }}</span>
           </div>
         </form>
-        <p v-if="staleNotice && !loading" class="notice-banner">⚙ Parameters changed — check to resolve settings.</p>
+        <p v-if="staleNotice && !loading" class="notice-banner">⚙ Parameters changed. Check to resolve settings.</p>
         <p v-if="error" class="error-banner" role="alert">{{ error }}</p>
       </section>
 
@@ -81,7 +85,7 @@
 
     <transition name="toast-slide">
       <aside v-if="applyToast" class="apply-toast" role="status">
-        <p><strong>{{ applyToast.count }} filter change{{ applyToast.count === 1 ? '' : 's' }}</strong> applied — check <em>Summary</em> for updated comparisons.</p>
+        <p><strong>{{ applyToast.count }} filter change{{ applyToast.count === 1 ? '' : 's' }}</strong> applied. Check <em>Summary</em> for updated comparisons.</p>
         <div class="toast-actions">
           <button type="button" class="ghost-button ghost-small" @click="openToastSummary">Open summary →</button>
           <button type="button" class="kw-x toast-x" title="Dismiss" @click="dismissApplyToast">✕</button>

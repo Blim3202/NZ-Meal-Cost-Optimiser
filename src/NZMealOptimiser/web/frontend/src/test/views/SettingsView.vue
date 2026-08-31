@@ -8,7 +8,7 @@
     <!-- ── Display ────────────────────────────────────────────────────────── -->
     <section class="panel settings-section">
       <div class="settings-head"><h3>Display</h3><button type="button" class="ghost-button ghost-small" @click="resetDisplaySettings">Reset</button></div>
-      <p class="hint">The app scales fluidly at any screen size — these presets only cap how wide the content grows.</p>
+      <p class="hint">The app scales fluidly at any screen size. These presets only cap how wide the content grows.</p>
       <div class="width-cards" role="radiogroup" aria-label="Content width">
         <label v-for="(preset, id) in CONTENT_WIDTHS" :key="id" class="width-card" :class="{ active: settings.contentWidth === id }">
           <input v-model="settings.contentWidth" type="radio" name="content-width" :value="id"><strong>{{ preset.label }}</strong><small>{{ preset.hint }}</small>
@@ -49,7 +49,7 @@
           </button>
         </div>
       </div>
-      <p class="hint">Pick which chat-capable model from Mistral or Google powers each step. Live-fetched from <code>/v1/models</code> and <code>/v1beta/models</code> on first load; click <strong>Refresh model list</strong> to pick up new releases. Saved server-side in <code>data/llm_settings.json</code> — survives restarts and Cloud Run container recreation.</p>
+      <p class="hint">Pick which chat-capable model from Mistral or Google powers each step. Live-fetched from <code>/v1/models</code> and <code>/v1beta/models</code> on first load; click <strong>Refresh model list</strong> to pick up new releases. Saved server-side in <code>data/llm_settings.json</code>. Survives restarts and Cloud Run container recreation.</p>
 
       <div v-if="llm.state.error" class="mode-note danger-note">{{ llm.state.error }}</div>
       <div v-else-if="llm.state.notice" class="mode-note ok-note">{{ llm.state.notice }}</div>
@@ -58,7 +58,7 @@
         <div class="llm-card">
           <h4>Ingredient model</h4>
           <p class="llm-status">
-            Powers the Mistral "Generate custom ingredients" + "Import recipe" paths in the Dish Builder.
+            Powers Mistral or Gemini paths for "Generate custom ingredients" and "Import recipe" in the Dish Builder.
             <span :class="statusBadge(llm.mistralStatus.state)">{{ llm.mistralStatus.label }}</span>
           </p>
           <label class="field">
@@ -131,6 +131,17 @@
           </template>
           <p v-else class="hint">Loading runtime info…</p>
         </div>
+        <div class="adv-card">
+          <h4>Non-food category filter</h4>
+          <label class="switch-row" style="margin-top: 8px;">
+            <span>
+              <strong>{{ llm.state.settings.exclude_non_food ? 'Exclude non-food' : 'Include non-food' }}</strong>
+              <small>When on, excludes pet, household, baby, health and school categories from Pak'nSave, New World and Woolworths results.</small>
+            </span>
+            <input v-model="llm.state.settings.exclude_non_food" type="checkbox" class="switch" @change="llm.save">
+          </label>
+          <p class="hint" style="margin-top: 6px; font-size: 0.85em; opacity: 0.75;">Stored server-side in <code>data/llm_settings.json</code>. Applies to all three supermarket brands.</p>
+        </div>
       </div>
     </section>
 
@@ -144,7 +155,7 @@
         </span>
         <input v-model="overridesWanted" type="checkbox" class="switch" @change="onToggleOverrides">
       </label>
-      <p v-if="settings.overridesArmed" class="mode-note danger-note">⚠ Overrides active — the dashboard's Distance and Max-stores inputs now accept values up to the hard caps. The server rejects anything beyond them.</p>
+      <p v-if="settings.overridesArmed" class="mode-note danger-note">⚠ Overrides active. The dashboard's Distance and Max-stores inputs now accept values up to the hard caps. The server rejects anything beyond them.</p>
     </section>
 
     <!-- ── Accept-risk modal ─────────────────────────────────────────────── -->
@@ -168,7 +179,7 @@
           </div>
           <div class="form-actions modal-actions">
             <button type="button" class="ghost-button" @click="cancelRisk">Cancel</button>
-            <button type="button" class="danger-confirm" @click="acceptRisk">I accept — enable overrides</button>
+            <button type="button" class="danger-confirm" @click="acceptRisk">I accept. Enable overrides.</button>
           </div>
         </div>
       </div>

@@ -35,6 +35,7 @@ def _default_settings() -> dict:
     return {
         "ingredient_model": dict(DEFAULT_INGREDIENT_MODEL),
         "filter_model": dict(DEFAULT_FILTER_MODEL),
+        "exclude_non_food": True,
     }
 
 
@@ -73,10 +74,12 @@ def load_llm_settings() -> dict:
         return defaults
     if not isinstance(data, dict):
         return defaults
-    return {
+    settings_result = {
         "ingredient_model": _coerce_model(data.get("ingredient_model"), DEFAULT_INGREDIENT_MODEL),
         "filter_model": _coerce_model(data.get("filter_model"), DEFAULT_FILTER_MODEL),
+        "exclude_non_food": bool(data.get("exclude_non_food", True)),
     }
+    return settings_result
 
 
 def _validate_model(value: Any, *, field: str) -> dict:
@@ -105,7 +108,12 @@ def save_llm_settings(payload: dict) -> dict:
         raise LLMConfigError("settings payload must be an object")
     ingredient = _validate_model(payload.get("ingredient_model"), field="ingredient_model")
     filter_model = _validate_model(payload.get("filter_model"), field="filter_model")
-    canonical = {"ingredient_model": ingredient, "filter_model": filter_model}
+    exclude_non_food = bool(payload.get("exclude_non_food", True))
+    canonical = {
+        "ingredient_model": ingredient,
+        "filter_model": filter_model,
+        "exclude_non_food": exclude_non_food,
+    }
 
     SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
     tmp = SETTINGS_PATH.with_suffix(".json.tmp")
