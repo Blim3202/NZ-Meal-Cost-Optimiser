@@ -1,6 +1,6 @@
 """
-Pak'nSave Edge API — Product Relevance & Category Filtering Guide
-==================================================================
+Pak'nSave Edge API — Product Relevance & Category Filtering Demo
+================================================================
 
 Demonstrates how the two-pass Edge API pipeline filters irrelevant products
 when searching for ingredients, with a focus on the "beef mince" problem
@@ -20,8 +20,8 @@ products via Pass 2.  Results are printed side-by-side so you can see
 exactly which products each filter removes or keeps.
 
 Usage:
-    python scripts/paknsave/filtering_example.py "Botany Town Centre, Auckland"
-    python scripts/paknsave/filtering_example.py  # uses default address
+    python -m exploration.paknsave.demo_filtering_variants "Botany Town Centre, Auckland"
+    python -m exploration.paknsave.demo_filtering_variants  # uses default address
 
 Requirements:
     - requests
@@ -29,7 +29,7 @@ Requirements:
       the website JWT flow which is fully automated in this script).
 
 Discovery:
-    Run `python scripts/paknsave/Exploration/explore_categories.py` to re-discover
+    Run `python -m exploration.paknsave.explore_categories` to re-discover
     all category1 values from the Pak'nSave Algolia index.  The sets
     below were populated from actual API data (89 unique values found).
 """
@@ -59,7 +59,7 @@ MAX_RETAIL_PRICE = 50.00  # cap for display (skip absurdly priced items)
 # Every distinct value that appears in ANY product's category1 array
 # across the Algolia products-index.  Grouped by type for clarity.
 #
-# To re-discover:  python scripts/paknsave/Exploration/explore_categories.py
+# To re-discover:  python -m exploration.paknsave.explore_categories
 
 # ── Meat & Seafood (ingredient) ──────────────────────────────────────────
 # Beef, Chicken & Poultry, Lamb, Pork & Ham, Seafood,
@@ -451,7 +451,7 @@ def main():
     print("Pak'nSave Algolia products-index.  They were discovered by running")
     print("62 broad search queries and collecting every category1 array seen.")
     print()
-    print("To re-discover: python scripts/paknsave/Exploration/explore_categories.py")
+    print("To re-discover: python -m exploration.paknsave.explore_categories")
     print()
 
     all_categories = sorted(NON_INGREDIENT_CATEGORIES)
@@ -674,7 +674,7 @@ THE category1 FIELD:
 RECOMMENDED: Use Variant C (full blacklist) in production.
 
 To update the blacklist:
-  1. Run:  python scripts/paknsave/Exploration/explore_categories.py
+  1. Run:  python -m exploration.paknsave.explore_categories
   2. Review the output for any new category1 values.
   3. Add non-ingredient values to NON_INGREDIENT_CATEGORIES.
 

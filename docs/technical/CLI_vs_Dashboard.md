@@ -27,7 +27,7 @@ same flow look like in the dashboard?" or vice versa, this table is the answer.
 | Read the in-tree technical docs | Open `.md` files in editor | `/test` Documentation page | `GET /tech-docs`, `GET /tech-docs/{name}` |
 | Export the current result to CSV | (none — the per-run `<brand>_latest_results.csv` files are written by the optimisers) | "Download CSV ↓" on the all-results heading (Dashboard) | (client-side only; no backend endpoint) |
 | Run the test suite | `python -m pytest` | (none) | — |
-| Replay / sanity-check live API behaviour | `python -m exploration.paknsave.foodstuffs_parser_parity` (Foodstuffs parser idempotence)<br>`python -m exploration.newworld.newworld_highlight_permutations` (NW Edge `_highlightResult` / dead indices) | (none) | — |
+| Replay / sanity-check live API behaviour | `python -m exploration.paknsave.check_foodstuffs_parser_parity` (Foodstuffs parser idempotence)<br>`python -m exploration.newworld.newworld_highlight_permutations` (NW Edge `_highlightResult` / dead indices) | (none) | — |
 | Run the FastAPI server | `.venv\Scripts\uvicorn NZMealOptimiser.web.main:app --host 0.0.0.0 --port 8000` | — | (the server itself) |
 | Read this documentation | Open `.md` files | `/test` Documentation page | `GET /tech-docs` |
 

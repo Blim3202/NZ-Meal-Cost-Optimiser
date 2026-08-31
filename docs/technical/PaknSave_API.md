@@ -971,7 +971,7 @@ The complete two-pass pipeline + website JWT discovery was built through 9 explo
 | 1 | F12 Network Inspection | `GET /v1/edge/store` returned 57 stores with full coordinates + service flags | Confirmed Edge store listing is sufficient; no need for mobile API for the store builder |
 | 2 | Algolia index probing | Tested `products-index` + 10 variants — 3 return 200 (`products-index`, `-popularity-asc`, `-popularity-desc`); 8 others return HTTP 500 (not 404 as initially documented; verified 2026-08-04) | Found that `products-index` returns relevance-sorted hits with `_highlightResult.matchedWords` — the relevance-matching layer needed in Pass 1 |
 | 2 | Raw response capture | Documented the hit shape: `productID`, `DisplayName`, `category1`, `category2`, `_highlightResult.DisplayName.matchedWords`, `_highlightResult.category2AndBrand.matchedWords` | Showed how to extract relevant `productID`s for the Pass 2 filter |
-| 3 | `demo_two_pass_pipeline.py` | End-to-end two-pass pipeline with geocoding, 5 km radius, top-20 relevance filter, `PRICE_ASC` pricing, and `NON_FOOD_CATEGORIES` exclusion (53 values) | Validated the complete pipeline; sample output: Botany $12.03 vs Ormiston $12.13 vs Highland Park $11.82 for the same spaghetti bolognese ingredients |
+| 3 | `demo_two_pass_pipeline.py` | End-to-end two-pass pipeline with geocoding, 5 km radius, top-20 relevance filter, `PRICE_ASC` pricing, and `NON_FOOD_CATEGORIES` exclusion (26 values) | Validated the complete pipeline; sample output: Botany $12.03 vs Ormiston $12.13 vs Highland Park $11.82 for the same spaghetti bolognese ingredients |
 
 **Key outcomes that drove project architecture:**
 

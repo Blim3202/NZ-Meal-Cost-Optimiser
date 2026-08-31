@@ -33,7 +33,7 @@ idempotent against real data.
 Source docs: docs/technical/NewWorld_API.md §6 (Edge) and §10 (Mobile).
 
 Usage:
-    python -m exploration.paknsave.foodstuffs_parser_parity
+    python -m exploration.paknsave.check_foodstuffs_parser_parity
 """
 
 import sys

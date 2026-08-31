@@ -43,7 +43,7 @@ opencode/
 │   ├── combined/                       # initialize_full_results.py (one-time schema setup).
 │   └── frontend/promote_test_to_app.ps1   # Promotes src/test/ → src/ after sandbox QA.
 ├── tests/                              # 33 files, 469 tests. Per-brand + web/ + llm/ + combined/ (1 file).
-├── exploration/                        # Per-brand scratch scripts + live API verification probes (HTTP probes, JSON dumps, foodstuffs_parser_parity, newworld_highlight_permutations).
+├── exploration/                        # Per-brand scratch scripts + live API verification probes (HTTP probes, JSON dumps, check_foodstuffs_parser_parity, newworld_highlight_permutations).
 ├── docs/
 │   ├── project/                        # decision.md, design.md, logs.md.
 │   └── technical/                      # <Brand>_API.md, LLM_Pipeline.md, FastAPI.md, Vue_Dashboard.md.
@@ -77,7 +77,7 @@ opencode/
 | Choose LLM model | `tools/llm/llm_interactive` (in-session) | Settings → Models | `PUT /llm/settings` |
 | Browse available LLM models | — | Settings → Models | `GET /llm/models`, `POST /llm/models/refresh` |
 | Validate cached results | `python -m tools.llm.llm_validate --max-rows N` | — | — |
-| Replay / sanity-check the API | `python -m exploration.paknsave.foodstuffs_parser_parity` (Foodstuffs parser idempotence)<br>`python -m exploration.newworld.newworld_highlight_permutations` (NW Edge `_highlightResult` / dead indices) | — | — |
+| Replay / sanity-check the API | `python -m exploration.paknsave.check_foodstuffs_parser_parity` (Foodstuffs parser idempotence)<br>`python -m exploration.newworld.newworld_highlight_permutations` (NW Edge `_highlightResult` / dead indices) | — | — |
 
 > For a 22-row canonical CLI↔Dashboard↔Endpoint equivalence table (with dashboard-only / CLI-only / cross-cutting flow sections), see [`docs/technical/CLI_vs_Dashboard.md`](docs/technical/CLI_vs_Dashboard.md).
 | Run the test suite | `python -m pytest` | — | — |
