@@ -94,7 +94,7 @@
 
 **Cause**: Previous approaches (complex dropdown interactions) were fragile.
 
-**Resolution**: Implemented `scripts/woolworths/ChangeStore.py` using direct navigation to the Woolworths store selection modal URL (`/bookatimeslot/(hww-modal:change-pick-up-store)`), which reliably allows programmatically setting the store context.
+**Resolution**: Implemented `scripts/woolworths/ChangeStore.py` (now `exploration/woolworths/Playwright/demo_woolworths_change_store.py`) using direct navigation to the Woolworths store selection modal URL (`/bookatimeslot/(hww-modal:change-pick-up-store)`), which reliably allows programmatically setting the store context.
 
 ## 13. Jupyter `NotImplementedError` on Windows
 **Symptom**: Playwright `async_playwright` failed in Jupyter notebook on Windows with `NotImplementedError` regarding subprocesses.
@@ -841,7 +841,7 @@ All three returned different prices from each other, confirming the API does
 isolate pricing by the cookie key — but only at the fulfilment-store granularity,
 not the site granularity.
 
-**Investigation method**: Scripts in `scripts/woolworths/exploration/`:
+**Investigation method**: Scripts in `exploration/woolworths/`:
 - `explore_extra1_collisions.py` — phases 1-5: CDX metadata dump, shell context
   inspection for extra1/extra2/site.id, live price queries across all key types
 
@@ -889,7 +889,8 @@ What moved (see §40 in `decision.md` for rationale):
 | `scripts/woolworths/woolworths_api.py` | `src/NZMealOptimiser/pricing/woolworths_api.py` |
 | `scripts/woolworths/{woolworths_optimiser,woolworths_setup,woolworths_search_demo}.py` | `tools/woolworths/*.py` |
 | `scripts/{paknsave,newworld,woolworths}/{tests,fixture}/*` | `tests/{paknsave,newworld,woolworths}/*` |
-| `scripts/{paknsave,newworld,woolworths,llms}/Exploration/*` and `scripts/woolworths/Playwright/*` | `exploration/<brand>/*` |
+| `scripts/{paknsave,newworld,woolworths,llms}/Exploration/*` | `exploration/<brand>/*` |
+| `scripts/woolworths/Playwright/*` | `exploration/woolworths/Playwright/*` (kept the `Playwright/` subfolder) |
 | `scripts/llms/{llm_client,llm_utils}.py` | `src/NZMealOptimiser/llm/{llm_client,llm_utils}.py` |
 | `scripts/llms/{llm_validate,llm_interactive}.py` | `tools/llm/{llm_validate,llm_interactive}.py` |
 | `scripts/fastapi/main.py`, `scripts/fastapi/core/config.py` | `src/NZMealOptimiser/web/{main,config}.py` |
@@ -897,7 +898,7 @@ What moved (see §40 in `decision.md` for rationale):
 | `scripts/fastapi/static/{index_old.html,vue/*}` | `src/NZMealOptimiser/web/static/{index_old.html,vue/*}` |
 | `scripts/fastapi/frontend/*` | `src/NZMealOptimiser/web/frontend/*` |
 | `scripts/fastapi/tmp/` | gone (unused scratchpad) |
-| `data/Exploration/woolworths/part2_cookies.json` | `exploration/woolworths/part2_cookies.json` |
+| `data/Exploration/woolworths/part2_cookies.json` | `exploration/woolworths/data/part2_cookies.json` |
 | `scripts/test/*` (permutation scripts) | `tests/combined/*` |
 
 Also: `FastAPI_HANDOVER.md` absorbed into `docs/technical/FastAPI.md` then

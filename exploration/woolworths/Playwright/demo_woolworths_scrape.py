@@ -1,3 +1,16 @@
+"""
+demo_woolworths_scrape.py
+=========================
+Playwright reference demo — headed-Chromium DOM scrape of Woolworths search
+results. This was the original lightweight scraping approach (extract product
+title / unit price / price directly from `product-stamp-grid` entries) before
+the cookie-injection API path (`explore_woolworths_api_part2-4`) superseded it.
+Retained as a reference for how the rendered search page is structured.
+
+Usage:
+    python -m exploration.woolworths.Playwright.demo_woolworths_scrape
+"""
+
 import os
 import time
 import re

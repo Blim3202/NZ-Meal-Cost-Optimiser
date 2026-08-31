@@ -1,3 +1,19 @@
+"""
+demo_woolworths_change_store.py
+================================
+Playwright reference demo — store selection via the change-pick-up-store modal.
+
+Navigates directly to the modal URL, uses the "All Pick up locations" area
+dropdown, then selects a target store (Woolworths Birkenhead) and saves rendered
+HTML snapshots to .Temp/. The resulting cookie state (including `cw-lrkswrdjp`)
+is the starting point used by the `explore_woolworths_api_part2.py` capture flow.
+
+Usage:
+    python -m exploration.woolworths.Playwright.demo_woolworths_change_store
+
+Reference: Woolworths_API.md §9 (store selection / store context).
+"""
+
 import os
 import time
 from playwright.sync_api import sync_playwright

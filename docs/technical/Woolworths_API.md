@@ -415,14 +415,14 @@ Returns all click-and-collect pickup store locations.
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `id` | `int` | Store identifier — this is the value used in `ChangeStore.py` button clicks |
+| `id` | `int` | Store identifier — this is the value used in `demo_woolworths_change_store.py` button clicks |
 | `name` | `string` | Store name (leading space present on some records) |
 | `address` | `string` | Full address string; first comma-delimited segment is the street/suburb |
 | *(no other keys)* | | `siteDataId`, `externalId`, `siteCode` are all absent |
 
 The `storeAreas` array contains delivery-zone groupings. Area `id=494` with
 `name="All Pick up locations"` is the catch-all group containing every pickup store.
-This is the group selected in `ChangeStore.py` and `Get_woolworths_store_choices.py`.
+This is the group selected in `demo_woolworths_change_store.py` and `Get_woolworths_store_choices.py`.
 
 ---
 
@@ -1292,7 +1292,7 @@ Strategy:
 
 ## 11.1 Exploration Timeline & Discoveries
 
-The complete cookie-based per-store pricing discovery was built through **5 main exploration scripts + 2 Playwright helpers** spanning a 4-phase black-box HTTP probing timeline (with a 7th phase for `extra1` collisions). All scripts live in [`exploration/woolworths/`](../../exploration/woolworths/) and are executable via `python -m exploration.woolworths.<script>`. Playwright helpers live in `exploration/woolworths/Playwright/`.
+The complete cookie-based per-store pricing discovery was built through **6 exploration scripts (`explore_*`) + a `Playwright/` subfolder** holding the `demo_*` Playwright references, spanning a black-box HTTP probing timeline (phases covering cookie discovery, plus `extra1` collisions). All scripts live in [`exploration/woolworths/`](../../exploration/woolworths/) and are executable via `python -m exploration.woolworths.<script>` (Playwright demos as `python -m exploration.woolworths.Playwright.<script>`). All files follow the `explore_*` / `demo_*` naming convention; Playwright-based demos live in `exploration/woolworths/Playwright/` and runtime data outputs land in `exploration/woolworths/data/`.
 
 | Phase | Script | What was discovered | Why it mattered |
 |-------|--------|---------------------|-----------------|
@@ -1310,7 +1310,7 @@ The complete cookie-based per-store pricing discovery was built through **5 main
 4. **3 pairs of `extra1` collisions** — only 3 of the 6 affected stores are addressable; the other 3 are silently dropped during setup.
 5. **No Playwright at runtime** — the `extra1` mapping from CDX data enables pure `requests` + constructed cookies for all 179 stores.
 
-**Full phase-by-phase exploration narrative** (with code snippets, response samples, cookie diffs, and the complete advantages table): [`exploration/woolworths/Exploration.md`](../../exploration/woolworths/Exploration.md) (196 lines).
+**Full phase-by-phase exploration narrative** (with code snippets, response samples, cookie diffs, and the complete advantages table): [`exploration/woolworths/Exploration.md`](../../exploration/woolworths/Exploration.md).
 
 ---
 
@@ -1435,10 +1435,13 @@ items = search_products(session, "milk", size=10)
 | explore_woolworths_api_part2.py | Phase 2 | URL-param seeding test, Playwright cookie capture/injection, cookie diff, session_state/RT isolation |
 | explore_woolworths_api_part3.py | Phase 3 | /api/v1/shell validation, fulfilmentStoreId query param test, cw-lrkswrdjp deep-dive (3b: cookie-only injection, 3c: minimal cookie) |
 | explore_woolworths_api_part4.py | Phase 4 | Programmatic cookie construction, mapping capture, price validation (21/21 products), constructed vs full jar comparison |
-| explore_extra1_collisions.py | Phase 7 | Investigation of extra1 collision pairs (9112, 9290, 9511) — shell context inspection, live price queries across extra1/extra2/site.id keys |
-| Playwright/ChangeStore.py | — | Playwright store selection via modal (reference implementation) |
+| explore_extra1_collisions.py | Phase 3 | Investigation of extra1 collision pairs (9112, 9290, 9511) — shell context inspection, live price queries across extra1/extra2/site.id keys |
+| explore_extra1_deepdive.py | Phase 3 | Full CDX + shell + product dumps for collision disambiguation |
+| demo_woolworths_departments.py | Phase 4 | 14-department / aisle taxonomy walkthrough |
+| Playwright/demo_woolworths_scrape.py | Phase 4 | Headed-Chromium DOM scrape reference (pre-cookie path) |
+| Playwright/demo_woolworths_change_store.py | Phase 4 | Playwright store selection via modal (reference implementation) |
 
-All under `exploration/woolworths/`. Playwright scripts under `exploration/woolworths/Playwright/`.
+`explore_*` and `demo_woolworths_departments.py` under `exploration/woolworths/`, executable via `python -m exploration.woolworths.<script>`; Playwright demos under `exploration/woolworths/Playwright/`, executable via `python -m exploration.woolworths.Playwright.<script>`. Runtime data outputs land in `exploration/woolworths/data/` (`part2_cookies.json`, `store_id_mapping.json`).
 
 ---
 
@@ -1585,15 +1588,18 @@ python -c "from tools.woolworths.woolworths_setup import fetch_store_choices; fe
 | src/NZMealOptimiser/pricing/woolworths_api.py | Cookie-based API module: session creation, store context injection, product search, nearby stores |
 | tools/woolworths/woolworths_optimiser.py | **Thin CLI**: Step 1 query via shared `woolworths_querier` in `optimiser_utils.py`, then Step 2 `optimise()`. Supports `--requery`, `--distance` flags, 5km default |
 | tools/woolworths/woolworths_setup.py | Unified store pipeline: `fetch_store_data()` fetches CDX data (177 stores after filtering) and builds `woolworths_stores.csv` keyed on extra1 (fulfilmentStoreId); filters out shut-down stores (9285, 9035) and null-extra1 sites. `fetch_store_choices()` [LEGACY, detached] regenerates `woolworths_store_choices.*`. |
-| exploration/woolworths/explore_extra1_collisions.py | Phase 7: investigation of extra1 collision pairs (9112, 9290, 9511) — shell context inspection, live price queries across extra1/extra2/site.id keys |
+| exploration/woolworths/explore_extra1_collisions.py | Phase 3: investigation of extra1 collision pairs (9112, 9290, 9511) — shell context inspection, live price queries across extra1/extra2/site.id keys |
 | tools/combined/initialize_full_results.py | Creates `data/full_results.csv` with 17-column structure including `pk_hash` for deduplication |
 | exploration/woolworths/explore_woolworths_api_part1.py | Phase 1: black-box API probing, endpoint enumeration, dasFilter taxonomy |
 | exploration/woolworths/explore_woolworths_api_part2.py | Phase 2: URL-param seeding test, Playwright cookie capture/injection, cookie diff |
 | exploration/woolworths/explore_woolworths_api_part3.py | Phase 3: shell validation, cw-lrkswrdjp deep-dive (cookie-only injection, minimal cookie) |
 | exploration/woolworths/explore_woolworths_api_part4.py | Phase 4: programmatic cookie construction, mapping capture, price validation |
-| exploration/woolworths/Playwright/ChangeStore.py | Playwright store selection via modal (reference implementation) |
+| exploration/woolworths/explore_extra1_deepdive.py | Phase 3: full CDX + shell + product dumps for collision disambiguation |
+| exploration/woolworths/demo_woolworths_departments.py | Phase 4: 14-department / aisle taxonomy walkthrough |
+| exploration/woolworths/Playwright/demo_woolworths_scrape.py | Phase 4: headed-Chromium DOM scrape reference (pre-cookie path) |
+| exploration/woolworths/Playwright/demo_woolworths_change_store.py | Playwright store selection via modal (reference implementation) |
 | data/woolworths_store_data.json | [Source] CDX store details with extra1 (fulfilmentStoreId) and extra2 (pickupAddressId) + lat/lon — 183 sites (4 excluded for null extra1, 2 hardcoded as shut-down) |
 | data/woolworths_store_choices.csv | [LEGACY, detached] pickup-addresses API output keyed on extra2 (pickupAddressId) — not consulted by optimiser; can be regenerated via `fetch_store_choices()` |
 | data/woolworths_stores.csv | [Canonical] 177 stores (183 CDX − 4 null-extra1 − 2 shut-down) keyed on `id`=extra1 (fulfilmentStoreId) + lat/lon + name + address. Built by `fetch_store_data()`. |
 | data/full_results.csv | Shared append-only CSV with all search results (pk_hash for dedup) |
-| exploration/woolworths/part2_cookies.json | Playwright-captured full cookie jars (Greymouth, Glenfield, baseline) |
+| exploration/woolworths/data/part2_cookies.json | Playwright-captured full cookie jars (Greymouth, Glenfield, baseline) — generated at runtime by part2 |

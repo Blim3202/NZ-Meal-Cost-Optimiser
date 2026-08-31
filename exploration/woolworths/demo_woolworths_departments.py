@@ -14,7 +14,7 @@ Output format:
       [aisle_id]  Aisle Name                          (N products)
 
 Usage:
-    python woolworths_departments.py
+    python -m exploration.woolworths.demo_woolworths_departments
 
 Reference: Woolworths_API.md sections 5.1, 5.2, 6.2
 """
