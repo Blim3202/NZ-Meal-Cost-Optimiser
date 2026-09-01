@@ -22,7 +22,9 @@ same flow look like in the dashboard?" or vice versa, this table is the answer.
 | Validate a dish's results in a one-shot | `python -m tools.llm.llm_interactive --validate` | (implicitly enabled in `/test` tuner) | — |
 | Choose LLM model | `tools/llm/llm_interactive --model {small\|medium\|large}` | Settings → Models (`/test` only) | `PUT /llm/settings` |
 | Browse the LLM model catalog | (none) | Settings → Models → "Refresh model list" (`/test` only) | `GET /llm/models`, `POST /llm/models/refresh` |
-| Geocode an address | (used implicitly by optimisers via `optimiser_utils.geocode`) | Dashboard "Resolve setup" | `GET /geocode?address=...` |
+| Geocode an address | (used implicitly by optimisers via `optimiser_utils.geocode`) | Dashboard "Resolve setup" | `GET /geocode?address=...` (Nominatim, LRU-cached) |
+| Search-as-you-type address suggestions | (none) | `/test` only — Dashboard address field (debounced 300 ms) | `GET /geocode/autocomplete?q=&countrycode=NZ&limit=8` (Photon proxy, LRU-cached) |
+| Pick a location by clicking/dragging the map | (none) | `/test` only — Dashboard map card (click anywhere; drag the dark origin pin) | `GET /geocode/reverse?lat&lon&provider=auto` (Photon default; Nominatim opt-in) |
 | Preview which stores would be searched | (none) | Map panel updates as the user types distance / changes settings | `GET /stores/nearby` |
 | Read the in-tree technical docs | Open `.md` files in editor | `/test` Documentation page | `GET /tech-docs`, `GET /tech-docs/{name}` |
 | Export the current result to CSV | (none — the per-run `<brand>_latest_results.csv` files are written by the optimisers) | "Download CSV ↓" on the all-results heading (Dashboard) | (client-side only; no backend endpoint) |
@@ -33,7 +35,8 @@ same flow look like in the dashboard?" or vice versa, this table is the answer.
 
 ## Notes
 
-- The "CLI" column for `/test`-only features (Settings → Models, Recipe Builder, Documentation page) is deliberately empty — those are web-only.
+- The "CLI" column for `/test`-only features (Settings → Models, Recipe Builder, Documentation page, address autocomplete, map-pick origin) is deliberately empty — those are web-only.
+- **Photon-backed autocomplete + reverse-geocode (decision #68)**: the address field and map-pick origin in `/test` use the public Photon demo (`photon.komoot.io`) — no API key, no credit card, autocomplete-friendly. The forward `/geocode` endpoint stays on Nominatim (1.1s sleep) so explicit "Resolve setup" submissions are not blocked on Photon's fair-use throttling. See `FastAPI.md` §Geocoding providers.
 - The "FastAPI endpoint" column is the *backend* behind the Vue dashboard. Some Vue buttons call multiple endpoints in sequence (e.g. "Save as preset" → `POST /dishes/save` + `GET /dishes` for refetch).
 - The CSV export row is a notable case: the CSV is **client-side** in the Vue app (per `Vue_Dashboard.md` "Behaviour Notes" → "CSV export" — `Blob` → `<a download>`). No backend endpoint involved.
 - The store-setup CLIs are deliberately not surfaced in the dashboard. They're a developer / ops task, not a user task.

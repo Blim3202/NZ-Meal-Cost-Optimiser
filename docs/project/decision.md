@@ -478,3 +478,35 @@ The bounds are intentionally **not** exposed via `.env`. An earlier design wired
 - One pool, three brands — no per-brand knob. Past 40 the supermarkets' own rate limits become the bottleneck, which is why the slider tops out at 40.
 
 **Why not a per-job concurrency cap instead:** a single shared pool is simpler, doesn't require threading a knob through every `optimise/jobs` payload, and is the right knob for "this server feels slow" — the actual symptom.
+
+## 43. Photon for address autocomplete + reverse-geocode (2026-09)
+
+The dashboard's address field was a plain `<input>` with a `<datalist>` fed by the user's last 5 typed addresses; rural addresses got the wrong first hit, long queries needed full keystrokes, and there was no way to pick a location from the map.
+
+**Why Photon over Nominatim for browser-facing geocoding:**
+- **Nominatim's [usage policy](https://operations.osmfoundation.org/policies/nominatim/) explicitly bans browser autocomplete** and rate-limits to 1 req/sec. We respect this on the forward-lookup path (`/geocode` — 1.1s sleep in `optimiser_utils.geocode()`), but a per-keystroke dropdown would violate TOS and likely get the server IP blocked.
+- **Photon** (`photon.komoot.io`) is the only free, no-API-key, no-credit-card, OSM-based geocoder built for search-as-you-type. Same OSM planet data, autocomplete-first indexing, "fair use" throttling on the public demo.
+- All commercial options (Mapbox, Google Places, HERE, Geoapify, OpenCage production, geocode.maps.co) require either a credit-card signup or restrictive attribution. **The user explicitly doesn't want to pay** so those are off the table.
+- Self-hosting Photon/Pelias with the LINZ NZ address dump is the long-term fallback if Photon's demo throttles us (it'd take ~5-10 GB RAM, ~20 GB disk, and ~2M LINZ address points). Not worth the ops cost at current user base.
+
+**Architecture:**
+- New endpoints in `main.py`: `GET /geocode/autocomplete` (Photon forward, LRU 200, key = `country|limit|q`) and `GET /geocode/reverse?provider=auto|photon|nominatim` (Photon default, Nominatim opt-in). All three LRUs are independent so cache pollution can't cross them.
+- `provider=auto` defaults to Photon because its cache is 4-decimal (~11 m) and the 1.1s sleep isn't needed. The Nominatim path is kept for precision (5-decimal cache, ~1 m) and rural NZ where Photon's labels are sparser.
+- New `AddressAutocomplete.vue` (debounced 300 ms, keyboard nav, click-outside dismiss, ✕ clear, ODbL attribution) replaces the `<datalist>`. Photon's selected suggestion's coords are used directly — no second Nominatim round-trip.
+- `MapPanel.vue` gains a `pick-origin` event (map background click + origin-pin dragend) and a draggable origin pin with `cursor: grab`. The dashboard's `onPickOrigin()` sets `origin = {lat, lon, source: "picked"}` (third source alongside `'gps'` / `'geocoded'`), then debounce-reverses the coords so the address field gets a real label. A `_suppressAddressReset` counter incremented inside `onPickOrigin` and `onAddressSelect` keeps the address-input watch from wiping the just-set origin.
+
+**Scope:** /test tree only (sandbox). Promotion to prod requires copying `AddressAutocomplete.vue` + the updated `MapPanel.vue` + `DashboardView.vue` from `src/test/components/` to `src/`, then `tools/frontend/promote_test_to_app.ps1` and rebuild.
+
+**License:** Photon's data is ODbL — the dropdown footer must keep the `photon.komoot.io` + `openstreetmap.org/copyright` links.
+
+**Open followup — `/geocode` still on Nominatim (deliberate, not a constraint):** Photon could obviously proxy the same forward-lookup, so why keep `/geocode` on Nominatim? Three reasons, in order of weight:
+
+1. **LRU makes the 1.1 s sleep a one-time cost.** The cache is 200 entries keyed on lowercased address. The first cold-cache submit for a given address pays the 1.1 s, every subsequent submit hits the cache and is instant. Photon's "no sleep" only matters on the *first* submit per address per session — a one-shot cost, not per-keystroke.
+2. **The "Resolve setup" submit is the authoritative one.** The autocomplete dropdown has already validated the address when the user picked a suggestion (Photon-sourced coords are in hand). The fallback case (user types a full address, doesn't pick a suggestion, clicks submit) is the one that actually calls `/geocode` — and for that case we want the most precise single-result label we can get. Nominatim's `display_name` strings are marginally fuller than Photon's, and its search index is tuned for exact-match rather than prefix-match.
+3. **Separation of concerns as a feature.** Photon = "exploration" (keystroke search, map-pin reverse), Nominatim = "submission" (one deliberate click). If Photon's demo ever throttles or goes down, `/geocode` is unaffected and the user can still resolve an address by typing the full string. The reverse is also true: if Nominatim has an outage, autocomplete and map-pick still work.
+
+**Migration path if the trade-off ever flips** (e.g. Nominatim uptime degrades, or we want to drop the 1.1 s entirely for UX):
+- Swap `/geocode` to proxy Photon (drop the `time.sleep(1.1)` in the call path; LRU + NZ bbox guard stay). Single endpoint, two lines of code.
+- Nominatim stays available as `provider=nominatim` on `/geocode/reverse` for the precision case.
+- Watch the first-submit UX change: cold-cache addresses go from ~1.1 s to ~0.2 s, which on slow rural connections is the difference between a perceptible pause and a snappy form.
+

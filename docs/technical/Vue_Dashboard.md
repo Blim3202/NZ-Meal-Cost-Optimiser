@@ -66,11 +66,16 @@ src/                            # PRODUCTION tree → `/` (edit only via promote
 ├── resultUtils.js              # winnerKeyOf / storesOf — result-vs-preview pin selection
 └── unitOptions.js              # unit list + aliases mirrored from backend UNIT_ALIASES
                                 #   (ALIASES exported — Settings unit-reference table reads it)
+```
+
+`src/test/` mirrors the above (same `views/`, `components/`, `composables/`, `resultUtils.js`, `unitOptions.js`, `filterStore.js` for scoped filter state, `settings.js`) **plus** test-only additions not in the prod tree: `components/AddressAutocomplete.vue` (Photon-backed address dropdown replacing the prod `<datalist>`), `components/NumberPopover.vue` (numeric popover for distance / max-stores), `components/ResultsTabs.vue` (tabbed Summary / Filter tuner / All results), `components/FilterTunerPanel.vue` (live filter editor), `composables/useLlmModels.js` (LLM model catalog hook), `views/SettingsView.vue` (adds the LLM Models section). The `MapPanel.vue` copy in `src/test/components/` adds a `pick-origin` event (map click + dragend) and a draggable origin pin; the prod copy is still display-only. Promote via `tools/frontend/promote_test_to_app.ps1` + rebuild.
 
 src/test/                       # SANDBOX tree → /test (edit here, then promote);
     …                           # diverged file set + TestApp.vue instead of App.vue
                                 # adds: composables/useLlmModels.js, filterStore.js,
-                                #       views/SettingsView.vue (LLM Models section)
+                                #       views/SettingsView.vue (LLM Models section),
+                                #       components/AddressAutocomplete.vue (Photon dropdown),
+                                #       components/MapPanel.vue (click + drag to pick origin)
 ```
 
 The two trees are independent copies — changes in one never affect the other until promoted. `test-main.js` mounts `src/test/TestApp.vue` with `src/test/styles.css`.
@@ -82,6 +87,9 @@ The behavioural details below are grouped by view. Cross-cutting rules (responsi
 ### Optimiser dashboard (DashboardView.vue)
 
 - **Two-step flow**: dual-use submit button — "Resolve setup" (`GET /geocode` or GPS lock) until dish + location are verified, then "Compare prices". Settings changes after resolve flip it back (stale notice) and refresh a `/stores/nearby` map preview.
+- **Address autocomplete** (`AddressAutocomplete.vue`, **/test only — promoted upstream is still tracked in `decisions.md` #68**): the address field is a debounced (300 ms) Photon search-as-you-type dropdown — see `FastAPI.md` §Geocoding providers for why Photon and not Nominatim. 5–8 suggestions per query with `display`, `lat`, `lon`, `type`, `postcode`; keyboard nav (↑/↓/Enter/Esc), click-outside dismiss, ✕ clear button. The selected suggestion's coords are used directly (no second Nominatim round-trip). 400/502 surface as a red banner in the dropdown; "no matches" is a friendly hint, not an error. The "Search by Photon / OpenStreetMap contributors" attribution is mandatory (ODbL).
+- **Map click-to-pick + draggable origin** (`MapPanel.vue`, **/test only — promotion tracked in #68**): clicking the map background OR dragging the dark origin pin emits `pick-origin` → `onPickOrigin()` sets a new `origin = {lat, lon, source: "picked"}` (third source alongside `'gps'` / `'geocoded'`) and re-runs the preview immediately. A "Click anywhere on the map (or drag the pin) to pick a location" hint sits over the map until an origin is set. A debounced `GET /geocode/reverse?lat&lon` (Photon) fetches a real street label that gets written into the address field; a teal "📍 Pinned · …" chip with ✕ replaces the GPS chip while picked. The address-input watch skips programmatic writes via a `_suppressAddressReset` counter so the picked label doesn't immediately kill the pin.
+- **Pure manual GPS picking**: the map pick path never calls Nominatim forward-geocoding (Nominatim is still used for `/geocode` on submit). Photon handles both keystroke suggestions and the pin → label reverse. The `'picked'` source is a discriminator so the existing `'gps'` and `'geocoded'` flows are unchanged.
 - **Dish builder**: edit ingredients inline (quantity/unit/search term, optional ≈ fallbacks), run immediately, or "Save as preset" → `POST /dishes/save`. Runs send the recipe as `custom_dish` with its `base_portions`; the server scales to requested portions. "Clear all" (confirm-guarded) wipes the rows plus dish name/base portions. In custom mode the form card also offers **"Generate custom ingredients"** → `POST /dishes/generate` (LLM-drafted rows + filter-rule seeding; confirm-guarded when rows already exist).
 - **Shopping list**: third recipe-source mode. Reuses the builder rows but submits `custom_dish {dish_name: "Shopping list", base_portions: 1, source_label: "shopping_list"}` with `portions: 1` — quantities priced as-is, no scaling; the Portions input is hidden and results show a teal "Shopping list" chip. Draft rows carry over between custom ↔ shopping modes.
 - **CSV export**: "Download CSV ↓" on the All-results heading exports the current *filtered/sorted* view via a client-side `Blob` → `<a download>` click (native browser save dialog). UTF-8 BOM for Excel; raw numeric price columns; filename `<slugified-dish>-<date>.csv`. Gated behind the `csvDownload` prop (`ResultsSection` default false; `DashboardView.vue` binds it on).
@@ -151,6 +159,7 @@ The behavioural details below are grouped by view. Cross-cutting rules (responsi
 - `BRAND_COLORS` / `COMPANY_LABELS` are the single source for pin + legend colours; pins are inline-styled `L.divIcon`s (winner gets ★).
 - Tooltip distinguishes pre-run pins ("Price preview — run Compare prices") from completed runs ($ total used cost + ⚠ issue count).
 - `fitView`: no points → NZ-wide view; one point → `setView` zoom ≥ 13; else `fitBounds(...).pad(0.25)` capped at zoom 14.
+- **/test only (decision #68)**: the origin marker is `draggable: true` and the map background is wired to `map.on('click', ...)` — both emit `pick-origin` with `{lat, lon}` so the dashboard can set `origin.source = 'picked'`. The prod copy is still display-only. The pin carries `cursor: grab` / `:active { cursor: grabbing }` to advertise the new affordance.
 - Radius circle tracks the `radiusKm` prop live; `ResizeObserver` calls `invalidateSize()` on container resize.
 
 ### `ProgressStrip.vue`
@@ -260,3 +269,6 @@ General guidance: prefer extracting components over growing `App.vue`/`TestApp.v
 - Settings are per-browser localStorage; clearing site data resets display prefs and disarms overrides.
 - The sidebar is fixed-position: new pages must render inside the shell's `.app-main` (or set their own left margin) or they'll slide under it.
 - `marked` renderer signatures differ by major: v12 calls `code(code, infostring)` positionally, v13+ passes a `{ text, lang }` token. The `DocsView.vue` renderer accepts both — keep it dual-signature when upgrading `marked`.
+- **Origin source discriminator** (`'gps' | 'geocoded' | 'picked'`): the address-input watch skips programmatic writes via a `_suppressAddressReset` counter incremented inside `onPickOrigin` and `onAddressSelect` so the picked label or autocomplete-selected label doesn't immediately wipe the just-set origin. **Never** remove the increment when refactoring these handlers — it would silently break map picking.
+- **Nominatim TOS forbids browser autocomplete** (decision #68): `AddressAutocomplete.vue` calls `/geocode/autocomplete` (Photon), never `/geocode` (Nominatim) directly. The Photon attribution under the dropdown is mandatory (ODbL) — keep the link.
+- **Photon attribution is ODbL-required** — the dropdown footer links to photon.komoot.io and openstreetmap.org/copyright. Removing those links would put the dashboard in violation of the OSM data license.

@@ -1078,4 +1078,58 @@ dashboard, "Resolve setup" for central Auckland — succeeds, three stores
 plotted, uvicorn log shows two clean `Thread pool swapped to N workers
 (was M)` lines with correct previous sizes.
 
+## 68. Photon-backed address autocomplete + map-click origin picker (2026-09)
+
+**Symptom**: dashboard's address field was a plain `<input>` + `<datalist>`
+fed by the user's last 5 typed addresses; long queries needed full
+keystrokes, rural addresses got the wrong first hit, and there was no way
+to pick a location by map.
+
+**Cause**: Nominatim explicitly forbids browser autocomplete in its
+[usage policy](https://operations.osmfoundation.org/policies/nominatim/)
+and rate-limits to 1 req/sec. The 1.1s sleep in `optimiser_utils.geocode()`
+is mandatory for any Nominatim call. The `<datalist>` approach was a
+workaround but gave only the user's own history, and the map was
+display-only with no origin-picking affordance.
+
+**Resolution** (sandbox only, `/test` tree — promotion tracked):
+- New endpoints in `main.py`:
+  - `GET /geocode/autocomplete?q=&countrycode=NZ&limit=8` proxies
+    `photon.komoot.io/api/` (free, no API key, no credit card). LRU-cached
+    (200 entries, key = `country|limit|q.lower()`).
+  - `GET /geocode/reverse?lat&lon&provider=auto|photon|nominatim` proxies
+    Photon by default (fast, no sleep, cached per `(lat4,lon4,limit)`).
+    `provider=nominatim` is opt-in for precision; uses the same 1.1s sleep
+    and `(lat5,lon5)` cache as the forward endpoint.
+- New `AddressAutocomplete.vue` (`/test/components/`) replaces the
+  `<datalist>` — debounced 300 ms, keyboard nav (↑/↓/Enter/Esc), click-
+  outside dismiss, ✕ clear button, ODbL attribution footer.
+- `MapPanel.vue` (`/test/components/`) now emits `pick-origin` on map
+  background click + origin-pin dragend. Origin pin is `draggable: true`
+  with `cursor: grab` / `:active { cursor: grabbing }`. A "Click anywhere
+  on the map (or drag the pin) to pick a location" hint sits over the map
+  until an origin is set.
+- `DashboardView.vue` (`/test/views/`) gains a new `'picked'` source
+  discriminator alongside `'gps'` / `'geocoded'`. `onPickOrigin()` sets
+  the origin, fetches the preview, then debounce-reverses the coords via
+  `/geocode/reverse?provider=photon` so the address field gets a real
+  label. A teal "📍 Pinned · …" chip with ✕ replaces the GPS chip while
+  picked. The address-input watch skips programmatic writes via a
+  `_suppressAddressReset` counter incremented inside `onPickOrigin` and
+  `onAddressSelect` so the picked/selected label doesn't immediately
+  wipe the just-set origin.
+- 13 new tests in `tests/web/test_geocode_photon.py` cover the LRU cache
+  hits/misses, provider routing, NZ bbox guard, and failure paths.
+  Full suite 520 passed in ~11 s (was 507; +13 new).
+
+**Attribution**: Photon is ODbL-licensed; the dropdown footer links to
+`photon.komoot.io` and `openstreetmap.org/copyright`. Removing the links
+would put the dashboard in violation of the OSM data license.
+
+**Migration path** to production: copy `AddressAutocomplete.vue` from
+`src/test/components/` to `src/components/`, copy the new
+`MapPanel.vue` + `DashboardView.vue` over, add the new `/geocode/*` rows
+to `FastAPI.md` + `Vue_Dashboard.md` (already done), run
+`tools/frontend/promote_test_to_app.ps1` and rebuild.
+
 

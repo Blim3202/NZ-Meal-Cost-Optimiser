@@ -1154,6 +1154,163 @@ async def import_recipe_text(req: ImportRecipeRequest) -> dict:
 
 _GEOCODE_CACHE: OrderedDict[str, tuple[float, float]] = OrderedDict()
 _GEOCODE_CACHE_MAX = 200
+_AUTOCOMPLETE_CACHE: OrderedDict[str, list[dict]] = OrderedDict()
+_AUTOCOMPLETE_CACHE_MAX = 200
+_REVERSE_CACHE: OrderedDict[str, tuple[str, float, float]] = OrderedDict()
+_REVERSE_CACHE_MAX = 200
+_PHOTON_REVERSE_CACHE: OrderedDict[str, list[dict]] = OrderedDict()
+_PHOTON_REVERSE_CACHE_MAX = 200
+_PHOTON_USER_AGENT = "NZMealCostOptimiser/1.0 (photon-proxy)"
+_AUTOCOMPLETE_MIN_LEN = 2
+_AUTOCOMPLETE_DEFAULT_LIMIT = 8
+_AUTOCOMPLETE_MAX_LIMIT = 12
+
+
+def _autocomplete_cache_key(q: str, country_code: str, limit: int) -> str:
+    return f"{country_code.lower()}|{limit}|{q.strip().lower()}"
+
+
+def _reverse_cache_key(lat: float, lon: float) -> str:
+    return f"{round(lat, 5)},{round(lon, 5)}"
+
+
+def _photon_reverse_cache_key(lat: float, lon: float, limit: int) -> str:
+    return f"{limit}|{round(lat, 4)},{round(lon, 4)}"
+
+
+def _photon_suggestion_labels(features: list[dict]) -> list[dict]:
+    """Shape raw Photon GeoJSON ``features`` into the small payload the
+    dashboard's autocomplete dropdown consumes. We deliberately keep the
+    response thin (display string + coords) so the dropdown can render
+    8 results without bloating the wire.
+
+    Photon's ``properties.name`` is the locality/road name; ``city`` /
+    ``state`` / ``country`` are joined as context. When the result is a
+    street with a house number we surface that too, so suggestions read
+    like a real address line rather than a slug of attributes.
+    """
+    out: list[dict] = []
+    for feature in features:
+        coords = feature.get("geometry", {}).get("coordinates", [])
+        if len(coords) < 2:
+            continue
+        lon, lat = float(coords[0]), float(coords[1])
+        props = feature.get("properties", {}) or {}
+        name = str(props.get("name") or "").strip()
+        street = str(props.get("street") or "").strip()
+        housenumber = str(props.get("housenumber") or "").strip()
+        city = str(props.get("city") or props.get("town") or props.get("village") or props.get("suburb") or "").strip()
+        state = str(props.get("state") or "").strip()
+        country = str(props.get("country") or "").strip()
+        post_code = str(props.get("postcode") or "").strip()
+        type_label = str(props.get("type") or props.get("osm_value") or "").strip()
+        # Build a human-readable line: "21 Queen Street, Auckland, NZ".
+        # Photon returns the same string in `name` and `street` for most
+        # roads; when we also have a `housenumber`, prefer the
+        # house + street combo so the dropdown shows "21 Queen Street"
+        # rather than just "Queen Street".
+        full_street = f"{housenumber} {street}".strip() if (housenumber or street) else ""
+        primary = full_street or name
+        if not primary:
+            primary = ", ".join(filter(None, [city, state, country]))
+        secondary_bits = [bit for bit in (city, state, country) if bit and bit != primary]
+        display = primary + (f", {', '.join(secondary_bits)}" if secondary_bits else "")
+        if not display:
+            continue
+        out.append({
+            "display": display,
+            "lat": lat,
+            "lon": lon,
+            "type": type_label,
+            "postcode": post_code or None,
+        })
+    return out
+
+
+def _photon_reverse_payload(features: list[dict]) -> list[dict]:
+    """Same shaping as autocomplete but without the ``display`` line —
+    the dashboard's map-pick label uses a top-1 read so we keep the raw
+    address + type fields instead of building a custom string."""
+    out: list[dict] = []
+    for feature in features:
+        coords = feature.get("geometry", {}).get("coordinates", [])
+        if len(coords) < 2:
+            continue
+        lon, lat = float(coords[0]), float(coords[1])
+        props = feature.get("properties", {}) or {}
+        name = str(props.get("name") or "").strip()
+        street = str(props.get("street") or "").strip()
+        housenumber = str(props.get("housenumber") or "").strip()
+        city = str(props.get("city") or props.get("town") or props.get("village") or props.get("suburb") or "").strip()
+        state = str(props.get("state") or "").strip()
+        country = str(props.get("country") or "").strip()
+        out.append({
+            "name": name,
+            "street": street,
+            "housenumber": housenumber,
+            "city": city,
+            "state": state,
+            "country": country,
+            "lat": lat,
+            "lon": lon,
+        })
+    return out
+
+
+def _photon_request_json(url: str, params: dict) -> list:
+    """Tiny Photon HTTP helper — synchronous, designed to run on a worker
+    thread via ``asyncio.to_thread``. Returns the ``features`` list (or
+    an empty list on transport / parse failure) so the caller never has
+    to handle ``None`` separately.
+    """
+    import requests as _requests
+    try:
+        response = _requests.get(
+            url,
+            params=params,
+            headers={"User-Agent": _PHOTON_USER_AGENT, "Accept": "application/json"},
+            timeout=10,
+        )
+        if response.status_code != 200:
+            return []
+        payload = response.json()
+        features = payload.get("features") if isinstance(payload, dict) else None
+        return features or []
+    except Exception:
+        return []
+
+
+def _nominatim_reverse(lat: float, lon: float) -> Optional[tuple[str, float, float]]:
+    """Single-shot Nominatim reverse-geocode. Returns ``(label, lat, lon)``
+    on success, ``None`` otherwise. ``label`` is Nominatim's
+    ``display_name`` field; we let the client decide whether to surface
+    the full string or trim it.
+    """
+    import requests as _requests
+    time.sleep(1.1)  # respect Nominatim's 1 req/sec policy
+    try:
+        response = _requests.get(
+            "https://nominatim.openstreetmap.org/reverse",
+            params={"lat": lat, "lon": lon, "format": "json", "addressdetails": 0, "zoom": 18},
+            headers={"User-Agent": "NZMealCostOptimiser/1.0 (reverse-geocode)"},
+            timeout=15,
+        )
+        if response.status_code != 200:
+            return None
+        payload = response.json()
+        if not payload:
+            return None
+        display = str(payload.get("display_name") or "").strip()
+        if not display:
+            return None
+        try:
+            out_lat = float(payload["lat"])
+            out_lon = float(payload["lon"])
+        except (KeyError, TypeError, ValueError):
+            return None
+        return display, out_lat, out_lon
+    except Exception:
+        return None
 
 
 @app.get("/geocode")
@@ -1186,6 +1343,154 @@ async def geocode_endpoint(address: str):
     while len(_GEOCODE_CACHE) > _GEOCODE_CACHE_MAX:
         _GEOCODE_CACHE.popitem(last=False)
     return {"lat": float(lat), "lon": float(lon), "cached": False}
+
+
+@app.get("/geocode/autocomplete")
+async def geocode_autocomplete(
+    q: str,
+    country_code: str = "NZ",
+    limit: int = _AUTOCOMPLETE_DEFAULT_LIMIT,
+):
+    """Search-as-you-type address suggestions for the dashboard.
+
+    Powered by the public Photon demo (Komoot's OSM-based geocoder — no
+    API key, no credit card, autocomplete-first by design). Nominatim is
+    explicitly off-limits for browser autocomplete per the OSMF usage
+    policy, so we use Photon for keystroke-by-keystroke lookups and
+    keep the existing ``/geocode`` forward-lookup on Nominatim (it is
+    only called on explicit submit).
+
+    Results are LRU-cached (200 entries) and capped at
+    ``_AUTOCOMPLETE_MAX_LIMIT`` per call. Returns
+    ``{suggestions: [{display, lat, lon, type, postcode}], cached: bool,
+    source: "photon"}``. 400 on blank / too-short query. Empty list (not
+    404) when Photon has no match so the dropdown can render a friendly
+    "no matches" hint without a banner.
+    """
+    query = (q or "").strip()
+    if len(query) < _AUTOCOMPLETE_MIN_LEN:
+        raise HTTPException(400, f"Query must be at least {_AUTOCOMPLETE_MIN_LEN} characters")
+    clamped_limit = max(1, min(_AUTOCOMPLETE_MAX_LIMIT, int(limit) or _AUTOCOMPLETE_DEFAULT_LIMIT))
+    cc = (country_code or "NZ").strip().upper() or "NZ"
+    cache_key = _autocomplete_cache_key(query, cc, clamped_limit)
+    hit = _AUTOCOMPLETE_CACHE.get(cache_key)
+    if hit is not None:
+        _AUTOCOMPLETE_CACHE.move_to_end(cache_key)
+        return {"suggestions": hit, "cached": True, "source": "photon"}
+    params = {"q": query, "limit": clamped_limit, "lang": "en"}
+    if cc:
+        params["countrycode"] = cc
+    features = await asyncio.to_thread(
+        _photon_request_json, "https://photon.komoot.io/api/", params,
+    )
+    suggestions = _photon_suggestion_labels(features)
+    _AUTOCOMPLETE_CACHE[cache_key] = suggestions
+    while len(_AUTOCOMPLETE_CACHE) > _AUTOCOMPLETE_CACHE_MAX:
+        _AUTOCOMPLETE_CACHE.popitem(last=False)
+    return {"suggestions": suggestions, "cached": False, "source": "photon"}
+
+
+@app.get("/geocode/reverse")
+async def geocode_reverse(
+    lat: float,
+    lon: float,
+    provider: str = "auto",
+    limit: int = 1,
+):
+    """Resolve a (lat, lon) to a human-readable address label.
+
+    Two providers, opt-in:
+
+    - ``provider="photon"`` (default when ``"auto"``) — Komoot Photon
+      reverse endpoint. Cached per ``(lat4, lon4)`` so a single user
+      dragging the map around the same suburb makes at most one upstream
+      call. Fast (no Nominatim 1.1s sleep), but a bit rougher on rural
+      addresses. Used by the dashboard's map-click picker.
+    - ``provider="nominatim"`` — the authoritative OSM reverse endpoint.
+      Subject to the same 1.1s rate-limit sleep as ``/geocode`` and
+      cached per ``(lat5, lon5)``. Kept around for future use if Photon's
+      label proves too sparse for some regions.
+
+    Returns ``{label, lat, lon, cached, source, candidates}`` — the
+    ``candidates`` list is non-empty only for Photon (Nominatim returns a
+    single best match). 400 if the coordinates fall outside NZ; 502 if
+    the chosen provider fails entirely.
+    """
+    if not (NZ_LAT_RANGE[0] <= lat <= NZ_LAT_RANGE[1] and NZ_LON_RANGE[0] <= lon <= NZ_LON_RANGE[1]):
+        raise HTTPException(
+            400,
+            f"Coordinates ({lat:.4f}, {lon:.4f}) are outside New Zealand — this service only covers NZ stores.",
+        )
+    chosen = (provider or "auto").strip().lower()
+    if chosen == "auto":
+        chosen = "photon"
+    if chosen not in {"photon", "nominatim"}:
+        raise HTTPException(400, "provider must be 'photon' or 'nominatim'")
+    if chosen == "photon":
+        cache_key = _photon_reverse_cache_key(lat, lon, max(1, min(5, int(limit) or 1)))
+        hit = _PHOTON_REVERSE_CACHE.get(cache_key)
+        if hit is not None:
+            _PHOTON_REVERSE_CACHE.move_to_end(cache_key)
+            top = hit[0] if hit else {"label": None}
+            return {
+                "label": top.get("label") or _format_photon_label(top),
+                "lat": top.get("lat", lat),
+                "lon": top.get("lon", lon),
+                "cached": True,
+                "source": "photon",
+                "candidates": hit,
+            }
+        params = {"lon": lon, "lat": lat, "limit": max(1, min(5, int(limit) or 1)), "lang": "en"}
+        features = await asyncio.to_thread(
+            _photon_request_json, "https://photon.komoot.io/reverse", params,
+        )
+        candidates = _photon_reverse_payload(features)
+        _PHOTON_REVERSE_CACHE[cache_key] = candidates
+        while len(_PHOTON_REVERSE_CACHE) > _PHOTON_REVERSE_CACHE_MAX:
+            _PHOTON_REVERSE_CACHE.popitem(last=False)
+        if not candidates:
+            raise HTTPException(502, "Photon could not reverse these coordinates — drop the pin closer to a road or address.")
+        top = candidates[0]
+        return {
+            "label": _format_photon_label(top),
+            "lat": top["lat"],
+            "lon": top["lon"],
+            "cached": False,
+            "source": "photon",
+            "candidates": candidates,
+        }
+    # Nominatim path
+    cache_key = _reverse_cache_key(lat, lon)
+    hit = _REVERSE_CACHE.get(cache_key)
+    if hit is not None:
+        _REVERSE_CACHE.move_to_end(cache_key)
+        return {"label": hit[0], "lat": hit[1], "lon": hit[2], "cached": True, "source": "nominatim", "candidates": []}
+    result = await asyncio.to_thread(_nominatim_reverse, lat, lon)
+    if result is None:
+        raise HTTPException(502, "Nominatim could not reverse these coordinates.")
+    label, out_lat, out_lon = result
+    _REVERSE_CACHE[cache_key] = (label, out_lat, out_lon)
+    while len(_REVERSE_CACHE) > _REVERSE_CACHE_MAX:
+        _REVERSE_CACHE.popitem(last=False)
+    return {"label": label, "lat": out_lat, "lon": out_lon, "cached": False, "source": "nominatim", "candidates": []}
+
+
+def _format_photon_label(candidate: dict) -> str:
+    """Build a readable one-line address from a Photon reverse payload.
+    Mirrors the autocomplete shaping so the map-pick label and the
+    dropdown suggestions read consistently.
+    """
+    if not candidate:
+        return ""
+    street = candidate.get("street") or ""
+    housenumber = candidate.get("housenumber") or ""
+    name = candidate.get("name") or ""
+    primary = " ".join(part for part in (housenumber, street) if part).strip() or name
+    parts = [primary]
+    for bit in (candidate.get("city"), candidate.get("state"), candidate.get("country")):
+        if bit and bit != primary and bit not in parts:
+            parts.append(bit)
+    return ", ".join(p for p in parts if p)
 
 
 @app.get("/stores/nearby")

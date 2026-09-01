@@ -21,7 +21,7 @@ Runtime pins still live in `requirements.txt`. No path-bootstrap hacks — impor
 | Add/extend a brand API integration | `src/NZMealOptimiser/pricing/<brand>_api.py` (clients) + `src/NZMealOptimiser/pricing/optimiser_utils.py` (cross-brand helpers). Full per-brand reference: `docs/technical/<Brand>_API.md`. |
 | Use the LLM ingredient generator | CLI: `python -m tools.llm.llm_interactive`. Web: `/` → LLM Recipe Builder. See `docs/technical/LLM_Pipeline.md`. |
 | Refresh / seed store data | `python -m tools.<brand>.<brand>_setup` (per-brand; see CLI block below). |
-| Run / extend the test suite | `python -m pytest` (503 tests, ~10 s, 27 `test_*.py` files + 3 `generate_fixtures.py` generators). Per-folder layout: see `Tests` section. |
+| Run / extend the test suite | `python -m pytest` (520 tests, ~10 s, 28 `test_*.py` files + 3 `generate_fixtures.py` generators). Per-folder layout: see `Tests` section. |
 
 ## Project Layout
 
@@ -42,7 +42,7 @@ opencode/
 │   ├── llm/                            # llm_interactive.py, llm_validate.py.
 │   ├── combined/                       # initialize_full_results.py (one-time schema setup).
 │   └── frontend/promote_test_to_app.ps1   # Promotes src/test/ → src/ after sandbox QA.
-├── tests/                              # 33 files, 503 tests. Per-brand + web/ + llm/ + combined/ (1 file).
+├── tests/                              # 34 files, 520 tests. Per-brand + web/ + llm/ + combined/ (1 file).
 ├── exploration/                        # Per-brand scratch scripts + live API verification probes (HTTP probes, JSON dumps, check_foodstuffs_parser_parity, newworld_highlight_permutations).
 ├── docs/
 │   ├── project/                        # decision.md, design.md, logs.md.
@@ -74,6 +74,8 @@ opencode/
 | Save custom dish | — | My Dishes | `POST /dishes/save` |
 | Edit ingredient filters post-run | — | Tuner sidebar | `POST /optimise/{id}/filter_preview` (dry-run) + `reapply` |
 | Partial ingredient refresh | — | Tuner | `POST /optimise/{id}/update_ingredients` (no network for quantity edits) |
+| Address autocomplete (Photon) | — | Dashboard address field (debounced 300 ms) | `GET /geocode/autocomplete?q=...&countrycode=NZ&limit=8` |
+| Map click / drag → pick origin | — | Dashboard map card (click anywhere, drag the dark pin) | `GET /geocode/reverse?lat&lon&provider=auto` (Photon) for the street label |
 | Choose LLM model | `tools/llm/llm_interactive` (in-session) | Settings → Models | `PUT /llm/settings` |
 | Browse available LLM models | — | Settings → Models | `GET /llm/models`, `POST /llm/models/refresh` |
 | Validate cached results | `python -m tools.llm.llm_validate --max-rows N` | — | — |
@@ -112,7 +114,7 @@ opencode/
 | `tools/llm/llm_validate.py` | Post-run validator: batches `full_results.csv` rows through `ministral-3b-2512` to fill `is_valid`. Skips already-validated rows. |
 | `tools/combined/initialize_full_results.py` | One-time `full_results.csv` schema setup (19 cols, pk_hash). |
 | `tools/frontend/promote_test_to_app.ps1` | Promote `frontend/src/test/` → `frontend/src/` (strips `/test` subtitle marker). |
-| `tests/` | 33 test files, 503 tests. See `Tests` section. |
+| `tests/` | 34 test files, 520 tests. See `Tests` section. |
 | `pyproject.toml` | Package metadata + `[tool.pytest.ini_options]` (addopts: `-ra --strict-markers`, testpaths: `tests`, marker: `network`). |
 
 ## Key Gotchas
@@ -125,6 +127,8 @@ opencode/
 - **Woolworths `cw-lrkswrdjp` cookie** must be injected into a **fresh `requests.Session`** per store — the server's `Set-Cookie` overwrites injected values on reused sessions. `x-requested-with: "??"` header is mandatory (literal string works). See `Woolworths_API.md` §3, §8.
 - **Hardcoded Woolworths exclusions**: `EXCLUDED_STORE_IDS` skips `9285` (Te Atatu, shut 24/04/2025) and `9035` (Kaikohe, shut 15/02/2026). See `Woolworths_API.md` §10.
 - **Nominatim = user-address geocoding only.** Rate-limited 1 req/sec. Store coordinates come from brand APIs (no Nominatim needed for stores). LRU-cached via `GET /geocode`. See `FastAPI.md` §`_resolve_origin` and `optimiser_utils.py:geocode()`.
+- **Nominatim TOS forbids browser autocomplete** (OSMF policy). `AddressAutocomplete.vue` calls `/geocode/autocomplete` (Photon, OSM-based, no API key, autocomplete-first by design), never `/geocode` per-keystroke. Photon is rate-limited only by "fair use" on the public demo and the attribution in the dropdown footer is ODbL-mandatory.
+- **Origin source discriminator** (`'gps' | 'geocoded' | 'picked'`): the address-input watch in `DashboardView.vue` skips programmatic writes via a `_suppressAddressReset` counter incremented inside `onPickOrigin` and `onAddressSelect` so the picked/autocomplete-set label doesn't immediately wipe the just-set origin. Don't remove the increments when refactoring.
 - **Pak'nSave + New World prices are in cents** — divide by 100 for dollars. Woolworths prices are already in dollars.
 - **`POST /optimise/{id}/update_ingredients`** re-queries only added/renamed terms; quantity edits are pure-rescale, zero network. Renames carry filter rules client-side. See `FastAPI.md` §API Endpoints.
 
@@ -139,6 +143,7 @@ opencode/
 | Algolia two-pass (relevance + per-store price) | ✅ PNS + NW. `category1` filter excludes pet food | `NewWorld_API.md` §6, `PaknSave_API.md` §6 |
 | 148 vs 150 NW store count | Known delta: Foodie Mart + Te Atatu only in mobile | `NewWorld_API.md` §9, `logs.md` #24 |
 | Woolworths hardcoded exclusions | 9285 (Te Atatu), 9035 (Kaikohe) | `Woolworths_API.md` §10, `logs.md` §63 |
+| Photon-backed address autocomplete + map-pick reverse | ✅ No API key, no credit card, OSM-based; ~300ms perceived latency vs Nominatim's mandated 1.1s sleep. Decision #68. | `FastAPI.md` §Geocoding providers |
 | LLM-backed custom dishes | ✅ `mistral-medium-latest` default; Gemini flash-lite default for filters | `LLM_Pipeline.md` |
 | Post-run validation | ✅ `ministral-3b-2512` via `llm_validate.py` | `LLM_Pipeline.md` |
 | Live job polling | ✅ `POST /optimise/jobs` → `GET /optimise/{id}` with phase + event log | `FastAPI.md` §API Endpoints |
@@ -150,14 +155,14 @@ opencode/
 - **Optimise endpoints**: `/optimise/jobs` (POST), `/optimise/{id}` (GET), `/optimise/{id}/reapply` (POST), `/optimise/{id}/filter_preview` (POST), `/optimise/{id}/update_ingredients` (POST). Legacy sync `POST /optimise` still alive.
 - **Dish endpoints**: `/dish_filters` (GET), `/dishes/generate` (POST), `/dishes/import_text` (POST, ≤1000 chars; rejection → HTTP 200 `{"status": "rejected"}`), `/dishes/save` (POST).
 - **LLM endpoints**: `/llm/models` (GET), `/llm/models/refresh` (POST), `/llm/settings` (GET/PUT).
-- **Misc**: `/geocode` (GET, Nominatim LRU), `/tech-docs/<filename>` (GET, served to the Vue Documentation view), `/docs` (Swagger).
+- **Misc**: `/geocode` (GET, Nominatim LRU — forward only, used on "Resolve setup" submit), `/geocode/autocomplete` (GET, Photon proxy — search-as-you-type, debounced 300 ms client-side), `/geocode/reverse` (GET, Photon default / Nominatim opt-in, powers the map-pick label lookup), `/tech-docs/<filename>` (GET, served to the Vue Documentation view), `/docs` (Swagger). See `FastAPI.md` §Geocoding providers for the design rationale (decision #68).
 - **Frontend pages**: `/` (Vue prod dashboard), `/test` (Vue sandbox, independent copy). `frontend/src/` → `/`; `frontend/src/test/` → `/test`. Build: `npm run lint && npm run build` inside `frontend/` → output to `src/NZMealOptimiser/web/static/vue/`. See `Vue_Dashboard.md` §Build & Toolchain, §Source Map.
 - **Promote flow**: edit `src/test/`, QA at `/test`, then `tools/frontend/promote_test_to_app.ps1` to overwrite `src/`, then rebuild both pages.
 - **Backend contract** (row shape, payload, model catalog) is the source of truth for the Vue frontend: see `Vue_Dashboard.md` §Backend Contract and `FastAPI.md` §Pydantic Models.
 
 ## Tests
 
-- **503 tests, 0 warnings, ~10 s.** `python -m pytest` (configured via `pyproject.toml` `[tool.pytest.ini_options]`).
+- **520 tests, 0 warnings, ~10 s.** `python -m pytest` (configured via `pyproject.toml` `[tool.pytest.ini_options]`).
 - **Layout**: `tests/{paknsave,newworld,woolworths}/` (per-brand API + optimiser tests), `tests/web/` (FastAPI + LLM HTTP layer), `tests/llm/` (LLM client/models/settings/utils), `tests/combined/` (1 file — `test_parser_utils.py`, cross-brand parsing). Per-folder `__init__.py`-free; pytest auto-discovers.
 - **Fixtures**: per-brand `tests/<brand>/fixture/` holds JSON of real API responses. Generator scripts (`generate_fixtures.py`) re-record them. **Stale `*_meta.json` files were deleted** in the suite-review pass (see `logs.md` #64).
 - **Pytest markers**: `network` (deselect with `-m "not network"`).

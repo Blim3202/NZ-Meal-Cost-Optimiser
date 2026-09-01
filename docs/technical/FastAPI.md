@@ -285,13 +285,41 @@ Each row dict matches `full_results.csv` columns:
 | `/optimise/{job_id}/update_ingredients` | POST | Partial refresh of a **completed** run after builder edits ("Update ingredient prices" button): body `{custom_dish: CustomDish, ingredient_filters}`. Server diffs the submitted recipe against the cached run (`_diff_run_ingredients`) — added/renamed terms are re-queried against the original run's exact store set (`pipeline_cache.stores`/`regions`; Edge APIs re-authenticated per company), removed terms' rows/outcomes are dropped, quantity/unit-only edits trigger a pure rescale with zero network calls. Filters ride along untouched (never regenerated). Spliced rows go through `_enrich_and_scale_rows`, store costs/winner are rebuilt, and BOTH `job.result` and `job.pipeline_cache` advance so previews/reapplies/further updates see fresh data. 400 blank recipe · 404 unknown job · 409 not-complete or no cached rows |
 | `/tech-docs` | GET | List the whitelisted manuals → `[{name, title}]` |
 | `/tech-docs/{name}` | GET | Serve one manual as raw markdown (`text/markdown`) for client-side rendering; whitelisted names only |
-| `/geocode` | GET | `?address=...` → `{lat, lon, cached}` — standalone Nominatim lookup for the dashboard's resolve step (LRU-cached, NZ-bbox validated) |
+| `/geocode` | GET | `?address=...` → `{lat, lon, cached}` — standalone Nominatim lookup for the dashboard's resolve step (LRU-cached, NZ-bbox validated). Reserved for explicit "Resolve setup" submissions — **never** called per keystroke (Nominatim TOS forbids autocomplete). |
+| `/geocode/autocomplete` | GET | `?q=&country_code=NZ&limit=8` → `{suggestions: [{display, lat, lon, type, postcode}], cached, source: "photon"}` — Photon-backed search-as-you-type for the dashboard's address dropdown. LRU-cached (200 entries, key = `country\|limit\|q`); 400 on `len(q) < 2`; empty list (not 404) when Photon has no match. See decision log #68 for why Photon over Nominatim here. |
+| `/geocode/reverse` | GET | `?lat&lon&provider=auto\|photon\|nominatim&limit=1` → `{label, lat, lon, cached, source, candidates}` — reverse-geocode a dropped pin to a street label. Default `provider=auto` → Photon (fast, no rate-limit sleep, cached per `(lat4,lon4,limit)`); `provider=nominatim` falls back to the authoritative OSM endpoint with the standard 1.1s sleep and `(lat5,lon5)` cache key. 400 on out-of-NZ coords; 502 on provider failure. Powers the dashboard's "click on map" location picker (decision #68). |
 | `/stores/nearby` | GET | `?lat&lon&distance_km&companies=PaknSave,NewWorld,Woolworths&max_per_company` → `{origin, stores[]}` — preview of which stores a run would query (local CSV + haversine, same helpers/cap as pipeline Phase 2, no supermarket API calls). Enforces `HARD_LIMITS`. |
 | `/optimise` | POST | Legacy synchronous endpoint (classic dashboard) — accepts `DishRequest`, blocks until done, returns `OptimisationResult` |
 | `/optimise/jobs` | POST | Queue an optimisation — accepts `DishRequest`, returns `{"job_id"}` immediately. Enforces `HARD_LIMITS` via `_new_job`. |
 | `/optimise/{job_id}` | GET | Job snapshot: status, phase, elapsed, per-company progress, incremental events (`?events_since=N`), final `result` |
 | `/docs` | GET | Swagger UI (FastAPI default) |
 | `/static` | Mount | Serves `STATIC_DIR` |
+
+### Geocoding providers (Photon + Nominatim, decision #68)
+
+Three endpoints share the user-address → coordinates pipeline. They never overlap on the request path — the dashboard's two-step flow calls `/geocode` once per "Resolve setup" submit, `/geocode/autocomplete` once per 300 ms keystroke burst, and `/geocode/reverse` once per map-click or pin drag. All three run the upstream HTTP on a worker thread via `asyncio.to_thread` so the event loop stays responsive.
+
+| Endpoint | Provider | Cache | When called | Why this provider |
+|---|---|---|---|---|
+| `/geocode` | Nominatim forward | `_GEOCODE_CACHE` (200 entries, key = lowercased address) | "Resolve setup" submit button, or `_resolve_origin` server-side when the request omits `latitude`/`longitude` | Authoritative forward geocode, slow (1.1s sleep) but rare |
+| `/geocode/autocomplete` | Photon `photon.komoot.io/api/` | `_AUTOCOMPLETE_CACHE` (200, key = `country\|limit\|q.lower()`) | Debounced 300 ms after the address input changes (dashboard only) | Photon is the only free, no-API-key, **autocomplete-friendly** OSM geocoder; Nominatim TOS forbids browser autocomplete |
+| `/geocode/reverse` | Photon default, Nominatim opt-in (`provider=nominatim`) | `_PHOTON_REVERSE_CACHE` (200, key = `limit\|round(lat,4),round(lon,4)`) or `_REVERSE_CACHE` (200, key = `round(lat,5),round(lon,5)`) | Map click + drag end (debounced label lookup) | Photon is fast (no sleep) and dense enough for urban NZ; Nominatim kept as a precise fallback for rural picks |
+
+**Why Photon over Nominatim for autocomplete/reverse**: Nominatim's [usage policy](https://operations.osmfoundation.org/policies/nominatim/) explicitly bans browser autocomplete and rate-limits to 1 req/sec. The OSM community has multiple Photon deployments for exactly this use case (Komoot runs the public demo) — same OSM data, no API key, no credit card, and the demo's "fair use" is far looser than Nominatim's 1 req/sec. For the dashboard's interactive address field, that translates to ~0.3s perceived latency instead of a 1.1s minimum per keystroke.
+
+**Cache design**: three independent `OrderedDict` LRUs (200 entries each) keyed on the request's distinct dimensions. `move_to_end` on hit keeps hot entries alive; `popitem(last=False)` evicts the oldest when full. Cache state is **per-process** — Cloud Run cold starts / new workers begin empty, and the LRU is not shared across instances. For Cloud Run this is fine: the dashboard is single-user-per-session, so the working set (last few addresses the user typed) is well under 200.
+
+**Out-of-NZ guard**: every endpoint validates against `NZ_LAT_RANGE = (-47.6, -34.2)` and `NZ_LON_RANGE = (166.2, 178.9)` before consulting the cache or the upstream. A laptop in Sydney can't silently resolve an NZ address to a Sydney coordinate and have the request proceed. Forward-geocode also re-validates Nominatim's return (its `lat`/`lon` from a free-form NZ string can occasionally drift outside the box).
+
+**Failure modes**:
+
+| Failure | Response | UX impact |
+|---|---|---|
+| Photon upstream 5xx / timeout | `/geocode/autocomplete` returns `{suggestions: [], cached: false}` | Dropdown shows "No matches yet — keep typing." (200 OK, not 5xx) |
+| Photon reverse, no features | `/geocode/reverse` returns **502** with "Photon could not reverse these coordinates — drop the pin closer to a road or address." | Map-pick logs a console warning; the user keeps their picked coords with a fallback label of "Pinned at lat, lon" |
+| Nominatim reverse failure | `/geocode/reverse` returns **502** with "Nominatim could not reverse these coordinates." | Same UX as Photon failure |
+| `len(q) < 2` on autocomplete | **400** with "Query must be at least 2 characters" | Debounce keeps the field from triggering on a single keystroke; the 400 is defensive |
+| Coords outside NZ on reverse | **400** with "Coordinates are outside New Zealand — this service only covers NZ stores." | Map-pick logs an error banner and discards the click |
 
 ### Danger-zone hard ceilings
 
