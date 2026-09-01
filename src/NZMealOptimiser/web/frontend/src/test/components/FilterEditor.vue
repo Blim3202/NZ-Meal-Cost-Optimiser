@@ -6,16 +6,22 @@
     </button>
     <div v-if="open" class="filter-editor">
       <div class="filter-group">
-        <span class="fg-label">Must include</span>
+        <span class="fg-label">Include Term</span>
         <span v-for="(word, i) in current.includes" :key="`inc-${i}`" class="kw-chip kw-include">{{ word }}<button type="button" class="kw-x" :title="`Remove '${word}'`" @click="drop('includes', i)">✕</button></span>
-        <input v-model="draftInc" class="kw-add" placeholder="add keyword ↵" @keydown.enter.prevent="push('includes')">
+        <div class="kw-input-wrap" :class="{ 'is-filled': !!draftInc, 'is-duplicate': incDuplicate }">
+          <span class="kw-input-icon" aria-hidden="true">+</span>
+          <input v-model="draftInc" class="kw-add" placeholder="add term ↵" :aria-label="`Add include term for ${term}`" @keydown.enter.prevent="push('includes')">
+        </div>
       </div>
       <div class="filter-group">
-        <span class="fg-label">Must exclude</span>
+        <span class="fg-label">Exclude Term</span>
         <span v-for="(word, i) in current.excludes" :key="`exc-${i}`" class="kw-chip kw-exclude">{{ word }}<button type="button" class="kw-x" :title="`Remove '${word}'`" @click="drop('excludes', i)">✕</button></span>
-        <input v-model="draftExc" class="kw-add" placeholder="add keyword ↵" @keydown.enter.prevent="push('excludes')">
+        <div class="kw-input-wrap" :class="{ 'is-filled': !!draftExc, 'is-duplicate': excDuplicate }">
+          <span class="kw-input-icon" aria-hidden="true">+</span>
+          <input v-model="draftExc" class="kw-add" placeholder="add term ↵" :aria-label="`Add exclude term for ${term}`" @keydown.enter.prevent="push('excludes')">
+        </div>
       </div>
-      <p class="fg-hint">Include: every keyword must appear in the product name (fuzzy singular/plural match). Exclude: none may appear. Filtered-out products are skipped by the store costs.</p>
+      <p class="fg-hint">Include Term: every keyword must appear in the product name (fuzzy singular/plural match). Exclude Term: none may appear. Brand filters are available in the Optimiser tuner. Filtered-out products are skipped by the store costs.</p>
     </div>
   </div>
 </template>
@@ -23,7 +29,12 @@
 <script>
 import { computed, ref } from 'vue';
 
+const MAX_LEN = 40;
 const EMPTY = () => ({ includes: [], excludes: [] });
+
+function normalize(list) {
+  return list.map((w) => String(w).trim().toLowerCase());
+}
 
 // Per-ingredient include/exclude keyword editor. Keywords live OUTSIDE the
 // ingredient rows — the parent owns a per-scope map keyed by search term so
@@ -31,9 +42,9 @@ const EMPTY = () => ({ includes: [], excludes: [] });
 export default {
   name: 'FilterEditor',
   props: {
-    term: { type: String, required: true }, // search term this editor keys on
-    rowId: { type: String, required: true }, // stable per-row key for draft inputs
-    filters: { type: Object, default: () => ({}) }, // term -> {includes, excludes}
+    term: { type: String, required: true },
+    rowId: { type: String, required: true },
+    filters: { type: Object, default: () => ({}) },
   },
   emits: ['update-filters'],
   setup(props, { emit }) {
@@ -42,24 +53,34 @@ export default {
     const draftExc = ref('');
 
     const current = computed(() => props.filters[props.term] || EMPTY());
-    const count = computed(() => current.value.includes.length + current.value.excludes.length);
+    const count = computed(() => (current.value.includes?.length || 0) + (current.value.excludes?.length || 0));
+
+    const incDuplicate = computed(() => {
+      const w = draftInc.value.trim().toLowerCase();
+      return !!w && normalize(current.value.includes).includes(w);
+    });
+    const excDuplicate = computed(() => {
+      const w = draftExc.value.trim().toLowerCase();
+      return !!w && normalize(current.value.excludes).includes(w);
+    });
 
     function emitNext(kind, list) {
-      const next = { includes: [...current.value.includes], excludes: [...current.value.excludes], [kind]: list };
+      const next = { ...current.value, [kind]: list };
       emit('update-filters', props.term, next);
     }
     function push(kind) {
       const draft = kind === 'includes' ? draftInc : draftExc;
-      const word = String(draft.value || '').trim().slice(0, 40);
-      if (!word || current.value[kind].some((w) => w.toLowerCase() === word.toLowerCase())) { draft.value = ''; return; }
-      emitNext(kind, [...current.value[kind], word]);
+      const word = String(draft.value || '').trim().slice(0, MAX_LEN);
+      if (!word) { draft.value = ''; return; }
+      if (normalize(current.value[kind] || []).includes(word.toLowerCase())) { draft.value = ''; return; }
+      emitNext(kind, [...(current.value[kind] || []), word]);
       draft.value = '';
     }
     function drop(kind, index) {
-      emitNext(kind, current.value[kind].filter((_, i) => i !== index));
+      emitNext(kind, (current.value[kind] || []).filter((_, i) => i !== index));
     }
 
-    return { open, draftInc, draftExc, current, count, push, drop };
+    return { open, draftInc, draftExc, current, count, incDuplicate, excDuplicate, push, drop };
   },
 };
 </script>

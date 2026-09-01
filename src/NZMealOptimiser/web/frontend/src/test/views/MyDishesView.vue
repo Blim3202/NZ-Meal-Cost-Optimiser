@@ -79,7 +79,12 @@ const NOTES_CLAMP = 64; // ~2 clamped lines in a card; longer notes get a toggle
 const emptyRow = () => ({ id: `row-${++rowSeq}`, search_term: '', quantity: '', unit: 'g', approx_quantity: '', approx_unit: '' });
 
 const cloneRules = (rules) => Object.fromEntries(Object.entries(rules || {})
-  .map(([term, f]) => [term, { includes: [...(f.includes || [])], excludes: [...(f.excludes || [])] }]));
+  .map(([term, f]) => [term, {
+    includes: [...(f.includes || [])],
+    excludes: [...(f.excludes || [])],
+    brand_includes: [...(f.brand_includes || [])],
+    brand_excludes: [...(f.brand_excludes || [])],
+  }]));
 
 export default {
   name: 'MyDishesView',
@@ -209,9 +214,16 @@ export default {
     // Keyword add/remove writes straight through to the shared store so the
     // dashboard tuner sees the same rules without pressing Save.
     function onRuleUpdate(term, next) {
-      const clean = { includes: next.includes.filter(Boolean), excludes: next.excludes.filter(Boolean) };
+      const clean = {
+        includes: (next.includes || []).filter(Boolean),
+        excludes: (next.excludes || []).filter(Boolean),
+        brand_includes: (next.brand_includes || []).filter(Boolean),
+        brand_excludes: (next.brand_excludes || []).filter(Boolean),
+      };
       const scope = { ...(scopeOf(`preset:${editingKey.value}`)) };
-      if (!clean.includes.length && !clean.excludes.length) delete scope[term];
+      const empty = !clean.includes.length && !clean.excludes.length
+        && !clean.brand_includes.length && !clean.brand_excludes.length;
+      if (empty) delete scope[term];
       else scope[term] = clean;
       writeScope(`preset:${editingKey.value}`, scope);
       draft.rules = cloneRules(scope);

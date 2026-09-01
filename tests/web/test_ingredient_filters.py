@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 from NZMealOptimiser.pricing.optimiser_utils import (
     contains_word,
     levenshtein,
+    matches_brand_filters,
     matches_ingredient_filters,
     word_matches,
 )
@@ -100,6 +101,36 @@ def test_multi_keyword_includes_narrow_harder_than_single():
     assert two_kw_failing is False  # second keyword absent → harder to match
 
 
+# ── Brand include/exclude matcher ─────────────────────────────────────────────
+
+@pytest.mark.parametrize("brand,brand_includes,brand_excludes,expected", [
+    ("Anchor", ["Pams", "Anchor"], [], True),                 # OR — one match passes
+    ("Watties", ["Pams", "Anchor"], [], False),               # OR — no match
+    ("Heinz", ["Pams", "Watties", "Heinz"], [], True),        # OR — third matches
+    ("Pams", [], ["Watties", "Heinz"], True),                 # exclude miss
+    ("Watties Tomato Sauce", [], ["Watties"], False),         # exclude hit
+    ("Pams", ["Pams"], ["Heinz"], True),                      # inc hit + exc miss
+    ("Watties", ["Pams"], ["Watties"], False),                # inc miss + exc hit → reject
+    ("The Odd Bunch", ["odd"], [], True),                     # partial-word match
+    ("Anchor", ["ODD"], [], False),                           # case-insensitive but no overlap
+    ("", ["Pams"], [], False),                                # empty brand vs includes
+    ("Pams", [], [], True),                                   # vacuous pass
+    ("Heinz", ["pams", "watties", "heinz"], [], True),        # case-insensitive include
+])
+def test_matches_brand_filters(brand, brand_includes, brand_excludes, expected):
+    passed, _ = matches_brand_filters(brand, brand_includes, brand_excludes)
+    assert passed is expected
+
+
+def test_matches_brand_filters_reason_strings():
+    ok, reason = matches_brand_filters("Pams", ["Pams"], [])
+    assert ok and reason == ""
+    _, miss = matches_brand_filters("Watties", ["Pams", "Heinz"], [])
+    assert "BRAND include missed" in miss
+    _, hit = matches_brand_filters("Watties", [], ["Watties"])
+    assert "BRAND exclude hit" in hit and "Watties" in hit
+
+
 # ── Filter cleaning ───────────────────────────────────────────────────────────
 
 def test_clean_strips_drops_empty_sets():
@@ -109,7 +140,10 @@ def test_clean_strips_drops_empty_sets():
         "  ": IngredientFilterSet(includes=["x"]),  # blank term -> dropped
     }
     cleaned = _clean_ingredient_filters(raw)
-    assert cleaned == {"beef mince": {"includes": ["mince"], "excludes": ["pork"]}}
+    assert cleaned == {"beef mince": {
+        "includes": ["mince"], "excludes": ["pork"],
+        "brand_includes": [], "brand_excludes": [],
+    }}
 
 
 def test_clean_accepts_none():
@@ -172,6 +206,153 @@ def test_apply_validity_flags_rows():
     assert rows[1]["valid_ingredient"] is False
     assert "EXCLUDE" in rows[1]["filter_reason"]
     assert rows[2]["valid_ingredient"] is True and rows[2]["filter_reason"] == ""
+
+
+def _row_with_brand(term, title, brand, price=None):
+    row = _row(term, title, price)
+    row["brand"] = brand
+    return row
+
+
+def test_apply_validity_brand_include_filters_rows():
+    """A brand_includes set should accept rows whose brand matches any keyword
+    (OR) and reject the rest, independently of title filters."""
+    rows = [
+        _row_with_brand("milk", "Standard Milk 2L", "Anchor"),
+        _row_with_brand("milk", "Standard Milk 2L", "Pams"),
+        _row_with_brand("milk", "Standard Milk 2L", "Watties"),
+    ]
+    lookup = {
+        "milk": {
+            "includes": [], "excludes": [],
+            "brand_includes": ["Anchor", "Pams"], "brand_excludes": [],
+        },
+    }
+    rejected = _apply_ingredient_validity(rows, lookup)
+    assert rejected == 1
+    assert rows[0]["valid_ingredient"] is True
+    assert rows[1]["valid_ingredient"] is True
+    assert rows[2]["valid_ingredient"] is False
+    assert "BRAND" in rows[2]["filter_reason"]
+
+
+def test_apply_validity_brand_exclude_filters_rows():
+    rows = [
+        _row_with_brand("tomatoes", "Diced Tomatoes 400g", "Watties"),
+        _row_with_brand("tomatoes", "Diced Tomatoes 400g", "Pams"),
+    ]
+    lookup = {
+        "tomatoes": {
+            "includes": [], "excludes": [],
+            "brand_includes": [], "brand_excludes": ["Watties"],
+        },
+    }
+    rejected = _apply_ingredient_validity(rows, lookup)
+    assert rejected == 1
+    assert rows[0]["valid_ingredient"] is False
+    assert "BRAND exclude" in rows[0]["filter_reason"]
+    assert rows[1]["valid_ingredient"] is True
+
+
+def test_apply_validity_combines_title_and_brand_filters():
+    """Title filter must run first; only rows that pass the title filter are
+    then evaluated against brand filters. A title fail beats a brand fail in
+    the reason string."""
+    rows = [
+        # title pass + brand pass
+        _row_with_brand("beef mince", "Premium Beef Mince 500g", "Pams"),
+        # title pass + brand fail
+        _row_with_brand("beef mince", "Premium Beef Mince 500g", "Watties"),
+        # title fail
+        _row_with_brand("beef mince", "Pork Mince 500g", "Pams"),
+    ]
+    lookup = {
+        "beef mince": {
+            "includes": ["mince"], "excludes": ["pork"],
+            "brand_includes": [], "brand_excludes": ["Watties"],
+        },
+    }
+    rejected = _apply_ingredient_validity(rows, lookup)
+    assert rejected == 2
+    assert rows[0]["valid_ingredient"] is True
+    assert rows[1]["valid_ingredient"] is False
+    assert "BRAND exclude" in rows[1]["filter_reason"]
+    assert rows[2]["valid_ingredient"] is False
+    assert "EXCLUDE" in rows[2]["filter_reason"]
+
+
+def test_apply_validity_brand_filter_only_term():
+    """A term with only brand filters (no title filters) still gates rows."""
+    rows = [
+        _row_with_brand("milk", "Anything 2L", "Pams"),
+        _row_with_brand("milk", "Anything 2L", ""),
+    ]
+    lookup = {
+        "milk": {
+            "includes": [], "excludes": [],
+            "brand_includes": ["Pams"], "brand_excludes": [],
+        },
+    }
+    rejected = _apply_ingredient_validity(rows, lookup)
+    assert rejected == 1
+    assert rows[0]["valid_ingredient"] is True
+    assert rows[1]["valid_ingredient"] is False  # empty brand fails include
+
+
+def test_pydantic_filter_set_round_trip_brand_fields():
+    """IngredientFilterSet must accept and serialise brand_includes /
+    brand_excludes, with the same string-element type as includes/excludes."""
+    fs = IngredientFilterSet(
+        includes=["mince"],
+        excludes=["pork"],
+        brand_includes=["Pams", "Anchor"],
+        brand_excludes=["Watties"],
+    )
+    payload = fs.model_dump()
+    assert payload["brand_includes"] == ["Pams", "Anchor"]
+    assert payload["brand_excludes"] == ["Watties"]
+    fs2 = IngredientFilterSet.model_validate(payload)
+    assert fs2.brand_includes == ["Pams", "Anchor"]
+
+
+def test_clean_ingredient_filters_handles_brand_fields():
+    raw = {
+        "milk": IngredientFilterSet(
+            includes=[], excludes=[],
+            brand_includes=[" Pams ", ""], brand_excludes=[" watties "],
+        ),
+        "rice": IngredientFilterSet(brand_includes=["tastic"]),  # only brand -> kept
+        "oil": IngredientFilterSet(),  # all empty -> dropped
+    }
+    cleaned = _clean_ingredient_filters(raw)
+    assert cleaned["milk"]["brand_includes"] == ["Pams"]
+    assert cleaned["milk"]["brand_excludes"] == ["watties"]
+    assert cleaned["rice"]["brand_includes"] == ["tastic"]
+    assert "oil" not in cleaned
+
+
+def test_clean_ingredient_filters_rejects_overlong_brand_keyword():
+    raw = {"milk": IngredientFilterSet(brand_includes=["x" * 41])}
+    with pytest.raises(HTTPException) as exc_info:
+        _clean_ingredient_filters(raw)
+    assert exc_info.value.status_code == 400
+    assert "brand include" in str(exc_info.value.detail)
+
+
+def test_merge_request_filters_attaches_brand_fields():
+    lookup = {"Milk": {"includes": [], "excludes": []}, "Bread": {}}
+    ingredient_filters = {
+        "milk": {
+            "includes": ["milk"], "excludes": [],
+            "brand_includes": ["Anchor"], "brand_excludes": ["Pams"],
+        },
+    }
+    matched, unmatched = _merge_request_filters(lookup, ingredient_filters)
+    assert matched == 1 and unmatched == []
+    assert lookup["Milk"]["includes"] == ["milk"]
+    assert lookup["Milk"]["brand_includes"] == ["Anchor"]
+    assert lookup["Milk"]["brand_excludes"] == ["Pams"]
+    assert "brand_includes" not in lookup["Bread"]
 
 
 # ── Store-cost gating ────────────────────────────────────────────────────────

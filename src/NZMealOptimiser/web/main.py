@@ -121,6 +121,7 @@ from NZMealOptimiser.pricing.optimiser_utils import (
     build_edge_row,
     build_woolworths_row,
     matches_ingredient_filters,
+    matches_brand_filters,
 )
 from NZMealOptimiser.pricing.paknsave_api import PaknSaveEdgeAPI, find_nearby_stores as ps_find_nearby
 from NZMealOptimiser.pricing.newworld_api import NewWorldEdgeAPI, find_nearby_stores as nw_find_nearby
@@ -364,7 +365,12 @@ class IngredientFilterSet(BaseModel):
     ``includes`` — EVERY keyword must fuzzy-match the returned product title
     (AND semantics; Levenshtein word ratio <= 0.35, singular/plural aware;
     multi-word keywords need every word matched). ``excludes`` — no keyword
-    may match. Rows that fail get ``valid_ingredient=False`` and are skipped
+    may match. ``brand_includes`` / ``brand_excludes`` — same fuzzy matcher,
+    but applied to the product brand (Pams, Watties, etc.) with OR semantics
+    on the include list (any brand match passes) and reject-on-match on the
+    exclude list. Brand filters are user-set only — neither the curated
+    ``data/dish_filters.json`` nor the LLM pipeline ever populates them.
+    Rows that fail any filter get ``valid_ingredient=False`` and are skipped
     by the store-cost/winner computation (strictly — an over-eager filter can
     empty a search, which is surfaced as a store issue rather than
     auto-relaxed).
@@ -372,6 +378,8 @@ class IngredientFilterSet(BaseModel):
 
     includes: list[str] = Field(default_factory=list)
     excludes: list[str] = Field(default_factory=list)
+    brand_includes: list[str] = Field(default_factory=list)
+    brand_excludes: list[str] = Field(default_factory=list)
 
 
 MAX_FILTER_KEYWORDS = 8  # per include/exclude list, per search term
@@ -400,8 +408,9 @@ def _clean_ingredient_filters(
 ) -> dict[str, dict[str, list[str]]]:
     """Validate + normalise request-level ingredient filters.
 
-    Returns ``{search_term: {"includes": [...], "excludes": [...]}}``, dropping
-    empty sets entirely so a blank entry never filters anything.
+    Returns ``{search_term: {"includes": [...], "excludes": [...],
+    "brand_includes": [...], "brand_excludes": [...]}}``, dropping empty sets
+    entirely so a blank entry never filters anything.
     """
     cleaned: dict[str, dict[str, list[str]]] = {}
     for term, filter_set in (raw or {}).items():
@@ -411,8 +420,10 @@ def _clean_ingredient_filters(
         entry = {
             "includes": _clean_filter_keywords(filter_set.includes, "include", key),
             "excludes": _clean_filter_keywords(filter_set.excludes, "exclude", key),
+            "brand_includes": _clean_filter_keywords(filter_set.brand_includes, "brand include", key),
+            "brand_excludes": _clean_filter_keywords(filter_set.brand_excludes, "brand exclude", key),
         }
-        if entry["includes"] or entry["excludes"]:
+        if entry["includes"] or entry["excludes"] or entry["brand_includes"] or entry["brand_excludes"]:
             cleaned[key] = entry
     return cleaned
 
@@ -433,23 +444,38 @@ def _merge_request_filters(
             continue
         ing_lookup[target]["includes"] = list(filters["includes"])
         ing_lookup[target]["excludes"] = list(filters["excludes"])
+        ing_lookup[target]["brand_includes"] = list(filters.get("brand_includes") or [])
+        ing_lookup[target]["brand_excludes"] = list(filters.get("brand_excludes") or [])
         matched += 1
     return matched, unmatched
 
 
 def _apply_ingredient_validity(rows: list[dict], ing_lookup: dict[str, dict]) -> int:
     """Stamp ``valid_ingredient`` / ``filter_reason`` on each row in place from
-    its search term's include/exclude filters. Terms without filters are always
-    valid. Returns the number of rejected rows."""
+    its search term's include/exclude filters (title + brand). Terms without
+    filters are always valid. Returns the number of rejected rows.
+
+    Filter pass order: title filters run first; on title pass, brand filters
+    run against ``row["brand"]``. The reason string preserves the first
+    failure so users see which filter they need to relax.
+    """
     rejected = 0
     for row in rows:
         ing = ing_lookup.get(row.get("search_ingredient", ""), {})
         includes = ing.get("includes") or []
         excludes = ing.get("excludes") or []
-        if includes or excludes:
+        brand_includes = ing.get("brand_includes") or []
+        brand_excludes = ing.get("brand_excludes") or []
+        if includes or excludes or brand_includes or brand_excludes:
             ok, reason = matches_ingredient_filters(
                 row.get("returned_ingredient", ""), includes, excludes
             )
+            if ok and (brand_includes or brand_excludes):
+                bok, breason = matches_brand_filters(
+                    row.get("brand", ""), brand_includes, brand_excludes
+                )
+                if not bok:
+                    ok, reason = False, breason
             row["valid_ingredient"] = ok
             row["filter_reason"] = "" if ok else reason
             if not ok:

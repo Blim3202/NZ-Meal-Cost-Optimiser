@@ -190,6 +190,19 @@ def test_parse_filters_accepts_bare_list_and_empty_includes():
     assert filters == {"oil": {"includes": [], "excludes": []}}
 
 
+def test_parse_filters_never_emits_brand_fields():
+    """Regression guard: brand filters are user-set only. The LLM must never
+    populate brand_includes/brand_excludes even if the model tries to (e.g.
+    by mimicking the input shape). parse_filters owns the output shape and
+    must drop any extra keys it doesn't know about."""
+    parsed = [{"search_term": "milk", "includes": ["milk"], "excludes": [],
+               "brand_includes": ["Anchor"], "brand_excludes": ["Pams"]}]
+    filters, _warnings = parse_filters(parsed, ["milk"])
+    assert filters == {"milk": {"includes": ["milk"], "excludes": []}}
+    assert "brand_includes" not in filters["milk"]
+    assert "brand_excludes" not in filters["milk"]
+
+
 def test_generate_ingredient_filters_parses_fenced_filter_output(monkeypatch):
     fenced = "```json\n" + json.dumps({"filters": [
         {"search_term": "kumara", "includes": ["kumara"], "excludes": ["chips"]},

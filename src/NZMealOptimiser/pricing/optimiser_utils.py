@@ -772,6 +772,26 @@ def matches_ingredient_filters(returned_title: str, includes: list[str], exclude
     return True, ""
 
 
+def matches_brand_filters(brand: str, brand_includes: list[str], brand_excludes: list[str]) -> tuple[bool, str]:
+    """Apply one ingredient's brand include/exclude keywords to a product brand.
+
+    Returns ``(passed, reason)``. Unlike the title matcher (AND across includes),
+    the brand include list uses OR semantics — a row passes when at least one
+    include matches, mirroring how users think about brand preferences ("I want
+    Pams OR Watties"). The exclude list still rejects on any match. Both
+    lists reuse ``contains_word`` for consistency with the title matcher (same
+    Levenshtein ratio <= 0.35 tolerance, case-insensitive, partial-word
+    matches like "odd" ~ "The Odd Bunch").
+    """
+    if brand_includes:
+        if not any(contains_word(brand, inc) for inc in brand_includes):
+            return False, f"BRAND include missed (need one of {brand_includes})"
+    matched_excludes = [exc for exc in brand_excludes if contains_word(brand, exc)]
+    if matched_excludes:
+        return False, f"BRAND exclude hit: {matched_excludes}"
+    return True, ""
+
+
 def foodstuffs_querier_edge(api_class, find_nearby_stores, company_id, company_name,
                             user_address, dish_name, requery, max_dist_km=5.0):
     """Phase 1 (query): shared Edge API pipeline for Pak'nSave and New World.

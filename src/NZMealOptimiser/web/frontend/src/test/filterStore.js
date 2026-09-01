@@ -6,10 +6,13 @@
 // state, and the deep watch mirrors every mutation back to storage so the
 // dashboard tuner and the My Dishes inline editor can never drift apart.
 //
-// Scope shape: { [scopeKey]: { [search_term]: { includes: [], excludes: [] } },
+// Scope shape: { [scopeKey]: { [search_term]: {
+//                  includes: [], excludes: [],
+//                  brand_includes: [], brand_excludes: [] } },
 //                _seen: [scopeKey, ...] }
 // "_seen" records scopes already seeded from data/dish_filters.json so
-// deleting keywords never resurrects curated baselines on revisit.
+// deleting keywords never resurrects curated baselines on revisit. Brand
+// filters are user-set only (never seeded from the curated file or LLM).
 import { ref, watch } from 'vue';
 
 const FILTERS_LS_KEY = 'meal-filters-v1';
@@ -51,8 +54,13 @@ export function markSeen(key) {
 // Builder's direct save (freshly generated rules — always overwrite).
 export function seedPresetRules(key, rules) {
   const clean = Object.fromEntries(Object.entries(rules || {})
-    .map(([term, f]) => [term, { includes: [...(f.includes || [])], excludes: [...(f.excludes || [])] }])
-    .filter(([, f]) => f.includes.length || f.excludes.length));
+    .map(([term, f]) => [term, {
+      includes: [...(f.includes || [])],
+      excludes: [...(f.excludes || [])],
+      brand_includes: [...(f.brand_includes || [])],
+      brand_excludes: [...(f.brand_excludes || [])],
+    }])
+    .filter(([, f]) => f.includes.length || f.excludes.length || f.brand_includes.length || f.brand_excludes.length));
   writeScope(`preset:${key}`, clean);
   markSeen(`preset:${key}`);
   return Object.keys(clean).length;

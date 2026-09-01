@@ -74,9 +74,9 @@
       <PipelineConsole class="area-terminal" :title="terminalTitle" :lines="consoleLines" :running="jobRunning" />
 
       <section class="panel map-panel area-map">
-        <div class="section-heading"><div><p class="eyebrow">Coverage</p><h3>Nearby stores</h3></div><span v-if="originLabel" class="chip">{{ originLabel }}</span></div>
+        <div class="section-heading"><div><p class="eyebrow">Map</p><h3>Stores near you</h3></div><span v-if="originLabel" class="chip">{{ originLabel }}</span></div>
         <MapPanel :origin="mapOrigin" :stores="mapStores" :radius-km="form.distance_km" :winner-key="winnerKey" @select-store="focusStore" @pick-origin="onPickOrigin" />
-        <p v-if="!origin && !gpsActive" class="map-pick-hint">Click anywhere on the map (or drag the pin) to pick a location</p>
+        <p v-if="!origin && !gpsActive" class="map-hint-inline">Click anywhere on the map (or drag the pin) to pick a location</p>
       </section>
     </div>
 
@@ -308,10 +308,11 @@ export default {
     let toastTimer = null;
     function countFilterChanges(before, after) {
       let changes = 0;
+      const fields = ['includes', 'excludes', 'brand_includes', 'brand_excludes'];
       for (const term of new Set([...Object.keys(before), ...Object.keys(after)])) {
-        const a = before[term] || { includes: [], excludes: [] };
-        const b = after[term] || { includes: [], excludes: [] };
-        for (const kind of ['includes', 'excludes']) {
+        const a = before[term] || {};
+        const b = after[term] || {};
+        for (const kind of fields) {
           const prev = new Set((a[kind] || []).map((w) => w.toLowerCase()));
           const next = new Set((b[kind] || []).map((w) => w.toLowerCase()));
           for (const w of next) if (!prev.has(w)) changes += 1;
@@ -352,6 +353,7 @@ export default {
 
     // Seed an unseen preset scope from dish_filters.json exactly once, so
     // deleting keywords never resurrects them on revisit (per-user store wins).
+    // Brand filters are NEVER seeded — they are user-set only.
     function seedIfUnseen() {
       const key = activeScopeKey.value;
       if (!key.startsWith('preset:') || seenScopes.value.has(key)) return;
@@ -359,7 +361,12 @@ export default {
       const rules = presetFilters.value[key.slice('preset:'.length)];
       if (!rules) return;
       const clean = Object.fromEntries(Object.entries(rules)
-        .map(([term, f]) => [term, { includes: [...(f.includes || [])], excludes: [...(f.excludes || [])] }])
+        .map(([term, f]) => [term, {
+          includes: [...(f.includes || [])],
+          excludes: [...(f.excludes || [])],
+          brand_includes: [],
+          brand_excludes: [],
+        }])
         .filter(([, f]) => f.includes.length || f.excludes.length));
       filterStore.value = { ...filterStore.value, [key]: clean };
       const n = Object.keys(clean).length;
@@ -369,14 +376,27 @@ export default {
 
     function onUpdateFilters(term, next) {
       const scope = { ...(filterStore.value[activeScopeKey.value] || {}) };
-      const clean = { includes: next.includes.filter(Boolean), excludes: next.excludes.filter(Boolean) };
-      if (!clean.includes.length && !clean.excludes.length) delete scope[term];
+      const clean = {
+        includes: (next.includes || []).filter(Boolean),
+        excludes: (next.excludes || []).filter(Boolean),
+        brand_includes: (next.brand_includes || []).filter(Boolean),
+        brand_excludes: (next.brand_excludes || []).filter(Boolean),
+      };
+      const empty = !clean.includes.length && !clean.excludes.length
+        && !clean.brand_includes.length && !clean.brand_excludes.length;
+      if (empty) delete scope[term];
       else scope[term] = clean;
       filterStore.value = { ...filterStore.value, [activeScopeKey.value]: scope };
     }
 
     const normalisedRulesSig = (rules) => JSON.stringify(Object.entries(rules || {})
-      .map(([term, f]) => ({ t: term.toLowerCase(), i: f.includes || [], e: f.excludes || [] }))
+      .map(([term, f]) => ({
+        t: term.toLowerCase(),
+        i: f.includes || [],
+        e: f.excludes || [],
+        bi: f.brand_includes || [],
+        be: f.brand_excludes || [],
+      }))
       .sort((a, b) => a.t.localeCompare(b.t)));
     const canResetFilters = computed(() => recipeMode.value === 'preset' && !!form.dish
       && !!presetFilters.value[form.dish]
@@ -396,9 +416,13 @@ export default {
         if (!term) continue;
         const entry = scope[term];
         if (!entry) continue;
-        const includes = entry.includes.filter((w) => String(w).trim());
-        const excludes = entry.excludes.filter((w) => String(w).trim());
-        if (includes.length || excludes.length) out[term] = { includes, excludes };
+        const includes = (entry.includes || []).filter((w) => String(w).trim());
+        const excludes = (entry.excludes || []).filter((w) => String(w).trim());
+        const brand_includes = (entry.brand_includes || []).filter((w) => String(w).trim());
+        const brand_excludes = (entry.brand_excludes || []).filter((w) => String(w).trim());
+        if (includes.length || excludes.length || brand_includes.length || brand_excludes.length) {
+          out[term] = { includes, excludes, brand_includes, brand_excludes };
+        }
       }
       return out;
     }

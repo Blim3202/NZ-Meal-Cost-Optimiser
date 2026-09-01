@@ -55,7 +55,11 @@ export default {
     let suppressJump = false;
 
     const filterKeywordCount = computed(() => Object.values(props.filters)
-      .reduce((n, f) => n + (f.includes?.length || 0) + (f.excludes?.length || 0), 0));
+      .reduce((n, f) => n
+        + (f.includes?.length || 0)
+        + (f.excludes?.length || 0)
+        + (f.brand_includes?.length || 0)
+        + (f.brand_excludes?.length || 0), 0));
 
     function showTuner(term) {
       activeTab.value = 'tuner';
