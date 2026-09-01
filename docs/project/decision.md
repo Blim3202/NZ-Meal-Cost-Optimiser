@@ -510,3 +510,40 @@ The dashboard's address field was a plain `<input>` with a `<datalist>` fed by t
 - Nominatim stays available as `provider=nominatim` on `/geocode/reverse` for the precision case.
 - Watch the first-submit UX change: cold-cache addresses go from ~1.1 s to ~0.2 s, which on slow rural connections is the difference between a perceptible pause and a snappy form.
 
+## 44. AI instruction → keyword-filter compiler (/test only, 2026-09)
+
+The `FilterTunerPanel` had a disabled `AI instruction` textarea ("planned, not functional yet"). The need: after a run, a user wants to type one sentence like `"only red onions, no cheese powder"` and have every cached product re-marked `passed/filtered` without sending the 1000s of rows to the LLM (rate limits, hallucination, Cloud Run cost).
+
+**Why not embeddings or full-row LLM filtering:**
+- Sending the table to the LLM is ~20k+ tokens and nondeterministic.
+- A light embedder would be opaque (no `filter_reason` to show in the `matched/filtered` pill) and needs threshold tuning per ingredient (e.g. `trim milk` vs `flavoured milk` are semantically close but should be opposite outcomes). Embeddings could add a second pass later but not as the primary.
+
+**Decision — deductive compiling with a deduped vocabulary:**
+- A fast Python pass builds `[{Ingredient, Terms: [sorted unique lowercased words from every returned_ingredient], Brands: [sorted unique brands]}]` per `search_term` from the completed job's cached rows. No cap on word counts (user request) — deduped only, so nuances like `red` vs `brown` for `onion` are never lost. Typical dish ≈ 1000-2000 tokens total, well within 128k context.
+- One call to the configured **filter model** (`data/llm_settings.json`, same model as pre-run filter seeding; default `gemini-3.1-flash-lite`) compiles the universal sentence + that vocab into `{search_term: {includes, excludes, brand_includes, brand_excludes}}` via `llm/ai_filter_compiler.py`. Prompt wraps the raw sentence between `<< >>` markers and instructs the model to treat anything inside as DATA (injection guard). Empty/vague sentences return `{}`.
+- Local filtering then stamps `valid_ingredient` over every cached row via the existing `matches_ingredient_filters` / `matches_brand_filters` (Levenshtein ≤0.35). The table is never sent to the LLM.
+
+**UX — ask-and-confirm before mutation:**
+- The `/test` tuner enables the textarea only when a run is complete, adds `Generate filters` → `POST /optimise/{id}/ai_filter_preview` which returns `compiled_filters` + a dry-run `matched/total` preview (same counts/products shape as `filter_preview`). The user sees the suggested chip diff and per-ingredient preview and must click **Apply** to merge the rules into `filterStore[scope]` (capped 15/list, 40 chars, merged additively so hand-tuned rules are not clobbered). Preview is non-mutating — `job.result`/`pipeline_cache` are untouched until the existing `POST /optimise/{id}/reapply` is called.
+
+**Scope:** `/test` sandbox only. Prod `src/components/FilterTunerPanel.vue` keeps the disabled stub. Promote via `tools/frontend/promote_test_to_app.ps1` when approved. Endpoints are live on the shared backend but only `/test` calls them. No local LLM — fully online on Cloud Run, deduping is pure Python `set()` logic.
+
+## 45. Auto refine — dish-wide irrelevant-term cull (/test only)
+
+**Motivation:** after the instruction → filters layer shipped (#44), users wanted a one-click "cull the junk" that doesn't require composing a sentence — e.g. for `spaghetti bolognese` auto-suggest up to 15 most irrelevant `excludes` per ingredient from the actual vocab.
+
+**Decision — reuse the same deduped summary + filter model:**
+
+- Same `build_deduped_summary(search_terms, rows) → [{Ingredient, Terms, Brands}]` (no word cap, `set()` dedup, ~1000-2000 tokens) is sent, plus `current_filters` as context so the model avoids duplicates. Dish name comes from `pipeline_cache.dish_name` (fallback `job.result.dish` → `"this dish"`), wrapped `<<dish>>` with the same `<< >>` injection guard as #44.
+- New compiler `compile_auto_cull_filters(dish, search_terms, rows, current_filters)` → `AUTO_CULL_PROMPT_TEMPLATE` asks only for `excludes` + `brand_excludes` ( `includes` intentionally omitted), up to **15 per list per ingredient**, most irrelevant first, grounded strictly to `Terms`/`Brands` (extra vocab-clipping after `_coerce_ai_filters`, capped 15, warnings for dropped unknowns). Uses the configured filter model via `call_filter_model` (default `gemini-3.1-flash-lite`), no rows sent.
+- New endpoint `POST /optimise/{job_id}/auto_cull_preview {current_filters}` ( /test only) mirrors `ai_filter_preview`: LLM compile → `_clean_ingredient_filters` → additive dry-run preview (`current ∪ suggestions`, case-insensitive dedup, capped 15/list) via `_merge_request_filters` + `_apply_ingredient_validity` → `{dish, compiled_filters, warnings, summary, preview: {terms, products}}`. No mutation of `job.result`/`pipeline_cache`; Apply is the existing `reapply` with the merged store.
+
+**UX — dish-wide, both pages, additive, capped 15:**
+
+- Two entry points on `/test`: **Filter tuner** (`FilterTunerPanel.vue` — new `Auto refine` block below the AI instruction, with `+N · matched/total` + chip diff per ingredient) and **Summary** (`SummaryPanel.vue` — same block at top of the summary panel, wired via `ResultsTabs.vue` `:job-id/:filters` + `@update-filters`). Both are gated on `jobId`/`result` (disabled until a run exists), share `filterStore[scope]`, and call the same endpoint with `{current_filters}`.
+- Suggestions show per-ingredient `excludes` (red) + `brand_excludes` (red-brand) chips + `N new · matched/total`; Apply merges additively (`Set` dedup, `MAX_KW=15`, 40 chars) so hand-tuned rules survive. Second click is idempotent (no net new → no extra preview filter).
+
+**Why not embeddings/heuristic:** LLM sees dish semantics + actual vocab and can rank irrelevance (e.g. `powder` for `cheese` in bolognese); heuristic frequency would be arbitrary and vocab-only. Cost stays one LLM call per click.
+
+**Scope:** `/test` only, additive, never hides existing Terms/Brand inputs.
+

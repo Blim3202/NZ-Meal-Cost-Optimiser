@@ -21,7 +21,7 @@
           <input v-model="draftExc" class="kw-add" placeholder="add term ↵" :aria-label="`Add exclude term for ${term}`" @keydown.enter.prevent="push('excludes')">
         </div>
       </div>
-      <p class="fg-hint">Include Term: every keyword must appear in the product name (fuzzy singular/plural match). Exclude Term: none may appear. Brand filters are available in the Optimiser tuner. Filtered-out products are skipped by the store costs.</p>
+      <p class="fg-hint">Every include term must appear in the product name (fuzzy singular/plural, e.g. carrot matches carrots) and no exclude term may appear. Brand filters in the Optimiser tuner are checked first and override these name filters when set. Filtered products remain visible but are excluded from store costs.</p>
     </div>
   </div>
 </template>
@@ -29,6 +29,7 @@
 <script>
 import { computed, ref } from 'vue';
 
+const MAX_KW = 15;
 const MAX_LEN = 40;
 const EMPTY = () => ({ includes: [], excludes: [] });
 
@@ -57,11 +58,11 @@ export default {
 
     const incDuplicate = computed(() => {
       const w = draftInc.value.trim().toLowerCase();
-      return !!w && normalize(current.value.includes).includes(w);
+      return !!w && (normalize(current.value.includes).includes(w) || normalize(current.value.excludes).includes(w));
     });
     const excDuplicate = computed(() => {
       const w = draftExc.value.trim().toLowerCase();
-      return !!w && normalize(current.value.excludes).includes(w);
+      return !!w && (normalize(current.value.excludes).includes(w) || normalize(current.value.includes).includes(w));
     });
 
     function emitNext(kind, list) {
@@ -72,7 +73,10 @@ export default {
       const draft = kind === 'includes' ? draftInc : draftExc;
       const word = String(draft.value || '').trim().slice(0, MAX_LEN);
       if (!word) { draft.value = ''; return; }
-      if (normalize(current.value[kind] || []).includes(word.toLowerCase())) { draft.value = ''; return; }
+      const lower = word.toLowerCase();
+      const opposite = kind === 'includes' ? 'excludes' : 'includes';
+      if (normalize(current.value[kind] || []).includes(lower) || normalize(current.value[opposite] || []).includes(lower)) { draft.value = ''; return; }
+      if ((current.value[kind] || []).length >= MAX_KW) { draft.value = ''; return; }
       emitNext(kind, [...(current.value[kind] || []), word]);
       draft.value = '';
     }

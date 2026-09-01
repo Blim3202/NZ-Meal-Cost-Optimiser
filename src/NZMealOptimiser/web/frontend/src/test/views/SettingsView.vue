@@ -192,10 +192,6 @@
               (step {{ systemInfo.slider_step }}).
               <span v-if="systemInfo.running_jobs === 0">Not currently adjustable? The button above is disabled — that means a job is running elsewhere; the swap will be allowed as soon as it finishes.</span>
             </p>
-            <p class="hint">
-              Server-side hard caps: {{ systemInfo.hard_limits.max_distance_km }} km radius ·
-              {{ systemInfo.hard_limits.max_stores_per_company }} stores/company.
-            </p>
           </template>
           <p v-else class="hint">Loading runtime info…</p>
         </div>

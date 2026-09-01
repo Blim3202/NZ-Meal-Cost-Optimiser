@@ -382,7 +382,7 @@ class IngredientFilterSet(BaseModel):
     brand_excludes: list[str] = Field(default_factory=list)
 
 
-MAX_FILTER_KEYWORDS = 8  # per include/exclude list, per search term
+MAX_FILTER_KEYWORDS = 15  # per include/exclude list, per search term
 MAX_FILTER_KEYWORD_LEN = 40  # characters per keyword
 
 
@@ -455,9 +455,9 @@ def _apply_ingredient_validity(rows: list[dict], ing_lookup: dict[str, dict]) ->
     its search term's include/exclude filters (title + brand). Terms without
     filters are always valid. Returns the number of rejected rows.
 
-    Filter pass order: title filters run first; on title pass, brand filters
-    run against ``row["brand"]``. The reason string preserves the first
-    failure so users see which filter they need to relax.
+    Filter pass order: brand filters run first and take precedence over title
+    filters. A brand rejection wins even when the title would also fail. The
+    reason string preserves the winning failure.
     """
     rejected = 0
     for row in rows:
@@ -467,15 +467,19 @@ def _apply_ingredient_validity(rows: list[dict], ing_lookup: dict[str, dict]) ->
         brand_includes = ing.get("brand_includes") or []
         brand_excludes = ing.get("brand_excludes") or []
         if includes or excludes or brand_includes or brand_excludes:
-            ok, reason = matches_ingredient_filters(
-                row.get("returned_ingredient", ""), includes, excludes
-            )
-            if ok and (brand_includes or brand_excludes):
+            ok, reason = True, ""
+            if brand_includes or brand_excludes:
                 bok, breason = matches_brand_filters(
                     row.get("brand", ""), brand_includes, brand_excludes
                 )
                 if not bok:
                     ok, reason = False, breason
+            if ok and (includes or excludes):
+                tok, treason = matches_ingredient_filters(
+                    row.get("returned_ingredient", ""), includes, excludes
+                )
+                if not tok:
+                    ok, reason = False, treason
             row["valid_ingredient"] = ok
             row["filter_reason"] = "" if ok else reason
             if not ok:
@@ -1725,6 +1729,270 @@ def filter_preview(job_id: str, req: ReapplyFiltersRequest) -> dict:
         "terms": counts,
         "products": products,
         "unmatched_terms": unmatched_terms,
+    }
+
+
+class AiFilterRequest(BaseModel):
+    """Body for the /test-only AI instruction compiler.
+
+    ``instruction`` is the raw free-text sentence (universal across all
+    ingredients). Validated to 1..500 chars so a pasted essay cannot blow the
+    prompt.
+    """
+
+    instruction: str = Field(min_length=1, max_length=500)
+
+
+# ── /test-only: AI instruction -> keyword filter compiler ───────────────────
+# Compiles a single universal sentence into per-ingredient keyword filters
+# using a deduped ingredient -> {terms, brands} summary built fast in Python.
+# The 1000s of cached rows are NEVER sent to the LLM. The /test frontend
+# shows the compiled rules as a confirm-before-apply diff before they touch
+# the real filter store. See llm/ai_filter_compiler.py for the prompt +
+# guardrails, and docs/technical/LLM_Pipeline.md §AI Instruction Compiler.
+@app.post("/optimise/{job_id}/ai_filter_preview")
+async def ai_filter_preview(job_id: str, req: AiFilterRequest) -> dict:
+    """Compile a free-text instruction into suggested keyword filters.
+
+    Uses the completed job's cached rows to build a deduped
+    ``{ingredient, terms, brands}`` summary per search term (no word cap),
+    then asks the configured filter model to map the instruction onto that
+    vocabulary. Returns the compiled rules PLUS a dry-run preview (same
+    counts/products shape as /filter_preview) so the /test tuner can show
+    "this would hide N products per ingredient" before the user confirms.
+
+    No mutation of ``job.result`` / ``pipeline_cache`` occurs here.
+    """
+    instruction = str(req.instruction or "").strip()
+    if not instruction:
+        raise HTTPException(400, "AI instruction must not be empty")
+    if len(instruction) > 500:
+        raise HTTPException(400, "AI instruction is too long (max 500 characters)")
+
+    job = JOBS.get(job_id)
+    if job is None:
+        raise HTTPException(404, f"Unknown job '{job_id}'")
+    if job.status != "complete":
+        raise HTTPException(409, f"Job '{job_id}' has not completed (status: {job.status})")
+    if not job.pipeline_cache or not job.pipeline_cache.get("rows"):
+        raise HTTPException(409, f"Job '{job_id}' has no cached products to filter")
+
+    cache = job.pipeline_cache
+    search_terms: list[str] = list(cache.get("search_terms") or [])
+    rows: list[dict] = list(cache.get("rows") or [])
+    if not search_terms:
+        raise HTTPException(409, f"Job '{job_id}' has no ingredients to filter")
+
+    from NZMealOptimiser.llm.ai_filter_compiler import (
+        build_deduped_summary,
+        compile_ai_instruction,
+    )
+    from NZMealOptimiser.llm.generation import GenerationConfigError, GenerationError
+
+    try:
+        compiled, summary, warnings = await asyncio.to_thread(
+            compile_ai_instruction, instruction, search_terms, rows
+        )
+    except GenerationConfigError as exc:
+        raise HTTPException(503, str(exc))
+    except GenerationError as exc:
+        raise HTTPException(502, str(exc))
+    except Exception as exc:  # noqa: BLE001 — surface LLM JSON/validation failures as 502
+        raise HTTPException(502, f"AI filter compilation failed: {exc}")
+
+    cleaned = _clean_ingredient_filters(
+        {term: IngredientFilterSet(**fs) for term, fs in compiled.items()}
+    )
+
+    deduped = build_deduped_summary(search_terms, rows)
+
+    preview_rows = copy.deepcopy(rows)
+    preview_lookup = copy.deepcopy(cache.get("ing_lookup") or {})
+    _merge_request_filters(preview_lookup, cleaned)
+    _apply_ingredient_validity(preview_rows, preview_lookup)
+
+    counts: dict[str, dict[str, int]] = {}
+    products: list[dict] = []
+    for row in preview_rows:
+        term = row.get("search_ingredient", "")
+        entry = counts.setdefault(term, {"total": 0, "matched": 0})
+        entry["total"] += 1
+        valid = row.get("valid_ingredient") is not False
+        if valid:
+            entry["matched"] += 1
+        products.append({
+            "company": row.get("company", ""),
+            "store": row.get("store", ""),
+            "sku": row.get("sku", ""),
+            "search_ingredient": term,
+            "returned_ingredient": row.get("returned_ingredient", ""),
+            "brand": row.get("brand", ""),
+            "quantity": row.get("quantity", ""),
+            "measurement_unit": row.get("measurement_unit", ""),
+            "price": row.get("price", ""),
+            "valid": valid,
+            "reason": "" if valid else (row.get("filter_reason") or ""),
+        })
+
+    return {
+        "instruction": instruction,
+        "compiled_filters": cleaned,
+        "warnings": warnings,
+        "summary": deduped,
+        "preview": {"terms": counts, "products": products},
+    }
+
+
+class AutoCullRequest(BaseModel):
+    current_filters: dict[str, IngredientFilterSet] = Field(default_factory=dict)
+
+
+@app.post("/optimise/{job_id}/auto_cull_preview")
+async def auto_cull_preview(job_id: str, req: AutoCullRequest) -> dict:
+    """Auto-generate dish-wide cull filters (up to 15 excludes per ingredient).
+
+    Dish-aware: uses the run's dish name + deduped {Ingredient, Terms, Brands}
+    summary to ask the filter model for the most irrelevant terms per ingredient.
+    Returns additive suggestions + dry-run preview (same terms/products shape as
+    /filter_preview) so the /test UI can show chip diffs + matched/total before
+    the user confirms. No mutation of job.result/pipeline_cache.
+    """
+    job = JOBS.get(job_id)
+    if job is None:
+        raise HTTPException(404, f"Unknown job '{job_id}'")
+    if job.status != "complete":
+        raise HTTPException(409, f"Job '{job_id}' has not completed (status: {job.status})")
+    if not job.pipeline_cache or not job.pipeline_cache.get("rows"):
+        raise HTTPException(409, f"Job '{job_id}' has no cached products to filter")
+    cache = job.pipeline_cache
+    search_terms: list[str] = list(cache.get("search_terms") or [])
+    rows: list[dict] = list(cache.get("rows") or [])
+    if not search_terms:
+        raise HTTPException(409, f"Job '{job_id}' has no ingredients to filter")
+    dish_name = str(cache.get("dish_name") or (job.result.dish if job.result else "") or "").strip() or "this dish"
+    current = _clean_ingredient_filters(req.current_filters or {})
+    from NZMealOptimiser.llm.ai_filter_compiler import (
+        build_deduped_summary,
+        compile_auto_cull_filters,
+    )
+    from NZMealOptimiser.llm.generation import GenerationConfigError, GenerationError
+
+    try:
+        compiled, summary, warnings = await asyncio.to_thread(
+            compile_auto_cull_filters, dish_name, search_terms, rows, current
+        )
+    except GenerationConfigError as exc:
+        raise HTTPException(503, str(exc))
+    except GenerationError as exc:
+        raise HTTPException(502, str(exc))
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"Auto cull compilation failed: {exc}")
+
+    cleaned = _clean_ingredient_filters(
+        {term: IngredientFilterSet(**fs) for term, fs in compiled.items()}
+    )
+    deduped = build_deduped_summary(search_terms, rows)
+    def _get(obj, key: str) -> list[str]:
+        if isinstance(obj, dict):
+            v = obj.get(key)
+            return list(v) if isinstance(v, list) else []
+        return list(getattr(obj, key, []) or [])
+
+    def _dedup_cap(items: list[str]) -> list[str]:
+        seen: set[str] = set()
+        out: list[str] = []
+        for w in items:
+            lw = str(w).lower()
+            if lw not in seen:
+                seen.add(lw)
+                out.append(w)
+            if len(out) >= MAX_FILTER_KEYWORDS:
+                break
+        return out
+
+    # Build additive view so preview shows merged effect (current + suggestions, capped 15)
+    preview_filters: dict[str, IngredientFilterSet] = {}
+    for term in search_terms:
+        cur = current.get(term) or IngredientFilterSet()
+        sug = cleaned.get(term)
+        if sug is None:
+            continue
+        cur_inc = _get(cur, "includes")
+        cur_exc = _get(cur, "excludes")
+        cur_binc = _get(cur, "brand_includes")
+        cur_bexc = _get(cur, "brand_excludes")
+        sug_inc = _get(sug, "includes")
+        sug_exc = _get(sug, "excludes")
+        sug_binc = _get(sug, "brand_includes")
+        sug_bexc = _get(sug, "brand_excludes")
+        merged = IngredientFilterSet(
+            includes=_dedup_cap([*cur_inc, *sug_inc]),
+            excludes=_dedup_cap([*cur_exc, *sug_exc]),
+            brand_includes=_dedup_cap([*cur_binc, *sug_binc]),
+            brand_excludes=_dedup_cap([*cur_bexc, *sug_bexc]),
+        )
+        # Only include if actually additive
+        has_new = any(w.lower() not in {x.lower() for x in cur_exc} for w in merged.excludes) or any(
+            w.lower() not in {x.lower() for x in cur_bexc} for w in merged.brand_excludes
+        )
+        if has_new:
+            preview_filters[term] = merged
+        else:
+            # No net new — omit so diff is honest
+            pass
+    # If nothing additive, we still return empty preview_filters so preview matches current
+    def _to_plain(d: dict) -> dict:
+        out: dict[str, dict] = {}
+        for k, v in d.items():
+            if isinstance(v, dict):
+                out[k] = v
+            elif hasattr(v, "model_dump"):
+                out[k] = v.model_dump()
+            elif hasattr(v, "dict"):
+                out[k] = v.dict()  # pydantic v1 fallback
+            else:
+                out[k] = {"includes": getattr(v, "includes", []), "excludes": getattr(v, "excludes", []), "brand_includes": getattr(v, "brand_includes", []), "brand_excludes": getattr(v, "brand_excludes", [])}
+        return out
+
+    if not preview_filters:
+        preview_lookup = copy.deepcopy(cache.get("ing_lookup") or {})
+        _merge_request_filters(preview_lookup, _to_plain(current))
+        preview_rows = copy.deepcopy(rows)
+        _apply_ingredient_validity(preview_rows, preview_lookup)
+    else:
+        preview_lookup = copy.deepcopy(cache.get("ing_lookup") or {})
+        _merge_request_filters(preview_lookup, {**_to_plain(current), **_to_plain(preview_filters)})
+        preview_rows = copy.deepcopy(rows)
+        _apply_ingredient_validity(preview_rows, preview_lookup)
+
+    counts: dict[str, dict[str, int]] = {}
+    products: list[dict] = []
+    for row in preview_rows:
+        term = row.get("search_ingredient", "")
+        entry = counts.setdefault(term, {"total": 0, "matched": 0})
+        entry["total"] += 1
+        valid = row.get("valid_ingredient") is not False
+        if valid:
+            entry["matched"] += 1
+        products.append({
+            "company": row.get("company", ""),
+            "store": row.get("store", ""),
+            "sku": row.get("sku", ""),
+            "search_ingredient": term,
+            "returned_ingredient": row.get("returned_ingredient", ""),
+            "brand": row.get("brand", ""),
+            "quantity": row.get("quantity", ""),
+            "measurement_unit": row.get("measurement_unit", ""),
+            "price": row.get("price", ""),
+            "valid": valid,
+            "reason": "" if valid else (row.get("filter_reason") or ""),
+        })
+    return {
+        "dish": dish_name,
+        "compiled_filters": cleaned,
+        "warnings": warnings,
+        "summary": deduped,
+        "preview": {"terms": counts, "products": products},
     }
 
 

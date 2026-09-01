@@ -743,12 +743,19 @@ def contains_word(haystack: str, needle: str) -> bool:
 
     For single words: any word in the haystack within ratio 0.35 passes.
     For multi-word needles: ALL words must fuzzy-match somewhere in the title.
+    Apostrophes are stripped so "Pak'nSave" matches "Pak'nSave" and "paknsave".
     """
-    needle = needle.lower().strip()
-    if not needle:
+    def _norm(text: str) -> str:
+        return text.lower().replace("'", "").replace("\u2019", "").replace("`", "")
+
+    needle_norm = _norm(needle).strip()
+    if not needle_norm:
         return True
-    haystack_words = re.findall(r"[a-z]+", haystack.lower())
-    for n_word in needle.split():
+    haystack_words = re.findall(r"[a-z]+", _norm(haystack))
+    needle_words = re.findall(r"[a-z]+", needle_norm)
+    if not needle_words:
+        return True
+    for n_word in needle_words:
         if not any(word_matches(hw, n_word) for hw in haystack_words):
             return False
     return True

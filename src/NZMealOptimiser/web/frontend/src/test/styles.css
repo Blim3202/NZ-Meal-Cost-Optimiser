@@ -447,6 +447,26 @@ li.selected .ing-line { border-color: var(--border-hover); background: var(--sur
 .rule-label.brand-exclude { color: var(--err-alt); }
 .rule-chips { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-2); align-items: center; }
 .ai-stub { width: 100%; resize: none; background: var(--surface-muted); color: var(--muted); }
+.ai-block { display: grid; gap: 8px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 10px; }
+.ai-block-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.ai-block-head .rule-label { padding-top: 0; }
+.ai-block-hint { margin: 0; }
+.ai-input { width: 100%; resize: vertical; min-height: 64px; border: 1px solid var(--field-border); border-radius: 8px; padding: 9px 10px; background: var(--field-bg); color: var(--ink); outline: none; font-size: var(--fs-ui); }
+.ai-input-large { min-height: 84px; }
+.ai-input:focus { border-color: var(--orange); box-shadow: 0 0 0 3px var(--focus-ring); }
+.ai-input:disabled { background: var(--surface-muted); color: var(--muted); }
+.ai-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ai-hint { margin: 0; }
+.ai-suggestion { border: 1px solid var(--amber-line); background: var(--amber-bg); border-radius: 10px; padding: 10px 12px; display: grid; gap: 8px; }
+.ai-suggestion-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ai-suggestion-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: var(--fs-ui); }
+.ai-suggestion-row strong { min-width: 90px; }
+.ai-suggestion-compact { gap: 4px; }
+.ai-row-compact { justify-content: space-between; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; gap: 8px; }
+.ai-diff-main { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; flex: 1; min-width: 0; }
+.ai-diff-term { min-width: 80px; font-size: var(--fs-ui); }
+.ai-diff-detail { margin: 0; }
+.ai-suggestion-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 
 /* Brand autocomplete dropdown — teleported to <body> via Vue <Teleport> so
    it can never be clipped by ancestor overflow:hidden and never causes

@@ -161,7 +161,7 @@ def test_clean_rejects_overlong_keyword():
 
 
 def test_clean_caps_keyword_count():
-    words = [f"w{i}" for i in range(12)]
+    words = [f"w{i}" for i in range(20)]
     cleaned = _clean_ingredient_filters({"onion": IngredientFilterSet(excludes=words)})
     assert len(cleaned["onion"]["excludes"]) == web_main.MAX_FILTER_KEYWORDS
 

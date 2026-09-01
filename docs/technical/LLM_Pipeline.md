@@ -50,9 +50,10 @@ llm_interactive.py  (CLI orchestration, 6 steps)
 
 | Script | Role |
 |--------|------|
-| `src/NZMealOptimiser/llm/llm_client.py` | Mistral API client. Enforces rate limiting and JSON parsing with retries. |
+| `src/NZMealOptimiser/llm/llm_client.py` | Mistral + Google Gemini client. Enforces rate limiting and JSON parsing with retries. |
 | `src/NZMealOptimiser/llm/llm_utils.py` | Ingredient resolution (curated → LLM), dish parsing/validation, quantity scaling math. |
 | `src/NZMealOptimiser/llm/generation.py` | Custom-dish draft service for the web dashboard: Mistral ingredients + Gemini filter rules (see "Custom-Dish Generation Service" below). |
+| `src/NZMealOptimiser/llm/ai_filter_compiler.py` | **/test only** — AI instruction + **Auto refine** → keyword-filter compiler. Turns one universal sentence **or** a dish-wide auto-cull request + deduped `{Ingredient, Terms, Brands}` summary (built fast in Python, no word cap) into `{search_term: {includes, excludes, brand_*}}`. Prompt-injection guarded, user confirms before apply. See "AI Instruction Compiler" below. |
 | `tools/llm/llm_interactive.py` | End-to-end interactive CLI that ties ingredient resolution → optimiser queries → results. |
 | `tools/llm/llm_validate.py` | Post-run validator: sends batches of CSV rows to the LLM to mark `is_valid` (True/False). |
 
@@ -61,11 +62,30 @@ llm_interactive.py  (CLI orchestration, 6 steps)
 Backs the `/test` dashboard's **"Generate custom ingredients"** button via `POST /dishes/generate`. Two sequential calls:
 
 1. **Ingredients — configured model** (any chat-capable model from Mistral or Google Gemini, picked in the Settings page; default `mistral-medium-latest`). `generate_dish_ingredients()` reuses `LLMClient.generate_ingredients` + `parse_and_validate`, then cleans the output — units folded through `UNIT_ALIASES`, case-insensitive duplicates merged, empty-term/non-positive-quantity rows dropped (each intervention reported as a warning), count capped at `MAX_INGREDIENTS` (10).
-2. **Filter rules — configured model** (any chat-capable model from either provider; default Google Gemini `gemini-3.1-flash-lite` over the OpenAI-compat endpoint). `generate_ingredient_filters()` ports the generic labelling prompt from `exploration/llm/explore_filter_explorer.py` and returns `{search_term: {includes: [word], excludes: [...]}}` — the exact shape of `data/dish_filters.json` entries / `IngredientFilterSet`.
+2. **Filter rules — configured model** (any chat-capable model from either provider; default Google Gemini `gemini-3.1-flash-lite` over the OpenAI-compat endpoint). `generate_ingredient_filters()` ports the generic labelling prompt from `exploration/llm/explore_filter_explorer.py` and returns `{search_term: {includes: [word], excludes: [...]}}` — the exact shape of `data/dish_filters.json` entries / `IngredientFilterSet`. **`brand_includes` / `brand_excludes` are intentionally never populated** — brand preferences stay user-set on the dashboard (enforced by `test_parse_filters_never_emits_brand_fields`); the matcher is a separate `matches_brand_filters` call that only fires on rows whose title already passed.
 
 Error model: missing API key → `GenerationConfigError` → HTTP 503; ingredient generation/validation failure after retries → `IngredientGenerationError` → HTTP 502; **filter failures are non-fatal** — the response carries empty rules plus a warning so a provider outage never blocks usable ingredients.
 
-The generated rules are seeded into the dashboard's shared `custom` filter scope and remain fully user-editable before the run; at runtime they flow through the same `matches_ingredient_filters` machinery as curated presets.
+The generated rules are seeded into the dashboard's shared `custom` filter scope and remain fully user-editable before the run; at runtime they flow through the same `matches_ingredient_filters` + `matches_brand_filters` machinery as curated presets (title rule first, brand rule only if title passes; see FastAPI.md §`IngredientFilterSet`).
+
+## AI Instruction Compiler (`ai_filter_compiler.py`, /test only)
+
+Post-run layer in the **Filter Tuner** (`/test`). Not run at search time — runs **after** a comparison completes against the job's cached product rows.
+
+**Problem:** a free-text sentence like `"only red onions, no flavoured milk"` should filter thousands of cached rows, but sending the rows to the LLM hits rate limits and risks hallucination.
+
+**Solution — deduped summary, not rows:**
+1. **Python builds a vocabulary** per ingredient from the cached rows: `build_deduped_summary(search_terms, rows)` → `[{Ingredient, Terms: [sorted unique lowercased words from every returned_ingredient], Brands: [sorted unique brands]}]`. No cap on word counts (user request) — deduped only, not truncated. This is a fast `set()` pass in Python, no LLM.
+2. **One LLM call** compiles the universal sentence + that summary into keyword rules: `compile_ai_instruction(instruction, search_terms, rows)` → `({term: {includes, excludes, brand_includes, brand_excludes}}, summary, warnings)`. Uses the configured **filter model** from `data/llm_settings.json` via `call_filter_model` (same model as pre-run filter seeding; default `gemini-3.1-flash-lite`). Prompt wraps the raw sentence between `<< >>` markers and instructs the model to treat anything inside as DATA, not instructions (injection guard). Empty/vague sentences return `{}` with no error.
+3. **Local apply over every cached row** via the existing `matches_*` matchers (Levenshtein ≤0.35) stamps `valid_ingredient` + `filter_reason`. The table is never sent to the LLM.
+
+The instruction is **universal** — even when the user is viewing the `beef mince` editor, they can say `"only Red onions"` and the compiler maps it to the `onion` ingredient because the summary for every ingredient is in the prompt.
+
+**Endpoint (instruction):** `POST /optimise/{job_id}/ai_filter_preview {instruction}` (see FastAPI.md) returns `{compiled_filters, warnings, summary, preview: {terms: {total, matched}, products: [...]}}`. The frontend shows the compiled chips + per-ingredient `matched/total` preview and requires an explicit **Apply** before merging into `filterStore[scope]`. No mutation of `job.result`/`pipeline_cache` occurs in the preview.
+
+**Endpoint (auto refine):** `POST /optimise/{job_id}/auto_cull_preview {current_filters}` — dish-wide auto-cull (see FastAPI.md). Same summary + model, but the prompt is dish-aware: *"cull up to 15 most irrelevant `excludes` (+ optional `brand_excludes`) per ingredient for this dish, grounded to the vocab"*. Returns `{dish, compiled_filters, warnings, summary, preview}` with additive dry-run counts. Frontend shows the chips + `matched/total` per ingredient in **both** Summary and Filter tuner on `/test`; Apply merges additively, capped 15/list.
+
+**Cost:** ~1000-2000 tokens of deduped words for a typical dish (well within 128k context), one LLM call per action, cached by `hash(instruction+terms)` on the client.
 
 ### Model selection
 
