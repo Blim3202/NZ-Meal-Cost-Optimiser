@@ -10,7 +10,7 @@ Runs are **background jobs**: `POST /optimise/jobs` returns a `job_id` immediate
 ```
 .venv\Scripts\uvicorn NZMealOptimiser.web.main:app --host 0.0.0.0 --port 8000
 ```
-Then open `http://127.0.0.1:8000/` for the classic dashboard, `http://127.0.0.1:8000/app` for the Vue dashboard, `http://127.0.0.1:8000/test` for the app-shell workspace (optimiser dashboard, My Dishes, LLM Recipe Builder stub, Documentation viewer, Settings), or `http://127.0.0.1:8000/docs` for Swagger.
+Then open `http://127.0.0.1:8000/` for the Vue prod dashboard (`static/vue/index.html`), `http://127.0.0.1:8000/test` for the Vue sandbox (`static/vue/test.html`), or `http://127.0.0.1:8000/docs` for Swagger.
 
 No manual path bootstrap is needed — the package is installed editable (`pip install -e .`) and all imports resolve from `NZMealOptimiser.*`.
 
@@ -264,8 +264,7 @@ Each row dict matches `full_results.csv` columns:
 
 | Route | Method | Description |
 |---|---|---|
-| `/` | GET | Legacy vanilla dashboard (`static/index_old.html`) |
-| `/app`, `/app/` | GET | Vue dashboard (`static/vue/index.html`) |
+| `/` | GET | Vue prod dashboard (`static/vue/index.html`) |
 | `/test`, `/test/` | GET | App-shell workspace (`static/vue/test.html`) — left sidebar switching the optimiser dashboard (custom recipes/shopping lists, CSV export), My Dishes, LLM Recipe Builder stub, Documentation viewer and Settings |
 | `/health` | GET | Health check → `{"status": "ok", "supabase_enabled": bool}` |
 | `/system-info` | GET | Runtime facts for Settings → `{max_workers, slider_min, slider_max, slider_step, running_jobs, hard_limits, llm_providers}`. The three `slider_*` keys are hardcoded constants (20/40/5) so the Settings page renders a meaningful range. `running_jobs` lets the UI disable the Apply button when a job is in flight. |

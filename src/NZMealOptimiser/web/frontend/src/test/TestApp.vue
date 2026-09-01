@@ -9,10 +9,11 @@
     <div v-if="drawerOpen && isMobile" class="drawer-backdrop" @click="drawerOpen = false"></div>
 
     <div class="app-main">
-      <!-- Only the LLM Recipe Builder survives view switches: its pasted
-           recipe + generated breakdown stay filled while users run other
-           queries elsewhere in the app. Everything else remounts as before. -->
-      <keep-alive include="RecipeBuilderView">
+      <!-- Dashboard + LLM Recipe Builder survive view switches: the form card
+           (dish, address, distance, portions, custom builder rows, GPS,
+           run results, live progress, console feed, in-flight job) all stay
+           filled while users visit My Dishes, Settings, Documentation, etc. -->
+      <keep-alive include="DashboardView,RecipeBuilderView">
         <component :is="activeComponent" ref="activeView" @open-dish="openDish" @open-draft="openDraft" />
       </keep-alive>
     </div>

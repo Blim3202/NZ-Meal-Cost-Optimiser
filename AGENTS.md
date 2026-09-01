@@ -16,10 +16,10 @@ Runtime pins still live in `requirements.txt`. No path-bootstrap hacks — impor
 
 | If you want to … | Start here |
 |---|---|
-| Find the cheapest store for a dish | CLI: `python -m tools.<brand>.<brand>_optimiser_edge "<addr>" "<dish>"`. Web: `/app` → Optimiser dashboard → Run. See `docs/technical/FastAPI.md` §API Endpoints. |
+| Find the cheapest store for a dish | CLI: `python -m tools.<brand>.<brand>_optimiser_edge "<addr>" "<dish>"`. Web: `/` → Optimiser dashboard → Run. See `docs/technical/FastAPI.md` §API Endpoints. |
 | Develop the FastAPI / Vue frontend | `src/NZMealOptimiser/web/main.py` + `src/NZMealOptimiser/web/frontend/`. Full reference: `docs/technical/FastAPI.md`, `docs/technical/Vue_Dashboard.md`. |
 | Add/extend a brand API integration | `src/NZMealOptimiser/pricing/<brand>_api.py` (clients) + `src/NZMealOptimiser/pricing/optimiser_utils.py` (cross-brand helpers). Full per-brand reference: `docs/technical/<Brand>_API.md`. |
-| Use the LLM ingredient generator | CLI: `python -m tools.llm.llm_interactive`. Web: `/app` → LLM Recipe Builder. See `docs/technical/LLM_Pipeline.md`. |
+| Use the LLM ingredient generator | CLI: `python -m tools.llm.llm_interactive`. Web: `/` → LLM Recipe Builder. See `docs/technical/LLM_Pipeline.md`. |
 | Refresh / seed store data | `python -m tools.<brand>.<brand>_setup` (per-brand; see CLI block below). |
 | Run / extend the test suite | `python -m pytest` (503 tests, ~10 s, 27 `test_*.py` files + 3 `generate_fixtures.py` generators). Per-folder layout: see `Tests` section. |
 
@@ -36,7 +36,7 @@ opencode/
 ├── src/NZMealOptimiser/
 │   ├── pricing/                        # optimiser_utils.py (cross-brand) + per-brand *_api.py.
 │   ├── llm/                            # llm_client / llm_models / llm_settings / llm_utils / generation.
-│   └── web/                            # main.py (FastAPI) + frontend/ (Vue source) + static/ (built + vanilla).
+│   └── web/                            # main.py (FastAPI) + frontend/ (Vue source) + static/ (built Vue assets).
 ├── tools/
 │   ├── <brand>/                        # *_setup.py (store builder) + *_optimiser_{edge,mobile}.py (CLI).
 │   ├── llm/                            # llm_interactive.py, llm_validate.py.
@@ -92,7 +92,7 @@ opencode/
 | `docs/technical/Woolworths_API.md` | Full `/api/v1` endpoint documentation + cookie architecture. |
 | `docs/technical/LLM_Pipeline.md` | LLM ingredient generation, post-run validation, quantity scaling. |
 | `docs/technical/FastAPI.md` | FastAPI architecture: endpoints, thread pool, job model, models. |
-| `docs/technical/Vue_Dashboard.md` | Vue 3 dual-tree (prod `/app` + sandbox `/test`), build flow, backend contract. |
+| `docs/technical/Vue_Dashboard.md` | Vue 3 dual-tree (prod `/` + sandbox `/test`), build flow, backend contract. |
 | `docs/project/decision.md` | Key decisions and rationale (chronological, decision #1 → #26+). |
 | `docs/project/design.md` | Technical design (API, auth, pipeline, data flow). |
 | `docs/project/logs.md` | Major errors and resolutions (#1 → #65). |
@@ -105,9 +105,8 @@ opencode/
 | `src/NZMealOptimiser/llm/llm_utils.py` | Ingredient resolution, `parse_and_validate`, `parse_optimiser_columns` (with `approx_quantity`/`approx_unit` fallback). |
 | `src/NZMealOptimiser/llm/generation.py` | Custom-dish LLM drafts: `POST /dishes/generate` + `POST /dishes/import_text`. Filter failures are soft; missing keys → 503, ingredient failure → 502, recipe rejection → HTTP 200 `{"status": "rejected"}`. |
 | `src/NZMealOptimiser/web/main.py` | FastAPI app + job-based optimise API + frontend serving. All endpoints listed in `FastAPI.md` §API Endpoints. |
-| `src/NZMealOptimiser/web/frontend/` | Vue 3 source. **Dual trees**: `src/` = prod `/app`, `src/test/` = sandbox `/test`. Edit sandbox → `tools/frontend/promote_test_to_app.ps1` → `npm run lint && npm run build`. |
-| `src/NZMealOptimiser/web/static/vue/` | **Generated** Vue dashboard assets. Never hand-edit; always rebuild. |
-| `src/NZMealOptimiser/web/static/index_old.html` | Original vanilla dashboard, served at `/`. |
+| `src/NZMealOptimiser/web/frontend/` | Vue 3 source. **Dual trees**: `src/` = prod `/`, `src/test/` = sandbox `/test`. Edit sandbox → `tools/frontend/promote_test_to_app.ps1` → `npm run lint && npm run build`. |
+| `src/NZMealOptimiser/web/static/vue/` | **Generated** Vue dashboard assets (`index.html` = `/`, `test.html` = `/test`). Never hand-edit; always rebuild. |
 | `tools/woolworths/woolworths_optimiser.py` | Production CLI bridge: Step 1 `woolworths_querier` → Step 2 `optimise()`. Other brands' optimisers live in `tools/<brand>/` as thin wrappers. |
 | `tools/llm/llm_interactive.py` | Interactive CLI: 6-step dish flow (inputs → resolve → review → query → optimise → scaling). |
 | `tools/llm/llm_validate.py` | Post-run validator: batches `full_results.csv` rows through `ministral-3b-2512` to fill `is_valid`. Skips already-validated rows. |
@@ -152,7 +151,7 @@ opencode/
 - **Dish endpoints**: `/dish_filters` (GET), `/dishes/generate` (POST), `/dishes/import_text` (POST, ≤1000 chars; rejection → HTTP 200 `{"status": "rejected"}`), `/dishes/save` (POST).
 - **LLM endpoints**: `/llm/models` (GET), `/llm/models/refresh` (POST), `/llm/settings` (GET/PUT).
 - **Misc**: `/geocode` (GET, Nominatim LRU), `/tech-docs/<filename>` (GET, served to the Vue Documentation view), `/docs` (Swagger).
-- **Frontend pages**: `/` (vanilla `index_old.html`), `/app` (Vue prod), `/test` (Vue sandbox, identical file set, independent copy). `frontend/src/` → `/app`; `frontend/src/test/` → `/test`. Build: `npm run lint && npm run build` inside `frontend/` → output to `src/NZMealOptimiser/web/static/vue/`. See `Vue_Dashboard.md` §Build & Toolchain, §Source Map.
+- **Frontend pages**: `/` (Vue prod dashboard), `/test` (Vue sandbox, independent copy). `frontend/src/` → `/`; `frontend/src/test/` → `/test`. Build: `npm run lint && npm run build` inside `frontend/` → output to `src/NZMealOptimiser/web/static/vue/`. See `Vue_Dashboard.md` §Build & Toolchain, §Source Map.
 - **Promote flow**: edit `src/test/`, QA at `/test`, then `tools/frontend/promote_test_to_app.ps1` to overwrite `src/`, then rebuild both pages.
 - **Backend contract** (row shape, payload, model catalog) is the source of truth for the Vue frontend: see `Vue_Dashboard.md` §Backend Contract and `FastAPI.md` §Pydantic Models.
 

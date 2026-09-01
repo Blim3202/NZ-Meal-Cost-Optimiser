@@ -442,7 +442,7 @@ optimisers/setup/validation scripts thin-wrap the shared library helpers.
 
 ## 41. FastAPI app-shell consolidation (2026-08)
 
-During the FastAPI app-shell build-out (the rewrite that introduced `/app` + `/test` Vue trees + job-based `POST /optimise/jobs`), the following were deliberately removed from `main.py`:
+During the FastAPI app-shell build-out (the rewrite that introduced `/` + `/test` Vue trees + job-based `POST /optimise/jobs`), the following were deliberately removed from `main.py`:
 
 - `workers/` folder — queueing system for serialized processing (sessions are now isolated naturally via fresh `requests.Session()` per call).
 - `services/supabase_client.py` — Supabase write client (persistence is optional, can be re-added later).

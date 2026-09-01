@@ -2,7 +2,6 @@
   <main class="shell">
     <header class="hero">
       <div><p class="eyebrow">NZ grocery intelligence</p><h1>Meal cost optimiser</h1>      <p class="lede">Compare any dish. Preset or built by you, across nearby supermarkets.</p></div>
-      <a class="legacy-link" href="/app">Open standard dashboard</a>
     </header>
 
     <div class="home-grid">
@@ -114,6 +113,7 @@ const NORMAL_CAPS = { distance: 8, stores: 5 };
 const OVERRIDE_CAPS = { distance: 50, stores: 20 };
 
 export default {
+  name: 'DashboardView',
   components: { MapPanel, PipelineConsole, ProgressStrip, ResultsTabs, DishBuilder },
   setup(_props, { expose }) {
     const {

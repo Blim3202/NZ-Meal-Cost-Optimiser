@@ -2,7 +2,7 @@
   <div class="app-frame" :class="{ 'drawer-open': drawerOpen }">
     <header class="mobile-topbar">
       <button type="button" class="ghost-button ghost-small" aria-label="Open navigation" @click="drawerOpen = true">☰</button>
-      <span class="topbar-brand"><strong>Meal Optimiser</strong><small>/app</small></span>
+      <span class="topbar-brand"><strong>Meal Optimiser</strong><small>/</small></span>
     </header>
 
     <AppSidebar :current="currentView" :rail="railMode" @navigate="navigate" />

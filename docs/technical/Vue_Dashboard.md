@@ -4,7 +4,7 @@
 
 ## Overview
 
-Vue 3 (Composition API) frontend for the optimiser, served by FastAPI at `/app` (production) and `/test` (sandbox). Both entries render the same **app shell**: a fixed left sidebar switches between the optimiser dashboard (preset/custom/shopping-list recipe modes), My Dishes, an LLM Recipe Builder stub, a Documentation viewer and a multi-section Settings page, with a Leaflet/OSM map, live pipeline console, and GPS support. They are the only consumers of the job-based API (`POST /optimise/jobs` / `GET /optimise/{id}`).
+Vue 3 (Composition API) frontend for the optimiser, served by FastAPI at `/` (production) and `/test` (sandbox). Both entries render the same **app shell**: a fixed left sidebar switches between the optimiser dashboard (preset/custom/shopping-list recipe modes), My Dishes, an LLM Recipe Builder stub, a Documentation viewer and a multi-section Settings page, with a Leaflet/OSM map, live pipeline console, and GPS support. They are the only consumers of the job-based API (`POST /optimise/jobs` / `GET /optimise/{id}`).
 
 ## Build & Toolchain
 
@@ -15,8 +15,8 @@ Vue 3 (Composition API) frontend for the optimiser, served by FastAPI at `/app` 
 | Syntax highlight | `highlight.js` (core + `python`/`bash`/`json` only, github-dark theme) — wired as a `marked` code-fence renderer in `DocsView.vue` |
 | Map | Leaflet 1.9.4 + OSM tiles |
 | Build | `npm run lint` → `npm run build` (run inside `frontend/`) |
-| Pages | Multi-page via `vue.config.js`: `index` → `static/vue/index.html` (`main.js`/`App.vue`, served at `/app`), `test` → `static/vue/test.html` (`test-main.js`/`TestApp.vue`, served at `/test`) |
-| Dual trees | **Deliberately independent copies** (diverged file sets — NOT identical): `src/` = production `/app`, `src/test/` = sandbox `/test`. Both trees share shell, views, components, composables, styles.css, settings.js, resultUtils.js, unitOptions.js. **`/test` adds**: `composables/useLlmModels.js` + `filterStore.js` (LLM model catalog + scoped filter state) + a fuller `views/SettingsView.vue` with the LLM Models section. Edit the sandbox, then promote with `tools/frontend/promote_test_to_app.ps1` (rewrites topbar subtitle to `/app`) and rebuild both pages |
+| Pages | Multi-page via `vue.config.js`: `index` → `static/vue/index.html` (`main.js`/`App.vue`, served at `/`), `test` → `static/vue/test.html` (`test-main.js`/`TestApp.vue`, served at `/test`) |
+| Dual trees | **Deliberately independent copies** (diverged file sets — NOT identical): `src/` = production `/`, `src/test/` = sandbox `/test`. Both trees share shell, views, components, composables, styles.css, settings.js, resultUtils.js, unitOptions.js. **`/test` adds**: `composables/useLlmModels.js` + `filterStore.js` (LLM model catalog + scoped filter state) + a fuller `views/SettingsView.vue` with the LLM Models section. Edit the sandbox, then promote with `tools/frontend/promote_test_to_app.ps1` (rewrites topbar subtitle to `/`) and rebuild both pages |
 | Output | `src/NZMealOptimiser/web/static/vue/` — **never hand-edit; always rebuild after editing `src/`** |
 | Public path | `/static/vue/` (absolute — pages only work through uvicorn, not `file://`) |
 
@@ -37,7 +37,7 @@ ESLint config lives inline in `package.json`; keep `no-console` clean.
 ## Source Map
 
 ```
-src/                            # PRODUCTION tree → /app (edit only via promote script)
+src/                            # PRODUCTION tree → `/` (edit only via promote script)
 ├── App.vue                     # shell: AppSidebar + <component :is> view switcher
 ├── main.js                     # entry point (create app, import styles.css)
 ├── styles.css                  # ALL styling (SFCs have no <style> block)
@@ -207,7 +207,7 @@ Same rule as type: repeated colour roles use `:root` tokens; raw hex only for si
 
 `--sp-1`(4px) → `--sp-8`(32px). Apply to `padding`/`gap`/`margin` **only when every component lands on-grid** (e.g. `padding: var(--sp-3) var(--sp-5)`); off-lattice legacy values (`11px 12px`, `14px 16px`, `9px 13px`…) stay raw until a visual-consolidation pass snaps them — do not auto-snap. Spacing is fixed px and deliberately NOT multiplied by `--font-scale`.
 
-> The pre-shell single-page `App.vue` was retired when the sandbox UI was promoted to `/app`. DashboardView is the only optimiser implementation per tree; intentional divergence now happens between the `src/` and `src/test/` trees — reconcile via the promote script, never by editing production files ad hoc.
+> The pre-shell single-page `App.vue` was retired when the sandbox UI was promoted to `/`. DashboardView is the only optimiser implementation per tree; intentional divergence now happens between the `src/` and `src/test/` trees — reconcile via the promote script, never by editing production files ad hoc.
 
 ## Backend Contract
 
