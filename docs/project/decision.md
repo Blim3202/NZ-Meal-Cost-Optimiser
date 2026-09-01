@@ -453,3 +453,28 @@ During the FastAPI app-shell build-out (the rewrite that introduced `/app` + `/t
 - "Best price per ingredient" logic — removed; the API now returns ALL product results, with quantity-scaled "used cost" computed via `parse_optimiser_columns`.
 
 Context: the original docs (pre-rewrite) had been describing these as active modules. After consolidation, the listed items should not appear in any current `src/` or `tools/` tree — this entry exists so future readers don't try to re-add them.
+
+## 42. Live-adjustable search thread pool (Settings slider, 2026-09)
+
+The search thread pool was previously sized once at import time from `WEB_MAX_WORKERS` and required a server restart to change. Decision #42 replaces that with a live-adjustable slider exposed in the Settings → Advanced card.
+
+**Architecture — `_ResizableThreadPool` wrapper:** `ThreadPoolExecutor` cannot be resized in place, so the underlying executor is wrapped in a small class that holds a `threading.Lock` and a single mutable reference. `set_max_workers(n)` builds a new executor under the lock, swaps the reference, drains the old one with `shutdown(wait=False)` outside the lock, and rebinds the asyncio default executor if a loop is running. Reads (`executor`, `max_workers`) take a snapshot of the current reference so callers never see a half-built replacement.
+
+**Size configuration — hardcoded only, no `.env` override:**
+
+| Setting | Source | Range | Edit |
+|---|---|---|---|
+| Slider bounds | `WORKER_POOL_MIN` / `MAX` / `STEP` (module constants in `main.py`) | 20 / 40 / 5 | Edit + restart |
+| Live size | Slider value via `POST /system/thread-pool` | min..max in step multiples | Live |
+
+The bounds are intentionally **not** exposed via `.env`. An earlier design wired `WEB_MAX_WORKERS` as a `.env` ceiling and clamped the slider to `[WORKER_POOL_MIN, min(WORKER_POOL_MAX, WEB_MAX_WORKERS)]`. The Pydantic default for `WEB_MAX_WORKERS` was 20 — the same as the slider min — so an unset `.env` silently clamped the slider to a single point (`min == max == 20`) and made it impossible to drag. The `.env` ceiling was removed so the slider is always 20–40 step 5 out of the box. If you ever need a different range, edit the constants in `main.py` and restart.
+
+**Running-jobs gate (409 path):** The swap is refused with HTTP 409 if any `JobState.status == "running"` exists in `JOBS`. Rationale: an in-flight executor swap *can* strand a future on a draining executor (we use `shutdown(wait=False)` by design so the swap is fast). With the gate, the drain is a no-op guarantee rather than a race. The Settings page polls `GET /system/running-jobs` every 2 s so the Apply button auto-disables while a job is running and auto-re-enables when it finishes.
+
+**UX choices:**
+- Slider value is a `v-model` local preview, **not** auto-applied on `change`. The user has to hit an explicit "Apply N workers" button so dragging doesn't thrash the pool.
+- Success state shows a green ✓ chip that auto-fades after 4 s.
+- Failure (400/409) shows a red `mode-note` and resets the slider to the live pool size.
+- One pool, three brands — no per-brand knob. Past 40 the supermarkets' own rate limits become the bottleneck, which is why the slider tops out at 40.
+
+**Why not a per-job concurrency cap instead:** a single shared pool is simpler, doesn't require threading a knob through every `optimise/jobs` payload, and is the right knob for "this server feels slow" — the actual symptom.

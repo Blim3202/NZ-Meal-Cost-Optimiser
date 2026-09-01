@@ -55,13 +55,44 @@ All modules come from the `src/NZMealOptimiser/` package (editable install — n
 ## Thread Pool Setup
 
 ```python
-import concurrent.futures
-EFFECTIVE_MAX_WORKERS = max(1, min(int(settings.WEB_MAX_WORKERS), 64))
-_THREAD_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=EFFECTIVE_MAX_WORKERS)
+class _ResizableThreadPool:
+    """ThreadPoolExecutor that can be atomically swapped to a new size."""
+
+    def __init__(self, initial_workers: int, max_ceiling: int) -> None:
+        self._max_ceiling = max(1, int(max_ceiling))
+        self._lock = threading.Lock()
+        self._executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers=max(1, min(int(initial_workers), self._max_ceiling)),
+        )
+
+    @property
+    def max_workers(self) -> int: ...
+    @property
+    def executor(self) -> concurrent.futures.ThreadPoolExecutor: ...
+
+    def set_max_workers(self, n: int) -> int:
+        effective = max(1, min(int(n), self._max_ceiling))
+        with self._lock:
+            new = concurrent.futures.ThreadPoolExecutor(max_workers=effective)
+            old, self._executor = self._executor, new
+        old.shutdown(wait=False)
+        # rebind the asyncio default executor if a loop is running
+        try:
+            asyncio.get_running_loop().set_default_executor(new)
+        except RuntimeError:
+            pass
+        return effective
+
+
+_THREAD_POOL = _ResizableThreadPool(
+    initial_workers=WORKER_POOL_MIN,
+    max_ceiling=WORKER_POOL_MAX,
+)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    asyncio.get_event_loop().set_default_executor(_THREAD_POOL)
+    asyncio.get_running_loop().set_default_executor(_THREAD_POOL.executor)
     yield
 ```
 
@@ -71,7 +102,9 @@ async def lifespan(app: FastAPI):
 
 **Pool size — why 20:** With 20 workers, up to 20 searches run in parallel. Wall time ≈ `ceil(total_tasks / 20) × ~5s`. Going higher (e.g. 63 workers) gives diminishing returns and uses more memory.
 
-**Configuring the size:** `WEB_MAX_WORKERS` (`.env` or env var, default 20, clamped 1–64) is read once at import time. `ThreadPoolExecutor` cannot be resized live, so changes require a server restart — a live-resize endpoint was considered and deliberately deferred (see Vue_Dashboard.md → Future plans). `GET /system-info` reports both the configured and effective values so the Settings page can show "restart required" honestly.
+**Configuring the size:** The thread pool is a live-adjustable slider in the Settings page, hardcoded to `[WORKER_POOL_MIN, WORKER_POOL_MAX] = [20, 40]` in steps of `WORKER_POOL_STEP = 5`. These are module-level constants in `main.py` — there is **no `.env` override** (by design: the safeguard was removed because an unset `.env` silently clamped the slider to a single point and made it undraggable). The 1–64 `Pydantic` range on the request body still rejects any out-of-range swap. To change the bounds, edit the constants in `main.py` and restart.
+
+**Live resize semantics:** `ThreadPoolExecutor` cannot be resized in place, so `POST /system/thread-pool {max_workers: N}` atomically builds a new executor, calls `old.shutdown(wait=False)` so in-flight futures drain out-of-band, and rebinds the asyncio default executor. The swap is **rejected with 409** while any job is `status == "running"` so the gate guarantees there are no in-flight futures to strand. See `decision.md` #42 for the rationale.
 
 ---
 
@@ -83,7 +116,7 @@ async def lifespan(app: FastAPI):
 | `TMP_DIR` | Scratchpad folder (`src/NZMealOptimiser/web/tmp/`), created if missing. Currently unused. |
 | `STATIC_DIR` | Folder for the frontend (`src/NZMealOptimiser/web/static/`). Mounted at `/static`. |
 | `BRANDS` | Dispatch dict mapping brand names to their API classes, find_nearby functions, and metadata. |
-| `_THREAD_POOL` / `EFFECTIVE_MAX_WORKERS` | Thread pool for offloading blocking HTTP calls, sized from `settings.WEB_MAX_WORKERS` (default 20). |
+| `_THREAD_POOL` (a `_ResizableThreadPool` wrapper) | Thread pool for offloading blocking HTTP calls, initially 20 workers, live-resizable via `POST /system/thread-pool` over the hardcoded `[20, 40]` step-5 range. |
 | `HARD_LIMITS` | Absolute server-side ceilings for the frontend's danger-zone overrides: `{max_distance_km: 50.0, max_stores_per_company: 20}` — enforced by `_enforce_hard_limits()` in `_new_job()` and `/stores/nearby` (400 beyond). |
 | `TECH_DOCS` / `TECH_DOCS_DIR` | Whitelisted markdown manuals (`docs/technical/*.md`) served to the Documentation viewer; explicit name→title map so no arbitrary file read is possible. |
 | `COMPANY_LABELS` / `COMPANY_CODES` | Display names ("Pak'nSave") and console tag codes ("PNS"/"NW"/"WW") per brand. |
@@ -235,7 +268,9 @@ Each row dict matches `full_results.csv` columns:
 | `/app`, `/app/` | GET | Vue dashboard (`static/vue/index.html`) |
 | `/test`, `/test/` | GET | App-shell workspace (`static/vue/test.html`) — left sidebar switching the optimiser dashboard (custom recipes/shopping lists, CSV export), My Dishes, LLM Recipe Builder stub, Documentation viewer and Settings |
 | `/health` | GET | Health check → `{"status": "ok", "supabase_enabled": bool}` |
-| `/system-info` | GET | Runtime facts for Settings → `{max_workers, configured_workers, hard_limits}` |
+| `/system-info` | GET | Runtime facts for Settings → `{max_workers, slider_min, slider_max, slider_step, running_jobs, hard_limits, llm_providers}`. The three `slider_*` keys are hardcoded constants (20/40/5) so the Settings page renders a meaningful range. `running_jobs` lets the UI disable the Apply button when a job is in flight. |
+| `/system/thread-pool` | POST | Atomically swap the search thread pool to `{"max_workers": N}`. Refused with **400** if N is outside `[slider_min, slider_max]` or doesn't align to `slider_step`. Refused with **409** if any job is `status == "running"` (in-flight executor swap can strand futures). Otherwise builds a new `ThreadPoolExecutor`, calls `old.shutdown(wait=False)`, rebinds the asyncio default executor, returns `{max_workers, running_jobs, changed}`. |
+| `/system/running-jobs` | GET | Lightweight counter the Settings page polls every 2 s while the slider is open → `{count: N}` (only `status == "running"` jobs counted). |
 | `/dishes` | GET | Dishes from `data/dishes.json` — curated presets plus saved builder dishes (`portion` key = base portions; `"source": "user"` marks builder-saved entries, absent = curated) |
 | `/dishes/save` | POST | Upsert a builder dish as a preset in `data/dishes.json` (`SaveDishRequest{name, base_portions, ingredients}`); validates via `_validate_custom_dish`, tags `"source": "user"`, writes atomically (tmp file + `os.replace`) |
 | `/dishes/generate` | POST | LLM-draft a custom dish (`GenerateDishRequest{dish_name, base_portions}`) — backs the dashboard's "Generate custom ingredients" button. Two sequential LLM calls in the thread pool via `NZMealOptimiser.llm.generation.generate_custom_dish`: Mistral ("medium") produces validated ingredient rows, Gemini flash-lite produces include/exclude keyword rules shaped like `data/dish_filters.json` entries. Returns `{dish_name, base_portions, source: "llm", ingredients, filters, warnings}` (~5-20 s). Ingredient failures are fatal: 400 blank name · 503 missing API key (`GenerationConfigError`) · 502 generation failed after retries. Filter-rule failures are soft — empty `filters` plus an entry in `warnings` |

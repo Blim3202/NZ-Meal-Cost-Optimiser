@@ -73,7 +73,7 @@ def client():
 
 
 def _install_fake_fetch(monkeypatch, calls):
-    async def fake_fetch_ingredient(company, api, store_id, store_name, ingredient, region=""):
+    async def fake_fetch_ingredient(company, api, store_id, store_name, ingredient, region="", exclude_non_food=True):
         calls.append((company, store_id, store_name, ingredient, region))
         return [_pack_row(ingredient, f"new-{ingredient}", 10.0, f"Fresh {ingredient} 500g")]
     monkeypatch.setattr(web_main, "_fetch_ingredient", fake_fetch_ingredient)

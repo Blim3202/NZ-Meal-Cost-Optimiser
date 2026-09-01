@@ -32,6 +32,7 @@ def test_load_returns_defaults_when_file_missing(isolated_settings_path):
     assert loaded == {
         "ingredient_model": dict(llm_settings.DEFAULT_INGREDIENT_MODEL),
         "filter_model": dict(llm_settings.DEFAULT_FILTER_MODEL),
+        "exclude_non_food": True,
     }
 
 
@@ -39,6 +40,7 @@ def test_save_writes_canonical_payload(isolated_settings_path):
     payload = {
         "ingredient_model": {"provider": "google", "model_id": "gemini-2.5-pro"},
         "filter_model": {"provider": "mistral", "model_id": "mistral-small-latest"},
+        "exclude_non_food": True,
     }
     saved = llm_settings.save_llm_settings(payload)
     assert saved == payload

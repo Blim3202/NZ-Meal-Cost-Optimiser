@@ -934,4 +934,148 @@ user-address geocoding (typed address → lat/lon for the 5 km radius), rate
 limited 1 req/sec. See `FastAPI.md` §`_resolve_origin` and `optimiser_utils.py`
 `geocode()`.
 
+## 66. ThreadPoolExecutor cannot be resized in place (2026-09)
+
+**Symptom**: Settings page wanted a live slider for the search thread-pool size
+(20–40 step 5), but the existing implementation baked the executor at import
+time (`concurrent.futures.ThreadPoolExecutor(max_workers=EFFECTIVE_MAX_WORKERS)`)
+and `ThreadPoolExecutor` has no `resize()` method. Mutating `_max_workers` on
+the underlying object either silently does nothing or, in some Python versions,
+crashes the next `submit()`.
+
+**Resolution**: Wrap the executor in `_ResizableThreadPool` (decision #42). The
+swap is `build new → atomic ref replace under `threading.Lock` →
+`old.shutdown(wait=False)` outside the lock → rebind
+`loop.set_default_executor(new)` if a loop is running`. The
+`shutdown(wait=False)` is by design — we don't want the swap to block on
+in-flight futures.
+
+**Running-jobs gate**: because `wait=False` could strand a future if a swap
+happens mid-job, `POST /system/thread-pool` is refused with **409** while any
+`JobState.status == "running"` exists. With the gate, the drain is a
+no-op guarantee rather than a race. The Settings page polls
+`GET /system/running-jobs` every 2 s so the Apply button auto-disables while a
+job is running and re-enables when it finishes. See `FastAPI.md` §Thread Pool
+Setup and `decision.md` #42.
+
+**Tests**: 34 new tests added under `tests/web/test_shell_endpoints.py` — in
+range (20/25/30/35/40), out-of-range (19/15/1/41/50/100), non-step values
+(21–24, 26–29, 31–34, 36–39), the 409 path with a fake running job, the
+accepted-after-finished path, concurrent-load serialisation under the lock, the
+old-executor drain, the noop at current size, the lower-boundary case, and
+`/system/running-jobs` counting only `status == "running"`. Full suite
+503 passed in ~10 s (was 469; +34 new).
+
+## 67. Thread-pool swap broke every other FastAPI endpoint (2026-09)
+
+**Symptom**: Open the Settings page, drag the slider, tap "Apply". The response
+shows `✓ 25 workers now active.` Polling `/system-info` keeps returning 200.
+Navigate to the dashboard, type an address, click "Resolve setup". Error: `No
+stores found within 5 km — try increasing the distance or selecting more
+supermarkets.` — even for addresses that obviously have stores (e.g. central
+Auckland). Geocoding the same address also fails ("Could not resolve that
+address") but is silently masked by the frontend's defensive `try/catch`.
+
+In server logs the swap itself sometimes also returned **500 Internal Server
+Error** with `RuntimeError: cannot schedule new futures after shutdown` from
+`concurrent.futures.thread.submit` — i.e. the handler's own warmup
+`asyncio.to_thread(lambda: None)` landed on the shutdown old executor. Once
+that happened the server was bricked for the rest of that lifetime — every
+`/stores/nearby`, `/geocode`, `/optimise/*`, and LLM endpoint kept returning
+500 until uvicorn was restarted.
+
+**Root cause — two layers, both real**:
+
+1. **`_ResizableThreadPool.set_max_workers` was running on a threadpool worker
+   thread and trying to rebind the asyncio loop's default executor there.**
+   The handler called `await asyncio.to_thread(set_max_workers, ...)`, so
+   `set_max_workers` ran on a worker — where
+   `asyncio.get_running_loop()` ALWAYS raises `RuntimeError("no running
+   event loop")`. The original code wrapped the rebind in
+   `try: ... except RuntimeError: pass`, which silently swallowed the
+   exception. The rebind never fired in production; the loop kept pointing
+   at the just-`shutdown(wait=False)`-d old executor; every subsequent
+   `await asyncio.to_thread(...)` then tripped
+   `RuntimeError("cannot schedule new futures after shutdown")`.
+
+2. **`thread_pool_swap` was declared `def` (sync).** Even if layer (1) had
+   been fixed in-place, FastAPI/Starlette runs sync handlers on anyio's
+   threadpool — not the asyncio loop thread — so the rebind still wouldn't
+   have access to the right loop. (The original code happened to assume
+   layer (2) didn't matter because the `except RuntimeError: pass` masked
+   the symptom; making the handler `async def` was still necessary for the
+   rebind to land.)
+
+The original docstring on the rebind block — *"Safe to call from a worker
+thread (no-op when no loop is active here)"* — was the trap. It was true in
+unit tests (TestClient doesn't run a loop in the worker context the same
+way production uvicorn does), but **always false in production** because
+`set_max_workers` is invoked via `asyncio.to_thread` from a handler that's
+either on a worker thread (sync def) or waiting to `await` the future
+(async def on the loop thread, but the future itself runs on a worker).
+Either way, no loop.
+
+**Resolution**:
+
+- `_ResizableThreadPool.set_max_workers` no longer touches the asyncio loop
+  executor at all. Its only job is `build new → atomic ref swap → drain
+  old with wait=False → return effective size`. The "this method must not
+  call asyncio.get_running_loop" contract is enforced by
+  `test_set_max_workers_does_not_touch_loop_executor`, which AST-parses the
+  method and asserts no `Call` node references either forbidden name
+  (so the docstring that explains the rule doesn't trip the assertion).
+- `thread_pool_swap` is `async def`. The handler does the rebind on the
+  loop thread itself: after `await asyncio.to_thread(set_max_workers, …)`
+  returns, it reads `_THREAD_POOL.executor` and calls
+  `asyncio.get_running_loop().set_default_executor(new_executor)`. This is
+  the only place the rebind happens, and it happens on the loop thread
+  where `get_running_loop()` works.
+- `test_pool_swap_handler_is_async` pins the handler signature via
+  `inspect.iscoroutinefunction` so layer (2) can't silently come back.
+- `test_stores_nearby_works_after_pool_swap` and
+  `test_geocode_works_after_pool_swap` cover the user-visible symptom
+  (post-swap `/stores/nearby` returns 200 + non-empty stores; `/geocode`
+  returns 200 + coords).
+
+**First-attempt failure (recorded for the post-mortem)**: the initial fix
+on this issue only flipped the handler from `def` to `async def` and kept
+the broken rebind inside `set_max_workers`. Because the handler now
+*awaited* `set_max_workers`, the method ran on a worker thread via
+`to_thread`, `get_running_loop()` still raised `RuntimeError`, the rebind
+still silently no-op'd, and the warmup `to_thread(lambda: None)` on the
+next line was the first thing to fail visibly with
+`cannot schedule new futures after shutdown` — every swap returned 500
+from then on. Lesson: layer (1) and layer (2) are both real bugs. Flipping
+only one is insufficient; the test that catches this combination
+(`set_max_workers` AST check) is what made the second pass correct.
+
+**Lesson**:
+- Any handler that touches `loop.set_default_executor(...)`, `loop.call_later(...)`,
+  or any other loop-bound state must be `async def` **and** the rebind must
+  happen on the loop thread, not inside a helper invoked via `to_thread`.
+- An `except RuntimeError: pass` in a method that's invoked via
+  `asyncio.to_thread` should be treated as a bug, not a guard. The unit
+  test that exercises it must run on a real loop with a real default
+  executor (TestClient is not enough).
+- The "previous_size" for the swap log is captured **before** the swap,
+  not passed in as `requested`. The original `log.info("… (was %d)",
+  new_size, requested)` printed `was 25` when swapping 20 → 25, which was
+  misleading and is now corrected.
+
+**Tests**: 4 new tests in `tests/web/test_shell_endpoints.py`:
+- `test_pool_swap_handler_is_async` — white-box `iscoroutinefunction`.
+- `test_set_max_workers_does_not_touch_loop_executor` — white-box AST
+  check pinning that the method never calls `asyncio.get_running_loop`
+  or `set_default_executor`.
+- `test_stores_nearby_works_after_pool_swap` — behavioural: post-swap
+  `/stores/nearby` returns 200 + non-empty stores.
+- `test_geocode_works_after_pool_swap` — behavioural: post-swap
+  `/geocode` returns 200 + coords.
+
+Full suite 507 passed in ~11 s (was 503; +4 new). Manual verification:
+change the slider 20 → 25 → 35 → 20 in `/test`, navigate back to
+dashboard, "Resolve setup" for central Auckland — succeeds, three stores
+plotted, uvicorn log shows two clean `Thread pool swapped to N workers
+(was M)` lines with correct previous sizes.
+
 

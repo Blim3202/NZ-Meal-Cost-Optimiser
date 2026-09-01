@@ -23,7 +23,11 @@ Frontends:
                 multi-page entry) — the sandbox copy of the same shell.
 
 Supporting endpoints:
-    GET  /system-info        effective thread-pool size + danger-zone caps
+    GET  /system-info        effective thread-pool size + slider bounds +
+                             running-jobs count + danger-zone caps
+    POST /system/thread-pool atomically swap the search pool to N workers
+                             (refused with 409 while jobs are running)
+    GET  /system/running-jobs  lightweight counter for the Settings poll
     GET  /tech-docs[/{name}] whitelisted markdown manuals for the docs page
     POST /dishes/import_text paste recipe text -> LLM ingredient breakdown
                              ({"status": "rejected"} on non-recipe/injection)
@@ -41,10 +45,15 @@ Dish sources:
        control is honoured uniformly across every source.
 
 Both job paths share one pipeline. Searches are offloaded to a thread pool
-(20 workers) via asyncio.to_thread; results are consumed with
+(starts at 20 workers — see ``WORKER_POOL_MIN``/``MAX``/``STEP`` module
+constants) via asyncio.to_thread; results are consumed with
 asyncio.as_completed so progress updates stream in per-search rather than
-per-batch. POST /optimise remains as a synchronous endpoint for the classic
-dashboard. An HTTP middleware logs every request's method/path/status/duration.
+per-batch. The pool can be live-resized via
+``POST /system/thread-pool`` (slider 20-40 step 5) — see
+``_ResizableThreadPool`` for the swap-and-drain semantics. POST
+``/optimise`` remains as a synchronous endpoint for the classic
+dashboard. An HTTP middleware logs every request's
+method/path/status/duration.
 
 Woolworths sessions are isolated per-store (fresh session + cookie per store).
 Foodstuffs (Pak'nSave/New World) Edge clients are authenticated ONCE per
@@ -71,6 +80,7 @@ import copy
 import json
 import logging
 import os
+import threading
 import time
 import uuid
 from datetime import datetime
@@ -248,10 +258,78 @@ def _register_job(job: JobState) -> None:
             break
 
 
-# Background search pool. Sized from WEB_MAX_WORKERS (default 20) at import
-# time — ThreadPoolExecutor can't be resized live, so changes need a restart.
-EFFECTIVE_MAX_WORKERS = max(1, min(int(settings.WEB_MAX_WORKERS), 64))
-_THREAD_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=EFFECTIVE_MAX_WORKERS)
+# Background search pool. ``ThreadPoolExecutor`` cannot be resized in place,
+# so we wrap it in a small helper that atomically swaps the underlying
+# executor under a lock. The initial size is clamped to ``[WORKER_POOL_MIN,
+# WORKER_POOL_MAX]``; the slider bounds below are the only source of truth
+# for the user-facing range — there is intentionally no .env override. Live
+# changes go through ``POST /system/thread-pool`` (rejected if any job is
+# running).
+WORKER_POOL_MIN: int = 20
+WORKER_POOL_MAX: int = 40
+WORKER_POOL_STEP: int = 5
+
+
+class _ResizableThreadPool:
+    """ThreadPoolExecutor that can be atomically swapped to a new size.
+
+    Reads (``submit`` / ``max_workers``) take a snapshot of the current
+    executor so callers never see a half-built replacement. Writes are
+    serialised by ``self._lock`` so concurrent swaps can never interleave.
+    """
+
+    def __init__(self, initial_workers: int, max_ceiling: int) -> None:
+        self._max_ceiling = max(1, int(max_ceiling))
+        self._lock = threading.Lock()
+        self._executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers=max(1, min(int(initial_workers), self._max_ceiling)),
+        )
+
+    @property
+    def max_workers(self) -> int:
+        return self._executor._max_workers  # noqa: SLF001 — read-only access for diagnostics
+
+    @property
+    def executor(self) -> concurrent.futures.ThreadPoolExecutor:
+        return self._executor
+
+    @property
+    def max_ceiling(self) -> int:
+        return self._max_ceiling
+
+    def set_max_workers(self, n: int) -> int:
+        """Replace the executor with one of size ``n`` (clamped to the
+        ceiling). The old executor is shut down with ``wait=False`` so any
+        in-flight futures finish out-of-band; new work lands on the new
+        executor. Returns the effective (clamped) size actually applied.
+
+        NOTE: this method does NOT touch the asyncio default executor.
+        It is almost always called from a threadpool worker thread
+        (via ``asyncio.to_thread`` from the async handler) where
+        ``asyncio.get_running_loop()`` raises ``RuntimeError`` and any
+        attempt to rebind silently no-ops. The async swap handler is
+        responsible for the rebind — it runs on the loop thread and
+        can call ``loop.set_default_executor(new)`` directly. See
+        ``thread_pool_swap`` and logs.md #67.
+        """
+        effective = max(1, min(int(n), self._max_ceiling))
+        with self._lock:
+            new = concurrent.futures.ThreadPoolExecutor(max_workers=effective)
+            old = self._executor
+            self._executor = new
+        # Drain outside the lock so concurrent swaps don't block on it.
+        old.shutdown(wait=False)
+        return effective
+
+
+_THREAD_POOL = _ResizableThreadPool(
+    initial_workers=WORKER_POOL_MIN,
+    max_ceiling=WORKER_POOL_MAX,
+)
+
+
+def _count_running_jobs() -> int:
+    return sum(1 for j in JOBS.values() if j.status == "running")
 
 
 def _enforce_hard_limits(distance_km: float, max_stores_per_company: int) -> None:
@@ -590,8 +668,13 @@ class JobCreated(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Set the default executor so asyncio.to_thread uses our 20-worker pool."""
-    asyncio.get_event_loop().set_default_executor(_THREAD_POOL)
+    """Bind the asyncio default executor to our resizable thread pool so
+    ``asyncio.to_thread`` runs every sync helper (geocode, store lookup,
+    CSV writes, etc.) on the same pool the optimise pipeline uses. The
+    helper rebinds the default executor on every swap, so this only needs
+    to happen once at startup.
+    """
+    asyncio.get_running_loop().set_default_executor(_THREAD_POOL.executor)
     yield
 
 
@@ -627,21 +710,127 @@ def health() -> dict:
 
 @app.get("/system-info")
 def system_info() -> dict:
-    """Runtime facts for the settings page: effective thread-pool size and
-    the server-side danger-zone ceilings. Worker changes need a restart, so
-    both the configured and effective values are reported. Also reports
-    which LLM providers have API keys configured so the Settings page can
-    show a 'Not configured' badge without an extra round-trip.
+    """Runtime facts for the settings page: effective thread-pool size, the
+    hardcoded slider bounds, the server-side danger-zone ceilings, and the
+    current number of running optimise jobs. The slider bounds are
+    constants — there is no .env override, by design. Also reports which
+    LLM providers have API keys configured so the Settings page can show a
+    'Not configured' badge without an extra round-trip.
     """
     return {
-        "max_workers": EFFECTIVE_MAX_WORKERS,
-        "configured_workers": int(settings.WEB_MAX_WORKERS),
+        "max_workers": _THREAD_POOL.max_workers,
+        "slider_min": WORKER_POOL_MIN,
+        "slider_max": WORKER_POOL_MAX,
+        "slider_step": WORKER_POOL_STEP,
+        "running_jobs": _count_running_jobs(),
         "hard_limits": HARD_LIMITS,
         "llm_providers": {
             "mistral": bool(os.getenv("MISTRAL_API_KEY")),
             "google": bool(os.getenv("GOOGLE_API_KEY")),
         },
     }
+
+
+class _ThreadPoolRequest(BaseModel):
+    """Body for POST /system/thread-pool — the new effective size."""
+
+    max_workers: int = Field(ge=1, description="New thread-pool size (must match the slider bounds)")
+
+
+@app.post("/system/thread-pool")
+async def thread_pool_swap(req: _ThreadPoolRequest) -> dict:
+    """Atomically swap the background thread pool to ``req.max_workers``.
+
+    Refused with **409** while any optimise job is still running (so we
+    never strand an in-flight future on a draining executor). Refused
+    with **400** if the requested size is outside the slider bounds or
+    the ``.env`` ceiling. Otherwise builds a new ``ThreadPoolExecutor``,
+    drains the old one with ``wait=False``, rebinds the asyncio loop's
+    default executor to the new pool, and returns the effective size.
+
+    Implementation note: the swap itself runs on a worker thread (so
+    the brief drain doesn't stall the loop). The asyncio loop rebind
+    MUST happen on the loop thread (this handler), NOT inside
+    ``set_max_workers`` — that method runs on a worker thread where
+    ``asyncio.get_running_loop()`` raises ``RuntimeError`` and any
+    rebind attempt silently no-ops, stranding every subsequent
+    ``asyncio.to_thread`` call on the just-shutdown old executor.
+    See logs.md #67.
+    """
+    running = _count_running_jobs()
+    if running > 0:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "error": "running_jobs",
+                "count": running,
+                "detail": (
+                    f"Wait for {running} running job(s) to finish before "
+                    "changing the pool — an in-flight executor swap can "
+                    "strand futures."
+                ),
+            },
+        )
+
+    requested = int(req.max_workers)
+    if not (WORKER_POOL_MIN <= requested <= WORKER_POOL_MAX):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"max_workers must be between {WORKER_POOL_MIN} and {WORKER_POOL_MAX}"
+            ),
+        )
+    if (requested - WORKER_POOL_MIN) % WORKER_POOL_STEP != 0:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"max_workers must align to the slider step of {WORKER_POOL_STEP} "
+                f"(values: "
+                f"{list(range(WORKER_POOL_MIN, WORKER_POOL_MAX + 1, WORKER_POOL_STEP))})"
+            ),
+        )
+
+    if requested == _THREAD_POOL.max_workers:
+        return {
+            "max_workers": requested,
+            "running_jobs": 0,
+            "changed": False,
+        }
+
+    previous_size = _THREAD_POOL.max_workers
+    # Build + drain the old executor on a worker thread. ``set_max_workers``
+    # intentionally does NOT touch ``loop.set_default_executor`` (it would
+    # always be a silent no-op from inside a threadpool worker — see the
+    # method's docstring). We do the rebind here, on the loop thread,
+    # against the executor object ``set_max_workers`` just installed.
+    new_size = await asyncio.to_thread(_THREAD_POOL.set_max_workers, requested)
+    new_executor = _THREAD_POOL.executor
+    # ``asyncio.get_event_loop()`` is deprecated in 3.12+; the loop the
+    # handler is currently running on is the loop we want to rebind.
+    # ``asyncio.get_running_loop()`` is correct here because this handler
+    # is awaited by uvicorn on the loop thread.
+    asyncio.get_running_loop().set_default_executor(new_executor)
+    # Warmup: submit one trivial future to the new executor so its worker
+    # threads are initialised before the response goes out. Closes the
+    # race where a burst of /stores/nearby requests arrives immediately
+    # after the swap and lands on the executor before its first thread
+    # has spun up (which would otherwise trigger the executor's lazy
+    # init on the request path).
+    await asyncio.to_thread(lambda: None)
+    log.info("Thread pool swapped to %d workers (was %d)", new_size, previous_size)
+    return {
+        "max_workers": new_size,
+        "running_jobs": 0,
+        "changed": True,
+    }
+
+
+@app.get("/system/running-jobs")
+def running_jobs_count() -> dict:
+    """Lightweight counter the Settings page polls while the user is
+    about to apply a new pool size. Returns ``{"count": N}``.
+    """
+    return {"count": _count_running_jobs()}
 
 
 # ─── LLM model catalog + settings ────────────────────────────────────────────

@@ -104,7 +104,7 @@ The behavioural details below are grouped by view. Cross-cutting rules (responsi
 
 ### Settings (SettingsView.vue)
 
-- **Settings**: four sections persisted as one JSON blob in localStorage (`meal-settings`). Display = content-width presets + UI-scale slider (applied instantly via CSS vars); Units = read-only alias table from `unitOptions.js`; Advanced = API-key stub + live thread-pool info from `GET /system-info`; Danger zone = overrides toggle gated behind an accept-risk modal ("I accept" required; disarming needs no confirm).
+- **Settings**: four sections persisted as one JSON blob in localStorage (`meal-settings`). Display = content-width presets + UI-scale slider (applied instantly via CSS vars); Units = read-only alias table from `unitOptions.js`; Advanced = live thread-pool slider (20–40, step 5 via `POST /system/thread-pool`, blocked while jobs are running) + non-food category filter toggle; Danger zone = overrides toggle gated behind an accept-risk modal ("I accept" required; disarming needs no confirm).
 
 ### App shell + cross-cutting (App.vue / TestApp.vue / AppSidebar.vue)
 
@@ -219,7 +219,7 @@ Same rule as type: repeated colour roles use `:root` tokens; raw hex only for si
 | `POST /dishes/save` | "Save as preset" | Upsert into `data/dishes.json` (tags `"source": "user"`) |
 | `POST /dishes/generate` | "Generate custom ingredients" (custom mode) | `{ingredients, filters, warnings}` — LLM-drafted recipe + seeded filter rules (503 = missing API key, 502 = generation failed) |
 | `DELETE /dishes/{key}` | My Dishes delete | Removes the preset; returns `{was_user, dishes_count}` |
-| `GET /system-info` | Settings mount | Effective/configured thread-pool workers + `HARD_LIMITS` |
+| `GET /system-info` | Settings mount | Effective/configured thread-pool workers + slider bounds + `running_jobs` count + `HARD_LIMITS` |
 | `GET /tech-docs[/{name}]` | Documentation view | Manual list / raw markdown (whitelisted files only) |
 | `POST /optimise/jobs` | submit | `{ job_id }` |
 | `GET /optimise/{id}?events_since=N` | every ~700 ms | Snapshot: status/phase/counters/events/result |
@@ -244,7 +244,7 @@ Decisions made during the app-shell build-out (Aug 2026) that leave deliberate r
 - **Navigation without a router**: both shells switch views via a plain ref + `<component :is>`. When a page needs deep links or history (most likely the LLM Recipe Builder), introduce vue-router in the sandbox (`test`) entry first and map the existing view ids onto routes — the shell template needs almost no change. A FastAPI catch-all serving `test.html` for `/test/*` paths would be required for history-mode URLs; hash mode works with zero backend changes.
 - **LLM Recipe Builder wiring**: `views/RecipeBuilderView.vue` is a styled stub with the intended flow documented on-page (fetch URL → LLM extraction → review → prefill builder). The handoff into the builder already exists: emit the dish rows through the same `loadPreset`-style path (or extend it to accept raw ingredient rows) once extraction lands. Backend seam: a new endpoint calling `resolve_ingredients()` against fetched recipe text.
 - **Settings persistence**: settings live in localStorage (`meal-settings`) by design — nothing user-specific is trusted server-side yet. If settings must follow a user across devices, add a small key/value config endpoint and sync on mount; keep secrets out either way.
-- **Runtime thread-pool resize**: workers are fixed at startup via `WEB_MAX_WORKERS` (see FastAPI.md). A live-resize endpoint is feasible (create pool → `loop.set_default_executor` → `old.shutdown(wait=False)` so in-flight jobs drain) but was deliberately deferred as risky-for-little-gain; the Settings page already shows effective vs configured values so the UI won't need changes if it lands.
+- **Runtime thread-pool resize**: ✅ **shipped** — `POST /system/thread-pool` (see FastAPI.md → Thread Pool Setup). The Settings → Advanced card now exposes a slider bound to `slider_min`/`slider_max`/`slider_step` from `/system-info`, with an explicit Apply button (auto-apply was avoided so accidental drags don't thrash the pool). The 409 on running jobs is the only behaviour worth remembering when extending it.
 - **Editable unit aliases**: the Settings unit table is read-only today. Custom aliases would be frontend-only (merged into `normaliseUnit` lookups) unless the backend gains persistence — note the builder's serialised units must stay backend-canonical, so prefer extending `UNIT_ALIASES` in `llm_utils.py` + `unitOptions.js` together instead.
 - **Danger-zone scope**: overrides currently cover distance + stores/company behind hard server caps. Natural extensions (company whitelist overrides, per-run concurrency caps, request pacing) would slot into the same armed-state pattern: gate UI behind `settings.overridesArmed`, enforce real limits server-side in `_new_job`.
 

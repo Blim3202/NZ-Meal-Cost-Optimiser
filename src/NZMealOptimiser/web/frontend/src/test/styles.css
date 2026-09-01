@@ -444,3 +444,16 @@ th.sortable.active { color: var(--ink); }
 @media (max-width: 1100px) {
   .filter-tuner { grid-template-columns: 1fr; grid-template-areas: "ingredients" "rules" "products"; }
 }
+
+/* Search thread-pool control (Settings → Advanced) */
+.pool-control { display: grid; gap: 6px; margin-top: 2px; }
+.pool-control input[type="range"] { accent-color: var(--orange); width: 100%; }
+.pool-control input[type="range"]:disabled { opacity: .55; cursor: not-allowed; }
+.pool-ticks { display: flex; justify-content: space-between; font-size: var(--fs-micro); color: var(--muted); font-weight: 700; padding: 0 2px; }
+.pool-ticks span { position: relative; padding-top: 4px; }
+.pool-ticks span.on { color: var(--ok); }
+.pool-ticks span.target { color: var(--orange); }
+.pool-ticks span.target::after { content: ''; position: absolute; left: 50%; top: -2px; transform: translateX(-50%); width: 6px; height: 6px; border-radius: 50%; background: var(--orange); }
+.pool-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+.pool-status { font-size: var(--fs-ui); font-weight: 800; }
+.pool-status.ok { color: var(--ok); }

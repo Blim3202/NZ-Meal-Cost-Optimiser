@@ -21,7 +21,7 @@ Runtime pins still live in `requirements.txt`. No path-bootstrap hacks — impor
 | Add/extend a brand API integration | `src/NZMealOptimiser/pricing/<brand>_api.py` (clients) + `src/NZMealOptimiser/pricing/optimiser_utils.py` (cross-brand helpers). Full per-brand reference: `docs/technical/<Brand>_API.md`. |
 | Use the LLM ingredient generator | CLI: `python -m tools.llm.llm_interactive`. Web: `/app` → LLM Recipe Builder. See `docs/technical/LLM_Pipeline.md`. |
 | Refresh / seed store data | `python -m tools.<brand>.<brand>_setup` (per-brand; see CLI block below). |
-| Run / extend the test suite | `python -m pytest` (469 tests, ~10 s, 27 `test_*.py` files + 3 `generate_fixtures.py` generators). Per-folder layout: see `Tests` section. |
+| Run / extend the test suite | `python -m pytest` (503 tests, ~10 s, 27 `test_*.py` files + 3 `generate_fixtures.py` generators). Per-folder layout: see `Tests` section. |
 
 ## Project Layout
 
@@ -42,7 +42,7 @@ opencode/
 │   ├── llm/                            # llm_interactive.py, llm_validate.py.
 │   ├── combined/                       # initialize_full_results.py (one-time schema setup).
 │   └── frontend/promote_test_to_app.ps1   # Promotes src/test/ → src/ after sandbox QA.
-├── tests/                              # 33 files, 469 tests. Per-brand + web/ + llm/ + combined/ (1 file).
+├── tests/                              # 33 files, 503 tests. Per-brand + web/ + llm/ + combined/ (1 file).
 ├── exploration/                        # Per-brand scratch scripts + live API verification probes (HTTP probes, JSON dumps, check_foodstuffs_parser_parity, newworld_highlight_permutations).
 ├── docs/
 │   ├── project/                        # decision.md, design.md, logs.md.
@@ -113,7 +113,7 @@ opencode/
 | `tools/llm/llm_validate.py` | Post-run validator: batches `full_results.csv` rows through `ministral-3b-2512` to fill `is_valid`. Skips already-validated rows. |
 | `tools/combined/initialize_full_results.py` | One-time `full_results.csv` schema setup (19 cols, pk_hash). |
 | `tools/frontend/promote_test_to_app.ps1` | Promote `frontend/src/test/` → `frontend/src/` (strips `/test` subtitle marker). |
-| `tests/` | 33 test files, 469 tests. See `Tests` section. |
+| `tests/` | 33 test files, 503 tests. See `Tests` section. |
 | `pyproject.toml` | Package metadata + `[tool.pytest.ini_options]` (addopts: `-ra --strict-markers`, testpaths: `tests`, marker: `network`). |
 
 ## Key Gotchas
@@ -147,6 +147,7 @@ opencode/
 ## FastAPI + Web Status
 
 - **Job model**: `POST /optimise/jobs` returns `job_id` immediately; `GET /optimise/{id}?events_since=-1` streams phase + per-company progress + event log. Thread pool runs the pipeline. See `FastAPI.md` §Thread Pool Setup, §API Endpoints.
+- **Thread pool**: wrapped in `_ResizableThreadPool` (atomic swap + drain). `POST /system/thread-pool {max_workers: N}` resizes live; **409** while any job is `running`. Settings page exposes a slider 20–40 step 5 (hardcoded `WORKER_POOL_MIN`/`MAX`/`STEP` module constants in `main.py` — no `.env` override).
 - **Optimise endpoints**: `/optimise/jobs` (POST), `/optimise/{id}` (GET), `/optimise/{id}/reapply` (POST), `/optimise/{id}/filter_preview` (POST), `/optimise/{id}/update_ingredients` (POST). Legacy sync `POST /optimise` still alive.
 - **Dish endpoints**: `/dish_filters` (GET), `/dishes/generate` (POST), `/dishes/import_text` (POST, ≤1000 chars; rejection → HTTP 200 `{"status": "rejected"}`), `/dishes/save` (POST).
 - **LLM endpoints**: `/llm/models` (GET), `/llm/models/refresh` (POST), `/llm/settings` (GET/PUT).
@@ -157,7 +158,7 @@ opencode/
 
 ## Tests
 
-- **469 tests, 0 warnings, ~10 s.** `python -m pytest` (configured via `pyproject.toml` `[tool.pytest.ini_options]`).
+- **503 tests, 0 warnings, ~10 s.** `python -m pytest` (configured via `pyproject.toml` `[tool.pytest.ini_options]`).
 - **Layout**: `tests/{paknsave,newworld,woolworths}/` (per-brand API + optimiser tests), `tests/web/` (FastAPI + LLM HTTP layer), `tests/llm/` (LLM client/models/settings/utils), `tests/combined/` (1 file — `test_parser_utils.py`, cross-brand parsing). Per-folder `__init__.py`-free; pytest auto-discovers.
 - **Fixtures**: per-brand `tests/<brand>/fixture/` holds JSON of real API responses. Generator scripts (`generate_fixtures.py`) re-record them. **Stale `*_meta.json` files were deleted** in the suite-review pass (see `logs.md` #64).
 - **Pytest markers**: `network` (deselect with `-m "not network"`).
