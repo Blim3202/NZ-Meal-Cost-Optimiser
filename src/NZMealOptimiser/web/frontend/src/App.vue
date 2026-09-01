@@ -1,18 +1,19 @@
-<template>
+﻿<template>
   <div class="app-frame" :class="{ 'drawer-open': drawerOpen }">
     <header class="mobile-topbar">
-      <button type="button" class="ghost-button ghost-small" aria-label="Open navigation" @click="drawerOpen = true">☰</button>
-      <span class="topbar-brand"><strong>Meal Optimiser</strong><small>/</small></span>
+      <button type="button" class="ghost-button ghost-small" aria-label="Open navigation" @click="drawerOpen = true">â˜°</button>
+      <span class="topbar-brand"><strong>Meal Optimiser</strong><small>/app</small></span>
     </header>
 
     <AppSidebar :current="currentView" :rail="railMode" @navigate="navigate" />
     <div v-if="drawerOpen && isMobile" class="drawer-backdrop" @click="drawerOpen = false"></div>
 
     <div class="app-main">
-      <!-- Only the LLM Recipe Builder survives view switches: its pasted
-           recipe + generated breakdown stay filled while users run other
-           queries elsewhere in the app. Everything else remounts as before. -->
-      <keep-alive include="RecipeBuilderView">
+      <!-- Dashboard + LLM Recipe Builder survive view switches: the form card
+           (dish, address, distance, portions, custom builder rows, GPS,
+           run results, live progress, console feed, in-flight job) all stay
+           filled while users visit My Dishes, Settings, Documentation, etc. -->
+      <keep-alive include="DashboardView,RecipeBuilderView">
         <component :is="activeComponent" ref="activeView" @open-dish="openDish" @open-draft="openDraft" />
       </keep-alive>
     </div>
@@ -55,13 +56,13 @@ export default {
       window.scrollTo({ top: 0 });
     }
 
-    // My Dishes → dashboard handoff (optionally straight into edit mode).
+    // My Dishes â†’ dashboard handoff (optionally straight into edit mode).
     function openDish({ key, edit }) {
       navigate('dashboard');
       nextTick(() => activeView.value?.loadPreset(key, edit));
     }
 
-    // LLM Recipe Builder → dashboard handoff with a freshly generated draft.
+    // LLM Recipe Builder â†’ dashboard handoff with a freshly generated draft.
     function openDraft(draft) {
       navigate('dashboard');
       nextTick(() => activeView.value?.loadDraft(draft));

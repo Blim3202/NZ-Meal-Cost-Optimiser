@@ -1,11 +1,15 @@
 <template>
   <main class="shell">
     <header class="hero">
-      <div><p class="eyebrow">NZ grocery intelligence</p><h1>Meal cost optimiser</h1><p class="lede">Compare any dish — preset or built by you — across nearby supermarkets.</p></div>
+      <div><p class="eyebrow">NZ grocery intelligence</p><h1>Meal cost optimiser</h1>      <p class="lede">Compare any dish. Preset or built by you, across nearby supermarkets.</p></div>
     </header>
 
     <div class="home-grid">
       <section class="panel search-panel area-form">
+        <div class="section-heading">
+          <div><p class="eyebrow">Compare supermarkets</p><h3>Pick a dish or build your own</h3></div>
+        </div>
+        <p class="hint">Set your address and compare prices across Pak'nSave, New World and Woolworths.</p>
         <form @submit.prevent="primaryAction">
           <div class="form-grid">
             <div class="field field-wide">
@@ -23,19 +27,20 @@
               <label class="field field-wide"><span>Notes (optional)</span><input v-model.trim="draft.notes" maxlength="100" placeholder="Chocolate chip cookies — bbcgoodfood.com"></label>
               <div class="field field-wide generate-row">
                 <button type="button" class="ghost-button" :disabled="generating || !canGenerate" title="Ask Mistral to draft ingredients and Gemini to seed product-filter rules from the dish name (10-20 s)" @click="generateIngredients"><span v-if="generating" class="spinner"></span>{{ generating ? 'Generating…' : 'Generate custom ingredients' }}</button>
-                <span v-if="generating" class="hint">Building your ingredient list and filters — this usually takes a few seconds.</span>
+                <span v-if="generating" class="hint">Building your ingredient list and filters. This usually takes a few seconds.</span>
               </div>
             </template>
-            <label class="field field-wide"><span>NZ address</span><input v-model.trim="form.address" list="address-history" placeholder="Auckland CBD" :disabled="gpsActive" :required="!gpsActive"><datalist id="address-history"><option v-for="address in addressHistory" :key="address" :value="address" /></datalist></label>
-            <label class="field field-sm"><span>Distance</span><input v-if="settings.overridesArmed" v-model.number="form.distance_km" type="number" min="1" max="50" step="1" required @change="clampOverrides"><select v-else v-model.number="form.distance_km"><option v-for="km in 8" :key="km" :value="km">{{ km }} km</option></select></label>
+            <label class="field field-wide"><span>NZ address</span><AddressAutocomplete v-model="form.address" placeholder="Auckland CBD" :disabled="gpsActive || originSource === 'picked'" @select="onAddressSelect" /></label>
+            <label class="field field-sm"><span>Distance</span><NumberPopover v-model="form.distance_km" :options="distanceOptions" :placeholder="form.distance_km" suffix="km" aria-label="Distance in kilometres" @update:modelValue="clampOverrides" /></label>
             <label v-if="recipeMode !== 'shopping'" class="field field-sm"><span>Portions</span><input v-model.number="form.portions" type="number" min="2" max="12" required></label>
-            <label class="field field-sm"><span>Max stores per company</span><input v-if="settings.overridesArmed" v-model.number="form.max_stores_per_company" type="number" min="1" max="20" step="1" required @change="clampOverrides"><select v-else v-model.number="form.max_stores_per_company"><option v-for="count in 5" :key="count" :value="count">{{ count }}</option></select></label>
+            <label class="field field-sm"><span>Max stores per company</span><NumberPopover v-model="form.max_stores_per_company" :options="storeOptions" :placeholder="form.max_stores_per_company" aria-label="Max stores per company" @update:modelValue="clampOverrides" /></label>
           </div>
           <p v-if="recipeMode === 'custom'" class="mode-note">Quantities above are scaled ×{{ scaleDisplay }} onto the {{ Number(draft.basePortions) || 1 }}-portion base recipe.</p>
           <p v-else-if="recipeMode === 'shopping'" class="mode-note">Each ingredient is one store search. Quantities are exactly what you need to buy, priced at a single portion with no scaling.</p>
           <div class="gps-row">
             <button type="button" class="ghost-button" :disabled="gpsBusy || gpsActive" @click="useGps"><span v-if="gpsBusy" class="spinner"></span>{{ gpsBusy ? 'Locating…' : 'Use my location' }}</button>
             <span v-if="gpsActive" class="chip chip-gps">📍 GPS · {{ gpsDisplay }}<button type="button" class="chip-x" title="Clear GPS location" @click="clearGps">✕</button></span>
+            <span v-if="originSource === 'picked' && !gpsActive" class="chip chip-picked" :title="form.address || 'Pick a point on the map'">📍 Pinned · {{ form.address || pickedCoordsLabel }}<button type="button" class="chip-x" title="Clear pinned location" @click="clearPicked">✕</button></span>
             <span v-if="settings.overridesArmed" class="chip chip-danger" title="Settings → Danger zone overrides are enabled">⚠ Overrides active · caps {{ hardLimits.max_distance_km }} km / {{ hardLimits.max_stores_per_company }} stores</span>
           </div>
           <fieldset class="company-picker"><legend>Compare supermarkets</legend><label v-for="company in companies" :key="company.id" class="company-option" :class="`company-${company.id.toLowerCase()}`"><input v-model="form.companies" type="checkbox" :value="company.id"><span class="checkmark"></span><span>{{ company.label }}</span></label></fieldset>
@@ -44,7 +49,7 @@
             <span class="hint">{{ actionHint }}</span>
           </div>
         </form>
-        <p v-if="staleNotice && !loading" class="notice-banner">⚙ Parameters changed — check to resolve settings.</p>
+        <p v-if="staleNotice && !loading" class="notice-banner">⚙ Parameters changed. Check to resolve settings.</p>
         <p v-if="error" class="error-banner" role="alert">{{ error }}</p>
       </section>
 
@@ -69,8 +74,9 @@
       <PipelineConsole class="area-terminal" :title="terminalTitle" :lines="consoleLines" :running="jobRunning" />
 
       <section class="panel map-panel area-map">
-        <div class="section-heading"><div><p class="eyebrow">Coverage</p><h3>Nearby stores</h3></div><span v-if="originLabel" class="chip">{{ originLabel }}</span></div>
-        <MapPanel :origin="mapOrigin" :stores="mapStores" :radius-km="form.distance_km" :winner-key="winnerKey" @select-store="focusStore" />
+        <div class="section-heading"><div><p class="eyebrow">Map</p><h3>Stores near you</h3></div><span v-if="originLabel" class="chip">{{ originLabel }}</span></div>
+        <MapPanel :origin="mapOrigin" :stores="mapStores" :radius-km="form.distance_km" :winner-key="winnerKey" @select-store="focusStore" @pick-origin="onPickOrigin" />
+        <p v-if="!origin && !gpsActive" class="map-hint-inline">Click anywhere on the map (or drag the pin) to pick a location</p>
       </section>
     </div>
 
@@ -80,7 +86,7 @@
 
     <transition name="toast-slide">
       <aside v-if="applyToast" class="apply-toast" role="status">
-        <p><strong>{{ applyToast.count }} filter change{{ applyToast.count === 1 ? '' : 's' }}</strong> applied — check <em>Summary</em> for updated comparisons.</p>
+        <p><strong>{{ applyToast.count }} filter change{{ applyToast.count === 1 ? '' : 's' }}</strong> applied. Check <em>Summary</em> for updated comparisons.</p>
         <div class="toast-actions">
           <button type="button" class="ghost-button ghost-small" @click="openToastSummary">Open summary →</button>
           <button type="button" class="kw-x toast-x" title="Dismiss" @click="dismissApplyToast">✕</button>
@@ -97,6 +103,8 @@ import PipelineConsole from '../components/PipelineConsole.vue';
 import ProgressStrip from '../components/ProgressStrip.vue';
 import ResultsTabs from '../components/ResultsTabs.vue';
 import DishBuilder from '../components/DishBuilder.vue';
+import NumberPopover from '../components/NumberPopover.vue';
+import AddressAutocomplete from '../components/AddressAutocomplete.vue';
 import { useJobRunner } from '../composables/useJobRunner.js';
 import { normaliseUnit } from '../unitOptions.js';
 import { storesOf, winnerKeyOf } from '../resultUtils.js';
@@ -109,7 +117,8 @@ const NORMAL_CAPS = { distance: 8, stores: 5 };
 const OVERRIDE_CAPS = { distance: 50, stores: 20 };
 
 export default {
-  components: { MapPanel, PipelineConsole, ProgressStrip, ResultsTabs, DishBuilder },
+  name: 'DashboardView',
+  components: { MapPanel, PipelineConsole, ProgressStrip, ResultsTabs, DishBuilder, NumberPopover, AddressAutocomplete },
   setup(_props, { expose }) {
     const {
       job, result, loading, error, logLine, start,
@@ -168,7 +177,7 @@ export default {
       if (!validRows.value.length || duplicateTerms.value.size) return false;
       return recipeMode.value === 'shopping' ? true : !!String(draft.name || '').trim();
     });
-    const canResolve = computed(() => canResolveBase.value && (gpsActive.value || !!form.address));
+    const canResolve = computed(() => canResolveBase.value && (gpsActive.value || !!form.address || originSource.value === 'picked'));
     const canSavePreset = computed(() => !!String(draft.name || '').trim() && validRows.value.length > 0 && duplicateTerms.value.size === 0);
     const canGenerate = computed(() => !!String(draft.name || '').trim());
 
@@ -299,10 +308,11 @@ export default {
     let toastTimer = null;
     function countFilterChanges(before, after) {
       let changes = 0;
+      const fields = ['includes', 'excludes', 'brand_includes', 'brand_excludes'];
       for (const term of new Set([...Object.keys(before), ...Object.keys(after)])) {
-        const a = before[term] || { includes: [], excludes: [] };
-        const b = after[term] || { includes: [], excludes: [] };
-        for (const kind of ['includes', 'excludes']) {
+        const a = before[term] || {};
+        const b = after[term] || {};
+        for (const kind of fields) {
           const prev = new Set((a[kind] || []).map((w) => w.toLowerCase()));
           const next = new Set((b[kind] || []).map((w) => w.toLowerCase()));
           for (const w of next) if (!prev.has(w)) changes += 1;
@@ -343,6 +353,7 @@ export default {
 
     // Seed an unseen preset scope from dish_filters.json exactly once, so
     // deleting keywords never resurrects them on revisit (per-user store wins).
+    // Brand filters are NEVER seeded — they are user-set only.
     function seedIfUnseen() {
       const key = activeScopeKey.value;
       if (!key.startsWith('preset:') || seenScopes.value.has(key)) return;
@@ -350,7 +361,12 @@ export default {
       const rules = presetFilters.value[key.slice('preset:'.length)];
       if (!rules) return;
       const clean = Object.fromEntries(Object.entries(rules)
-        .map(([term, f]) => [term, { includes: [...(f.includes || [])], excludes: [...(f.excludes || [])] }])
+        .map(([term, f]) => [term, {
+          includes: [...(f.includes || [])],
+          excludes: [...(f.excludes || [])],
+          brand_includes: [],
+          brand_excludes: [],
+        }])
         .filter(([, f]) => f.includes.length || f.excludes.length));
       filterStore.value = { ...filterStore.value, [key]: clean };
       const n = Object.keys(clean).length;
@@ -360,14 +376,27 @@ export default {
 
     function onUpdateFilters(term, next) {
       const scope = { ...(filterStore.value[activeScopeKey.value] || {}) };
-      const clean = { includes: next.includes.filter(Boolean), excludes: next.excludes.filter(Boolean) };
-      if (!clean.includes.length && !clean.excludes.length) delete scope[term];
+      const clean = {
+        includes: (next.includes || []).filter(Boolean),
+        excludes: (next.excludes || []).filter(Boolean),
+        brand_includes: (next.brand_includes || []).filter(Boolean),
+        brand_excludes: (next.brand_excludes || []).filter(Boolean),
+      };
+      const empty = !clean.includes.length && !clean.excludes.length
+        && !clean.brand_includes.length && !clean.brand_excludes.length;
+      if (empty) delete scope[term];
       else scope[term] = clean;
       filterStore.value = { ...filterStore.value, [activeScopeKey.value]: scope };
     }
 
     const normalisedRulesSig = (rules) => JSON.stringify(Object.entries(rules || {})
-      .map(([term, f]) => ({ t: term.toLowerCase(), i: f.includes || [], e: f.excludes || [] }))
+      .map(([term, f]) => ({
+        t: term.toLowerCase(),
+        i: f.includes || [],
+        e: f.excludes || [],
+        bi: f.brand_includes || [],
+        be: f.brand_excludes || [],
+      }))
       .sort((a, b) => a.t.localeCompare(b.t)));
     const canResetFilters = computed(() => recipeMode.value === 'preset' && !!form.dish
       && !!presetFilters.value[form.dish]
@@ -387,9 +416,13 @@ export default {
         if (!term) continue;
         const entry = scope[term];
         if (!entry) continue;
-        const includes = entry.includes.filter((w) => String(w).trim());
-        const excludes = entry.excludes.filter((w) => String(w).trim());
-        if (includes.length || excludes.length) out[term] = { includes, excludes };
+        const includes = (entry.includes || []).filter((w) => String(w).trim());
+        const excludes = (entry.excludes || []).filter((w) => String(w).trim());
+        const brand_includes = (entry.brand_includes || []).filter((w) => String(w).trim());
+        const brand_excludes = (entry.brand_excludes || []).filter((w) => String(w).trim());
+        if (includes.length || excludes.length || brand_includes.length || brand_excludes.length) {
+          out[term] = { includes, excludes, brand_includes, brand_excludes };
+        }
       }
       return out;
     }
@@ -636,7 +669,9 @@ export default {
     const gpsActive = computed(() => !!gps.value);
     const gpsDisplay = computed(() => (gps.value ? `${gps.value.lat.toFixed(3)}, ${gps.value.lon.toFixed(3)}` : ''));
     const mapOrigin = computed(() => origin.value || result.value?.origin || null);
-    const originLabel = computed(() => { const o = mapOrigin.value; if (!o) return ''; return o.source === 'gps' ? 'Using device GPS' : 'Geocoded origin'; });
+    const originSource = computed(() => origin.value?.source || (result.value?.origin?.source || ''));
+    const pickedCoordsLabel = computed(() => (origin.value ? `${origin.value.lat.toFixed(4)}, ${origin.value.lon.toFixed(4)}` : ''));
+    const originLabel = computed(() => { const o = mapOrigin.value; if (!o) return ''; if (o.source === 'gps') return 'Using device GPS'; if (o.source === 'picked') return 'Pinned on map'; return 'Geocoded origin'; });
     const mapStores = computed(() => storesOf(result.value, previewStores.value));
     const winnerKey = computed(() => winnerKeyOf(result.value));
     const resolved = computed(() => !!origin.value);
@@ -681,7 +716,75 @@ export default {
     function clearGps() { gps.value = null; }
     function focusStore(pin) { resultsSection.value?.focusStore(pin); }
 
+    // ── Map pick / drag → new origin {source: 'picked'} ─────────────────────
+    // Pure manual GPS picking, no Nominatim involved. We set the origin
+    // immediately, snap the map preview, then debounce-reverse the coords
+    // via /geocode/reverse (Photon) so the address field gets a real label
+    // without the user re-typing. The 'picked' source makes the form-input
+    // wipe guard at the bottom of the file skip the picked branch, and
+    // originLabel above surfaces it in the coverage chip.
+    let reverseAbort = null;
+    async function reverseLookup(lat, lon) {
+      if (reverseAbort) reverseAbort.abort();
+      reverseAbort = new AbortController();
+      const signal = reverseAbort.signal;
+      try {
+        const response = await fetch(`/geocode/reverse?lat=${lat}&lon=${lon}`, { signal });
+        if (!response.ok) return null;
+        return await response.json();
+      } catch (err) {
+        if (err.name === 'AbortError') return null;
+        return null;
+      }
+    }
+
+    async function onPickOrigin({ lat, lon }) {
+      if (lat < NZ_BOUNDS.latMin || lat > NZ_BOUNDS.latMax || lon < NZ_BOUNDS.lonMin || lon > NZ_BOUNDS.lonMax) {
+        error.value = 'That point is outside New Zealand — drop the pin within NZ.';
+        return;
+      }
+      origin.value = { lat, lon, source: 'picked' };
+      _suppressAddressReset += 1;
+      form.address = '';
+      error.value = '';
+      logLine('phase', 'LOC', `pin dropped · ${lat.toFixed(4)}, ${lon.toFixed(4)} — looking up address…`);
+      await fetchPreview();
+      const data = await reverseLookup(lat, lon);
+      if (data && data.label) {
+        _suppressAddressReset += 1;
+        form.address = data.label;
+        logLine('ok', 'LOC', `pinned · ${data.label}`);
+      } else if (data === null) {
+        logLine('warn', 'LOC', `no address label found for ${lat.toFixed(4)}, ${lon.toFixed(4)} — drop the pin closer to a road`);
+      }
+    }
+
+    function onAddressSelect(suggestion) {
+      if (gpsActive.value) return;
+      resolving.value = true;
+      error.value = '';
+      logLine('phase', 'LOC', `resolving "${suggestion.display}"…`);
+      // The Photon result already includes coords — use them directly so
+      // we avoid a second Nominatim round-trip through /geocode.
+      _suppressAddressReset += 1;
+      origin.value = { lat: suggestion.lat, lon: suggestion.lon, source: 'geocoded' };
+      form.address = suggestion.display;
+      logLine('ok', 'LOC', `geocoded "${suggestion.display}" → ${suggestion.lat.toFixed(4)}, ${suggestion.lon.toFixed(4)}`);
+      resolving.value = false;
+      fetchPreview();
+    }
+
+    function clearPicked() {
+      if (origin.value?.source === 'picked') {
+        origin.value = null;
+        form.address = '';
+        logLine('warn', 'LOC', 'pinned location cleared');
+      }
+    }
+
     // ── Danger-zone overrides: clamp helper + arming transitions ───────────
+    const distanceOptions = computed(() => Array.from({ length: settings.overridesArmed ? 50 : 8 }, (_, i) => i + 1));
+    const storeOptions = computed(() => Array.from({ length: settings.overridesArmed ? 20 : 5 }, (_, i) => i + 1));
     function clampOverrides() {
       const caps = settings.overridesArmed ? OVERRIDE_CAPS : NORMAL_CAPS;
       form.distance_km = Math.min(caps.distance, Math.max(1, Math.round(Number(form.distance_km) || 5)));
@@ -694,7 +797,15 @@ export default {
         : 'overrides disarmed — inputs returned to standard ranges');
     });
 
-    watch(() => form.address, () => { if (origin.value?.source === 'geocoded') { origin.value = null; logLine('warn', 'LOC', 'address changed — re-resolve location'); } });
+    // Address-input guard: when the user types, wipe the geocoded origin
+    // so the resolve step runs again. The picked origin's label is set
+    // programmatically via onPickOrigin — we suppress the wipe in that
+    // window so the resolved label doesn't immediately kill the pin.
+    let _suppressAddressReset = 0;
+    watch(() => form.address, () => {
+      if (_suppressAddressReset > 0) { _suppressAddressReset -= 1; return; }
+      if (origin.value?.source === 'geocoded') { origin.value = null; logLine('warn', 'LOC', 'address changed — re-resolve location'); }
+    });
     watch(gps, (lock) => {
       if (lock) { origin.value = { lat: lock.lat, lon: lock.lon, source: 'gps' }; logLine('ok', 'LOC', `device gps locked · ${lock.lat.toFixed(4)}, ${lock.lon.toFixed(4)}`); }
       else if (origin.value?.source === 'gps') { origin.value = null; logLine('warn', 'LOC', 'gps cleared'); }
@@ -746,8 +857,11 @@ export default {
         return;
       }
       if (gpsActive.value) { origin.value = { lat: gps.value.lat, lon: gps.value.lon, source: 'gps' }; }
+      else if (origin.value?.source === 'picked') {
+        // already resolved from the map — just re-run the preview against current settings
+      }
       else {
-        if (!form.address) { error.value = 'Enter an address or use device GPS.'; return; }
+        if (!form.address) { error.value = 'Enter an address, use device GPS, or pick a point on the map.'; return; }
         resolving.value = true;
         try {
           const response = await fetch(`/geocode?address=${encodeURIComponent(form.address)}`);
@@ -830,7 +944,7 @@ export default {
 
     return {
       companies, dishes, form, addressHistory, gps, gpsBusy, gpsActive, gpsDisplay,
-      useGps, clearGps, originLabel, mapOrigin, mapStores, winnerKey, focusStore,
+      useGps, clearGps, originSource, pickedCoordsLabel, onPickOrigin, onAddressSelect, clearPicked, originLabel, mapOrigin, mapStores, winnerKey, focusStore,
       resolved, readyToCompare, canResolve, actionLabel, actionHint, primaryAction,
       staleNotice, error, loading, resolving,
       recipeMode, setMode, draft, builderIngredients, builderBasePortions,
@@ -846,6 +960,7 @@ export default {
       job, jobRunning, overallPct, elapsedDisplay, terminalTitle, consoleLines, result,
       resultsSection,
       settings, hardLimits, clampOverrides,
+      distanceOptions, storeOptions,
     };
   },
 };

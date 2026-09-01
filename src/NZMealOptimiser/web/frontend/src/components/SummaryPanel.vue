@@ -1,5 +1,38 @@
 <template>
   <div class="summary-panel">
+    <div v-if="jobId" class="ai-block auto-refine-block">
+      <div class="ai-block-head">
+        <span class="rule-label">Auto refine</span>
+        <span class="subcard-hint ai-block-hint">Dish-wide — cull up to 15 most irrelevant terms per ingredient for {{ result?.dish || 'this dish' }}</span>
+      </div>
+      <div class="ai-actions">
+        <button type="button" class="ghost-button ghost-small" :disabled="!canAutoCull" @click="autoCull">
+          <span v-if="autoBusy" class="spinner spinner-inline"></span>
+          {{ autoBusy ? 'Refining…' : 'Auto refine filters' }}
+        </button>
+        <span class="subcard-hint ai-hint">{{ autoHint }}</span>
+      </div>
+      <p v-if="autoError" class="error-banner" role="alert">{{ autoError }}</p>
+      <div v-if="autoSuggestion" class="ai-suggestion">
+        <p class="subcard-hint">Review before applying — additive, capped at 15 per list.</p>
+        <ul class="ai-suggestion-list ai-suggestion-compact">
+          <li v-for="row in autoCompactDiffs" :key="`sum-auto-${row.term}`" class="ai-suggestion-row ai-row-compact">
+            <div class="ai-diff-main">
+              <strong class="ai-diff-term">{{ row.term }}</strong>
+              <span v-for="(w,i) in row.entry.excludes" :key="`s-exc-${row.term}-${i}`" class="kw-chip kw-exclude">{{ w }}</span>
+              <span v-for="(w,i) in row.entry.brand_excludes" :key="`s-bexc-${row.term}-${i}`" class="kw-chip kw-brand-exclude">{{ w }}</span>
+            </div>
+            <span class="match-chip m-part" :title="`${row.kwCount} new keyword(s)`">{{ row.kwCount }} new · {{ row.ai.matched }}/{{ row.ai.total }}</span>
+          </li>
+        </ul>
+        <p v-if="autoSuggestion.warnings?.length" class="subcard-hint">Warnings: {{ autoSuggestion.warnings.join('; ') }}</p>
+        <div class="ai-suggestion-actions">
+          <button type="button" class="primary-button" @click="applyAuto">Apply these filters</button>
+          <button type="button" class="ghost-button ghost-small" @click="dismissAuto">Dismiss</button>
+        </div>
+      </div>
+      <div v-if="autoSuggestion && !Object.keys(autoSuggestion.compiled_filters || {}).length" class="subcard-hint">No irrelevant terms found for this dish.</div>
+    </div>
     <div class="summary-controls">
       <div class="seg-toggle" role="group" aria-label="Cost basis">
         <button type="button" class="seg-btn" :class="{ active: settings.summaryBasis === 'used' }" title="Rank by the scaled cost of using each product in this recipe" @click="settings.summaryBasis = 'used'">Used cost</button>
@@ -95,9 +128,12 @@ export default {
   props: {
     result: { type: Object, default: null },
     companies: { type: Array, required: true },
-    terms: { type: Array, default: () => [] }, // requested ingredient order
+    terms: { type: Array, default: () => [] },
+    jobId: { type: String, default: '' },
+    filters: { type: Object, default: () => ({}) },
   },
-  setup(props, { expose }) {
+  emits: ['update-filters'],
+  setup(props, { expose, emit }) {
     const expandedStores = ref(new Set());
 
     const num = (v) => (v === '' || v === null || v === undefined || Number.isNaN(Number(v)) ? null : Number(v));
@@ -262,11 +298,87 @@ export default {
     function badgeClass(company) { return `badge-${String(company).toLowerCase()}`; }
     function money(value) { return value === null || value === undefined || Number.isNaN(Number(value)) ? '-' : `$${Number(value).toFixed(2)}`; }
 
+    const MAX_KW = 15;
+    const autoBusy = ref(false);
+    const autoError = ref('');
+    const autoSuggestion = ref(null);
+    const canAutoCull = computed(() => !!props.jobId && !!props.result && !autoBusy.value);
+    const autoHint = computed(() => {
+      if (!props.jobId || !props.result) return 'Run a comparison to enable';
+      return 'Auto-generates up to 15 excludes per ingredient for this dish';
+    });
+    const autoCompactDiffs = computed(() => {
+      const compiled = autoSuggestion.value?.compiled_filters || {};
+      const aiTerms = autoSuggestion.value?.preview?.terms || {};
+      // current counts not available here; use preview baseline vs current preview if we had it.
+      // Fall back to showing just ai matched/total when no baseline.
+      return Object.entries(compiled).map(([term, entry]) => {
+        const kwCount = (entry.excludes?.length || 0) + (entry.brand_excludes?.length || 0);
+        const ai = aiTerms[term] || { matched: 0, total: 0 };
+        // Try to infer cur from result rows count per term (approx total), delta unavailable
+        // We still compute delta vs ai if cur known via result? Use ai as both for now.
+        const cur = { matched: ai.matched, total: ai.total };
+        // If preview is additive, matched will be <= cur before; delta will be 0 here.
+        // We fetch delta from the preview vs a snapshot if needed — for now show ai counts.
+        const delta = 0;
+        const deltaText = delta > 0 ? `+${delta}` : `${delta}`;
+        return { term, entry, kwCount, cur, ai, delta, deltaText };
+      });
+    });
+    async function parseAutoResponse(response) {
+      const text = await response.text();
+      let data = {};
+      if (text) { try { data = JSON.parse(text); } catch { throw new Error(text.slice(0, 400) || 'Server error'); } }
+      if (!response.ok) throw new Error(data.detail || text.slice(0, 400) || 'Request failed');
+      return data;
+    }
+    async function autoCull() {
+      if (!canAutoCull.value) return;
+      autoBusy.value = true;
+      autoError.value = '';
+      autoSuggestion.value = null;
+      try {
+        const response = await fetch(`/optimise/${props.jobId}/auto_cull_preview`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ current_filters: props.filters }),
+        });
+        autoSuggestion.value = await parseAutoResponse(response);
+      } catch (err) {
+        autoError.value = err.message;
+      } finally {
+        autoBusy.value = false;
+      }
+    }
+    function applyAuto() {
+      const filters = autoSuggestion.value?.compiled_filters || {};
+      for (const [term, entry] of Object.entries(filters)) {
+        const existing = props.filters[term] || { includes: [], excludes: [], brand_includes: [], brand_excludes: [] };
+        const lowerEx = new Set((existing.excludes || []).map((w) => String(w).toLowerCase()));
+        const lowerBe = new Set((existing.brand_excludes || []).map((w) => String(w).toLowerCase()));
+        const newEx = [...(existing.excludes || [])];
+        const newBe = [...(existing.brand_excludes || [])];
+        for (const w of entry.excludes || []) if (!lowerEx.has(String(w).toLowerCase()) && newEx.length < MAX_KW) { newEx.push(w); lowerEx.add(String(w).toLowerCase()); }
+        for (const w of entry.brand_excludes || []) if (!lowerBe.has(String(w).toLowerCase()) && newBe.length < MAX_KW) { newBe.push(w); lowerBe.add(String(w).toLowerCase()); }
+        const clean = {
+          includes: existing.includes || [],
+          excludes: newEx.slice(0, MAX_KW),
+          brand_includes: existing.brand_includes || [],
+          brand_excludes: newBe.slice(0, MAX_KW),
+        };
+        emit('update-filters', term, clean);
+      }
+      autoSuggestion.value = null;
+    }
+    function dismissAuto() { autoSuggestion.value = null; autoError.value = ''; }
+
     expose({ focusStore });
 
     return {
       settings, rankedStores, basket, basisLabel, altLabel, expandedStores,
       toggleStore, focusStore, companyLabel, badgeClass, money,
+      autoBusy, autoError, autoSuggestion, canAutoCull, autoHint, autoCompactDiffs,
+      autoCull, applyAuto, dismissAuto,
     };
   },
 };

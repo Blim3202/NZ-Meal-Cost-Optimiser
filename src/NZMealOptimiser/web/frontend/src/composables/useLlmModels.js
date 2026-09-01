@@ -3,7 +3,6 @@ import { computed, reactive } from 'vue';
 const DEFAULTS = {
   ingredient_model: { provider: 'mistral', model_id: 'mistral-medium-latest' },
   filter_model: { provider: 'google', model_id: 'gemini-3.1-flash-lite' },
-  exclude_non_food: true,
 };
 
 function modelKey(model) {
@@ -26,7 +25,6 @@ export function useLlmModels() {
     settings: {
       ingredient_model: { ...DEFAULTS.ingredient_model },
       filter_model: { ...DEFAULTS.filter_model },
-      exclude_non_food: DEFAULTS.exclude_non_food,
     },
     loading: false,
     refreshing: false,
@@ -48,9 +46,7 @@ export function useLlmModels() {
       const data = await resp.json();
       state.fetchedAt = data.fetched_at || null;
       state.providers = data.providers || { mistral: null, google: null };
-      if (data.settings) {
-        state.settings = { ...state.settings, ...data.settings };
-      }
+      if (data.settings) state.settings = data.settings;
     } catch (e) {
       setNotice('error', `Could not load model list: ${e.message}`);
     } finally {
@@ -67,9 +63,7 @@ export function useLlmModels() {
       const data = await resp.json();
       state.fetchedAt = data.fetched_at || null;
       state.providers = data.providers || { mistral: null, google: null };
-      if (data.settings) {
-        state.settings = { ...state.settings, ...data.settings };
-      }
+      if (data.settings) state.settings = data.settings;
       setNotice('ok', 'Model list refreshed.');
     } catch (e) {
       setNotice('error', `Refresh failed: ${e.message}`);
@@ -105,7 +99,6 @@ export function useLlmModels() {
     state.settings = {
       ingredient_model: { ...DEFAULTS.ingredient_model },
       filter_model: { ...DEFAULTS.filter_model },
-      exclude_non_food: DEFAULTS.exclude_non_food,
     };
     setNotice('ok', 'Defaults restored — click Save to apply.');
   }

@@ -12,7 +12,7 @@
         <button v-if="canReapply" type="button" class="primary-button apply-btn" :disabled="applying" title="Recalculate ingredient validity, store costs and the winner from the cached products — no new supermarket queries" @click="$emit('apply')"><span v-if="applying" class="spinner"></span>{{ applying ? 'Applying…' : 'Apply filters' }}</button>
       </div>
 
-      <SummaryPanel v-if="result" v-show="activeTab === 'summary'" ref="summaryPanel" :result="result" :companies="companies" :terms="terms" />
+      <SummaryPanel v-if="result" v-show="activeTab === 'summary'" ref="summaryPanel" :result="result" :companies="companies" :terms="terms" :job-id="jobId" :filters="filters" @update-filters="(term, next) => $emit('update-filters', term, next)" />
       <div v-else-if="activeTab === 'summary'" class="tab-empty">Compare prices to view this table.</div>
       <FilterTunerPanel v-if="activeTab === 'tuner'" :job-id="jobId" :active="previewActive" :ingredients="tunerIngredients" :filters="filters" :stores="result ? result.store_costs || [] : []" :companies="companies" :selected-term="tunerTerm" @update-filters="(term, next) => $emit('update-filters', term, next)" @select-term="tunerTerm = $event" />
       <AllResultsPanel v-if="result" v-show="activeTab === 'results'" ref="allResults" :result="result" :companies="companies" />
@@ -55,7 +55,11 @@ export default {
     let suppressJump = false;
 
     const filterKeywordCount = computed(() => Object.values(props.filters)
-      .reduce((n, f) => n + (f.includes?.length || 0) + (f.excludes?.length || 0), 0));
+      .reduce((n, f) => n
+        + (f.includes?.length || 0)
+        + (f.excludes?.length || 0)
+        + (f.brand_includes?.length || 0)
+        + (f.brand_excludes?.length || 0), 0));
 
     function showTuner(term) {
       activeTab.value = 'tuner';

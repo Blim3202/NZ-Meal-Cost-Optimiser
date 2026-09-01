@@ -6,19 +6,19 @@
     </button>
     <div v-if="open" class="filter-editor">
       <div class="filter-group">
-        <span class="fg-label">Must include</span>
+        <span class="fg-label">Include Term</span>
         <span v-for="(word, i) in current.includes" :key="`inc-${i}`" class="kw-chip kw-include">{{ word }}<button type="button" class="kw-x" :title="`Remove '${word}'`" @click="drop('includes', i)">✕</button></span>
         <div class="kw-input-wrap" :class="{ 'is-filled': !!draftInc, 'is-duplicate': incDuplicate }">
           <span class="kw-input-icon" aria-hidden="true">+</span>
-          <input v-model="draftInc" class="kw-add" placeholder="add keyword ↵" :aria-label="`Add include keyword for ${term}`" @keydown.enter.prevent="push('includes')">
+          <input v-model="draftInc" class="kw-add" placeholder="add term ↵" :aria-label="`Add include term for ${term}`" @keydown.enter.prevent="push('includes')">
         </div>
       </div>
       <div class="filter-group">
-        <span class="fg-label">Must exclude</span>
+        <span class="fg-label">Exclude Term</span>
         <span v-for="(word, i) in current.excludes" :key="`exc-${i}`" class="kw-chip kw-exclude">{{ word }}<button type="button" class="kw-x" :title="`Remove '${word}'`" @click="drop('excludes', i)">✕</button></span>
         <div class="kw-input-wrap" :class="{ 'is-filled': !!draftExc, 'is-duplicate': excDuplicate }">
           <span class="kw-input-icon" aria-hidden="true">+</span>
-          <input v-model="draftExc" class="kw-add" placeholder="add keyword ↵" :aria-label="`Add exclude keyword for ${term}`" @keydown.enter.prevent="push('excludes')">
+          <input v-model="draftExc" class="kw-add" placeholder="add term ↵" :aria-label="`Add exclude term for ${term}`" @keydown.enter.prevent="push('excludes')">
         </div>
       </div>
       <p class="fg-hint">Every include term must appear in the product name (fuzzy singular/plural, e.g. carrot matches carrots) and no exclude term may appear. Brand filters in the Optimiser tuner are checked first and override these name filters when set. Filtered products remain visible but are excluded from store costs.</p>
@@ -30,12 +30,16 @@
 import { computed, ref } from 'vue';
 
 const MAX_KW = 15;
+const MAX_LEN = 40;
 const EMPTY = () => ({ includes: [], excludes: [] });
 
 function normalize(list) {
   return list.map((w) => String(w).trim().toLowerCase());
 }
 
+// Per-ingredient include/exclude keyword editor. Keywords live OUTSIDE the
+// ingredient rows — the parent owns a per-scope map keyed by search term so
+// preset previews stay editable and edits survive mode switches.
 export default {
   name: 'FilterEditor',
   props: {
@@ -50,7 +54,7 @@ export default {
     const draftExc = ref('');
 
     const current = computed(() => props.filters[props.term] || EMPTY());
-    const count = computed(() => current.value.includes.length + current.value.excludes.length);
+    const count = computed(() => (current.value.includes?.length || 0) + (current.value.excludes?.length || 0));
 
     const incDuplicate = computed(() => {
       const w = draftInc.value.trim().toLowerCase();
@@ -62,12 +66,12 @@ export default {
     });
 
     function emitNext(kind, list) {
-      const next = { includes: [...current.value.includes], excludes: [...current.value.excludes], [kind]: list };
+      const next = { ...current.value, [kind]: list };
       emit('update-filters', props.term, next);
     }
     function push(kind) {
       const draft = kind === 'includes' ? draftInc : draftExc;
-      const word = String(draft.value || '').trim().slice(0, 40);
+      const word = String(draft.value || '').trim().slice(0, MAX_LEN);
       if (!word) { draft.value = ''; return; }
       const lower = word.toLowerCase();
       const opposite = kind === 'includes' ? 'excludes' : 'includes';
@@ -77,7 +81,7 @@ export default {
       draft.value = '';
     }
     function drop(kind, index) {
-      emitNext(kind, current.value[kind].filter((_, i) => i !== index));
+      emitNext(kind, (current.value[kind] || []).filter((_, i) => i !== index));
     }
 
     return { open, draftInc, draftExc, current, count, incDuplicate, excDuplicate, push, drop };

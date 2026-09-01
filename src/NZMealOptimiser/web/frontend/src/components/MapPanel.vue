@@ -27,7 +27,7 @@ export default {
     radiusKm: { type: Number, default: 5 },
     winnerKey: { type: String, default: '' },
   },
-  emits: ['select-store'],
+  emits: ['select-store', 'pick-origin'],
   setup(props, { emit }) {
     const mapEl = ref(null);
     let map = null;
@@ -77,8 +77,12 @@ export default {
       originMarker = L.marker([o.lat, o.lon], {
         icon: L.divIcon({ className: '', html: '<span class="origin-pin"></span>', iconSize: [18, 18], iconAnchor: [9, 9] }),
         zIndexOffset: 1000,
-        interactive: false,
+        draggable: true,
       }).addTo(map);
+      originMarker.on('dragend', (e) => {
+        const { lat, lng } = e.target.getLatLng();
+        emit('pick-origin', { lat, lon: lng });
+      });
       radiusCircle.setLatLng([o.lat, o.lon]).setRadius((props.radiusKm || 0) * 1000);
       fitView(props.stores.filter(hasCoords).length);
     }
@@ -105,6 +109,7 @@ export default {
       radiusCircle = L.circle([-41.2, 172.8], { radius: 0, color: '#5a6b7a', weight: 1, dashArray: '5 5', fillColor: '#5a6b7a', fillOpacity: 0.05 }).addTo(map);
       markerLayer = L.layerGroup().addTo(map);
       map.setView([-41.2, 172.8], 5);
+      map.on('click', (e) => emit('pick-origin', { lat: e.latlng.lat, lon: e.latlng.lng }));
       renderStores();
       renderOrigin();
       resizeObserver = new ResizeObserver(() => { if (map) map.invalidateSize(); });

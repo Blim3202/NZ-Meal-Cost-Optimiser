@@ -1,13 +1,13 @@
 <template>
   <main class="shell">
     <header class="hero">
-      <div><p class="eyebrow">Recipe library</p><h1>LLM Recipe Builder</h1><p class="lede">Paste a recipe's ingredient list and let Mistral turn it into an optimisable dish breakdown.</p></div>
+      <div><p class="eyebrow">Recipe library</p><h1>LLM Recipe Builder</h1>      <p class="lede">Paste a recipe's ingredient list and let Mistral or Gemini turn it into an optimisable dish breakdown.</p></div>
     </header>
 
     <section class="panel builder-panel">
       <p class="notice-banner import-disclaimer" role="note">
         <span class="disclaimer-icon" aria-hidden="true">♡</span>
-        <span>Please support recipe authors by visiting their sites — following the original instructions there guarantees accurate cooking steps, while LLM extraction can occasionally misread quantities. Only paste recipes you have legitimate access to.</span>
+        <span>Please support recipe authors by visiting their sites. Following the original instructions there guarantees accurate cooking steps, while LLM extraction can occasionally misread quantities. Only paste recipes you have legitimate access to.</span>
       </p>
 
       <form @submit.prevent="buildBreakdown">
@@ -15,7 +15,7 @@
           <label class="field field-wide"><span>Paste your ingredient list</span>
             <textarea v-model="form.text" rows="7" maxlength="1000" placeholder="e.g.&#10;500g beef mince&#10;400g spaghetti pasta&#10;1 can chopped tomatoes (400g)&#10;1 brown onion, finely diced&#10;2 cloves garlic" :disabled="importing"></textarea>
           </label>
-          <p class="hint paste-instructions field-wide">Add the ingredient list for your recipe above, then fill in the recipe name, portion size and optional notes below — skip any ads, stories or cooking steps.</p>
+          <p class="hint paste-instructions field-wide">Add the ingredient list for your recipe above, then fill in the recipe name, portion size and optional notes below. Skip any ads, stories or cooking steps.</p>
           <label class="field field-name"><span>Recipe name</span><input v-model.trim.lazy="form.name" maxlength="80" placeholder="e.g. spaghetti bolognese" required></label>
           <label class="field field-base"><span>Base portions</span><input v-model.number="form.basePortions" type="number" min="1" max="24" required></label>
           <label class="field field-wide"><span>Notes (optional)</span><input v-model.trim="form.notes" maxlength="100" placeholder="Chocolate chip cookies — bbcgoodfood.com"></label>
@@ -23,14 +23,14 @@
         <div class="char-row"><span class="char-counter" :class="{ 'counter-limit': form.text.length >= TEXT_LIMIT }">{{ form.text.length }}/{{ TEXT_LIMIT }}</span></div>
         <div class="form-actions builder-actions">
           <button class="primary-button" type="submit" :disabled="importing || !canBuild"><span v-if="importing" class="spinner"></span>{{ importing ? 'Building…' : 'Build dish breakdown' }}</button>
-          <span v-if="importing" class="hint">Mistral extracts the ingredients, then Gemini seeds product-filter rules — this can take 10–20 s.</span>
+          <span v-if="importing" class="hint">Mistral or Gemini extracts ingredients and seeds product-filter rules. This can take 10–20 s.</span>
           <button type="button" class="ghost-button ghost-small builder-clear" title="Wipe the pasted text, recipe details and the extracted breakdown" :disabled="importing || !hasContent" @click="clearAll">Clear all</button>
         </div>
       </form>
 
       <transition name="toast-slide">
         <aside v-if="rejected" class="notice-banner rejection-banner" role="status">
-          <span>Couldn't build this recipe — {{ rejected }}. Paste an ingredient list from the recipe's own site and try again.</span>
+          <span>Couldn't build this recipe: {{ rejected }}. Paste an ingredient list from the recipe's own site and try again.</span>
           <button type="button" class="chip-x rejection-x" title="Dismiss" @click="rejected = ''">✕</button>
         </aside>
       </transition>
@@ -57,7 +57,7 @@
         <ul v-if="result.warnings && result.warnings.length" class="warning-list">
           <li v-for="(warning, index) in result.warnings" :key="index">⚠ {{ warning }}</li>
         </ul>
-        <p class="hint">Review every row in the dish builder before pricing — extraction can misread quantities.</p>
+        <p class="hint">Review every row in the dish builder before pricing. Extraction can misread quantities.</p>
       </section>
     </section>
   </main>
