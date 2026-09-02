@@ -18,12 +18,12 @@
     <!-- ── Card 2: rule editor for the selected ingredient ───────────────── -->
     <section v-if="current" class="subcard">
       <h4>Edit rules <span class="chip-mini">{{ selectedTerm }}</span></h4>
-      <p class="subcard-hint">Tune name and brand keywords for this ingredient — brand filters take precedence over name filters.</p>
+      <p class="subcard-hint">Tune name and brand keywords for this ingredient. Brand filters take precedence over name filters.</p>
 
       <div class="ai-block">
         <div class="ai-block-head">
           <span class="rule-label">AI instruction</span>
-          <span class="subcard-hint ai-block-hint">Universal sentence across all ingredients — e.g. "only red onions, no flavoured milk"</span>
+          <span class="subcard-hint ai-block-hint">A single sentence that applies to all ingredients, e.g. "only red onions, no flavoured milk".</span>
         </div>
         <textarea
           v-model="aiText"
@@ -42,7 +42,7 @@
         </div>
         <p v-if="aiError" class="error-banner" role="alert">{{ aiError }}</p>
         <div v-if="aiSuggestion" class="ai-suggestion">
-          <p class="subcard-hint">Review before applying — counts show net change per ingredient.</p>
+          <p class="subcard-hint">Review before applying. Counts show net change per ingredient.</p>
           <ul class="ai-suggestion-list ai-suggestion-compact">
             <li v-for="row in aiCompactDiffs" :key="row.term" class="ai-suggestion-row ai-row-compact">
               <div class="ai-diff-main">
@@ -55,7 +55,6 @@
               <span class="match-chip" :class="row.delta < 0 ? 'm-zero' : row.delta > 0 ? 'm-full' : 'm-part'" :title="`${row.kwCount} keyword(s) · ${row.cur.matched}/${row.cur.total} → ${row.ai.matched}/${row.ai.total}`">{{ row.deltaText }} · {{ row.ai.matched }}/{{ row.ai.total }}</span>
             </li>
           </ul>
-          <p v-if="aiSuggestion.warnings?.length" class="subcard-hint">Warnings: {{ aiSuggestion.warnings.join('; ') }}</p>
           <div class="ai-suggestion-actions">
             <button type="button" class="primary-button" @click="applyAi">Apply these filters</button>
             <button type="button" class="ghost-button ghost-small" @click="dismissAi">Dismiss</button>
@@ -71,11 +70,11 @@
             {{ autoBusy ? 'Refining…' : 'Auto refine filters' }}
           </button>
           <span v-if="autoHint" class="subcard-hint ai-hint">{{ autoHint }}</span>
-          <span v-else class="subcard-hint ai-block-hint">Up to 15 dish-wide filters for the most irrelevant terms per ingredient for this dish</span>
+          <span v-else class="subcard-hint ai-block-hint">About 5–8 filters per ingredient, strongest irrelevant terms first.</span>
         </div>
         <p v-if="autoError" class="error-banner" role="alert">{{ autoError }}</p>
         <div v-if="autoSuggestion" class="ai-suggestion">
-          <p class="subcard-hint">Tap a chip to exclude it (ghosted) — counters update instantly; Apply uses only solid chips.</p>
+          <p class="subcard-hint">Click on a chip to adjust suggested filters</p>
           <ul class="ai-suggestion-list ai-suggestion-compact">
             <li v-for="row in autoCompactDiffs" :key="`auto-${row.term}`" class="ai-suggestion-row ai-row-compact">
               <div class="ai-diff-main">
@@ -86,7 +85,6 @@
               <span class="match-chip" :class="row.delta < 0 ? 'm-zero' : row.delta > 0 ? 'm-full' : 'm-part'" :title="`${row.effKwCount}/${row.kwCount} active · ${row.cur.matched}/${row.cur.total} → ${row.effMatched}/${row.effTotal}`">{{ row.deltaText }} · {{ row.effMatched }}/{{ row.effTotal }}</span>
             </li>
           </ul>
-          <p v-if="autoSuggestion.warnings?.length" class="subcard-hint">Warnings: {{ autoSuggestion.warnings.join('; ') }}</p>
           <div class="ai-suggestion-actions">
             <button type="button" class="primary-button" @click="applyAuto">Apply these filters</button>
             <button type="button" class="ghost-button ghost-small" @click="dismissAuto">Dismiss</button>
@@ -151,8 +149,8 @@
       <div class="subcard-hint filter-legend">
         <ul style="margin:0; padding-left:1.25em; list-style:disc; display:grid; gap:2px;">
           <li><strong>Include Term</strong>: all must appear. <strong>Exclude Term</strong>: any match hides. Fuzzy (<em>carrot</em> = <em>carrots</em>).</li>
-          <li><strong>Include Brand</strong> (OR) / <strong>Exclude Brand</strong> — any match decides; checks brand field only.</li>
-          <li>Brand checked first — overrides name filter. Filtered = visible but not considered.</li>
+          <li><strong>Include Brand</strong> (OR) / <strong>Exclude Brand</strong>: any match decides; checks brand field only.</li>
+          <li>Brand checked first, overriding the name filter. Filtered products stay visible but are not considered.</li>
         </ul>
       </div>
     </section>
@@ -161,7 +159,7 @@
     <section class="subcard subcard-wide">
       <h4>Products <span v-if="previewBusy" class="spinner spinner-inline"></span></h4>
       <p class="subcard-hint">Every cached product per supermarket, judged against the pending keywords. "Apply filters" bakes them into the store costs.</p>
-      <div v-if="!storeGroups.length" class="empty-state">No cached products — run a comparison first.</div>
+      <div v-if="!storeGroups.length" class="empty-state">No cached products. Run a comparison first.</div>
       <div v-else class="store-groups">
         <div v-for="group in storeGroups" :key="group.key" class="prod-store" :class="{ open: openStore === group.key }">
           <button type="button" class="prod-store-head" @click="openStore = openStore === group.key ? '' : group.key">
@@ -220,8 +218,9 @@ export default {
     stores: { type: Array, default: () => [] },
     companies: { type: Array, required: true },
     selectedTerm: { type: String, default: '' },
+    dish: { type: String, default: '' },
   },
-  emits: ['update-filters', 'select-term'],
+  emits: ['update-filters', 'select-term', 'pipeline-log'],
   setup(props, { emit }) {
     const incDraft = ref('');
     const excDraft = ref('');
@@ -473,6 +472,7 @@ export default {
       aiBusy.value = true;
       aiError.value = '';
       aiSuggestion.value = null;
+      emit('pipeline-log', { kind: 'phase', co: 'FILTERS', text: `compiling instruction "${aiText.value.trim().slice(0, 80)}"…` });
       try {
         const response = await fetch(`/optimise/${props.jobId}/ai_filter_preview`, {
           method: 'POST',
@@ -480,8 +480,15 @@ export default {
           body: JSON.stringify({ instruction: aiText.value.trim() }),
         });
         aiSuggestion.value = await parseJsonResponse(response);
+        if (aiSuggestion.value?.warnings?.length) {
+          for (const w of aiSuggestion.value.warnings) emit('pipeline-log', { kind: 'warn', co: 'FILTERS', text: w });
+        } else {
+          const n = Object.keys(aiSuggestion.value?.compiled_filters || {}).length;
+          emit('pipeline-log', { kind: 'ok', co: 'FILTERS', text: n ? `Compiled ${n} term(s). No warnings.` : 'No filters suggested. No warnings.' });
+        }
       } catch (err) {
         aiError.value = err.message;
+        emit('pipeline-log', { kind: 'err', co: 'FILTERS', text: err.message });
       } finally {
         aiBusy.value = false;
       }
@@ -517,6 +524,8 @@ export default {
       autoError.value = '';
       autoSuggestion.value = null;
       autoRejected.value = new Set();
+      const dishLabel = (props.dish || '').trim() || 'this dish';
+      emit('pipeline-log', { kind: 'phase', co: 'AUTO', text: `auto-refining filters for "${dishLabel}"…` });
       try {
         const response = await fetch(`/optimise/${props.jobId}/auto_cull_preview`, {
           method: 'POST',
@@ -524,8 +533,18 @@ export default {
           body: JSON.stringify({ current_filters: props.filters }),
         });
         autoSuggestion.value = await parseJsonResponse(response);
+        const cf = autoSuggestion.value?.compiled_filters || {};
+        const total = Object.values(cf).reduce((n, e) => n + (e.excludes?.length || 0) + (e.brand_excludes?.length || 0), 0);
+        const terms = Object.keys(cf).length;
+        if (autoSuggestion.value?.warnings?.length) {
+          for (const w of autoSuggestion.value.warnings) emit('pipeline-log', { kind: 'warn', co: 'AUTO', text: w });
+          emit('pipeline-log', { kind: 'info', co: 'AUTO', text: `${total} filter(s) across ${terms} term(s): ${autoSuggestion.value.warnings.length} warning(s)` });
+        } else {
+          emit('pipeline-log', { kind: 'ok', co: 'AUTO', text: total ? `Refined. ${total} filter(s) across ${terms} term(s). No warnings.` : 'No irrelevant terms found. No warnings.' });
+        }
       } catch (err) {
         autoError.value = err.message;
+        emit('pipeline-log', { kind: 'err', co: 'AUTO', text: err.message });
       } finally {
         autoBusy.value = false;
       }

@@ -3,11 +3,11 @@
     <template v-if="mode === 'locked'">
       <p v-if="!ingredients.length" class="empty-state">Choose a dish to preview its ingredient searches.</p>
       <ul v-else class="ingredient-list">
-        <li v-for="(ing, index) in ingredients" :key="index"><span class="ing-name">{{ ing.search_term }}</span><span class="ing-qty">{{ displayQty(ing) }}</span><button v-if="rulesCount(termOf(ing))" type="button" class="chip-mini chip-rules" :title="`${rulesCount(termOf(ing))} product-filter keyword(s) — edit in the Filter tuner`" @click="$emit('open-filters', termOf(ing))">{{ rulesCount(termOf(ing)) }} rule{{ rulesCount(termOf(ing)) === 1 ? '' : 's' }}</button></li>
+        <li v-for="(ing, index) in ingredients" :key="index"><span class="ing-name">{{ ing.search_term }}</span><span class="ing-qty">{{ displayQty(ing) }}</span><button v-if="rulesCount(termOf(ing))" type="button" class="chip-mini chip-rules" :title="`${rulesCount(termOf(ing))} product-filter keyword(s). Edit in the Filter tuner.`" @click="$emit('open-filters', termOf(ing))">{{ rulesCount(termOf(ing)) }} rule{{ rulesCount(termOf(ing)) === 1 ? '' : 's' }}</button></li>
       </ul>
     </template>
     <template v-else>
-      <p v-if="!ingredients.length" class="empty-state">No ingredients yet — add the first search below.</p>
+      <p v-if="!ingredients.length" class="empty-state">No ingredients yet. Add the first search below.</p>
       <ul v-else class="builder-list">
         <li v-for="(ing, index) in ingredients" :key="ing.id" class="builder-item" :class="{ 'row-dup': isDuplicate(ing), 'row-blank': isBlank(ing) }">
           <div class="builder-main">
@@ -31,8 +31,8 @@
             <span v-if="!hasApprox(ing)" class="warn-hint">add for accurate scaling</span>
             <span v-else class="ok-hint" title="Approx fallback set">✓</span>
           </div>
-          <button v-if="rulesCount(termOf(ing))" type="button" class="chip-mini chip-rules" :title="`${rulesCount(termOf(ing))} product-filter keyword(s) — edit in the Filter tuner`" @click="$emit('open-filters', termOf(ing))">{{ rulesCount(termOf(ing)) }} rule{{ rulesCount(termOf(ing)) === 1 ? '' : 's' }}</button>
-          <p v-if="isDuplicate(ing)" class="row-error">Duplicate search term — merge or rename one of these rows.</p>
+          <button v-if="rulesCount(termOf(ing))" type="button" class="chip-mini chip-rules" :title="`${rulesCount(termOf(ing))} product-filter keyword(s). Edit in the Filter tuner.`" @click="$emit('open-filters', termOf(ing))">{{ rulesCount(termOf(ing)) }} rule{{ rulesCount(termOf(ing)) === 1 ? '' : 's' }}</button>
+          <p v-if="isDuplicate(ing)" class="row-error">Duplicate search term. Merge or rename one of these rows.</p>
         </li>
       </ul>
       <div class="builder-footer">

@@ -15,7 +15,7 @@
         </label>
       </div>
       <div class="scale-row">
-        <label class="field"><span>UI scale — {{ Math.round(settings.uiScale * 100) }}%</span><input v-model.number="settings.uiScale" type="range" min="0.85" max="1.2" step="0.05"></label>
+        <label class="field"><span>UI scale: {{ Math.round(settings.uiScale * 100) }}%</span><input v-model.number="settings.uiScale" type="range" min="0.85" max="1.2" step="0.05"></label>
         <p class="hint">Scales every font and control via a single root factor.</p>
       </div>
     </section>
@@ -181,7 +181,7 @@
               role="alert"
             >
               ⚠ {{ systemInfo.running_jobs }} job(s) currently running.
-              Wait for them to finish before changing the pool — an in-flight
+              Wait for them to finish before changing the pool. An in-flight
               executor swap can strand futures.
             </p>
             <p v-if="poolState.error" class="mode-note danger-note" role="alert">
@@ -190,7 +190,7 @@
             <p class="hint">
               Slider range: {{ systemInfo.slider_min }}–{{ systemInfo.slider_max }}
               (step {{ systemInfo.slider_step }}).
-              <span v-if="systemInfo.running_jobs === 0">Not currently adjustable? The button above is disabled — that means a job is running elsewhere; the swap will be allowed as soon as it finishes.</span>
+              <span v-if="systemInfo.running_jobs === 0">The button above is disabled while jobs are running. Please swap when all jobs are finished.</span>
             </p>
           </template>
           <p v-else class="hint">Loading runtime info…</p>
@@ -342,7 +342,7 @@ export default {
           poolState.value = {
             status: 'error',
             applying: false,
-            error: body?.detail?.detail || 'Jobs are running — wait for them to finish.',
+            error: body?.detail?.detail || 'Jobs are running. Wait for them to finish.',
             lastMessage: '',
           };
           // Re-poll system-info so running_jobs count updates.
@@ -391,8 +391,8 @@ export default {
     }
 
     function optionLabel(m) {
-      if (m.max_context_length) return `${m.id} — ${m.max_context_length.toLocaleString()} ctx`;
-      if (m.input_token_limit) return `${m.id} — ${m.input_token_limit.toLocaleString()} in`;
+      if (m.max_context_length) return `${m.id} (${m.max_context_length.toLocaleString()} ctx)`;
+      if (m.input_token_limit) return `${m.id} (${m.input_token_limit.toLocaleString()} in)`;
       return m.display_name || m.id;
     }
 

@@ -100,7 +100,7 @@ export function useLlmModels() {
       ingredient_model: { ...DEFAULTS.ingredient_model },
       filter_model: { ...DEFAULTS.filter_model },
     };
-    setNotice('ok', 'Defaults restored — click Save to apply.');
+    setNotice('ok', 'Defaults restored. Click Save to apply.');
   }
 
   const mistralStatus = computed(() => summariseProvider(state.providers.mistral));

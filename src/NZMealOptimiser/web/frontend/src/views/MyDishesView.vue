@@ -1,13 +1,13 @@
 <template>
   <main class="shell">
     <header class="hero">
-      <div><p class="eyebrow">Recipe library</p><h1>My Dishes</h1><p class="lede">Every stored recipe — hand-curated presets plus ones you saved from the builder. Edit any of them right here.</p></div>
+      <div><p class="eyebrow">Recipe library</p><h1>My Dishes</h1><p class="lede">Browse or edit your curated dishes, or ones you've saved from the recipe builder.</p></div>
       <span class="chip">{{ dishes.length }} dish{{ dishes.length === 1 ? '' : 'es' }}</span>
     </header>
 
     <p v-if="error" class="error-banner" role="alert">{{ error }}</p>
     <p v-else-if="loading" class="empty-state panel">Loading recipes…</p>
-    <p v-else-if="!dishes.length" class="empty-state panel">No dishes stored yet — build one on the dashboard or import one on the LLM Recipe Builder page and hit "Save as preset".</p>
+    <p v-else-if="!dishes.length" class="empty-state panel">No dishes stored yet. Build one on the dashboard, or import one on the LLM Recipe Builder page and hit "Save as preset".</p>
 
     <div v-else class="dish-grid">
       <article v-for="dish in dishes" :key="dish.key" class="panel dish-card" :class="{ editing: dish.key === editingKey }">
@@ -27,7 +27,7 @@
           <p v-if="dish.ingredients.length > 6" class="hint">+ {{ dish.ingredients.length - 6 }} more…</p>
           <div class="form-actions dish-actions">
             <button type="button" class="ghost-button ghost-small" @click="$emit('open-dish', { key: dish.key, edit: false })">Open</button>
-            <button type="button" class="ghost-button ghost-small" title="Edit this recipe right here — the card expands into a full editor" @click="startEdit(dish)">Edit ✎</button>
+            <button type="button" class="ghost-button ghost-small" title="Edit this recipe right here. The card expands into a full editor." @click="startEdit(dish)">Edit ✎</button>
             <button type="button" class="ghost-button ghost-small danger-button" :disabled="deleting === dish.key" @click="removeDish(dish)">{{ deleting === dish.key ? 'Deleting…' : 'Delete 🗑' }}</button>
           </div>
         </template>
@@ -48,7 +48,7 @@
           <DishBuilder mode="edit" :ingredients="draft.rows" :duplicate-terms="duplicateTerms" :base-portions="Number(draft.basePortions) || 4" :requested-portions="Number(draft.basePortions) || 4" :filter-counts="ruleCounts" @add="addRow" @remove="removeRow" @patch="patchRow" @open-filters="focusTerm" />
 
           <div v-if="editorTerms.length" class="term-filters">
-            <p class="hint rules-hint">Product-filter keywords are saved instantly to your browser and shared with the dashboard tuner — Save commits only the recipe itself (name, portions, ingredients, notes).</p>
+            <p class="hint rules-hint">Product-filter keywords save instantly to your browser and sync with the dashboard tuner. Save commits only the recipe itself (name, portions, ingredients, notes).</p>
             <div v-for="term in editorTerms" :key="term" :ref="(el) => setTermRef(term, el)" class="term-filter-block" :class="{ 'term-focus': term === focusedTerm }">
               <p class="term-name">{{ term }}</p>
               <FilterEditor :term="term" :row-id="`${dish.key}:${term}`" :filters="draft.rules" @update-filters="onRuleUpdate" />
@@ -155,7 +155,7 @@ export default {
       return '';
     });
     const editDirtyLabel = computed(() => (dirty.value ? 'unsaved changes' : `${validRows.value.length} ingredient searches · base ${Number(draft.basePortions) || 4} portions`));
-    const saveHint = computed(() => (dirty.value ? 'Save commits the recipe itself — renaming also moves the preset and its product-filter rules.' : 'Product-filter chips above are saved instantly — nothing else changed.'));
+    const saveHint = computed(() => (dirty.value ? 'Save commits the recipe itself. Renaming also moves the preset and its product-filter rules.' : 'Product-filter chips above save instantly. Nothing else has changed.'));
 
     function addRow() { draft.rows.push(emptyRow()); }
     function removeRow(index) { draft.rows.splice(index, 1); }
@@ -288,10 +288,10 @@ export default {
 
     async function removeDish(dish) {
       const curatedWarning = dish.source !== 'user'
-        ? `\n\n"${dish.label}" is a hand-curated preset shipped with the project — deleting it removes it from data/dishes.json for everyone (recoverable via git).`
+        ? `\n\n"${dish.label}" is a hand-curated preset shipped with the project. Deleting it removes it from data/dishes.json for everyone (recoverable via git).`
         : '';
       const editingWarning = dish.key === editingKey.value
-        ? '\n\nThis recipe is open in the editor — deleting discards your changes too.'
+        ? '\n\nThis recipe is open in the editor. Deleting it also discards your changes.'
         : '';
       if (!window.confirm(`Delete "${dish.label}"?${curatedWarning}${editingWarning}`)) return;
       deleting.value = dish.key;

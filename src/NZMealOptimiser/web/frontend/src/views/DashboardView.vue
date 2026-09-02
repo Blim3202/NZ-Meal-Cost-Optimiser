@@ -61,7 +61,7 @@
             <button v-if="canResetFilters" type="button" class="ghost-button ghost-small" title="Restore the curated include/exclude keywords for this dish" @click="resetFiltersToPreset">Reset filters</button>
             <button v-if="recipeMode === 'preset'" type="button" class="ghost-button ghost-small" :disabled="!form.dish" title="Copy this preset into the builder and edit it" @click="customiseFromPreset">Customise ✎</button>
             <template v-else>
-              <button v-if="showUpdateButton" type="button" class="ghost-button ghost-small" :disabled="!canUpdatePrices" :title="canUpdatePrices ? 'Re-query only the changed ingredients across the same stores — quantity-only edits recalculate without new searches' : 'Resolve blank or duplicate search terms first'" @click="updateIngredientPrices"><span v-if="updatingPrices" class="spinner"></span>{{ updatingPrices ? 'Updating…' : `Update ingredient prices (${priceDiff.count})` }}</button>
+              <button v-if="showUpdateButton" type="button" class="ghost-button ghost-small" :disabled="!canUpdatePrices" :title="canUpdatePrices ? 'Re-query only the changed ingredients across the same stores. Quantity-only edits recalculate without new searches.' : 'Resolve blank or duplicate search terms first'" @click="updateIngredientPrices"><span v-if="updatingPrices" class="spinner"></span>{{ updatingPrices ? 'Updating…' : `Update ingredient prices (${priceDiff.count})` }}</button>
               <button type="button" class="ghost-button ghost-small" :disabled="!draft.ingredients.length" :title="recipeMode === 'shopping' ? 'Remove every item from the shopping list' : 'Remove every ingredient row (dish name and base portions reset too)'" @click="clearBuilder">Clear all</button>
               <button v-if="recipeMode === 'custom'" type="button" class="ghost-button ghost-small" :disabled="savingPreset || !canSavePreset" :title="canSavePreset ? 'Store this recipe in data/dishes.json' : 'Complete the dish name and at least one ingredient row first'" @click="savePreset">{{ savingPreset ? 'Saving…' : 'Save as preset' }}</button>
             </template>
@@ -82,7 +82,7 @@
 
     <ProgressStrip :job="job" :running="jobRunning" :pct="overallPct" :elapsed="elapsedDisplay" />
 
-    <ResultsTabs ref="resultsSection" :result="result" :companies="companies" :terms="runTerms" :tuner-ingredients="tunerIngredients" :filters="scopeFilters" :job-id="job.id || ''" :preview-active="previewActive" :can-reapply="canReapply" :applying="reaplying" @apply="reapplyFilters" @update-filters="onUpdateFilters" />
+    <ResultsTabs ref="resultsSection" :result="result" :companies="companies" :terms="runTerms" :tuner-ingredients="tunerIngredients" :filters="scopeFilters" :job-id="job.id || ''" :preview-active="previewActive" :can-reapply="canReapply" :applying="reaplying" @apply="reapplyFilters" @update-filters="onUpdateFilters" @pipeline-log="onPipelineLog" />
 
     <transition name="toast-slide">
       <aside v-if="applyToast" class="apply-toast" role="status">
@@ -196,7 +196,7 @@ export default {
       draft.name = '';
       draft.basePortions = 4;
       draft.notes = '';
-      logLine('warn', 'DISH', `builder cleared — ${count} row${count === 1 ? '' : 's'} removed`);
+      logLine('warn', 'DISH', `Builder cleared. ${count} row${count === 1 ? '' : 's'} removed.`);
     }
 
     function loadIntoDraft(key) {
@@ -219,7 +219,7 @@ export default {
     function customiseFromPreset() {
       if (!loadIntoDraft(form.dish)) return;
       recipeMode.value = 'custom';
-      logLine('ok', 'DISH', `customising "${draft.name}" — ${draft.ingredients.length} rows copied to builder`);
+      logLine('ok', 'DISH', `Customising "${draft.name}". ${draft.ingredients.length} rows copied to builder.`);
     }
 
     function setMode(mode) {
@@ -237,10 +237,10 @@ export default {
         draft.ingredients = [];
         filterStore.value = { ...filterStore.value, custom: {} };
         logLine('phase', 'DISH', hadContent
-          ? 'custom dish — builder reset for a new recipe'
-          : 'builder open — name a dish, then generate or add ingredients');
+          ? 'Custom dish. Builder reset for a new recipe.'
+          : 'Builder open. Name a dish, then generate or add ingredients.');
       } else if (mode === 'shopping') {
-        logLine('phase', 'DISH', 'shopping list — add items with the exact quantity you need');
+        logLine('phase', 'DISH', 'Shopping list. Add items with the exact quantity you need.');
       }
     }
 
@@ -283,11 +283,11 @@ export default {
         }));
         const rulesCount = applyGeneratedFilters(data.filters);
         for (const warning of data.warnings || []) logLine('warn', 'LLM', warning);
-        logLine('ok', 'LLM', `generated ${draft.ingredients.length} ingredients · ${rulesCount} filter rule${rulesCount === 1 ? '' : 's'} seeded — review them in the filter editor`);
+        logLine('ok', 'LLM', `Generated ${draft.ingredients.length} ingredients · ${rulesCount} filter rule${rulesCount === 1 ? '' : 's'} seeded. Review them in the filter editor.`);
         if (origin.value) staleNotice.value = true; // recipe changed vs resolved setup
       } catch (err) {
         error.value = err.message;
-        logLine('err', 'LLM', `generation failed — ${err.message}`);
+        logLine('err', 'LLM', `Generation failed: ${err.message}`);
       } finally {
         generating.value = false;
       }
@@ -373,6 +373,10 @@ export default {
       logLine('ok', 'DISH', `loaded ${n} product-filter rule${n === 1 ? '' : 's'} for "${selectedPreset.value?.label || form.dish}"`);
     }
     watch(activeScopeKey, seedIfUnseen);
+
+    function onPipelineLog({ kind, co, text }) {
+      logLine(kind || 'warn', co || 'AUTO', text);
+    }
 
     function onUpdateFilters(term, next) {
       const scope = { ...(filterStore.value[activeScopeKey.value] || {}) };
@@ -579,7 +583,7 @@ export default {
         logLine('ok', 'SYS', `ingredient prices updated · ${data.rows.length} products recalculated · winner ${winner ? `${winner.store} $${winner.total_used_cost.toFixed(2)}` : '—'}`);
       } catch (err) {
         error.value = err.message;
-        logLine('err', 'SYS', `ingredient update failed — ${err.message}`);
+        logLine('err', 'SYS', `Ingredient update failed: ${err.message}`);
       } finally {
         updatingPrices.value = false;
       }
@@ -612,7 +616,7 @@ export default {
         approx_unit: normaliseUnit(ing.approx_unit || ''),
       }));
       const rulesCount = applyGeneratedFilters(payload.filters);
-      logLine('ok', 'LLM', `imported "${draft.name}" — ${draft.ingredients.length} ingredient${draft.ingredients.length === 1 ? '' : 's'} · ${rulesCount} filter rule${rulesCount === 1 ? '' : 's'} seeded — review before pricing`);
+      logLine('ok', 'LLM', `Imported "${draft.name}". ${draft.ingredients.length} ingredient${draft.ingredients.length === 1 ? '' : 's'} · ${rulesCount} filter rule${rulesCount === 1 ? '' : 's'} seeded. Review before pricing.`);
       if (origin.value) staleNotice.value = true;
     }
     expose({ loadPreset, loadDraft });
@@ -690,9 +694,9 @@ export default {
         if (duplicateTerms.value.size) return 'Merge the highlighted duplicate search terms.';
       } else if (!form.dish) return 'Choose a dish first.';
       if (!resolved.value) return 'Please verify the dish and location first.';
-      if (staleNotice.value) return 'Parameters changed — resolve again to continue.';
-      if (!previewStores.value.length) return 'No stores in range — increase the distance or select more supermarkets.';
-      return 'Dish and location verified — ready to compare.';
+      if (staleNotice.value) return 'Parameters changed. Resolve again to continue.';
+      if (!previewStores.value.length) return 'No stores in range. Increase the distance or select more supermarkets.';
+      return 'Dish and location verified. Ready to compare.';
     });
 
     function useGps() {
@@ -702,7 +706,7 @@ export default {
         const { latitude, longitude } = pos.coords;
         if (latitude < NZ_BOUNDS.latMin || latitude > NZ_BOUNDS.latMax || longitude < NZ_BOUNDS.lonMin || longitude > NZ_BOUNDS.lonMax) {
           gpsBusy.value = false;
-          error.value = 'Your device appears to be outside New Zealand — enter an NZ address instead.';
+          error.value = 'Your device appears to be outside New Zealand. Enter an NZ address instead.';
           return;
         }
         gps.value = { lat: latitude, lon: longitude };
@@ -710,7 +714,7 @@ export default {
         error.value = '';
       }, (err) => {
         gpsBusy.value = false;
-        error.value = err.code === err.PERMISSION_DENIED ? 'Location permission denied — enter an address instead.' : 'Could not get your location — enter an address instead.';
+        error.value = err.code === err.PERMISSION_DENIED ? 'Location permission denied. Enter an address instead.' : 'Could not get your location. Enter an address instead.';
       }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
     }
     function clearGps() { gps.value = null; }
@@ -740,14 +744,14 @@ export default {
 
     async function onPickOrigin({ lat, lon }) {
       if (lat < NZ_BOUNDS.latMin || lat > NZ_BOUNDS.latMax || lon < NZ_BOUNDS.lonMin || lon > NZ_BOUNDS.lonMax) {
-        error.value = 'That point is outside New Zealand — drop the pin within NZ.';
+        error.value = 'That point is outside New Zealand. Drop the pin within NZ.';
         return;
       }
       origin.value = { lat, lon, source: 'picked' };
       _suppressAddressReset += 1;
       form.address = '';
       error.value = '';
-      logLine('phase', 'LOC', `pin dropped · ${lat.toFixed(4)}, ${lon.toFixed(4)} — looking up address…`);
+      logLine('phase', 'LOC', `Pin dropped · ${lat.toFixed(4)}, ${lon.toFixed(4)}. Looking up address…`);
       await fetchPreview();
       const data = await reverseLookup(lat, lon);
       if (data && data.label) {
@@ -755,7 +759,7 @@ export default {
         form.address = data.label;
         logLine('ok', 'LOC', `pinned · ${data.label}`);
       } else if (data === null) {
-        logLine('warn', 'LOC', `no address label found for ${lat.toFixed(4)}, ${lon.toFixed(4)} — drop the pin closer to a road`);
+        logLine('warn', 'LOC', `No address label found for ${lat.toFixed(4)}, ${lon.toFixed(4)}. Drop the pin closer to a road.`);
       }
     }
 
@@ -793,8 +797,8 @@ export default {
     watch(() => settings.overridesArmed, (armed) => {
       clampOverrides();
       logLine('warn', 'SYS', armed
-        ? `overrides armed — distance up to ${OVERRIDE_CAPS.distance} km, up to ${OVERRIDE_CAPS.stores} stores/company (hard server caps)`
-        : 'overrides disarmed — inputs returned to standard ranges');
+        ? `Overrides armed. Distance up to ${OVERRIDE_CAPS.distance} km, up to ${OVERRIDE_CAPS.stores} stores/company (hard server caps).`
+        : 'Overrides disarmed. Inputs returned to standard ranges.');
     });
 
     // Address-input guard: when the user types, wipe the geocoded origin
@@ -804,7 +808,7 @@ export default {
     let _suppressAddressReset = 0;
     watch(() => form.address, () => {
       if (_suppressAddressReset > 0) { _suppressAddressReset -= 1; return; }
-      if (origin.value?.source === 'geocoded') { origin.value = null; logLine('warn', 'LOC', 'address changed — re-resolve location'); }
+      if (origin.value?.source === 'geocoded') { origin.value = null; logLine('warn', 'LOC', 'Address changed. Re-resolve location.'); }
     });
     watch(gps, (lock) => {
       if (lock) { origin.value = { lat: lock.lat, lon: lock.lon, source: 'gps' }; logLine('ok', 'LOC', `device gps locked · ${lock.lat.toFixed(4)}, ${lock.lon.toFixed(4)}`); }
@@ -813,7 +817,7 @@ export default {
     watch(() => form.dish, (key) => {
       if (recipeMode.value !== 'preset') return;
       const dish = dishes.value.find((d) => d.key === key);
-      if (!key) logLine('warn', 'DISH', 'recipe cleared — choose a dish');
+      if (!key) logLine('warn', 'DISH', 'Recipe cleared. Choose a dish.');
       else if (dish) logLine('ok', 'DISH', `recipe refreshed · ${dish.label} · ${dish.ingredients.length} ingredient searches`);
       else logLine('warn', 'DISH', `recipe unavailable (${key})`);
     });
@@ -827,7 +831,7 @@ export default {
       origin.value ? `${origin.value.lat},${origin.value.lon},${origin.value.source}` : '',
       form.portions, form.max_stores_per_company, form.distance_km, form.companies.join(),
     ].join('|'));
-    watch(locationSettingsSignature, () => { if (origin.value) { staleNotice.value = true; logLine('warn', 'SYS', 'location or store settings changed — resolve again to continue'); } });
+    watch(locationSettingsSignature, () => { if (origin.value) { staleNotice.value = true; logLine('warn', 'SYS', 'Location or store settings changed. Resolve again to continue.'); } });
 
     const previewSignature = computed(() => [origin.value ? `${origin.value.lat},${origin.value.lon}` : '', form.distance_km, form.companies.join(), form.max_stores_per_company].join('|'));
     watch(previewSignature, () => { fetchPreview(); });
@@ -873,19 +877,19 @@ export default {
       }
       const previewOk = await fetchPreview();
       if (!previewOk || !previewStores.value.length) {
-        error.value = `No stores found within ${form.distance_km} km — try increasing the distance or selecting more supermarkets.`;
-        logLine('warn', 'LOC', `no stores within ${form.distance_km} km — increase the distance or select more supermarkets`);
+        error.value = `No stores found within ${form.distance_km} km. Try increasing the distance or selecting more supermarkets.`;
+        logLine('warn', 'LOC', `No stores within ${form.distance_km} km. Increase the distance or select more supermarkets.`);
         return;
       }
       staleNotice.value = false;
-      logLine('ok', 'SYS', 'settings resolved — ready to compare');
+      logLine('ok', 'SYS', 'Settings resolved. Ready to compare.');
     }
     function primaryAction() { readyToCompare.value ? runOptimise() : resolveSetup(); }
 
     async function runOptimise() {
       error.value = '';
       if (!previewStores.value.length) {
-        error.value = `No stores found within ${form.distance_km} km — try increasing the distance or selecting more supermarkets.`;
+        error.value = `No stores found within ${form.distance_km} km. Try increasing the distance or selecting more supermarkets.`;
         return;
       }
       if (!gpsActive.value && form.address) {
@@ -952,7 +956,7 @@ export default {
       addIngredient, removeIngredient, patchIngredient, clearBuilder, customiseFromPreset,
       generateIngredients, generating, canGenerate,
       savePreset, savingPreset, canSavePreset, recipeHint, scaleDisplay,
-      scopeFilters, onUpdateFilters, canResetFilters, resetFiltersToPreset,
+      scopeFilters, onUpdateFilters, onPipelineLog, canResetFilters, resetFiltersToPreset,
       canReapply, reaplying, reapplyFilters,
       updatingPrices, showUpdateButton, canUpdatePrices, priceDiff, updateIngredientPrices,
       runTerms, tunerIngredients, filterCounts, previewActive, openInTuner,

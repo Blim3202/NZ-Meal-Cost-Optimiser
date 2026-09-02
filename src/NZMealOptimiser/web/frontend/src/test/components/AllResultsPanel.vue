@@ -203,9 +203,9 @@ export default {
     function unitMatchTitle(row) {
       return {
         na: 'No scaling data for this row',
-        approx: 'Partial match — scaled via ≈ pack equivalent',
+        approx: 'Partial match. Scaled via ≈ pack equivalent.',
         ok: 'Pack matches the recipe units',
-        no: 'Pack does not match the recipe units — needs ≈ equivalent',
+        no: 'Pack does not match the recipe units. Needs ≈ equivalent.',
       }[unitState(row)];
     }
     function ingMatchClass(row) { return ingOk(row) ? 'm-ok' : 'm-no'; }

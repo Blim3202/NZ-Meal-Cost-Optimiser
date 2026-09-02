@@ -7,11 +7,11 @@
           {{ autoBusy ? 'Refining…' : 'Auto refine filters' }}
         </button>
         <span v-if="autoHint" class="subcard-hint ai-hint">{{ autoHint }}</span>
-        <span v-else class="subcard-hint ai-block-hint">Up to 15 dish-wide filters for the most irrelevant terms per ingredient for {{ result?.dish || 'this dish' }}</span>
+        <span v-else class="subcard-hint ai-block-hint">Generates 5–8 filters per ingredient</span>
       </div>
       <p v-if="autoError" class="error-banner" role="alert">{{ autoError }}</p>
       <div v-if="autoSuggestion" class="ai-suggestion">
-        <p class="subcard-hint">Tap a chip to exclude it (ghosted) — counters update instantly; Apply uses only solid chips.</p>
+        <p class="subcard-hint">Click on a chip to adjust suggested filters</p>
         <ul class="ai-suggestion-list ai-suggestion-compact">
           <li v-for="row in autoCompactDiffs" :key="`sum-auto-${row.term}`" class="ai-suggestion-row ai-row-compact">
             <div class="ai-diff-main">
@@ -22,7 +22,6 @@
             <span class="match-chip" :class="row.delta < 0 ? 'm-zero' : row.delta > 0 ? 'm-full' : 'm-part'" :title="`${row.effKwCount}/${row.kwCount} active · ${row.cur.matched}/${row.cur.total} → ${row.effMatched}/${row.effTotal}`">{{ row.deltaText }} · {{ row.effMatched }}/{{ row.effTotal }}</span>
           </li>
         </ul>
-        <p v-if="autoSuggestion.warnings?.length" class="subcard-hint">Warnings: {{ autoSuggestion.warnings.join('; ') }}</p>
         <div class="ai-suggestion-actions">
           <button type="button" class="primary-button" @click="applyAuto">Apply these filters</button>
           <button type="button" class="ghost-button ghost-small" @click="dismissAuto">Dismiss</button>
@@ -80,7 +79,7 @@
 
     <!-- ── Cross-store smart basket ──────────────────────────────────────── -->
     <template v-else>
-      <div v-if="!basket.items.length && !basket.missing.length" class="empty-state">No eligible products — nothing could be priced.</div>
+      <div v-if="!basket.items.length && !basket.missing.length" class="empty-state">No eligible products. Nothing could be priced.</div>
       <article v-else class="basket-card">
         <div class="basket-head">
           <div>
@@ -129,7 +128,7 @@ export default {
     jobId: { type: String, default: '' },
     filters: { type: Object, default: () => ({}) },
   },
-  emits: ['update-filters'],
+  emits: ['update-filters', 'pipeline-log'],
   setup(props, { expose, emit }) {
     const expandedStores = ref(new Set());
 
@@ -408,6 +407,8 @@ export default {
       autoError.value = '';
       autoSuggestion.value = null;
       autoRejected.value = new Set();
+      const dishLabel = (props.result?.dish || '').trim() || 'this dish';
+      emit('pipeline-log', { kind: 'phase', co: 'AUTO', text: `auto-refining filters for "${dishLabel}"…` });
       try {
         const response = await fetch(`/optimise/${props.jobId}/auto_cull_preview`, {
           method: 'POST',
@@ -415,8 +416,18 @@ export default {
           body: JSON.stringify({ current_filters: props.filters }),
         });
         autoSuggestion.value = await parseAutoResponse(response);
+        const cf = autoSuggestion.value?.compiled_filters || {};
+        const total = Object.values(cf).reduce((n, e) => n + (e.excludes?.length || 0) + (e.brand_excludes?.length || 0), 0);
+        const terms = Object.keys(cf).length;
+        if (autoSuggestion.value?.warnings?.length) {
+          for (const w of autoSuggestion.value.warnings) emit('pipeline-log', { kind: 'warn', co: 'AUTO', text: w });
+          emit('pipeline-log', { kind: 'info', co: 'AUTO', text: `${total} filter(s) across ${terms} term(s): ${autoSuggestion.value.warnings.length} warning(s)` });
+        } else {
+          emit('pipeline-log', { kind: 'ok', co: 'AUTO', text: total ? `Refined. ${total} filter(s) across ${terms} term(s). No warnings.` : 'No irrelevant terms found. No warnings.' });
+        }
       } catch (err) {
         autoError.value = err.message;
+        emit('pipeline-log', { kind: 'err', co: 'AUTO', text: err.message });
       } finally {
         autoBusy.value = false;
       }

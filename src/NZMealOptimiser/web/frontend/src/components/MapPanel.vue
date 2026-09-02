@@ -1,7 +1,7 @@
 <template>
   <div class="map-wrap">
     <div ref="mapEl" class="map-canvas"></div>
-    <p v-if="!stores.length" class="map-hint">{{ origin ? 'No stores in range — widen the distance or move the origin.' : 'Resolve setup to preview nearby stores.' }}</p>
+    <p v-if="!stores.length" class="map-hint">{{ origin ? 'No stores in range. Widen the distance or move the origin.' : 'Resolve setup to preview nearby stores.' }}</p>
     <div class="map-legend">
       <span v-for="item in legendItems" :key="item.label" class="legend-item"><i class="legend-dot" :style="{ background: item.color }"></i>{{ item.label }}</span>
       <span class="legend-item"><i class="legend-dot legend-origin-dot"></i>You</span>
@@ -49,7 +49,7 @@ export default {
       const issues = store.issues && store.issues.length ? `<br>⚠ ${store.issues.length} unresolved search${store.issues.length > 1 ? 'es' : ''}` : '';
       const cost = store.total_used_cost;
       const costLine = cost === null || cost === undefined || cost === ''
-        ? 'Price preview — run Compare prices'
+        ? 'Price preview: run Compare prices'
         : `Total used cost: $${Number(cost).toFixed(2)}`;
       return `<strong>${escapeHtml(store.store)}</strong><br>${escapeHtml(COMPANY_LABELS[store.company] || store.company)} · ${Number(store.distance_km ?? 0).toFixed(1)} km<br>${costLine}${issues}`;
     }

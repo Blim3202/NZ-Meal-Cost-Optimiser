@@ -166,7 +166,7 @@ export default {
         const data = await response.json();
         if (!response.ok) throw new Error(data.detail || 'Could not save the preset');
         const seeded = seedPresetRules(name.toLowerCase(), result.value.filters);
-        savedNotice.value = `"${name}" saved to My Dishes — ${seeded} product-filter rule set${seeded === 1 ? '' : 's'} seeded.`;
+        savedNotice.value = `"${name}" saved to My Dishes. ${seeded} product-filter rule set${seeded === 1 ? '' : 's'} seeded.`;
       } catch (err) {
         error.value = err.message;
       } finally {

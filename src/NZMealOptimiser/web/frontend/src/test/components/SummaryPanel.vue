@@ -79,7 +79,7 @@
 
     <!-- ── Cross-store smart basket ──────────────────────────────────────── -->
     <template v-else>
-      <div v-if="!basket.items.length && !basket.missing.length" class="empty-state">No eligible products — nothing could be priced.</div>
+      <div v-if="!basket.items.length && !basket.missing.length" class="empty-state">No eligible products. Nothing could be priced.</div>
       <article v-else class="basket-card">
         <div class="basket-head">
           <div>
@@ -421,9 +421,9 @@ export default {
         const terms = Object.keys(cf).length;
         if (autoSuggestion.value?.warnings?.length) {
           for (const w of autoSuggestion.value.warnings) emit('pipeline-log', { kind: 'warn', co: 'AUTO', text: w });
-          emit('pipeline-log', { kind: 'info', co: 'AUTO', text: `${total} filter(s) across ${terms} term(s) — ${autoSuggestion.value.warnings.length} warning(s)` });
+          emit('pipeline-log', { kind: 'info', co: 'AUTO', text: `${total} filter(s) across ${terms} term(s): ${autoSuggestion.value.warnings.length} warning(s)` });
         } else {
-          emit('pipeline-log', { kind: 'ok', co: 'AUTO', text: total ? `refined — ${total} filter(s) across ${terms} term(s) — no warnings` : 'no irrelevant terms found — no warnings' });
+          emit('pipeline-log', { kind: 'ok', co: 'AUTO', text: total ? `Refined. ${total} filter(s) across ${terms} term(s). No warnings.` : 'No irrelevant terms found. No warnings.' });
         }
       } catch (err) {
         autoError.value = err.message;

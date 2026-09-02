@@ -35,7 +35,7 @@
     >
       <li v-if="loading" class="address-empty" role="status">Searching addresses…</li>
       <li v-else-if="error" class="address-error" role="alert">{{ error }}</li>
-      <li v-else-if="empty" class="address-empty">No matches yet — keep typing.</li>
+      <li v-else-if="empty" class="address-empty">No matches yet. Keep typing.</li>
       <li
         v-for="(s, i) in suggestions"
         :key="`${s.lat},${s.lon}`"
@@ -126,7 +126,7 @@ export default {
         if (seq !== requestSeq) return;
         const data = await response.json();
         if (!response.ok) {
-          error.value = data?.detail || 'Address search failed — try again.';
+          error.value = data?.detail || 'Address search failed. Try again.';
           suggestions.value = [];
         } else {
           suggestions.value = Array.isArray(data.suggestions) ? data.suggestions : [];
@@ -134,7 +134,7 @@ export default {
         }
       } catch (err) {
         if (err.name === 'AbortError' || seq !== requestSeq) return;
-        error.value = 'Address search failed — check your connection.';
+        error.value = 'Address search failed. Check your connection.';
         suggestions.value = [];
       } finally {
         if (seq === requestSeq) loading.value = false;

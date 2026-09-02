@@ -9,7 +9,7 @@
         <button id="tab-results" type="button" class="tab-btn" :class="{ active: activeTab === 'results' }" role="tab" :aria-selected="activeTab === 'results'" @click="activeTab = 'results'">All results</button>
         <span class="tabs-spacer"></span>
         <span v-if="canReapply && activeTab !== 'tuner'" class="dirty-hint" title="Product filters changed since this run">⚙ filters changed</span>
-        <button v-if="canReapply" type="button" class="primary-button apply-btn" :disabled="applying" title="Recalculate ingredient validity, store costs and the winner from the cached products — no new supermarket queries" @click="$emit('apply')"><span v-if="applying" class="spinner"></span>{{ applying ? 'Applying…' : 'Apply filters' }}</button>
+        <button v-if="canReapply" type="button" class="primary-button apply-btn" :disabled="applying" title="Recalculate ingredient validity, store costs and the winner from cached products. No new supermarket queries." @click="$emit('apply')"><span v-if="applying" class="spinner"></span>{{ applying ? 'Applying…' : 'Apply filters' }}</button>
       </div>
 
       <SummaryPanel v-if="result" v-show="activeTab === 'summary'" ref="summaryPanel" :result="result" :companies="companies" :terms="terms" :job-id="jobId" :filters="filters" @update-filters="(term, next) => $emit('update-filters', term, next)" @pipeline-log="(e) => $emit('pipeline-log', e)" />
