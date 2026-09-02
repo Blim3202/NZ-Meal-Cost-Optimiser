@@ -1,9 +1,9 @@
 <template>
   <aside class="sidebar">
-    <div class="sidebar-brand" @click="$emit('navigate', 'dashboard')">
+    <a class="sidebar-brand" href="https://github.com/Blim3202/NZ-Meal-Cost-Optimiser" target="_blank" rel="noopener noreferrer" title="View the project on GitHub (opens in a new tab)">
       <span class="brand-mark">MO</span>
-      <span class="brand-text"><strong>Meal Optimiser</strong><small>NZ grocery intelligence</small></span>
-    </div>
+      <span class="brand-text"><strong>Meal Optimiser</strong><small>NZ Grocery Intelligence</small></span>
+    </a>
 
     <nav class="sidebar-nav" aria-label="Main navigation">
       <button v-for="item in NAV_ITEMS" :key="item.id" type="button" class="side-item" :class="{ active: current === item.id }" :title="rail ? item.label : undefined" @click="$emit('navigate', item.id)">

@@ -22,16 +22,29 @@
 
     <!-- ── Unit conversions ──────────────────────────────────────────────── -->
     <section class="panel settings-section">
-      <div class="settings-head"><h3>Unit conversions</h3></div>
-      <p class="hint">Canonical recipe units and the aliases that fold into them (shared by the builder dropdown and the backend scaling engine). Weight/volume/count families convert directly; anything else relies on the ≈ pack-equivalent fallback in the dish builder.</p>
+      <div class="settings-head"><h3>Unit conversions</h3><button type="button" class="ghost-button ghost-small" :disabled="!hasAliasEdits" @click="resetAllAliases">Reset aliases</button></div>
+      <p class="hint">Canonical recipe units and the aliases that fold into them. Weight/volume/count families scale directly (see <em>Scaling</em>); anything else relies on the ≈ pack-equivalent fallback. <strong>tsp = 5 ml · tbsp = 15 ml · cup = 240 ml</strong>. Edits live in this tab only (<code>sessionStorage</code>) — closing the tab restores defaults. Conflicting aliases are blocked.</p>
       <div class="detail-scroll unit-scroll">
         <table class="unit-table">
-          <thead><tr><th>Canonical</th><th>Accepted aliases</th><th>Direct scaling</th></tr></thead>
+          <thead><tr><th>Canonical</th><th>Aliases (click × to remove)</th><th>Scaling</th><th>Direct</th></tr></thead>
           <tbody>
             <tr v-for="row in unitRows" :key="row.canonical">
               <td><code>{{ row.canonical }}</code></td>
-              <td class="alias-cell">{{ row.aliases }}</td>
-              <td><span :class="row.scalable ? 'ok-hint' : 'warn-hint'">{{ row.scalable ? '✓ yes' : '≈ approx fallback' }}</span></td>
+              <td class="alias-cell">
+                <div class="alias-chips">
+                  <span v-for="alias in row.aliasList" :key="alias" class="chip chip-alias" :class="{ 'chip-canonical': alias.toLowerCase() === row.canonical.toLowerCase() }" :title="alias.toLowerCase() === row.canonical.toLowerCase() ? 'Canonical — cannot remove' : 'Remove alias'">
+                    {{ alias }}
+                    <button v-if="alias.toLowerCase() !== row.canonical.toLowerCase() && row.aliasList.length > 1" type="button" class="chip-x" @click="onRemoveAlias(row.canonical, alias)">×</button>
+                  </span>
+                </div>
+                <div class="alias-add">
+                  <input :value="aliasDraft[row.canonical] || ''" :placeholder="`add alias for ${row.canonical}`" class="alias-input" @input="aliasDraft[row.canonical] = $event.target.value" @keydown.enter.prevent="onAddAlias(row.canonical)">
+                  <button type="button" class="ghost-button ghost-small" @click="onAddAlias(row.canonical)">Add</button>
+                </div>
+                <p v-if="aliasError[row.canonical]" class="warn-hint alias-error">{{ aliasError[row.canonical] }}</p>
+              </td>
+              <td class="scaling-cell"><span :class="row.scalable ? 'ok-hint' : 'warn-hint'">{{ row.scaling }}</span></td>
+              <td><span :class="row.scalable ? 'ok-hint' : 'warn-hint'">{{ row.scalable ? '✓ yes' : '≈ approx' }}</span></td>
             </tr>
           </tbody>
         </table>
@@ -252,8 +265,8 @@
 </template>
 
 <script>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { ALIASES, isScalableUnit } from '../unitOptions.js';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { ALIASES, DEFAULT_ALIASES, addAlias, isScalableUnit, removeAlias, resetAliases, scalingLabel } from '../unitOptions.js';
 import { CONTENT_WIDTHS, resetDisplaySettings, settings } from '../settings.js';
 import { useLlmModels } from '../composables/useLlmModels.js';
 
@@ -274,11 +287,44 @@ export default {
     });
     let pollHandle = null;
 
-    const unitRows = computed(() => Object.entries(ALIASES).map(([canonical, aliases]) => ({
-      canonical,
-      aliases: aliases.filter((alias) => alias !== canonical).join(', ') || '—',
-      scalable: isScalableUnit(canonical),
-    })));
+    const aliasDraft = reactive({});
+    const aliasError = reactive({});
+    const aliasTick = ref(0);
+    const unitRows = computed(() => {
+      void aliasTick.value;
+      return Object.entries(ALIASES).map(([canonical, aliases]) => ({
+        canonical,
+        aliasList: [...aliases],
+        aliases: aliases.filter((alias) => alias !== canonical).join(', ') || '—',
+        scalable: isScalableUnit(canonical),
+        scaling: scalingLabel(canonical),
+      }));
+    });
+    const hasAliasEdits = computed(() => {
+      void aliasTick.value;
+      return JSON.stringify(ALIASES) !== JSON.stringify(DEFAULT_ALIASES);
+    });
+    function onAddAlias(canonical) {
+      const raw = (aliasDraft[canonical] || '').trim();
+      if (!raw) { aliasError[canonical] = 'Enter an alias'; return; }
+      const res = addAlias(canonical, raw);
+      if (!res.ok) { aliasError[canonical] = res.error; return; }
+      aliasError[canonical] = '';
+      aliasDraft[canonical] = '';
+      aliasTick.value += 1;
+    }
+    function onRemoveAlias(canonical, alias) {
+      const res = removeAlias(canonical, alias);
+      if (!res.ok) { aliasError[canonical] = res.error; return; }
+      aliasError[canonical] = '';
+      aliasTick.value += 1;
+    }
+    function resetAllAliases() {
+      resetAliases();
+      for (const k of Object.keys(aliasError)) aliasError[k] = '';
+      for (const k of Object.keys(aliasDraft)) aliasDraft[k] = '';
+      aliasTick.value += 1;
+    }
 
     const overrideCaps = computed(() => (systemInfo.value?.hard_limits) || { max_distance_km: 50, max_stores_per_company: 20 });
 
@@ -439,7 +485,7 @@ export default {
 
     return {
       CONTENT_WIDTHS, settings, resetDisplaySettings,
-      unitRows, systemInfo, overrideCaps,
+      unitRows, aliasDraft, aliasError, hasAliasEdits, onAddAlias, onRemoveAlias, resetAllAliases, systemInfo, overrideCaps,
       showRiskModal, overridesWanted, onToggleOverrides, cancelRisk, acceptRisk,
       llm, mistralModelOptions, googleModelOptions, googleReady,
       onProviderChange, optionLabel, statusBadge, formatFetched,

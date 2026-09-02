@@ -1,8 +1,14 @@
 <template>
   <div class="app-frame" :class="{ 'drawer-open': drawerOpen }">
     <header class="mobile-topbar">
-      <button type="button" class="ghost-button ghost-small" aria-label="Open navigation" @click="drawerOpen = true">☰</button>
-      <span class="topbar-brand"><strong>Meal Optimiser</strong><small>/test workspace</small></span>
+      <button type="button" class="ghost-button ghost-small" aria-label="Open navigation" @click="drawerOpen = true">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor">
+          <rect x="3" y="6"  width="18" height="2" rx="1" />
+          <rect x="3" y="11" width="18" height="2" rx="1" />
+          <rect x="3" y="16" width="18" height="2" rx="1" />
+        </svg>
+      </button>
+      <span class="topbar-brand"><strong>Meal Optimiser</strong></span>
     </header>
 
     <AppSidebar :current="currentView" :rail="railMode" @navigate="navigate" />

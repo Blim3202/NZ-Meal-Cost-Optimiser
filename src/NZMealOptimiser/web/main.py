@@ -949,12 +949,12 @@ async def llm_settings_put(req: _LLMSettingsRequest) -> dict:
 # Whitelisted markdown manuals served to the /test Documentation viewer.
 # Kept explicit (name -> title) so no arbitrary file read is possible.
 TECH_DOCS = {
-    "FastAPI.md": "FastAPI backend",
-    "LLM_Pipeline.md": "LLM pipeline",
-    "NewWorld_API.md": "New World API",
     "PaknSave_API.md": "Pak'nSave API",
-    "Vue_Dashboard.md": "Vue dashboard",
+    "NewWorld_API.md": "New World API",
     "Woolworths_API.md": "Woolworths API",
+    "LLM_Pipeline.md": "LLM pipeline",
+    "FastAPI.md": "FastAPI backend",
+    "Vue_Dashboard.md": "Vue dashboard",
 }
 TECH_DOCS_DIR = PROJECT_ROOT / "docs" / "technical"
 

@@ -1,7 +1,7 @@
 <template>
   <main class="shell">
     <header class="hero">
-      <div><p class="eyebrow">NZ grocery intelligence</p><h1>Meal cost optimiser</h1>      <p class="lede">Compare any dish. Preset or built by you, across nearby supermarkets.</p></div>
+      <div><p class="eyebrow">LOCAL GROCERY INTELLIGENCE</p><h1>NZ Meal Cost Optimiser</h1>      <p class="lede">Compare any dish. Preset or built by you, across nearby supermarkets.</p></div>
     </header>
 
     <div class="home-grid">
