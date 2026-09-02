@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="app-frame" :class="{ 'drawer-open': drawerOpen }">
     <header class="mobile-topbar">
       <button type="button" class="ghost-button ghost-small" aria-label="Open navigation" @click="drawerOpen = true">
@@ -8,7 +8,7 @@
           <rect x="3" y="16" width="18" height="2" rx="1" />
         </svg>
       </button>
-      <span class="topbar-brand"><strong>Meal Optimiser</strong><small>/app</small></span>
+      <span class="topbar-brand"><strong>Meal Optimiser</strong></span>
     </header>
 
     <AppSidebar :current="currentView" :rail="railMode" @navigate="navigate" />
@@ -62,13 +62,13 @@ export default {
       window.scrollTo({ top: 0 });
     }
 
-    // My Dishes â†’ dashboard handoff (optionally straight into edit mode).
+    // My Dishes → dashboard handoff (optionally straight into edit mode).
     function openDish({ key, edit }) {
       navigate('dashboard');
       nextTick(() => activeView.value?.loadPreset(key, edit));
     }
 
-    // LLM Recipe Builder â†’ dashboard handoff with a freshly generated draft.
+    // LLM Recipe Builder → dashboard handoff with a freshly generated draft.
     function openDraft(draft) {
       navigate('dashboard');
       nextTick(() => activeView.value?.loadDraft(draft));
