@@ -1,6 +1,6 @@
 {
-  "spaghetti bolognese": {
-    "dish_name": "spaghetti bolognese",
+  "Spaghetti Bolognese": {
+    "dish_name": "Spaghetti Bolognese",
     "portion": 4,
     "ingredients": [
       {
@@ -46,8 +46,8 @@
       }
     ]
   },
-  "chicken stir fry": {
-    "dish_name": "chicken stir fry",
+  "Chicken Stir Fry": {
+    "dish_name": "Chicken Stir Fry",
     "portion": 4,
     "ingredients": [
       {
@@ -76,8 +76,8 @@
       }
     ]
   },
-  "beef stir fry": {
-    "dish_name": "beef stir fry",
+  "Beef Stir Fry": {
+    "dish_name": "Beef Stir Fry",
     "portion": 4,
     "ingredients": [
       {
@@ -104,8 +104,8 @@
       }
     ]
   },
-  "roast lamb": {
-    "dish_name": "roast lamb",
+  "Roast Lamb": {
+    "dish_name": "Roast Lamb",
     "portion": 4,
     "ingredients": [
       {
@@ -141,8 +141,8 @@
       }
     ]
   },
-  "chicken curry": {
-    "dish_name": "chicken curry",
+  "Chicken Curry": {
+    "dish_name": "Chicken Curry",
     "portion": 4,
     "ingredients": [
       {
@@ -176,8 +176,8 @@
       }
     ]
   },
-  "beef curry": {
-    "dish_name": "beef curry",
+  "Beef Curry": {
+    "dish_name": "Beef Curry",
     "portion": 4,
     "ingredients": [
       {
@@ -211,8 +211,8 @@
       }
     ]
   },
-  "fish and chips": {
-    "dish_name": "fish and chips",
+  "Fish and Chips": {
+    "dish_name": "Fish and Chips",
     "portion": 4,
     "ingredients": [
       {
@@ -238,8 +238,8 @@
       }
     ]
   },
-  "nachos": {
-    "dish_name": "nachos",
+  "Nachos": {
+    "dish_name": "Nachos",
     "portion": 4,
     "ingredients": [
       {
@@ -273,8 +273,8 @@
       }
     ]
   },
-  "pumpkin soup": {
-    "dish_name": "pumpkin soup",
+  "Pumpkin Soup": {
+    "dish_name": "Pumpkin Soup",
     "portion": 4,
     "ingredients": [
       {
@@ -308,8 +308,8 @@
       }
     ]
   },
-  "tacos": {
-    "dish_name": "tacos",
+  "Tacos": {
+    "dish_name": "Tacos",
     "portion": 4,
     "ingredients": [
       {
@@ -350,8 +350,8 @@
       }
     ]
   },
-  "lamb chops": {
-    "dish_name": "lamb chops",
+  "Lamb Chops": {
+    "dish_name": "Lamb Chops",
     "portion": 4,
     "ingredients": [
       {
@@ -375,8 +375,8 @@
       }
     ]
   },
-  "butter chicken": {
-    "dish_name": "butter chicken",
+  "Butter Chicken": {
+    "dish_name": "Butter Chicken",
     "portion": 4,
     "ingredients": [
       {
@@ -403,8 +403,8 @@
       }
     ]
   },
-  "lasagne": {
-    "dish_name": "lasagne",
+  "Lasagne": {
+    "dish_name": "Lasagne",
     "portion": 4,
     "ingredients": [
       {
@@ -448,8 +448,8 @@
       }
     ]
   },
-  "shepherd's pie": {
-    "dish_name": "shepherd's pie",
+  "Shepherd's Pie": {
+    "dish_name": "Shepherd's Pie",
     "portion": 4,
     "ingredients": [
       {
@@ -483,8 +483,8 @@
       }
     ]
   },
-  "pizza": {
-    "dish_name": "pizza",
+  "Pizza": {
+    "dish_name": "Pizza",
     "portion": 4,
     "ingredients": [
       {
@@ -513,8 +513,8 @@
       }
     ]
   },
-  "veggie stir fry": {
-    "dish_name": "veggie stir fry",
+  "Veggie Stir Fry": {
+    "dish_name": "Veggie Stir Fry",
     "portion": 4,
     "ingredients": [
       {
@@ -548,8 +548,8 @@
       }
     ]
   },
-  "frittata": {
-    "dish_name": "frittata",
+  "Frittata": {
+    "dish_name": "Frittata",
     "portion": 4,
     "ingredients": [
       {
@@ -585,8 +585,8 @@
       }
     ]
   },
-  "pancakes": {
-    "dish_name": "pancakes",
+  "Pancakes": {
+    "dish_name": "Pancakes",
     "portion": 4,
     "ingredients": [
       {
@@ -618,8 +618,8 @@
       }
     ]
   },
-  "chicken soup": {
-    "dish_name": "chicken soup",
+  "Chicken Soup": {
+    "dish_name": "Chicken Soup",
     "portion": 4,
     "ingredients": [
       {
@@ -662,8 +662,8 @@
       }
     ]
   },
-  "tomato pasta": {
-    "dish_name": "tomato pasta",
+  "Tomato Pasta": {
+    "dish_name": "Tomato Pasta",
     "portion": 4,
     "ingredients": [
       {
@@ -700,8 +700,8 @@
       }
     ]
   },
-  "chicken katsu": {
-    "dish_name": "chicken katsu",
+  "Chicken Katsu": {
+    "dish_name": "Chicken Katsu",
     "portion": 4,
     "ingredients": [
       {

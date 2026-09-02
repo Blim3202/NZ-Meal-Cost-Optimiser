@@ -22,6 +22,7 @@ COLUMNS = [
     "store_id",             # PK
     "search_ingredient",
     "returned_ingredient",
+    "brand",
     "price",
     "quantity",
     "measurement_unit",
@@ -34,6 +35,7 @@ COLUMNS = [
     "datetime_created",
     "date_created",         # PK
     "pk_hash",              # SHA-256(store_id + sku + date_created)
+    "is_valid",             # filled by tools/llm/llm_validate.py
 ]
 
 

@@ -1,5 +1,0 @@
-{
-  "endpoint": "https://api-prod.prod.fsniwaikato.kiwi/prod/mobile/store/physical",
-  "store_count": 150,
-  "notes": "Mobile store list captured from live New World API."
-}

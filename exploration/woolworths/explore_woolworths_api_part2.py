@@ -28,7 +28,7 @@ from playwright.async_api import async_playwright
 
 # ── Paths ────────────────────────────────────────────────────────────────────
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR   = os.path.abspath(os.path.join(SCRIPT_DIR, "..", "..", "exploration", "woolworths"))
+DATA_DIR   = os.path.join(SCRIPT_DIR, "data")
 BASE_URL   = "https://www.woolworths.co.nz"
 API_BASE   = f"{BASE_URL}/api/v1"
 

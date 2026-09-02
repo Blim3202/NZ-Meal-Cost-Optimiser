@@ -1,0 +1,491 @@
+{
+  "_comment": "Ingredient-level include/exclude keyword filters for supermarket product disambiguation. includes = word that MUST appear (Levenshtein ratio <= 0.35). excludes = max 5 words to reject wrong products. Separate from dishes.json so curated recipes stay clean.",
+  "_matching": {
+    "algorithm": "Levenshtein ratio (edit_distance / max_len) <= 0.35",
+    "singular_plural": "Handled automatically (e.g. 'carrot' matches 'carrots')",
+    "multi_word_includes": "All words must fuzzy-match (e.g. 'butter chicken' requires both 'butter' and 'chicken')"
+  },
+
+  "Spaghetti Bolognese": {
+    "beef mince": {
+      "includes": ["mince"],
+      "excludes": ["pork", "chicken", "lamb", "plant-based", "turkey"]
+    },
+    "spaghetti pasta": {
+      "includes": ["spaghetti"],
+      "excludes": ["penne", "fettuccine", "lasagne", "macaroni", "vermicelli"]
+    },
+    "canned tomatoes": {
+      "includes": ["tomatoes"],
+      "excludes": ["fresh", "cherry", "passata", "paste", "sauce"]
+    },
+    "onion": {
+      "includes": ["onion"],
+      "excludes": ["sachet", "seasoning", "flakes", "powder", "soup"]
+    },
+    "carrot": {
+      "includes": ["carrot"],
+      "excludes": ["juice", "baby", "cake", "soup", "frozen"]
+    },
+    "garlic": {
+      "includes": ["garlic"],
+      "excludes": ["powder", "flakes", "salt", "seasoning", "paste"]
+    },
+    "mixed herbs": {
+      "includes": ["herb"],
+      "excludes": ["seasoning", "sachet", "blend", "spice", "rub"]
+    }
+  },
+
+  "Chicken Stir Fry": {
+    "chicken breast": {
+      "includes": ["chicken"],
+      "excludes": ["thigh", "drumstick", "wing", "mince", "nugget"]
+    },
+    "stir fry vegetables": {
+      "includes": ["vegetable"],
+      "excludes": ["sauce", "seasoning", "kit", "soup", "snack"]
+    },
+    "soy sauce": {
+      "includes": ["soy"],
+      "excludes": ["milk", "protein", "paste", "tofu", "icecream"]
+    },
+    "rice noodles": {
+      "includes": ["rice"],
+      "excludes": ["flour", "basmati", "jasmine", "risotto", "vermicelli"]
+    }
+  },
+
+  "Beef Stir Fry": {
+    "beef strips": {
+      "includes": ["beef"],
+      "excludes": ["chicken", "pork", "lamb", "plant-based", "jerky"]
+    },
+    "stir fry vegetables": {
+      "includes": ["vegetable"],
+      "excludes": ["sauce", "seasoning", "kit", "soup", "snack"]
+    },
+    "soy sauce": {
+      "includes": ["soy"],
+      "excludes": ["milk", "protein", "paste", "tofu", "icecream"]
+    },
+    "rice noodles": {
+      "includes": ["rice"],
+      "excludes": ["flour", "basmati", "jasmine", "risotto", "vermicelli"]
+    }
+  },
+
+  "Roast Lamb": {
+    "lamb roast": {
+      "includes": ["lamb"],
+      "excludes": ["beef", "chicken", "pork", "chops", "ground"]
+    },
+    "potato": {
+      "includes": ["potato"],
+      "excludes": ["sweet", "yam", "flour", "starch", "flakes"]
+    },
+    "carrot": {
+      "includes": ["carrot"],
+      "excludes": ["juice", "baby", "cake", "soup", "frozen"]
+    },
+    "broccoli": {
+      "includes": ["broccoli"],
+      "excludes": ["cauliflower", "frozen", "soup", "slaw", "seasoning"]
+    },
+    "stock": {
+      "includes": ["stock"],
+      "excludes": ["seasoning", "sachet", "gravy", "powder", "broth"]
+    }
+  },
+
+  "Chicken Curry": {
+    "chicken thigh": {
+      "includes": ["thigh"],
+      "excludes": ["breast", "drumstick", "wing", "mince", "nugget"]
+    },
+    "curry paste": {
+      "includes": ["curry"],
+      "excludes": ["powder", "sauce", "marinade", "seasoning", "mix"]
+    },
+    "coconut milk": {
+      "includes": ["coconut"],
+      "excludes": ["cream", "water", "oil", "flakes", "sugar"]
+    },
+    "rice": {
+      "includes": ["rice"],
+      "excludes": ["flour", "cereal", "flakes", "risotto", "vermicelli"]
+    },
+    "onion": {
+      "includes": ["onion"],
+      "excludes": ["sachet", "seasoning", "flakes", "powder", "soup"]
+    }
+  },
+
+  "Beef Curry": {
+    "diced beef": {
+      "includes": ["beef"],
+      "excludes": ["chicken", "pork", "lamb", "plant-based", "jerky"]
+    },
+    "curry paste": {
+      "includes": ["curry"],
+      "excludes": ["powder", "sauce", "marinade", "seasoning", "mix"]
+    },
+    "coconut milk": {
+      "includes": ["coconut"],
+      "excludes": ["water", "oil", "flakes", "sugar"]
+    },
+    "rice": {
+      "includes": ["rice"],
+      "excludes": ["flour", "cereal", "flakes", "risotto", "vermicelli"]
+    },
+    "onion": {
+      "includes": ["onion"],
+      "excludes": ["sachet", "seasoning", "flakes", "powder", "soup"]
+    }
+  },
+
+  "Fish and Chips": {
+    "fish fillet": {
+      "includes": ["fish"],
+      "excludes": ["breaded", "battered", "crumbed", "coated", "prepared"]
+    },
+    "potato": {
+      "includes": ["potato"],
+      "excludes": ["sweet", "yam", "flour", "starch", "flakes"]
+    },
+    "oil": {
+      "includes": ["oil"],
+      "excludes": ["spray", "seasoning", "mayo", "dressing", "vinegar"]
+    }
+  },
+
+  "Nachos": {
+    "beef mince": {
+      "includes": ["mince"],
+      "excludes": ["pork", "chicken", "lamb", "plant-based", "turkey"]
+    },
+    "tortilla chips": {
+      "includes": ["tortilla"],
+      "excludes": ["potato", "banana", "sweet", "crisps", "seasoning"]
+    },
+    "cheese": {
+      "includes": ["cheese"],
+      "excludes": ["cream", "spread", "sauce", "flakes", "vegan"]
+    },
+    "beans": {
+      "includes": ["beans"],
+      "excludes": ["coffee", "soy", "chickpeas", "lentils", "peas"]
+    },
+    "sour cream": {
+      "includes": ["sour"],
+      "excludes": ["whipped", "sweet", "dessert", "plant-based", "coconut"]
+    }
+  },
+
+  "Pumpkin Soup": {
+    "pumpkin": {
+      "includes": ["pumpkin"],
+      "excludes": ["squash", "butternut", "pie", "dessert", "seeds"]
+    },
+    "onion": {
+      "includes": ["onion"],
+      "excludes": ["sachet", "seasoning", "flakes", "powder", "soup"]
+    },
+    "cream": {
+      "includes": ["cream"],
+      "excludes": ["sour", "coconut", "whipping", "plant-based", "dessert"]
+    },
+    "stock": {
+      "includes": ["stock"],
+      "excludes": ["seasoning", "sachet", "gravy", "powder", "broth"]
+    },
+    "bread": {
+      "includes": ["bread"],
+      "excludes": ["crumbs", "flour", "cake", "roll", "toast"]
+    }
+  },
+
+  "Tacos": {
+    "beef mince": {
+      "includes": ["mince"],
+      "excludes": ["pork", "chicken", "lamb", "plant-based", "turkey"]
+    },
+    "taco shells": {
+      "includes": ["taco"],
+      "excludes": ["seasoning", "kit", "sauce", "salsa", "bowl"]
+    },
+    "lettuce": {
+      "includes": ["lettuce"],
+      "excludes": ["cabbage", "spinach", "kale", "salad", "coleslaw"]
+    },
+    "tomato": {
+      "includes": ["tomato"],
+      "excludes": ["sauce", "paste", "ketchup", "cherry", "passata"]
+    },
+    "cheese": {
+      "includes": ["cheese"],
+      "excludes": ["cream", "spread", "sauce", "flakes", "vegan"]
+    },
+    "sour cream": {
+      "includes": ["sour"],
+      "excludes": ["whipped", "sweet", "dessert", "plant-based", "coconut"]
+    }
+  },
+
+  "Lamb Chops": {
+    "Lamb Chops": {
+      "includes": ["lamb"],
+      "excludes": ["beef", "chicken", "pork", "ground", "kebab"]
+    },
+    "potato": {
+      "includes": ["potato"],
+      "excludes": ["sweet", "yam", "flour", "starch", "flakes"]
+    },
+    "mint sauce": {
+      "includes": ["sauce"],
+      "excludes": ["jelly", "preserve", "paste", "pickle", "chutney"]
+    }
+  },
+
+  "Butter Chicken": {
+    "chicken thigh": {
+      "includes": ["thigh"],
+      "excludes": ["breast", "drumstick", "wing", "mince", "nugget"]
+    },
+    "butter chicken sauce": {
+      "includes": ["sauce"],
+      "excludes": ["paste", "powder", "marinade", "korma", "tikka"]
+    },
+    "rice": {
+      "includes": ["rice"],
+      "excludes": ["flour", "cereal", "flakes", "risotto", "vermicelli"]
+    },
+    "cream": {
+      "includes": ["cream"],
+      "excludes": ["sour", "coconut", "whipping", "plant-based", "dessert"]
+    }
+  },
+
+  "Lasagne": {
+    "beef mince": {
+      "includes": ["mince"],
+      "excludes": ["pork", "chicken", "lamb", "plant-based", "turkey"]
+    },
+    "lasagne sheets": {
+      "includes": ["lasagne"],
+      "excludes": ["noodles", "pasta", "spaghetti", "penne", "rice"]
+    },
+    "cheese": {
+      "includes": ["cheese"],
+      "excludes": ["cream", "spread", "sauce", "flakes", "vegan"]
+    },
+    "canned tomatoes": {
+      "includes": ["tomatoes"],
+      "excludes": ["fresh", "cherry", "passata", "paste", "sauce"]
+    },
+    "milk": {
+      "includes": ["milk"],
+      "excludes": ["plant-based", "soy", "almond", "oat", "coconut"]
+    },
+    "butter": {
+      "includes": ["butter"],
+      "excludes": ["margarine", "spread", "olive", "coconut", "ghee"]
+    },
+    "flour": {
+      "includes": ["flour"],
+      "excludes": ["self-raising", "cornflour", "rice", "coconut", "batter"]
+    }
+  },
+
+  "Shepherd's Pie": {
+    "beef mince": {
+      "includes": ["mince"],
+      "excludes": ["pork", "chicken", "lamb", "plant-based", "turkey"]
+    },
+    "potato": {
+      "includes": ["potato"],
+      "excludes": ["sweet", "yam", "flour", "starch", "flakes"]
+    },
+    "carrot": {
+      "includes": ["carrot"],
+      "excludes": ["juice", "baby", "cake", "soup", "frozen"]
+    },
+    "peas": {
+      "includes": ["peas"],
+      "excludes": ["mixed", "soup", "seasoning", "flakes", "mushy"]
+    },
+    "stock": {
+      "includes": ["stock"],
+      "excludes": ["seasoning", "sachet", "gravy", "powder", "broth"]
+    }
+  },
+
+  "Pizza": {
+    "pizza base": {
+      "includes": ["pizza"],
+      "excludes": ["sauce", "topping", "seasoning", "frozen", "kit"]
+    },
+    "pizza sauce": {
+      "includes": ["sauce"],
+      "excludes": ["pasta", "barbecue", "salsa", "marinara", "teriyaki"]
+    },
+    "cheese": {
+      "includes": ["cheese"],
+      "excludes": ["cream", "spread", "sauce", "flakes", "vegan"]
+    },
+    "pepperoni": {
+      "includes": ["pepperoni"],
+      "excludes": ["salami", "chorizo", "pepper", "seasoning", "slices"]
+    }
+  },
+
+  "Veggie Stir Fry": {
+    "stir fry vegetables": {
+      "includes": ["vegetable"],
+      "excludes": ["sauce", "seasoning", "kit", "soup", "snack"]
+    },
+    "tofu": {
+      "includes": ["tofu"],
+      "excludes": ["soy milk", "soy protein", "tempeh", "seitan", "mock"]
+    },
+    "soy sauce": {
+      "includes": ["soy"],
+      "excludes": ["milk", "protein", "paste", "tofu", "icecream"]
+    },
+    "rice noodles": {
+      "includes": ["rice"],
+      "excludes": ["flour", "basmati", "jasmine", "risotto", "vermicelli"]
+    },
+    "garlic": {
+      "includes": ["garlic"],
+      "excludes": ["powder", "flakes", "salt", "seasoning", "paste"]
+    }
+  },
+
+  "Frittata": {
+    "eggs": {
+      "includes": ["egg"],
+      "excludes": ["whites", "substitute", "powder", "liquid", "quail"]
+    },
+    "potato": {
+      "includes": ["potato"],
+      "excludes": ["sweet", "yam", "flour", "starch", "flakes"]
+    },
+    "onion": {
+      "includes": ["onion"],
+      "excludes": ["sachet", "seasoning", "flakes", "powder", "soup"]
+    },
+    "cheese": {
+      "includes": ["cheese"],
+      "excludes": ["cream", "spread", "sauce", "flakes", "vegan"]
+    },
+    "milk": {
+      "includes": ["milk"],
+      "excludes": ["plant-based", "soy", "almond", "oat", "coconut"]
+    }
+  },
+
+  "Pancakes": {
+    "flour": {
+      "includes": ["flour"],
+      "excludes": ["self-raising", "cornflour", "rice", "coconut", "batter"]
+    },
+    "eggs": {
+      "includes": ["egg"],
+      "excludes": ["whites", "substitute", "powder", "liquid", "quail"]
+    },
+    "milk": {
+      "includes": ["milk"],
+      "excludes": ["plant-based", "soy", "almond", "oat", "coconut"]
+    },
+    "sugar": {
+      "includes": ["sugar"],
+      "excludes": ["sweetener", "honey", "syrup", "maple", "stevia"]
+    },
+    "butter": {
+      "includes": ["butter"],
+      "excludes": ["margarine", "spread", "olive", "coconut", "ghee"]
+    }
+  },
+
+  "Chicken Soup": {
+    "chicken breast": {
+      "includes": ["chicken"],
+      "excludes": ["thigh", "drumstick", "wing", "mince", "nugget"]
+    },
+    "carrot": {
+      "includes": ["carrot"],
+      "excludes": ["juice", "baby", "cake", "soup", "frozen"]
+    },
+    "onion": {
+      "includes": ["onion"],
+      "excludes": ["sachet", "seasoning", "flakes", "powder", "soup"]
+    },
+    "celery": {
+      "includes": ["celery"],
+      "excludes": ["salt", "seasoning", "flakes", "powder", "stalks"]
+    },
+    "stock": {
+      "includes": ["stock"],
+      "excludes": ["seasoning", "sachet", "gravy", "powder", "broth"]
+    },
+    "pasta": {
+      "includes": ["pasta"],
+      "excludes": ["noodles", "spaghetti", "lasagne", "penne", "udon"]
+    }
+  },
+
+  "Tomato Pasta": {
+    "pasta": {
+      "includes": ["pasta"],
+      "excludes": ["noodles", "spaghetti", "lasagne", "penne", "udon"]
+    },
+    "canned tomatoes": {
+      "includes": ["tomatoes"],
+      "excludes": ["fresh", "cherry", "passata", "paste", "sauce"]
+    },
+    "garlic": {
+      "includes": ["garlic"],
+      "excludes": ["powder", "flakes", "salt", "seasoning", "paste"]
+    },
+    "olive oil": {
+      "includes": ["oil"],
+      "excludes": ["spray", "seasoning", "mayo", "dressing", "vinegar"]
+    },
+    "mixed herbs": {
+      "includes": ["herb"],
+      "excludes": ["seasoning", "sachet", "blend", "spice", "rub"]
+    },
+    "cheese": {
+      "includes": ["cheese"],
+      "excludes": ["cream", "spread", "sauce", "flakes", "vegan"]
+    }
+  },
+
+  "Chicken Katsu": {
+    "chicken breast": {
+      "includes": ["chicken"],
+      "excludes": ["thigh", "drumstick", "wing", "mince", "nugget"]
+    },
+    "flour": {
+      "includes": ["flour"],
+      "excludes": ["self-raising", "cornflour", "rice", "coconut", "batter"]
+    },
+    "eggs": {
+      "includes": ["egg"],
+      "excludes": ["whites", "substitute", "powder", "liquid", "quail"]
+    },
+    "bread crumbs": {
+      "includes": ["crumb"],
+      "excludes": ["panko", "seasoned", "gluten-free", "cornflakes", "stuffing"]
+    },
+    "rice": {
+      "includes": ["rice"],
+      "excludes": ["flour", "cereal", "flakes", "risotto", "vermicelli"]
+    },
+    "katsu sauce": {
+      "includes": ["katsu"],
+      "excludes": ["curry", "teriyaki", "sweet chilli", "hoisin", "tonkatsu"]
+    }
+  }
+}

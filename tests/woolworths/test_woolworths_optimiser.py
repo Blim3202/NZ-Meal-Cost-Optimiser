@@ -85,7 +85,7 @@ class TestBuildRow:
     def test_row_matches_csv_columns(self):
         """The row dict must contain all CSV_COLUMNS except 'is_valid'.
 
-        build_woolworths_row() produces 17 of the 18 CSV_COLUMNS keys. The
+        build_woolworths_row() produces 18 of the 19 CSV_COLUMNS keys. The
         'is_valid' column is intentionally omitted by build_woolworths_row()
         because it is managed separately by the validation pipeline
         (llm_validate.py) and the append_rows() function. It is added
@@ -96,75 +96,64 @@ class TestBuildRow:
         expected = set(CSV_COLUMNS) - {"is_valid"}
         assert set(row.keys()) == expected
 
-    def test_company_value(self):
-        """The 'company' field must be 'Woolworths'."""
-        assert self._build_milk_row()["company"] == "Woolworths"
+    @pytest.mark.parametrize("field,expected", [
+        ("company", "Woolworths"),
+        ("store", "Nelson Junction Woolworths"),
+        ("store_id", "9290"),
+        ("search_ingredient", "milk"),
+        ("returned_ingredient", "anchor milk standard blue"),
+    ])
+    def test_identity_field_values(self, field, expected):
+        """Identity fields echo the function inputs verbatim (or a
+        normalised form, e.g. the brand "anchor" → "Anchor")."""
+        assert self._build_milk_row()[field] == expected
 
-    def test_store_and_store_id_values(self):
-        """store and store_id must match the inputs passed to build_woolworths_row()."""
-        row = self._build_milk_row()
-        assert row["store"] == "Nelson Junction Woolworths"
-        assert row["store_id"] == "9290"
+    def test_brand_capitalised(self):
+        """brand is capitalised: raw "anchor" → "Anchor" (matches Foodstuffs casing)."""
+        assert self._build_milk_row()["brand"] == "Anchor"
 
-    def test_search_ingredient_value(self):
-        """search_ingredient must be 'milk' (the term we searched for)."""
-        assert self._build_milk_row()["search_ingredient"] == "milk"
+    def test_brand_fallback_to_company_name(self):
+        """brand falls back to 'Woolworths' when the product has no brand.
 
-    def test_returned_ingredient_value(self):
-        """returned_ingredient must be the product name from the fixture."""
-        row = self._build_milk_row()
-        assert row["returned_ingredient"] == "anchor milk standard blue"
-
-    def test_price_value(self):
-        """price must match salePrice from the fixture (9.07)."""
-        assert self._build_milk_row()["price"] == 9.07
-
-    def test_quantity_value(self):
-        """quantity must be parsed from volumeSize '3L' -> 3.
-
-        Note: parse_woolworths_volume_size lowercases the unit, so
-        '3L' returns quantity 3 (as int) and measurement_unit 'l'.
+        Covers in-house items where the API omits the brand field entirely.
         """
-        assert self._build_milk_row()["quantity"] == 3
+        product = dict(self.milk_product)
+        del product["brand"]
+        row = build_woolworths_row(
+            company="Woolworths",
+            store="Nelson Junction Woolworths",
+            store_id="9290",
+            search_ingredient="milk",
+            product=product,
+            now=self.now,
+        )
+        assert row["brand"] == "Woolworths"
 
-    def test_measurement_unit_value(self):
-        """measurement_unit must be 'l' (from volumeSize '3L', lowercased)."""
-        assert self._build_milk_row()["measurement_unit"] == "l"
+    @pytest.mark.parametrize("field,expected", [
+        ("price", 9.07),
+        ("quantity", 3),
+        ("measurement_unit", "l"),
+        ("per_unit_quantity", "1L"),
+        ("per_unit_price", 3.02),
+        ("is_sale", False),
+        ("sku", "705692"),
+        ("department", "Fridge & Deli"),
+        ("sub_department", ""),
+    ])
+    def test_product_field_values(self, field, expected):
+        """Product-derived fields: price, size, SKU, department."""
+        assert self._build_milk_row()[field] == expected
 
-    def test_per_unit_quantity_value(self):
-        """per_unit_quantity must be cupMeasure '1L' from the fixture."""
-        assert self._build_milk_row()["per_unit_quantity"] == "1L"
-
-    def test_per_unit_price_value(self):
-        """per_unit_price must be cupListPrice from the fixture (3.02)."""
-        assert self._build_milk_row()["per_unit_price"] == 3.02
-
-    def test_is_sale_value(self):
-        """is_sale must reflect isSpecial=False from the fixture."""
-        assert self._build_milk_row()["is_sale"] is False
-
-    def test_sku_value(self):
-        """sku must match the fixture value '705692'."""
-        assert self._build_milk_row()["sku"] == "705692"
-
-    def test_department_value(self):
-        """department must be 'Fridge & Deli' from the fixture."""
-        assert self._build_milk_row()["department"] == "Fridge & Deli"
-
-    def test_sub_department_is_empty(self):
-        """sub_department must be an empty string (Woolworths doesn't set it)."""
-        assert self._build_milk_row()["sub_department"] == ""
-
-    def test_date_created_value(self):
-        """date_created must be YYYY-MM-DD derived from the 'now' timestamp."""
-        assert self._build_milk_row()["date_created"] == "2024-08-09"
-
-    def test_datetime_created_value(self):
-        """datetime_created must be YYYY-MM-DD HH:MM:SS from 'now'."""
-        assert self._build_milk_row()["datetime_created"] == "2024-08-09 12:00:00"
+    @pytest.mark.parametrize("field,expected", [
+        ("date_created", "2024-08-09"),
+        ("datetime_created", "2024-08-09 12:00:00"),
+    ])
+    def test_timestamp_fields(self, field, expected):
+        """date_created and datetime_created derive from the 'now' kwarg."""
+        assert self._build_milk_row()[field] == expected
 
     def test_pk_hash_correct(self):
-        """pk_hash must be the hash of store_id|sku|date_created.
+        """pk_hash is SHA-256('{store_id}|{sku}|{date_created}')[:16].
 
         Now hashed over store_id=9290 (extra1/fulfilmentStoreId, the
         canonical id), not the legacy pickupAddressId 4166071.
@@ -173,10 +162,15 @@ class TestBuildRow:
         expected_hash = _compute_pk_hash("9290", "705692", "2024-08-09")
         assert row["pk_hash"] == expected_hash
 
+    def test_pk_hash_is_deterministic(self):
+        """Two builds with identical inputs must yield the same pk_hash."""
+        row1 = self._build_milk_row()
+        row2 = self._build_milk_row()
+        assert row1["pk_hash"] == row2["pk_hash"]
+
     def test_sale_item_is_sale_true(self):
         """build_woolworths_row with a sale product must set is_sale=True."""
-        row = self._build_sale_row()
-        assert row["is_sale"] is True
+        assert self._build_sale_row()["is_sale"] is True
 
     def test_sale_item_price_matches_sale_price(self):
         """build_woolworths_row must use salePrice (not originalPrice) for the price field."""
@@ -184,65 +178,30 @@ class TestBuildRow:
         assert row["price"] == self.sale_product["salePrice"]
         assert row["price"] < self.sale_product["originalPrice"]
 
-    def test_sale_item_returned_ingredient(self):
-        """The sale item's product name must be correctly set."""
-        row = self._build_sale_row()
-        assert row["returned_ingredient"] == self.sale_product["name"]
-
-    def test_sale_item_sku(self):
-        """The sale item's SKU must be correctly set."""
-        row = self._build_sale_row()
-        assert row["sku"] == self.sale_product["sku"]
-
-    def test_sale_item_per_unit_price(self):
-        """The sale item's per_unit_price must be correctly set."""
-        row = self._build_sale_row()
-        assert row["per_unit_price"] == self.sale_product["cupListPrice"]
-
-    def test_missing_optional_fields_handled(self):
-        """build_woolworths_row must handle products with missing optional fields.
-
-        If cupMeasure, cupListPrice, volumeSize are missing/None, build_woolworths_row
-        should still produce a valid row without crashing.
-        """
-        product = {
+    @pytest.mark.parametrize("product_overrides,assertions", [
+        # All optional fields blank/empty
+        ({"volumeSize": "", "cupMeasure": "", "cupListPrice": ""},
+         {"returned_ingredient": "test product", "price": 2.50,
+          "quantity": "", "measurement_unit": "", "per_unit_quantity": "",
+          "per_unit_price": ""}),
+        # sku is None
+        ({"sku": None, "name": "no sku product"},
+         {"returned_ingredient": "no sku product", "sku": None}),
+        # salePrice is None
+        ({"salePrice": None, "originalPrice": None, "name": "no price product"},
+         {"returned_ingredient": "no price product", "price": None}),
+    ])
+    def test_missing_or_none_field_handling(self, product_overrides, assertions):
+        """Products with missing/None optional fields must still produce
+        a valid row. build_woolworths_row converts None to "" for string
+        fields and passes None through for price/sku."""
+        base_product = {
             "sku": "999999",
             "name": "test product",
             "salePrice": 2.50,
             "originalPrice": 3.00,
             "isSpecial": False,
             "unitPrice": "",
-            "volumeSize": "",
-            "cupMeasure": "",
-            "cupListPrice": "",
-            "url": "",
-            "imageUrl": "",
-            "department": "",
-        }
-        row = build_woolworths_row(
-            company="Woolworths",
-            store="Test Store",
-            store_id="9999999",
-            search_ingredient="test",
-            product=product,
-            now=self.now,
-        )
-        assert row["returned_ingredient"] == "test product"
-        assert row["price"] == 2.50
-        assert row["quantity"] == ""  # build_woolworths_row converts None to ""
-        assert row["measurement_unit"] == ""
-        assert row["per_unit_quantity"] == ""
-        assert row["per_unit_price"] == ""
-
-    def test_none_sku_handled(self):
-        """build_woolworths_row must handle products with sku=None."""
-        product = {
-            "sku": None,
-            "name": "no sku product",
-            "salePrice": 1.00,
-            "originalPrice": 1.00,
-            "isSpecial": False,
-            "unitPrice": 1.00,
             "volumeSize": "1L",
             "cupMeasure": "1L",
             "cupListPrice": 1.00,
@@ -250,49 +209,17 @@ class TestBuildRow:
             "imageUrl": "",
             "department": "Pantry",
         }
+        base_product.update(product_overrides)
         row = build_woolworths_row(
             company="Woolworths",
             store="Test Store",
             store_id="9999999",
             search_ingredient="test",
-            product=product,
+            product=base_product,
             now=self.now,
         )
-        assert row["returned_ingredient"] == "no sku product"
-        assert row["sku"] is None
-
-    def test_none_sale_price_handled(self):
-        """build_woolworths_row must handle products with salePrice=None."""
-        product = {
-            "sku": "888888",
-            "name": "no price product",
-            "salePrice": None,
-            "originalPrice": None,
-            "isSpecial": False,
-            "unitPrice": "",
-            "volumeSize": "1L",
-            "cupMeasure": "1L",
-            "cupListPrice": "",
-            "url": "",
-            "imageUrl": "",
-            "department": "Pantry",
-        }
-        row = build_woolworths_row(
-            company="Woolworths",
-            store="Test Store",
-            store_id="9999999",
-            search_ingredient="test",
-            product=product,
-            now=self.now,
-        )
-        assert row["returned_ingredient"] == "no price product"
-        assert row["price"] is None
-
-    def test_pk_hash_consistency_between_calls(self):
-        """build_woolworths_row should produce the same pk_hash for identical inputs."""
-        row1 = self._build_milk_row()
-        row2 = self._build_milk_row()
-        assert row1["pk_hash"] == row2["pk_hash"]
+        for field, expected in assertions.items():
+            assert row[field] == expected
 
 
 class TestParseWoolworthsVolumeSize:

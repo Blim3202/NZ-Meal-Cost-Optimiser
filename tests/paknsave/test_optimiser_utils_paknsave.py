@@ -85,8 +85,7 @@ class TestDishResolution:
         onion, carrot, garlic, mixed herbs).
         """
         dish_name, ingredients = _resolve_dish_terms("spaghetti bolognese")
-        # Dish name normalized (lowercased in dishes.json)
-        assert dish_name == "spaghetti bolognese"
+        assert dish_name == "Spaghetti Bolognese"
         # 7 ingredients per the fixture
         assert len(ingredients) == 7
         # First three ingredients from the fixture
@@ -124,7 +123,7 @@ class TestDishResolution:
         Uses real "chicken stir fry" from data/dishes.json — 4 ingredients:
         chicken breast, stir fry vegetables, soy sauce, rice noodles.
         """
-        ingredients = get_ingredients("chicken stir fry")
+        ingredients = get_ingredients("Chicken Stir Fry")
         assert len(ingredients) == 4
         assert ingredients[0] == "chicken breast"
         assert ingredients[1] == "stir fry vegetables"
@@ -137,7 +136,7 @@ class TestDishResolution:
         Uses real "roast lamb" from data/dishes.json — 5 ingredients with quantities
         like "1.2 kg", "4 medium", etc.
         """
-        dish = "roast lamb"
+        dish = "Roast Lamb"
         qty_map = _build_quantity_map(dish)
         assert len(qty_map) == 5
         # Verify specific quantity strings from the fixture
@@ -149,8 +148,8 @@ class TestDishResolution:
 
     def test_resolve_dish_data_from_registry(self):
         """Verify _resolve_dish_data returns the full dish dict from DISHES."""
-        dish_dict: dict[str, Any] = cast(dict[str, Any], _resolve_dish_data("beef curry"))
-        assert dish_dict["dish_name"] == "beef curry"
+        dish_dict: dict[str, Any] = cast(dict[str, Any], _resolve_dish_data("Beef Curry"))
+        assert dish_dict["dish_name"] == "Beef Curry"
         assert dish_dict["portion"] == 4
         ingredients: list[dict[str, Any]] = dish_dict["ingredients"]  # type: ignore
         assert len(ingredients) == 5
@@ -312,6 +311,7 @@ class TestOptimiserUtilsPaknSave:
         assert row["store_id"] == store_id
         assert row["search_ingredient"] == "milk"
         assert row["returned_ingredient"] == "Standard UHT Milk"
+        assert row["brand"] == "Pams"
         assert row["price"] == 2.09  # 209 cents / 100
         assert row["quantity"] == 1
         assert row["measurement_unit"] == "l"
@@ -354,6 +354,7 @@ class TestOptimiserUtilsPaknSave:
         assert row["store_id"] == store_id
         assert row["search_ingredient"] == "milk"
         assert row["returned_ingredient"] == "Standard Milk"
+        assert row["brand"] == "Pams Value"
         assert row["price"] == 4.79  # 479 cents / 100
         assert row["quantity"] == 2
         assert row["measurement_unit"] == "l"
@@ -367,6 +368,22 @@ class TestOptimiserUtilsPaknSave:
 
         expected_hash = _compute_pk_hash(store_id, product["productId"], "2026-08-10")
         assert row["pk_hash"] == expected_hash
+
+    def test_build_edge_row_brand_fallback(self):
+        """Edge rows fall back to "Pak'nSave" when the product has no brand."""
+        now = datetime(2026, 8, 10, 12, 0, 0)
+        product = dict(self.edge_data["products"][0])
+        del product["brand"]
+        row = build_edge_row("PaknSave", "PAK'nSAVE Test", "sid-1", "milk", product, None, now)
+        assert row["brand"] == "Pak'nSave"
+
+    def test_build_mobile_row_brand_fallback(self):
+        """Mobile rows fall back to "Pak'nSave" when the product has no brand."""
+        now = datetime(2026, 8, 10, 12, 0, 0)
+        product = dict(self.mobile_data["products"][0])
+        del product["brand"]
+        row = build_mobile_row("PaknSave", "PAK'nSAVE Test", "sid-1", "milk", product, now)
+        assert row["brand"] == "Pak'nSave"
 
 
 class TestPkHashAndDedup:

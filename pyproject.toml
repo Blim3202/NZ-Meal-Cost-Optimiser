@@ -15,6 +15,7 @@ dependencies = [
     "numpy",
     "python-dotenv",
     "mistralai",
+    "openai",
     "playwright",
     "pydantic-settings",
     "supabase",
@@ -33,3 +34,10 @@ packages = {find = {where = ["src"]}}
 
 [tool.setuptools.package-dir]
 "" = "src"
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-markers"
+testpaths = ["tests"]
+markers = [
+    "network: tests that hit live network APIs (deselect with '-m \"not network\"')",
+]

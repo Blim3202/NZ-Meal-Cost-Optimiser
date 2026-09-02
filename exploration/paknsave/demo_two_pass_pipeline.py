@@ -11,6 +11,9 @@ Both chains share the same Foodstuffs backend (api-prod.paknsave.co.nz / api-pro
 
 import requests
 import time
+from pathlib import Path
+
+from NZMealOptimiser.pricing.optimiser_utils import DISHES, get_ingredients
 
 WEB_BASE = "https://www.paknsave.co.nz"
 EDGE_BASE = "https://api-prod.paknsave.co.nz/v1/edge"
@@ -162,10 +165,6 @@ def find_nearby(user_lat, user_lon, stores, radius_km=5):
             nearby.append({**s, "distance_km": d})
     nearby.sort(key=lambda x: x["distance_km"])
     return nearby
-
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "combined"))
-from optimiser_utils import DISHES, get_ingredients
 
 
 def main():

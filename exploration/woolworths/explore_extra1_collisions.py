@@ -40,7 +40,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent.parent
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from woolworths_api import create_session, set_store_context, search_products, find_cheapest
+from woolworths_api import create_session, set_store_context, search_products
 
 DATA_DIR = PROJECT_ROOT / "data"
 JSON_DATA = DATA_DIR / "woolworths_store_data.json"
@@ -92,7 +92,9 @@ def query_store_with_key(key_type, key_value, label):
     try:
         session = create_session()
         context = set_store_context(session, key_value)
-        product = find_cheapest(session, SEARCH_QUERY, size=20, food_only=True)
+        products = search_products(session, SEARCH_QUERY, size=20, food_only=True)
+        priced = [p for p in products if p.get("salePrice") is not None]
+        product = min(priced, key=lambda p: p["salePrice"]) if priced else None
         if product:
             return {
                 "label": label,

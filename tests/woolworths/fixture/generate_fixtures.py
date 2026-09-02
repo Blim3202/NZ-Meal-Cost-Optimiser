@@ -14,23 +14,19 @@ Fixtures produced:
     fixture/
     ├── response_example1.json      Real product search API response
     │                                (GET /api/v1/products?target=search&search=milk&size=10)
-    ├── response_example1_meta.json Metadata tracing which store/search produced the response
     ├── product_normalized.json     Normalized product dict (output of search_products())
     │                                derived from response_example1.json (milk item)
     ├── store_data_example.json     Real CDX site-location API response slice
     │                                (GET https://api.cdx.nz/site-location/api/v1/sites)
-    ├── cookies_example1.csv        Real store pick-up address CSV data
-    │                                (derived from CDX site data)
-    ├── stores_fixture.csv      CSV representation of the CDX sites data
-    │                            (derived from store_data_example.json, 5-column: id, name, address, latitude, longitude)
+    ├── stores_fixture.csv          CSV representation of the CDX sites data
+    │                                (derived from store_data_example.json, 5-column: id, name, address, latitude, longitude)
     ├── nearby_stores_example.json  Reference point + coordinates for haversine tests
     │                                (derived from CDX site data)
-    ├── shell_example1.json         Real /api/v1/shell response after cookie injection
-    │                                (used by set_store_context() tests)
-    └── shell_example1_meta.json    Metadata tracing which store produced the shell response
+    └── shell_example1.json         Real /api/v1/shell response after cookie injection
+                                     (used by set_store_context() tests)
 
 Usage (requires internet access to NZ Woolworths APIs):
-    python scripts/woolworths/fixture/generate_fixtures.py
+    python -m tests.woolworths.fixture.generate_fixtures
 
 
 The script is idempotent: re-running it overwrites all fixture files.
@@ -203,28 +199,6 @@ def capture_response_example1():
     with open(path, "w", encoding="utf-8") as f:
         json.dump(search_response, f, indent=2, ensure_ascii=False)
     print(f"      Wrote {path}")
-
-    # Also save the store metadata used to fetch this response,
-    # so tests can trace which store/context produced the data.
-    meta = {
-        "store_name": test_store["name"],
-        "fulfilment_store_id": test_store["extra1"],
-        "pickup_address_id": test_store["extra2"],
-        "latitude": test_store["lat"],
-        "longitude": test_store["lon"],
-        "search_query": "milk",
-        "search_size": 10,
-        "endpoint": f"{BASE_URL}/products",
-        "capture_note": (
-            "This response was captured from the live Woolworths NZ API. "
-            "The product search was performed with a per-store cw-lrkswrdjp "
-            "cookie injected for per-store pricing."
-        ),
-    }
-    meta_path = FIXTURE_DIR / "response_example1_meta.json"
-    with open(meta_path, "w", encoding="utf-8") as f:
-        json.dump(meta, f, indent=2, ensure_ascii=False)
-    print(f"      Wrote {meta_path}")
 
     # Fixture 2b: product_normalized_sale.json
     # Captures a sale item (isSpecial=True, salePrice < originalPrice) from the same response
@@ -420,44 +394,7 @@ def _capture_store_data_example(raw_store_data, limit=5):
 
 
 # ---------------------------------------------------------------------------
-# Fixture 4: cookies_example1.csv
-# ---------------------------------------------------------------------------
-# Captures a real slice of the pickup-addresses API response as CSV.
-#
-# Source: GET /api/v1/addresses/pickup-addresses
-#
-# We take the first 3 unique store addresses from the response.
-# ---------------------------------------------------------------------------
-
-def _capture_cookies_example1(raw_store_data, limit=3):
-    """Save the first N stores from the CDX response as a CSV that mirrors
-    the structure of the pickup-addresses choices CSV.
-
-    This CSV is for legacy reference only — the 'id' column corresponds
-    to 'extra2' (SiteDataID) values in store_data_example.json. It is
-    not used by the current fetch_store_data() pipeline.
-    """
-    sites = raw_store_data.get("siteDetail", [])[:limit]
-
-    rows = []
-    for detail in sites:
-        site = detail.get("site", {})
-        rows.append({
-            "id": str(site.get("extra2", "")),
-            "name": site.get("name", ""),
-            "address": site.get("addressLine1", ""),
-        })
-
-    path = FIXTURE_DIR / "cookies_example1.csv"
-    with open(path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=["id", "name", "address"])
-        writer.writeheader()
-        writer.writerows(rows)
-    print(f"      Wrote {len(rows)} row(s) to {path}")
-
-
-# ---------------------------------------------------------------------------
-# Fixture 5: stores_fixture.csv
+# Fixture 4: stores_fixture.csv
 # ---------------------------------------------------------------------------
 # CSV version of the store data in store_data_example.json, using the same
 # 5-column structure that woolworths_setup.fetch_store_data() writes:
@@ -545,7 +482,7 @@ def _capture_nearby_stores_example(raw_store_data):
 
 
 # ---------------------------------------------------------------------------
-# 6. shell_example1.json + shell_example1_meta.json
+# 6. shell_example1.json
 # ---------------------------------------------------------------------------
 # This file captures a real response from the Woolworths shell endpoint:
 #   GET /api/v1/shell
@@ -564,8 +501,8 @@ def _capture_shell_example(test_store):
 
     The session is freshly created, seeded via GET /, and the cw-lrkswrdjp
     cookie is injected before calling /api/v1/shell. The response is saved
-    as shell_example1.json, and metadata (store name, cookie value, etc.)
-    is saved as shell_example1_meta.json.
+    as shell_example1.json.
+
 
     Args:
         test_store: dict with 'name', 'extra1', 'extra2' from CDX data.
@@ -582,27 +519,6 @@ def _capture_shell_example(test_store):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(shell_data, f, indent=2, ensure_ascii=False)
     print(f"      Wrote {path}")
-
-    # Save metadata tracing which store/context produced this response
-    fulf = shell_data.get("context", {}).get("fulfilment", {})
-    meta = {
-        "store_name": test_store["name"],
-        "fulfilment_store_id": test_store["extra1"],
-        "pickup_address_id": test_store["extra2"],
-        "cookie_value": f"dm-Pickup,f-{test_store['extra1']},s-38",
-        "shell_fulfilment_store_id": fulf.get("fulfilmentStoreId"),
-        "shell_method": fulf.get("method"),
-        "endpoint": f"{BASE_URL}/shell",
-        "capture_note": (
-            "Captured from the live Woolworths NZ API after injecting the "
-            "cw-lrkswrdjp cookie for per-store pricing. Used by "
-            "set_store_context() tests to verify the shell validation logic."
-        ),
-    }
-    meta_path = FIXTURE_DIR / "shell_example1_meta.json"
-    with open(meta_path, "w", encoding="utf-8") as f:
-        json.dump(meta, f, indent=2, ensure_ascii=False)
-    print(f"      Wrote {meta_path}")
 
 
 # ---------------------------------------------------------------------------
@@ -631,20 +547,16 @@ def main():
     print("\n[phase 2] Capturing store data example (CDX slice)...")
     _capture_store_data_example(raw_store_data, limit=5)
 
-    # Fixture 4: Pickup choices CSV (first 3 stores from CDX) — legacy reference only
-    print("\n[phase 3] Capturing store choices CSV...")
-    _capture_cookies_example1(raw_store_data, limit=3)
-
-    # Fixture 5: Store data CSV (all 5 stores from CDX fixture with coords)
-    print("\n[phase 4] Capturing store data CSV...")
+    # Fixture 4: Store data CSV (all 5 stores from CDX fixture with coords)
+    print("\n[phase 3] Capturing store data CSV...")
     _capture_store_data_csv(raw_store_data, limit=5)
 
-    # Fixture 6: Nearby stores metadata (reference point + coords)
-    print("\n[phase 5] Capturing nearby stores metadata...")
+    # Fixture 5: Nearby stores metadata (reference point + coords)
+    print("\n[phase 4] Capturing nearby stores metadata...")
     _capture_nearby_stores_example(raw_store_data)
 
-    # Fixture 7: Shell response (for set_store_context tests)
-    print("\n[phase 6] Capturing shell endpoint response for set_store_context...")
+    # Fixture 6: Shell response (for set_store_context tests)
+    print("\n[phase 5] Capturing shell endpoint response for set_store_context...")
     _capture_shell_example(test_store)
 
     print("\n" + "=" * 60)

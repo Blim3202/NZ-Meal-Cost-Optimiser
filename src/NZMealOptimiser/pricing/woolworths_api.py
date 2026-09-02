@@ -11,7 +11,6 @@ Key functions:
     create_session()            - Create a seeded requests.Session with required headers
     set_store_context()         - Inject per-store cookie for pricing (takes fulfilment_store_id)
     search_products()           - Keyword search against the product catalogue
-    find_cheapest()             - Search and return the lowest-priced result
     get_nearby_stores()         - Haversine distance filter on store coordinates
 
 Data files:
@@ -127,17 +126,7 @@ def set_store_context(session, fulfilment_store_id):
     return result
 
 
-def create_session_and_set_store(fulfilment_store_id):
-    """Convenience: create a fresh session and inject per-store cookie.
-
-    Returns (session, store_context_dict).
-    """
-    session = create_session()
-    context = set_store_context(session, fulfilment_store_id)
-    return session, context
-
-
-def search_products(session, query, size=20, food_only=True):
+def search_products(session, query, size=20, food_only=True, exclude_non_food=True):
     """Search for products with the current store context.
 
     Args:
@@ -147,9 +136,9 @@ def search_products(session, query, size=20, food_only=True):
         food_only: if True, exclude non-food departments
                    (Health & Body, Household, Baby & Child, Pet, Back to School)
 
-    Returns list of product dicts with keys: sku, name, salePrice, originalPrice,
-    isSpecial, unitPrice, volumeSize, cupMeasure, cupListPrice, url, imageUrl,
-    department.
+    Returns list of product dicts with keys: sku, name, brand, salePrice,
+    originalPrice, isSpecial, unitPrice, volumeSize, cupMeasure, cupListPrice,
+    url, imageUrl, department.
     """
     resp = session.get(
         f"{BASE_URL}/products",
@@ -160,7 +149,9 @@ def search_products(session, query, size=20, food_only=True):
     items = data.get("products", {}).get("items", [])
     results = []
     for item in items:
-        if food_only and not is_food_department(item):
+        # exclude_non_food controls filtering; default True excludes non-food departments
+        filter_active = exclude_non_food
+        if filter_active and not is_food_department(item):
             continue
         price_info = item.get("price", {})
         size_info = item.get("size", {})
@@ -169,6 +160,7 @@ def search_products(session, query, size=20, food_only=True):
         results.append({
             "sku": item.get("sku"),
             "name": item.get("name", ""),
+            "brand": item.get("brand", ""),
             "salePrice": price_info.get("salePrice"),
             "originalPrice": price_info.get("originalPrice"),
             "isSpecial": price_info.get("isSpecial", False),
@@ -181,25 +173,6 @@ def search_products(session, query, size=20, food_only=True):
             "department": dept_name,
         })
     return results
-
-
-def find_cheapest(session, query, food_only=True, size=20):
-    """Search for products and return the cheapest valid result.
-
-    Args:
-        session: a requests.Session with store context set
-        query: search term
-        food_only: if True, exclude non-food departments
-        size: number of products to fetch before picking cheapest
-
-    Returns:
-        The cheapest product dict, or None if no priced products found.
-    """
-    products = search_products(session, query, size=size, food_only=food_only)
-    priced = [p for p in products if p["salePrice"] is not None]
-    if not priced:
-        return None
-    return min(priced, key=lambda p: p["salePrice"])
 
 
 def get_nearby_stores(user_lat, user_lon, max_dist_km=5):

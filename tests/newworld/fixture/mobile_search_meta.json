@@ -1,8 +1,0 @@
-{
-  "endpoint": "https://api-prod.prod.fsniwaikato.kiwi/prod/mobile/ecomm-products/MNW/ef977d89-f3d8-4e8b-8a48-b895ded38646/search",
-  "store_id": "ef977d89-f3d8-4e8b-8a48-b895ded38646",
-  "banner": "MNW",
-  "query": "milk",
-  "products_count": 20,
-  "notes": "Mobile product search response captured from live New World API."
-}

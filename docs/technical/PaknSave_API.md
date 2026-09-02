@@ -1,9 +1,68 @@
 # Pak'nSave / Foodstuffs North Island Mobile API Documentation
 
+## Foodstuffs Master Reference
+
+This document is the canonical reference for Foodstuffs (Pak'nSave + New World) API integration in this project. New World shares the same backend (`api-prod.prod.fsniwaikato.kiwi` + `api-prod.{paknsave,newworld}.co.nz/v1/edge`) and most of the same patterns, so [NewWorld_API.md](NewWorld_API.md) covers only New World-specific differences: the `"MNW"` banner value, 148 vs 57 stores, the 2 mobile-only stores, and the `NewWorldApp/4.32.0` User-Agent.
+
+When extending either brand, the rule of thumb is to update this file first and then mirror any brand-specific deltas into the other. The cross-brand shared helpers in `src/NZMealOptimiser/pricing/optimiser_utils.py` (`foodstuffs_querier_edge`, `foodstuffs_querier_mobile`, `build_edge_row`, `build_mobile_row`, `parse_foodstuffs_volume_size`, `parse_foodstuffs_mobile_unit`, `_is_food_product`, `NON_FOOD_CATEGORIES`) are the single source of truth for the Algolia two-pass pipeline and CSV row construction.
+
+### What's shared
+
+The following pieces are common to both Pak'nSave and New World and are documented in detail in the sections that follow:
+
+- **Mobile API base URL** (`api-prod.prod.fsniwaikato.kiwi/prod`) and the entire `POST /mobile/user/login/guest` + `POST /mobile/v1/users/login/refreshtoken` flow — identical payload shape, identical 30-min token TTL, identical "token never auto-refreshed" gotcha (see §4.1).
+- **Edge API base URLs** (`api-prod.paknsave.co.nz` and `api-prod.newworld.co.nz`) with the same Apigee + JWT verification, same `fs-user-token` cookie flow, same `eCom_STORE_ID`/`STORE_ID_V2`/`Region` per-store cookie set, and the same two-pass Algolia pipeline (relevance match via `products-index` `_highlightResult.matchedWords`, then per-store pricing via `/search/paginated/products` with `productID` filters and `PRICE_ASC` sort).
+- **Algolia indices** — the same 3 working indices (`products-index`, `products-index-popularity-asc`, `products-index-popularity-desc`); the other 8 enumerated patterns return HTTP 500.
+- **`NON_FOOD_CATEGORIES` set** — 53 values in `optimiser_utils.py`, applied in Pass 1 to filter pet/baby/household/health.
+- **CSV row schema** — `data\full_results.csv` is 18 columns; `pk_hash` = SHA-256(`store_id|sku|date_created`).
+- **CLI flags** — `--requery` (default true), `--distance` (default 5), positional `address` and `dish`.
+
+### What's brand-specific
+
+The table below summarises the deltas that distinguish the two banners. Anything not listed here is shared and described in the main body of this document.
+
+| Concern | Pak'nSave | New World |
+|---------|-----------|-----------|
+| Edge API base URL | `api-prod.paknsave.co.nz` | `api-prod.newworld.co.nz` |
+| Mobile API `banner` | `"PNS"` | `"MNW"` |
+| User-Agent | `PAKnSAVEApp/4.32.0` | `NewWorldApp/4.32.0` |
+| Edge store count | 57 (PNS) | 148 (NW) |
+| Mobile store count | 60 (PNS) | 150 (NW) |
+| Mobile-only stores | 3 missing from Edge (Wairau Road, Gisborne City, Levin) | 2 missing from Edge (Foodie Mart, New World Te Atatu) |
+| Store-finder (Pak'nSave only) | 60 via `__NEXT_DATA__` from `www.paknsave.co.nz/store-finder` | n/a (NW has no store-finder pipeline) |
+| `category1` pet filter values | `Dog`/`Cat`/`Pet`/etc. (53 values) | Same set — `optimiser_utils.NON_FOOD_CATEGORIES` is the single source |
+| Production class | `PaknSaveEdgeAPI` | `NewWorldEdgeAPI` |
+| CLI entry | `tools/paknsave/paknsave_optimiser_edge.py` | `tools/newworld/newworld_optimiser_edge.py` |
+| Setup CLI | `tools/paknsave/paknsave_setup.py` | `tools/newworld/newworld_setup.py` |
+| Per-store price-variation example | $7.25 / $6.78 / $7.25 (Botany / Ormiston / Highland Park Milk 3L) | $9.49 (Shore City) vs $26.99 (Metro Auckland) beef mince |
+| Exploration narrative | [`exploration/paknsave/Exploration.md`](../../exploration/paknsave/Exploration.md) | [`exploration/newworld/Exploration.md`](../../exploration/newworld/Exploration.md) |
+
+When editing either file, it helps to ask "is this the Foodstuffs contract, or a brand-specific detail?". If the former, the change belongs **only** in this document. If the latter, the change belongs in **both** documents but should be mirrored here first.
+
+---
+
 **API origin:** `api-prod.prod.fsniwaikato.kiwi` — despite the "FSNI" (Foodstuffs North
 Island) domain name, this API covers **all Pak'nSave stores nationwide** including
 both North Island (47 stores) and South Island (13 stores). It also works for
 New World with `banner: "MNW"`.
+
+---
+
+## Contents
+
+- [1. Overview](#1-overview)
+- [2. Base URL and Host](#2-base-url-and-host)
+- [3. Required Request Headers](#3-required-request-headers)
+- [4. Authentication Flow](#4-authentication-flow)
+- [5. Confirmed Working Endpoints (Mobile API)](#5-confirmed-working-endpoints-mobile-api)
+- [6. Pak'nSave Edge API (Website Backend)](#6-paknsave-edge-api-website-backend)
+- [7. Per-Store Pricing](#7-per-store-pricing)
+- [8. Data Query & Parsing Pipeline](#8-data-query--parsing-pipeline)
+- [9. Store Data Sources](#9-store-data-sources)
+- [10. Production Architecture & Optimisers](#10-production-architecture--optimisers)
+- [11. Supported Dishes (21)](#11-supported-dishes-21)
+- [12. CLI Usage](#12-cli-usage)
+- [13. Appendix: Full Edge API Endpoint Reference](#13-appendix-full-edge-api-endpoint-reference)
 
 ---
 
@@ -905,6 +964,27 @@ ambiguous ingredient queries like "beef mince".
 
 **Implementation Reference**: `src/NZMealOptimiser/pricing/paknsave_api.py` (`PaknSaveEdgeAPI`) + `src/NZMealOptimiser/pricing/optimiser_utils.py` (`foodstuffs_querier_edge`)
 **Full Exploration Details**: `exploration/paknsave/Exploration.md`
+
+### 6.12 Exploration Scripts & Discoveries
+
+The complete two-pass pipeline + website JWT discovery was built through 9 exploration scripts spanning a 4-phase timeline. All scripts live in [`exploration/paknsave/`](../../exploration/paknsave/) and are executable via `python -m exploration.paknsave.<script>`.
+
+| Phase | Script / method | What was tested / discovered | Why it mattered |
+|-------|-----------------|------------------------------|-----------------|
+| 1 | F12 Network Inspection (browser DevTools) | Captured the `get-current-user` flow that returns the `fs-user-token` cookie — the JWT that authorises the Edge API | Proved the Edge API was reachable without a Foodstuffs mobile-app token (same IdP `online-customer`) |
+| 1 | F12 Network Inspection | `GET /v1/edge/store` returned 57 stores with full coordinates + service flags | Confirmed Edge store listing is sufficient; no need for mobile API for the store builder |
+| 2 | Algolia index probing | Tested `products-index` + 10 variants — 3 return 200 (`products-index`, `-popularity-asc`, `-popularity-desc`); 8 others return HTTP 500 (not 404 as initially documented; verified 2026-08-04) | Found that `products-index` returns relevance-sorted hits with `_highlightResult.matchedWords` — the relevance-matching layer needed in Pass 1 |
+| 2 | Raw response capture | Documented the hit shape: `productID`, `DisplayName`, `category1`, `category2`, `_highlightResult.DisplayName.matchedWords`, `_highlightResult.category2AndBrand.matchedWords` | Showed how to extract relevant `productID`s for the Pass 2 filter |
+| 3 | `demo_two_pass_pipeline.py` | End-to-end two-pass pipeline with geocoding, 5 km radius, top-20 relevance filter, `PRICE_ASC` pricing, and `NON_FOOD_CATEGORIES` exclusion (26 values) | Validated the complete pipeline; sample output: Botany $12.03 vs Ormiston $12.13 vs Highland Park $11.82 for the same spaghetti bolognese ingredients |
+
+**Key outcomes that drove project architecture:**
+
+1. **Website JWT works** — no mobile API dependency for Pak'nSave; the same IdP (`online-customer`) is shared across both Foodstuffs banners.
+2. **Algolia `filters` parameter bridges relevance and pricing** — Pass 1's `productID`s become Pass 2's `productID:xxx OR productID:yyy` filter, sorted by `PRICE_ASC`.
+3. **Pet food filtering via `category1`** — discovered 53 non-food `category1` values during Phase 3 validation; applied in Pass 1 to drop pet/baby/household/health before Pass 2.
+4. **Promotional pricing** — `promotions[].rewardValue` (where `bestPromotion: true`) is checked before falling back to `singlePrice.price`. **`promotions` is `null` (not `[]`) when a product has no promo** — verified across multiple products.
+
+**Full phase-by-phase exploration narrative** (with code snippets, response samples, and decision log): [`exploration/paknsave/Exploration.md`](../../exploration/paknsave/Exploration.md) (257 lines).
 
 ---
 

@@ -83,8 +83,8 @@ class TestDishResolution:
         self.dishes = _load_dishes()
 
     def test_resolve_dish_from_string(self):
-        dish_name, ingredients = _resolve_dish_terms("spaghetti bolognese")
-        assert dish_name == "spaghetti bolognese"
+        dish_name, ingredients = _resolve_dish_terms("Spaghetti Bolognese")
+        assert dish_name == "Spaghetti Bolognese"
         assert len(ingredients) == 7
         assert ingredients[0] == "beef mince"
         assert ingredients[1] == "spaghetti pasta"
@@ -108,7 +108,7 @@ class TestDishResolution:
             _resolve_dish_terms("nonexistent dish")
 
     def test_get_ingredients(self):
-        ingredients = get_ingredients("chicken stir fry")
+        ingredients = get_ingredients("Chicken Stir Fry")
         assert len(ingredients) == 4
         assert ingredients[0] == "chicken breast"
         assert ingredients[1] == "stir fry vegetables"
@@ -116,7 +116,7 @@ class TestDishResolution:
         assert ingredients[3] == "rice noodles"
 
     def test_build_quantity_map(self):
-        dish = "roast lamb"
+        dish = "Roast Lamb"
         qty_map = _build_quantity_map(dish)
         assert len(qty_map) == 5
         assert qty_map["lamb roast"] == "1.2 kg"
@@ -126,8 +126,8 @@ class TestDishResolution:
         assert qty_map["stock"] == "2 cups"
 
     def test_resolve_dish_data_from_registry(self):
-        dish_dict: dict[str, Any] = cast(dict[str, Any], _resolve_dish_data("beef curry"))
-        assert dish_dict["dish_name"] == "beef curry"
+        dish_dict: dict[str, Any] = cast(dict[str, Any], _resolve_dish_data("Beef Curry"))
+        assert dish_dict["dish_name"] == "Beef Curry"
         assert dish_dict["portion"] == 4
         ingredients: list[dict[str, Any]] = dish_dict["ingredients"]
         assert len(ingredients) == 5
@@ -275,6 +275,7 @@ class TestOptimiserUtilsNewWorld:
         assert row["store_id"] == store_id
         assert row["search_ingredient"] == "milk"
         assert row["returned_ingredient"] == "Standard Milk"
+        assert row["brand"] == "Pams Value"
         assert row["price"] == 3.17
         assert row["quantity"] == 1
         assert row["measurement_unit"] == "l"
@@ -337,6 +338,7 @@ class TestOptimiserUtilsNewWorld:
         assert row["store_id"] == store_id
         assert row["search_ingredient"] == "milk"
         assert row["returned_ingredient"] == "Standard Milk"
+        assert row["brand"] == "Pams Value"
         assert row["price"] == 4.83
         assert row["quantity"] == 2
         assert row["measurement_unit"] == "l"
@@ -350,6 +352,22 @@ class TestOptimiserUtilsNewWorld:
 
         expected_hash = _compute_pk_hash(store_id, product["productId"], "2026-08-10")
         assert row["pk_hash"] == expected_hash
+
+    def test_build_edge_row_brand_fallback(self):
+        """Edge rows fall back to 'New World' when the product has no brand."""
+        now = datetime(2026, 8, 10, 12, 0, 0)
+        product = dict(self.edge_data["products"][0])
+        del product["brand"]
+        row = build_edge_row("NewWorld", "New World Test", "sid-1", "milk", product, None, now)
+        assert row["brand"] == "New World"
+
+    def test_build_mobile_row_brand_fallback(self):
+        """Mobile rows fall back to 'New World' when the product has no brand."""
+        now = datetime(2026, 8, 10, 12, 0, 0)
+        product = dict(self.mobile_data["products"][0])
+        del product["brand"]
+        row = build_mobile_row("NewWorld", "New World Test", "sid-1", "milk", product, now)
+        assert row["brand"] == "New World"
 
 
 class TestPkHashAndDedup:
@@ -492,10 +510,12 @@ class TestNewWorldSpecific:
             assert cat1 not in NON_FOOD_CATEGORIES or not cat1
 
     def test_haversine_within_new_zealand(self):
-        """Haversine between two NZ cities returns a sensible distance (~600 km Auckland-Wellington)."""
+        """Haversine Auckland-Wellington is ~495 km; allow ±15 km for
+        coordinate rounding so the test catches off-by-10x bugs but stays
+        stable under minor refactors."""
         # Auckland ≈ -36.8485, 174.7635; Wellington ≈ -41.2865, 174.7762
         dist = haversine(-36.8485, 174.7635, -41.2865, 174.7762)
-        assert 400 < dist < 800
+        assert 480 < dist < 510
 
     def test_find_nearby_stores_returns_empty_when_no_csv(self):
         """find_nearby_stores returns empty list when stores CSV is missing."""

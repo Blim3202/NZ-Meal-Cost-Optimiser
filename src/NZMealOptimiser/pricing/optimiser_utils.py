@@ -26,6 +26,7 @@ CSV_COLUMNS = [
     "store_id",
     "search_ingredient",
     "returned_ingredient",
+    "brand",
     "price",
     "quantity",
     "measurement_unit",
@@ -40,6 +41,12 @@ CSV_COLUMNS = [
     "pk_hash",
     "is_valid",
 ]
+
+BRAND_FALLBACKS = {
+    "PaknSave": "Pak'nSave",
+    "NewWorld": "New World",
+    "Woolworths": "Woolworths",
+}
 
 DISHES_FILE = DATA_DIR / "dishes.json"
 
@@ -89,7 +96,8 @@ def get_ingredients(dish_name):
     Returns a list of search_term strings for the dish, or [dish_name]
     if the dish is not in the curated DISHES set.
     """
-    dish_dict = DISHES.get(dish_name.lower().strip())
+    key = dish_name.lower().strip()
+    dish_dict = next((v for k, v in DISHES.items() if k.lower() == key), None)
     if dish_dict:
         return [ing["search_term"] for ing in dish_dict["ingredients"]]
     return [dish_name]
@@ -137,8 +145,9 @@ def _resolve_dish_data(dish):
     if isinstance(dish, dict):
         return dish
     dish_key = dish.lower().strip() if isinstance(dish, str) else ""
-    if dish_key in DISHES:
-        return DISHES[dish_key]
+    hit = next((v for k, v in DISHES.items() if k.lower() == dish_key), None)
+    if hit is not None:
+        return hit
     return {"dish_name": dish, "portion": 4, "ingredients": []}
 
 
@@ -154,10 +163,10 @@ def _resolve_dish_terms(dish):
         ValueError: if dish input format is invalid.
     """
     if isinstance(dish, str):
-        # Lookup string in curated dishes
         dish_key = dish.lower().strip()
-        if dish_key in DISHES:
-            return DISHES[dish_key]["dish_name"], get_ingredients(dish)
+        hit = next((v for k, v in DISHES.items() if k.lower() == dish_key), None)
+        if hit is not None:
+            return hit["dish_name"], get_ingredients(dish)
         raise ValueError(f"Dish string '{dish}' not found in registry.")
 
     if isinstance(dish, dict):
@@ -341,7 +350,7 @@ def parse_woolworths_volume_size(volume_size, cup_measure=""):
     Examples:
         ("500g", "")            -> (500, "g")         # volumeSize has number
         ("", "1kg")             -> (1, "kg")          # fallback to cupMeasure
-        ("null", "1L")          -> (1, "L")           # volumeSize is "null"
+        ("null", "1L")          -> (1, "l")           # volumeSize is "null"
         ("2 pack", "")          -> (2, "pack")        # multi-word unit
         ("for frying", "500ml") -> (500, "ml")        # no number, use fallback
         ("", "")                -> (None, "")         # both empty
@@ -422,6 +431,34 @@ def _parse_display_name(display_name):
         return 1, raw.lower()
 
     return None, ""
+
+
+def _normalize_per_unit_qty(per_unit_qty):
+    """Strip a redundant leading "1" from count-based per-unit quantities.
+
+    Woolworths supplies cupMeasure values like "1ea" while Foodstuffs uses
+    bare "ea"; normalising keeps the per_unit_quantity column consistent
+    across retailers. Weight/volume measures ("1kg", "1L", "100g") carry a
+    meaningful count and are left untouched. Empty/None returns "".
+    """
+    if not per_unit_qty or not isinstance(per_unit_qty, str):
+        return ""
+    match = re.match(r"^1\s*(ea|each)$", per_unit_qty.strip(), re.IGNORECASE)
+    if match:
+        return match.group(1).lower()
+    return per_unit_qty
+
+
+def _normalize_brand(brand):
+    """Capitalise the first character of a brand string ("anchor" -> "Anchor").
+
+    Woolworths supplies lowercase brand slugs while Foodstuffs supplies
+    proper-case names; normalising at row-build time keeps the brand column
+    consistent across retailers. Empty/None values return "".
+    """
+    if not brand:
+        return ""
+    return brand[:1].upper() + brand[1:]
 
 
 def _compute_pk_hash(store_id, sku, date_created):
@@ -535,10 +572,15 @@ def build_edge_row(company, store, store_id, search_ingredient, product, pass1_h
         "store_id": store_id,
         "search_ingredient": search_ingredient,
         "returned_ingredient": product.get("name", ""),
+        "brand": _normalize_brand(
+            product.get("brand")
+            or (pass1_hit or {}).get("brand")
+            or BRAND_FALLBACKS.get(company, "")
+        ),
         "price": price_dollars,
         "quantity": quantity if quantity is not None else "",
         "measurement_unit": measurement_unit,
-        "per_unit_quantity": per_unit_qty,
+        "per_unit_quantity": _normalize_per_unit_qty(per_unit_qty),
         "per_unit_price": per_unit_price if per_unit_price else "",
         "is_sale": bool(promotions),
         "sku": sku,
@@ -604,10 +646,11 @@ def build_mobile_row(company, store, store_id, search_ingredient, product, now):
         "store_id": store_id,
         "search_ingredient": search_ingredient,
         "returned_ingredient": product.get("name", ""),
+        "brand": _normalize_brand(product.get("brand") or BRAND_FALLBACKS.get(company, "")),
         "price": price_dollars,
         "quantity": quantity,
         "measurement_unit": measurement_unit,
-        "per_unit_quantity": per_unit_qty,
+        "per_unit_quantity": _normalize_per_unit_qty(per_unit_qty),
         "per_unit_price": per_unit_price if per_unit_price else "",
         "is_sale": False,
         "sku": sku,
@@ -628,8 +671,8 @@ def build_woolworths_row(company, store, store_id, search_ingredient, product, n
         store_id: store's canonical id = extra1 (fulfilmentStoreId), the same
                   value baked into the cw-lrkswrdjp cookie (`f-{store_id}`)
         search_ingredient: the ingredient term we searched for
-        product: dict from search_products() (sku, name, salePrice, cupListPrice,
-                 volumeSize, cupMeasure, isSpecial, department)
+        product: dict from search_products() (sku, name, brand, salePrice,
+                 cupListPrice, volumeSize, cupMeasure, isSpecial, department)
         now: datetime object for timestamps
 
     Returns:
@@ -646,10 +689,11 @@ def build_woolworths_row(company, store, store_id, search_ingredient, product, n
         "store_id": store_id,
         "search_ingredient": search_ingredient,
         "returned_ingredient": product.get("name", ""),
+        "brand": _normalize_brand(product.get("brand") or BRAND_FALLBACKS.get(company, "")),
         "price": product.get("salePrice", ""),
         "quantity": quantity if quantity is not None else "",
         "measurement_unit": measurement_unit,
-        "per_unit_quantity": product.get("cupMeasure", ""),
+        "per_unit_quantity": _normalize_per_unit_qty(product.get("cupMeasure", "")),
         "per_unit_price": product.get("cupListPrice", ""),
         "is_sale": product.get("isSpecial", False),
         "sku": sku,
@@ -659,6 +703,102 @@ def build_woolworths_row(company, store, store_id, search_ingredient, product, n
         "date_created": date_created,
         "pk_hash": _compute_pk_hash(store_id, sku, date_created),
     }
+
+
+# ── Ingredient include/exclude keyword filters (data/dish_filters.json) ──────
+
+def levenshtein(s1: str, s2: str) -> int:
+    """Pure-python Levenshtein distance."""
+    if len(s1) < len(s2):
+        return levenshtein(s2, s1)
+    if len(s2) == 0:
+        return len(s1)
+    previous = list(range(len(s2) + 1))
+    for i, c1 in enumerate(s1):
+        current = [i + 1]
+        for j, c2 in enumerate(s2):
+            insertions = previous[j + 1] + 1
+            deletions = current[j] + 1
+            substitutions = previous[j] + (c1 != c2)
+            current.append(min(insertions, deletions, substitutions))
+        previous = current
+    return previous[-1]
+
+
+def word_matches(haystack_word: str, needle_word: str, max_ratio: float = 0.35) -> bool:
+    """True if two words fuzzy-match (Levenshtein ratio <= max_ratio, or exact).
+
+    The ratio tolerance absorbs singular/plural and small spelling variants
+    ("carrot" vs "carrots", "tomato" vs "tomatoes") without a stemmer.
+    """
+    if haystack_word == needle_word:
+        return True
+    d = levenshtein(haystack_word, needle_word)
+    max_len = max(len(haystack_word), len(needle_word))
+    if max_len == 0:
+        return True
+    return (d / max_len) <= max_ratio
+
+
+def contains_word(haystack: str, needle: str) -> bool:
+    """Multi-word aware fuzzy match of ``needle`` inside ``haystack``.
+
+    For single words: any word in the haystack within ratio 0.35 passes.
+    For multi-word needles: ALL words must fuzzy-match somewhere in the title.
+    Apostrophes are stripped so "Pak'nSave" matches "Pak'nSave" and "paknsave".
+    """
+    def _norm(text: str) -> str:
+        return text.lower().replace("'", "").replace("\u2019", "").replace("`", "")
+
+    needle_norm = _norm(needle).strip()
+    if not needle_norm:
+        return True
+    haystack_words = re.findall(r"[a-z]+", _norm(haystack))
+    needle_words = re.findall(r"[a-z]+", needle_norm)
+    if not needle_words:
+        return True
+    for n_word in needle_words:
+        if not any(word_matches(hw, n_word) for hw in haystack_words):
+            return False
+    return True
+
+
+def matches_ingredient_filters(returned_title: str, includes: list[str], excludes: list[str]) -> tuple[bool, str]:
+    """Apply one ingredient's include/exclude keywords to a product title.
+
+    Returns ``(passed, reason)``. A product passes when EVERY include keyword
+    matches (AND semantics; vacuously true when no includes are set) AND no
+    exclude keyword matches. Mirrors the exploration matcher so curated rules
+    in dish_filters.json and user-edited rules behave identically at runtime.
+    """
+    if includes:
+        missing = [inc for inc in includes if not contains_word(returned_title, inc)]
+        if missing:
+            return False, f"INCLUDE missing {missing}"
+    matched_excludes = [exc for exc in excludes if contains_word(returned_title, exc)]
+    if matched_excludes:
+        return False, f"EXCLUDE hit: {matched_excludes}"
+    return True, ""
+
+
+def matches_brand_filters(brand: str, brand_includes: list[str], brand_excludes: list[str]) -> tuple[bool, str]:
+    """Apply one ingredient's brand include/exclude keywords to a product brand.
+
+    Returns ``(passed, reason)``. Unlike the title matcher (AND across includes),
+    the brand include list uses OR semantics — a row passes when at least one
+    include matches, mirroring how users think about brand preferences ("I want
+    Pams OR Watties"). The exclude list still rejects on any match. Both
+    lists reuse ``contains_word`` for consistency with the title matcher (same
+    Levenshtein ratio <= 0.35 tolerance, case-insensitive, partial-word
+    matches like "odd" ~ "The Odd Bunch").
+    """
+    if brand_includes:
+        if not any(contains_word(brand, inc) for inc in brand_includes):
+            return False, f"BRAND include missed (need one of {brand_includes})"
+    matched_excludes = [exc for exc in brand_excludes if contains_word(brand, exc)]
+    if matched_excludes:
+        return False, f"BRAND exclude hit: {matched_excludes}"
+    return True, ""
 
 
 def foodstuffs_querier_edge(api_class, find_nearby_stores, company_id, company_name,

@@ -234,8 +234,8 @@ def resolve_ingredients(dish: str, portions: int = 4, regenerate: bool = False,
         try:
             with open(DISHES_JSON, "r", encoding="utf-8") as f:
                 curated = json.load(f)
-            if dish_key in curated:
-                entry = curated[dish_key]
+            entry = next((v for k, v in curated.items() if k.lower() == dish_key), None)
+            if entry is not None:
                 dish_name = entry.get("dish_name", dish)
                 portion = entry.get("portion", portions)
                 try:
@@ -283,6 +283,58 @@ def resolve_ingredients(dish: str, portions: int = 4, regenerate: bool = False,
 # ──────────────────────────────────────────────────────────────────────────────
 # Quantity Scaling
 # ──────────────────────────────────────────────────────────────────────────────
+
+# Canonical recipe units with their accepted aliases (first alias = canonical).
+# Mirrored by the web frontend's unit dropdown (src/unitOptions.js) so the
+# builder UI and the scaling engine agree on vocabulary.
+UNIT_ALIASES = {
+    "g": ("g", "gram", "grams", "gm", "gms"),
+    "kg": ("kg", "kilogram", "kilograms", "kilo", "kilos"),
+    "oz": ("oz", "ounce", "ounces"),
+    "ml": ("ml", "millilitre", "millilitres", "milliliter", "milliliters"),
+    "l": ("l", "litre", "litres", "liter", "liters"),
+    "tsp": ("tsp", "teaspoon", "teaspoons"),
+    "tbsp": ("tbsp", "tablespoon", "tablespoons"),
+    "cup": ("cup", "cups"),
+    "each": ("each", "ea", "unit", "units", "pc", "pcs", "piece", "pieces", "egg", "eggs"),
+    "pack": ("pack", "pk", "packet", "packets", "pkt"),
+    "can": ("can", "cans", "tin", "tins"),
+    "jar": ("jar", "jars"),
+    "bottle": ("bottle", "bottles"),
+    "bag": ("bag", "bags"),
+    "box": ("box", "boxes"),
+    "bunch": ("bunch", "bunches"),
+    "head": ("head", "heads"),
+    "block": ("block", "blocks"),
+    "clove": ("clove", "cloves"),
+    "slice": ("slice", "slices"),
+    "fillet": ("fillet", "fillets"),
+    "chop": ("chop", "chops"),
+    "stalk": ("stalk", "stalks"),
+    "medium": ("medium",),
+    "large": ("large",),
+    # One-way semantic alias: recipes say "6 eggs" but supermarkets sell eggs
+    # as count units ("10 ea", "6 pack"). Folding egg/eggs into "each" makes
+    # count-vs-count ratios scale correctly (per-egg pack-size parsing is
+    # future LLM work). Nothing ever expands "each" back to "egg".
+    "base": ("base", "bases"),
+}
+
+_ALIAS_TO_CANONICAL = {
+    alias: canon for canon, aliases in UNIT_ALIASES.items() for alias in aliases
+}
+
+
+def normalise_unit(unit: Any) -> str:
+    """Map a unit string to its canonical form ("pk" -> "pack", "ea" -> "each").
+
+    Unknown or empty units pass through trimmed; non-strings return "".
+    """
+    if not isinstance(unit, str):
+        return ""
+    cleaned = unit.strip()
+    return _ALIAS_TO_CANONICAL.get(cleaned.lower(), cleaned)
+
 
 # Unit conversion factors to grams (weight) and milliliters (volume)
 # Cooking units (tbsp, tsp, cloves) use approximate conversions.
@@ -435,22 +487,26 @@ def parse_optimiser_columns(row: dict) -> dict:
     search_ingredient = row.get("search_ingredient", "")
     returned_ingredient = row.get("returned_ingredient", "")
 
-    # Pack data from CSV
+    # Pack data from CSV (compound units like "x 375ml" pass through
+    # normalise_unit untouched; store variants like "PK"/"EACH" fold cleanly)
     pack_quantity = _safe_float(row.get("quantity", 0))
-    pack_unit = row.get("measurement_unit", "")
+    pack_unit = normalise_unit(row.get("measurement_unit", ""))
 
     # Price: prefer 'price' (total pack price), fall back to 'per_unit_price'
     pack_price = _safe_float(row.get("price", row.get("per_unit_price", 0)))
     per_unit_price = _safe_float(row.get("per_unit_price", 0))
 
     # --- Extract LLM-enriched fields ---
+    # Units are folded through normalise_unit so the scaler is alias-aware
+    # regardless of caller (e.g. "eggs" → "each", "PK" → "pack"). Unknown
+    # units pass through untouched; aliases only ever ADD recognition.
     # If ingredient_quantity/ingredient_measurement not present, fall back to pack values (backward compat)
     ingredient_quantity = _safe_float(row.get("ingredient_quantity", row.get("quantity", 0)))
-    ingredient_measurement = row.get("ingredient_measurement", row.get("measurement_unit", ""))
+    ingredient_measurement = normalise_unit(row.get("ingredient_measurement", row.get("measurement_unit", "")))
 
     # Optional approx fields for non-standard units ("1 medium onion", "1 can", etc.)
     ingredient_approx_quantity = _safe_float(row.get("ingredient_approx_quantity", 0)) if row.get("ingredient_approx_quantity") else None
-    ingredient_approx_unit = row.get("ingredient_approx_unit", "") if row.get("ingredient_approx_unit") else None
+    ingredient_approx_unit = normalise_unit(row.get("ingredient_approx_unit")) if row.get("ingredient_approx_unit") else None
 
     # --- Compute scaling ratio with unit normalisation ---
     # Convert both quantities to a common base to handle unit mismatches
@@ -500,8 +556,10 @@ def parse_optimiser_columns(row: dict) -> dict:
             scaling_ratio = None
 
     # --- Compute purchase decisions ---
+    units_match = not (unit_approximate or used_approx_fallback)
     if scaling_ratio is None:
         # Incompatible units — product can't be used
+        units_match = False
         used_price = None
         purchase_quantity = 0
         purchase_price = None
@@ -533,5 +591,5 @@ def parse_optimiser_columns(row: dict) -> dict:
         "purchase_price": None if purchase_price is None else round(purchase_price, 2),
         "status": status,
         "unit_approximate": unit_approximate,
-        "units_match": (not unit_approximate and not used_approx_fallback),
+        "units_match": units_match,
     }

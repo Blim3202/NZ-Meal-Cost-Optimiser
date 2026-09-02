@@ -1,8 +1,0 @@
-{
-  "endpoint": "https://api-prod.paknsave.co.nz/v1/edge/search/products/query/index/products-index",
-  "store_id": "3bb30799-82ce-4648-8c02-5113228963ed",
-  "store_name": "PAK'nSAVE Te Awamutu",
-  "query": "milk",
-  "hits_count": 40,
-  "notes": "Edge Pass 1 relevance search captured from live API."
-}

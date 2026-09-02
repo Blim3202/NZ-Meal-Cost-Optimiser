@@ -18,6 +18,12 @@ class Settings(BaseSettings):
     SUPABASE_URL: str = Field(default="", description="Supabase project URL")
     SUPABASE_SECRET_KEY: str = Field(default="", description="Supabase service_role key")
 
+    # Note: the search thread-pool size is NOT configurable via .env. It is
+    # exposed to the user as a live-adjustable slider in the Settings page,
+    # hardcoded to the 20-40 (step 5) range below. See main.py's
+    # WORKER_POOL_MIN / MAX / STEP module constants and the
+    # _ResizableThreadPool wrapper for the swap-and-drain mechanics.
+
     @property
     def supabase_enabled(self) -> bool:
         """True if both Supabase URL and key are set."""

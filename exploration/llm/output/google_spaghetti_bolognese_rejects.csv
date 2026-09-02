@@ -1,0 +1,498 @@
+search_ingredient,returned_ingredient,reason
+canned tomatoes,Chopped Tomatoes in Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Whole Peeled Tomatoes In Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Diced Tomatoes In Juice With Garlic And Oregano,EXCLUDE hit: ['juice']
+canned tomatoes,Italian Whole Peeled Tomatoes In Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Crushed Italian Tomatoes In Thick Tomato Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Whole Peeled Italian Tomatoes In Thick Tomato Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Diced Tomatoes In Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Italian Tomatoes Chopped In Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Baked Beans In Tomato Sauce,EXCLUDE hit: ['sauce']
+canned tomatoes,Spaghetti In Tomato Sauce,EXCLUDE hit: ['sauce']
+canned tomatoes,Whole Cherry Italian Tomatoes in Thick Tomato Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Organic Chopped Tomatoes Peeled In Tomato Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Organic Whole Tomatoes Peeled In Tomato Juice,EXCLUDE hit: ['juice']
+onion,Cheese & Onion Old-Fashioned Wave Cut Chips,"EXCLUDE hit: ['chips', 'crisps']"
+onion,Naturals Eco Onion Powder Fine,EXCLUDE hit: ['powder']
+onion,Minis Sour Cream & Onion Potato Chips,"EXCLUDE hit: ['chips', 'crisps']"
+onion,Originals Green Onion Potato Chips,"EXCLUDE hit: ['chips', 'crisps']"
+onion,Sour Cream & Onion Potato Chips,"EXCLUDE hit: ['chips', 'crisps']"
+onion,Kiwi Onion Dip,EXCLUDE hit: ['dip']
+onion,Sour Cream & Onion Potato Chips,"EXCLUDE hit: ['chips', 'crisps']"
+onion,Roast Garlic & Onion Creamy Dip,EXCLUDE hit: ['dip']
+onion,Creamy Onion Dip,EXCLUDE hit: ['dip']
+onion,Vintage Cheddar & Red Onion Potato Chips,"EXCLUDE hit: ['chips', 'crisps']"
+onion,Kettle Fried Sour Cream Chive Onion Potato Chips,"EXCLUDE hit: ['chips', 'crisps']"
+onion,Classic Kiwi Onion Dips With Bits,EXCLUDE hit: ['dip']
+onion,Pub Style Crispy Onion Rings,EXCLUDE hit: ['crisps']
+carrot,Goofy Single Serve Carrot Cake.,EXCLUDE hit: ['cake']
+carrot,Medium Carrot Cake Block,EXCLUDE hit: ['cake']
+garlic,Crushed Garlic,EXCLUDE hit: ['crush']
+garlic,Naturals Eco Garlic Powder,EXCLUDE hit: ['powder']
+garlic,Tomato & Garlic Pasta Sauce,EXCLUDE hit: ['paste']
+garlic,Crushed Garlic,EXCLUDE hit: ['crush']
+garlic,Garlic & Sea Salt Butter,EXCLUDE hit: ['salt']
+garlic,Garlic Naan Bread,EXCLUDE hit: ['bread']
+garlic,Traditional Garlic Bread,EXCLUDE hit: ['bread']
+garlic,Garlic Bread,EXCLUDE hit: ['bread']
+garlic,Garlic Bread,EXCLUDE hit: ['bread']
+garlic,Garlic Bread,EXCLUDE hit: ['bread']
+mixed herbs,Deli Garlic Herb Broccoli Seasoned Sides,EXCLUDE hit: ['seasoning']
+canned tomatoes,Chopped Tomatoes in Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Whole Peeled Tomatoes In Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Diced Tomatoes In Juice With Garlic And Oregano,EXCLUDE hit: ['juice']
+canned tomatoes,Italian Whole Peeled Tomatoes In Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Crushed Tomatoes In Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Crushed Italian Tomatoes In Thick Tomato Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Whole Peeled Italian Tomatoes In Thick Tomato Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Diced Tomatoes In Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Organic Whole Peeled Tomatoes In Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Italian Tomatoes Chopped In Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Baked Beans In Tomato Sauce,EXCLUDE hit: ['sauce']
+canned tomatoes,Spaghetti In Tomato Sauce,EXCLUDE hit: ['sauce']
+canned tomatoes,Whole Cherry Italian Tomatoes in Thick Tomato Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Organic Chopped Tomatoes Peeled In Tomato Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Organic Whole Tomatoes Peeled In Tomato Juice,EXCLUDE hit: ['juice']
+onion,Cheese & Onion Old-Fashioned Wave Cut Chips,"EXCLUDE hit: ['chips', 'crisps']"
+onion,Minis Sour Cream & Onion Potato Chips,"EXCLUDE hit: ['chips', 'crisps']"
+onion,Originals Green Onion Potato Chips,"EXCLUDE hit: ['chips', 'crisps']"
+onion,Sour Cream & Onion Potato Chips,"EXCLUDE hit: ['chips', 'crisps']"
+onion,Kiwi Onion Dip,EXCLUDE hit: ['dip']
+onion,Sour Cream & Onion Potato Chips,"EXCLUDE hit: ['chips', 'crisps']"
+onion,Roast Garlic & Onion Creamy Dip,EXCLUDE hit: ['dip']
+onion,Creamy Onion Dip,EXCLUDE hit: ['dip']
+onion,Vintage Cheddar & Red Onion Potato Chips,"EXCLUDE hit: ['chips', 'crisps']"
+onion,Kettle Fried Sour Cream Chive Onion Potato Chips,"EXCLUDE hit: ['chips', 'crisps']"
+onion,Classic Kiwi Onion Dips With Bits,EXCLUDE hit: ['dip']
+onion,Pub Style Crispy Onion Rings,EXCLUDE hit: ['crisps']
+carrot,Medium Carrot Cake Block,EXCLUDE hit: ['cake']
+carrot,Carrot Cake,EXCLUDE hit: ['cake']
+garlic,Crushed Garlic,EXCLUDE hit: ['crush']
+garlic,Tomato & Garlic Pasta Sauce,EXCLUDE hit: ['paste']
+garlic,Crushed Garlic,EXCLUDE hit: ['crush']
+garlic,Garlic & Sea Salt Butter,EXCLUDE hit: ['salt']
+garlic,Garlic Naan Bread,EXCLUDE hit: ['bread']
+garlic,Garlic Bread Sticks Twinpack,EXCLUDE hit: ['bread']
+garlic,Traditional Garlic Bread,EXCLUDE hit: ['bread']
+garlic,Garlic Bread,EXCLUDE hit: ['bread']
+garlic,Garlic Bread,EXCLUDE hit: ['bread']
+mixed herbs,Mixed Salad,INCLUDE ['herb'] missing
+mixed herbs,Deli Garlic Herb Broccoli Seasoned Sides,EXCLUDE hit: ['seasoning']
+canned tomatoes,Chopped Tomatoes in Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Whole Peeled Tomatoes In Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Diced Tomatoes In Juice With Garlic And Oregano,EXCLUDE hit: ['juice']
+canned tomatoes,Italian Whole Peeled Tomatoes In Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Crushed Italian Tomatoes In Thick Tomato Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Whole Peeled Italian Tomatoes In Thick Tomato Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Diced Tomatoes In Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Italian Tomatoes Chopped In Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Baked Beans In Tomato Sauce,EXCLUDE hit: ['sauce']
+canned tomatoes,Spaghetti In Tomato Sauce,EXCLUDE hit: ['sauce']
+canned tomatoes,Whole Cherry Italian Tomatoes in Thick Tomato Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Organic Chopped Tomatoes Peeled In Tomato Juice,EXCLUDE hit: ['juice']
+canned tomatoes,Organic Whole Tomatoes Peeled In Tomato Juice,EXCLUDE hit: ['juice']
+onion,Cheese & Onion Old-Fashioned Wave Cut Chips,"EXCLUDE hit: ['chips', 'crisps']"
+onion,Naturals Eco Onion Powder Fine,EXCLUDE hit: ['powder']
+onion,Minis Sour Cream & Onion Potato Chips,"EXCLUDE hit: ['chips', 'crisps']"
+onion,Originals Green Onion Potato Chips,"EXCLUDE hit: ['chips', 'crisps']"
+onion,Sour Cream & Onion Potato Chips,"EXCLUDE hit: ['chips', 'crisps']"
+onion,Kiwi Onion Dip,EXCLUDE hit: ['dip']
+onion,Sour Cream & Onion Potato Chips,"EXCLUDE hit: ['chips', 'crisps']"
+onion,Roast Garlic & Onion Creamy Dip,EXCLUDE hit: ['dip']
+onion,Creamy Onion Dip,EXCLUDE hit: ['dip']
+onion,Vintage Cheddar & Red Onion Potato Chips,"EXCLUDE hit: ['chips', 'crisps']"
+onion,Kettle Fried Sour Cream Chive Onion Potato Chips,"EXCLUDE hit: ['chips', 'crisps']"
+onion,Classic Kiwi Onion Dips With Bits,EXCLUDE hit: ['dip']
+onion,Pub Style Crispy Onion Rings,EXCLUDE hit: ['crisps']
+carrot,Medium Carrot Cake,EXCLUDE hit: ['cake']
+carrot,Carrot Cake,EXCLUDE hit: ['cake']
+carrot,Organic Carrot Juice,EXCLUDE hit: ['juice']
+garlic,Crushed Garlic,EXCLUDE hit: ['crush']
+garlic,Naturals Eco Garlic Powder,EXCLUDE hit: ['powder']
+garlic,Tomato & Garlic Pasta Sauce,EXCLUDE hit: ['paste']
+garlic,Garlic & Sea Salt Butter,EXCLUDE hit: ['salt']
+garlic,Garlic Naan Bread,EXCLUDE hit: ['bread']
+garlic,Garlic Bread Sticks Twinpack,EXCLUDE hit: ['bread']
+garlic,Traditional Garlic Bread,EXCLUDE hit: ['bread']
+garlic,Garlic Bread,EXCLUDE hit: ['bread']
+garlic,Garlic Bread,EXCLUDE hit: ['bread']
+mixed herbs,Mixed Salad,INCLUDE ['herb'] missing
+beef mince,woolworths beef smash burgers,EXCLUDE hit: ['burger']
+beef mince,woolworths beef stacker burgers,EXCLUDE hit: ['burger']
+beef mince,woolworths value beef burgers,EXCLUDE hit: ['burger']
+beef mince,woolworths nz beef meatballs ,EXCLUDE hit: ['meatball']
+beef mince,woolworths nz beef burgers classic,EXCLUDE hit: ['burger']
+beef mince,silver fern farms honest beef burgers with smoky caramelized onion,EXCLUDE hit: ['burger']
+beef mince,woolworths beef meatballs angus,EXCLUDE hit: ['meatball']
+beef mince,woolworths beef & pork meatballs ,EXCLUDE hit: ['meatball']
+beef mince,silver fern farms honest beef & lamb burgers with manuka smoked salt,EXCLUDE hit: ['burger']
+beef mince,first light meatballs wagyu beef,EXCLUDE hit: ['meatball']
+beef mince,silver fern farms burgers beef & venison chilli & lime,EXCLUDE hit: ['burger']
+spaghetti pasta,san remo pasta elbow italian no. 35,INCLUDE ['spaghetti'] missing
+spaghetti pasta,san remo pasta trivelle,INCLUDE ['spaghetti'] missing
+spaghetti pasta,san remo pasta penne no. 18,INCLUDE ['spaghetti'] missing
+spaghetti pasta,san remo pasta curly fettuccine no. 80,INCLUDE ['spaghetti'] missing
+spaghetti pasta,essentials pasta penne,INCLUDE ['spaghetti'] missing
+spaghetti pasta,woolworths pasta penne rigate,INCLUDE ['spaghetti'] missing
+canned tomatoes,watties chopped tomatoes in juice,EXCLUDE hit: ['juice']
+canned tomatoes,delmaine crushed tomatoes italian in juice,EXCLUDE hit: ['juice']
+canned tomatoes,delmaine whole peeled tomatoes italian in juice,EXCLUDE hit: ['juice']
+onion,woolworths onion powder ,EXCLUDE hit: ['powder']
+onion,griffin's onion rings sour cream & chives,EXCLUDE hit: ['chips']
+onion,gregg's onion powder ,EXCLUDE hit: ['powder']
+onion,mrs rogers eco organic onion powder ,EXCLUDE hit: ['powder']
+carrot,original foods carrot cake goofy bar,EXCLUDE hit: ['cake']
+carrot,original foods carrot cake walnuts topped,EXCLUDE hit: ['cake']
+carrot,woolworths frozen baby carrots ,EXCLUDE hit: ['frozen']
+carrot,"mccain frozen mixed vegetables peas, corn & carrots",EXCLUDE hit: ['frozen']
+carrot,"wattie's frozen mixed vegetables green beans, broccoli, carrots",EXCLUDE hit: ['frozen']
+carrot,"wattie's steam fresh frozen mixed vegetables carrots, broccoli, cauliflower",EXCLUDE hit: ['frozen']
+carrot,tasti fruit + vege wholefood snack balls mango & carrot,EXCLUDE hit: ['snack']
+carrot,"wattie's steam fresh frozen mixed vegetables sweet corn, carrots & broccoli",EXCLUDE hit: ['frozen']
+carrot,"wattie's frozen chunky mixed vegetables carrots, cauliflower, broccoli",EXCLUDE hit: ['frozen']
+garlic,gourmet garden fresh vegetable garlic paste,EXCLUDE hit: ['paste']
+garlic,gourmet garden fresh vegetable garlic paste,EXCLUDE hit: ['paste']
+garlic,masterfoods garlic salt ,EXCLUDE hit: ['salt']
+garlic,masterfoods garlic finely crushed,EXCLUDE hit: ['crush']
+garlic,masterfoods garlic & herb salt blend,EXCLUDE hit: ['salt']
+garlic,masterfoods garlic herb salt blend,EXCLUDE hit: ['salt']
+garlic,masterfoods garlic salt ,EXCLUDE hit: ['salt']
+garlic,just garlic fresh vegetable garlic crushed,EXCLUDE hit: ['crush']
+garlic,woolworths garlic powder,EXCLUDE hit: ['powder']
+garlic,just garlic fresh vegetable garlic crushed,EXCLUDE hit: ['crush']
+garlic,just foods garlic & ginger mix crushed,EXCLUDE hit: ['crush']
+garlic,gregg's garlic powder ,EXCLUDE hit: ['powder']
+garlic,mrs rogers eco organic garlic powder ,EXCLUDE hit: ['powder']
+garlic,just foods crushed garlic & ginger mixed jar,EXCLUDE hit: ['crush']
+mixed herbs,gourmet garden fresh vegetable basil lightly dried,INCLUDE ['herb'] missing
+mixed herbs,gourmet garden fresh vegetable parsley lightly dried,INCLUDE ['herb'] missing
+mixed herbs,gourmet garden fresh vegetable coriander lightly dried,INCLUDE ['herb'] missing
+mixed herbs,gourmet garden fresh vegetable chilli lightly dried,INCLUDE ['herb'] missing
+mixed herbs,woolworths oregano flaked leaves,INCLUDE ['herb'] missing
+mixed herbs,woolworths rosemary flaked leaves,INCLUDE ['herb'] missing
+mixed herbs,woolworths thyme flaked leaves,INCLUDE ['herb'] missing
+mixed herbs,woolworths parsley flakes,INCLUDE ['herb'] missing
+mixed herbs,woolworths basil flaked leaves,INCLUDE ['herb'] missing
+mixed herbs,masterfoods onion salt blend,INCLUDE ['herb'] missing
+mixed herbs,masterfoods all purpose seasoning blend,INCLUDE ['herb'] missing
+mixed herbs,greggs parsley rubbed,INCLUDE ['herb'] missing
+beef mince,woolworths beef smash burgers,EXCLUDE hit: ['burger']
+beef mince,woolworths beef stacker burgers,EXCLUDE hit: ['burger']
+beef mince,woolworths value beef burgers,EXCLUDE hit: ['burger']
+beef mince,woolworths nz beef meatballs ,EXCLUDE hit: ['meatball']
+beef mince,woolworths nz beef burgers mini sliders,EXCLUDE hit: ['burger']
+beef mince,woolworths nz beef burgers classic,EXCLUDE hit: ['burger']
+beef mince,silver fern farms honest beef burgers with smoky caramelized onion,EXCLUDE hit: ['burger']
+beef mince,woolworths beef & pork meatballs ,EXCLUDE hit: ['meatball']
+beef mince,silver fern farms honest beef & lamb burgers with manuka smoked salt,EXCLUDE hit: ['burger']
+beef mince,first light meatballs wagyu beef,EXCLUDE hit: ['meatball']
+beef mince,silver fern farms burgers beef & venison chilli & lime,EXCLUDE hit: ['burger']
+spaghetti pasta,san remo pasta elbow italian no. 35,INCLUDE ['spaghetti'] missing
+spaghetti pasta,san remo pasta trivelle,INCLUDE ['spaghetti'] missing
+spaghetti pasta,san remo pasta large spirals no. 53,INCLUDE ['spaghetti'] missing
+spaghetti pasta,san remo pasta penne no. 18,INCLUDE ['spaghetti'] missing
+spaghetti pasta,san remo pasta curly fettuccine no. 80,INCLUDE ['spaghetti'] missing
+canned tomatoes,watties chopped tomatoes in juice,EXCLUDE hit: ['juice']
+canned tomatoes,delmaine crushed tomatoes italian in juice,EXCLUDE hit: ['juice']
+canned tomatoes,delmaine whole peeled tomatoes italian in juice,EXCLUDE hit: ['juice']
+onion,woolworths onion powder ,EXCLUDE hit: ['powder']
+onion,griffin's onion rings sour cream & chives,EXCLUDE hit: ['chips']
+onion,mrs rogers eco organic onion powder ,EXCLUDE hit: ['powder']
+carrot,original foods carrot cake goofy bar,EXCLUDE hit: ['cake']
+carrot,original foods carrot cake walnuts topped,EXCLUDE hit: ['cake']
+carrot,woolworths carrot cake ,EXCLUDE hit: ['cake']
+carrot,woolworths frozen baby carrots ,EXCLUDE hit: ['frozen']
+carrot,"mccain frozen mixed vegetables peas, corn & carrots",EXCLUDE hit: ['frozen']
+carrot,"wattie's frozen mixed vegetables green beans, broccoli, carrots",EXCLUDE hit: ['frozen']
+carrot,"wattie's frozen mixed vegetables carrots, peas, beans & corn",EXCLUDE hit: ['frozen']
+garlic,gourmet garden fresh vegetable garlic paste,EXCLUDE hit: ['paste']
+garlic,gourmet garden fresh vegetable garlic paste,EXCLUDE hit: ['paste']
+garlic,masterfoods garlic salt ,EXCLUDE hit: ['salt']
+garlic,masterfoods garlic & herb salt blend,EXCLUDE hit: ['salt']
+garlic,masterfoods garlic herb salt blend,EXCLUDE hit: ['salt']
+garlic,masterfoods garlic salt ,EXCLUDE hit: ['salt']
+garlic,masterfoods garlic finely crushed,EXCLUDE hit: ['crush']
+garlic,just garlic fresh vegetable garlic crushed,EXCLUDE hit: ['crush']
+garlic,woolworths garlic powder,EXCLUDE hit: ['powder']
+garlic,just garlic fresh vegetable garlic crushed,EXCLUDE hit: ['crush']
+garlic,just garlic fresh vegetable garlic crushed,EXCLUDE hit: ['crush']
+garlic,just foods garlic & ginger mix crushed,EXCLUDE hit: ['crush']
+garlic,just foods garlic & ginger mix crushed,EXCLUDE hit: ['crush']
+garlic,mrs rogers eco organic garlic powder ,EXCLUDE hit: ['powder']
+mixed herbs,gourmet garden fresh vegetable basil lightly dried,INCLUDE ['herb'] missing
+mixed herbs,gourmet garden fresh vegetable parsley lightly dried,INCLUDE ['herb'] missing
+mixed herbs,gourmet garden fresh vegetable coriander lightly dried,INCLUDE ['herb'] missing
+mixed herbs,gourmet garden fresh vegetable chilli lightly dried,INCLUDE ['herb'] missing
+mixed herbs,woolworths oregano flaked leaves,INCLUDE ['herb'] missing
+mixed herbs,woolworths rosemary flaked leaves,INCLUDE ['herb'] missing
+mixed herbs,woolworths thyme flaked leaves,INCLUDE ['herb'] missing
+mixed herbs,woolworths parsley flakes,INCLUDE ['herb'] missing
+mixed herbs,woolworths basil flaked leaves,INCLUDE ['herb'] missing
+mixed herbs,masterfoods onion salt blend,INCLUDE ['herb'] missing
+mixed herbs,masterfoods all purpose seasoning blend,INCLUDE ['herb'] missing
+beef mince,woolworths beef stacker burgers,EXCLUDE hit: ['burger']
+beef mince,woolworths nz beef meatballs ,EXCLUDE hit: ['meatball']
+beef mince,woolworths nz beef burgers mini sliders,EXCLUDE hit: ['burger']
+beef mince,woolworths nz beef burgers classic,EXCLUDE hit: ['burger']
+beef mince,silver fern farms honest beef burgers with smoky caramelized onion,EXCLUDE hit: ['burger']
+beef mince,woolworths beef & pork meatballs ,EXCLUDE hit: ['meatball']
+beef mince,silver fern farms honest beef & lamb burgers with manuka smoked salt,EXCLUDE hit: ['burger']
+beef mince,first light meatballs wagyu beef,EXCLUDE hit: ['meatball']
+beef mince,silver fern farms burgers beef & venison chilli & lime,EXCLUDE hit: ['burger']
+beef mince,woolworths sausages angus beef,EXCLUDE hit: ['sausage']
+spaghetti pasta,san remo pasta elbow italian no. 35,INCLUDE ['spaghetti'] missing
+spaghetti pasta,san remo pasta trivelle,INCLUDE ['spaghetti'] missing
+spaghetti pasta,san remo pasta large spirals no. 53,INCLUDE ['spaghetti'] missing
+spaghetti pasta,san remo pasta penne no. 18,INCLUDE ['spaghetti'] missing
+spaghetti pasta,san remo pasta curly fettuccine no. 80,INCLUDE ['spaghetti'] missing
+canned tomatoes,watties chopped tomatoes in juice,EXCLUDE hit: ['juice']
+canned tomatoes,delmaine crushed tomatoes italian in juice,EXCLUDE hit: ['juice']
+canned tomatoes,delmaine whole peeled tomatoes italian in juice,EXCLUDE hit: ['juice']
+onion,woolworths onion powder ,EXCLUDE hit: ['powder']
+onion,griffin's onion rings sour cream & chives,EXCLUDE hit: ['chips']
+onion,mrs rogers eco organic onion powder ,EXCLUDE hit: ['powder']
+carrot,original foods carrot cake goofy bar,EXCLUDE hit: ['cake']
+carrot,original foods carrot cake walnuts topped,EXCLUDE hit: ['cake']
+carrot,woolworths carrot cake ,EXCLUDE hit: ['cake']
+carrot,woolworths frozen baby carrots ,EXCLUDE hit: ['frozen']
+carrot,"mccain frozen mixed vegetables peas, corn & carrots",EXCLUDE hit: ['frozen']
+carrot,"wattie's frozen mixed vegetables green beans, broccoli, carrots",EXCLUDE hit: ['frozen']
+garlic,gourmet garden fresh vegetable garlic paste,EXCLUDE hit: ['paste']
+garlic,gourmet garden fresh vegetable garlic paste,EXCLUDE hit: ['paste']
+garlic,masterfoods garlic salt ,EXCLUDE hit: ['salt']
+garlic,masterfoods garlic & herb salt blend,EXCLUDE hit: ['salt']
+garlic,masterfoods garlic herb salt blend,EXCLUDE hit: ['salt']
+garlic,masterfoods garlic salt ,EXCLUDE hit: ['salt']
+garlic,masterfoods garlic finely crushed,EXCLUDE hit: ['crush']
+garlic,just garlic fresh vegetable garlic crushed,EXCLUDE hit: ['crush']
+garlic,woolworths garlic powder,EXCLUDE hit: ['powder']
+garlic,just garlic fresh vegetable garlic crushed,EXCLUDE hit: ['crush']
+garlic,just garlic fresh vegetable garlic crushed,EXCLUDE hit: ['crush']
+garlic,just foods garlic & ginger mix crushed,EXCLUDE hit: ['crush']
+garlic,just foods garlic & ginger mix crushed,EXCLUDE hit: ['crush']
+garlic,mrs rogers eco organic garlic powder ,EXCLUDE hit: ['powder']
+garlic,just foods crushed garlic & ginger mixed jar,EXCLUDE hit: ['crush']
+mixed herbs,gourmet garden fresh vegetable basil lightly dried,INCLUDE ['herb'] missing
+mixed herbs,gourmet garden fresh vegetable parsley lightly dried,INCLUDE ['herb'] missing
+mixed herbs,gourmet garden fresh vegetable coriander lightly dried,INCLUDE ['herb'] missing
+mixed herbs,gourmet garden fresh vegetable chilli lightly dried,INCLUDE ['herb'] missing
+mixed herbs,woolworths oregano flaked leaves,INCLUDE ['herb'] missing
+mixed herbs,woolworths rosemary flaked leaves,INCLUDE ['herb'] missing
+mixed herbs,woolworths thyme flaked leaves,INCLUDE ['herb'] missing
+mixed herbs,woolworths parsley flakes,INCLUDE ['herb'] missing
+mixed herbs,woolworths basil flaked leaves,INCLUDE ['herb'] missing
+mixed herbs,masterfoods onion salt blend,INCLUDE ['herb'] missing
+mixed herbs,masterfoods all purpose seasoning blend,INCLUDE ['herb'] missing
+beef mince,woolworths beef stacker burgers,EXCLUDE hit: ['burger']
+beef mince,woolworths nz beef meatballs ,EXCLUDE hit: ['meatball']
+beef mince,woolworths nz beef burgers mini sliders,EXCLUDE hit: ['burger']
+beef mince,woolworths nz beef burgers classic,EXCLUDE hit: ['burger']
+beef mince,silver fern farms honest beef burgers with smoky caramelized onion,EXCLUDE hit: ['burger']
+beef mince,woolworths beef & pork meatballs ,EXCLUDE hit: ['meatball']
+beef mince,silver fern farms honest beef & lamb burgers with manuka smoked salt,EXCLUDE hit: ['burger']
+beef mince,first light meatballs wagyu beef,EXCLUDE hit: ['meatball']
+beef mince,silver fern farms burgers beef & venison chilli & lime,EXCLUDE hit: ['burger']
+beef mince,woolworths sausages angus beef,EXCLUDE hit: ['sausage']
+spaghetti pasta,san remo pasta elbow italian no. 35,INCLUDE ['spaghetti'] missing
+spaghetti pasta,san remo pasta trivelle,INCLUDE ['spaghetti'] missing
+spaghetti pasta,san remo pasta large spirals no. 53,INCLUDE ['spaghetti'] missing
+spaghetti pasta,san remo pasta penne no. 18,INCLUDE ['spaghetti'] missing
+canned tomatoes,watties chopped tomatoes in juice,EXCLUDE hit: ['juice']
+canned tomatoes,delmaine crushed tomatoes italian in juice,EXCLUDE hit: ['juice']
+canned tomatoes,delmaine whole peeled tomatoes italian in juice,EXCLUDE hit: ['juice']
+onion,woolworths onion powder ,EXCLUDE hit: ['powder']
+onion,griffin's onion rings sour cream & chives,EXCLUDE hit: ['chips']
+onion,mrs rogers eco organic onion powder ,EXCLUDE hit: ['powder']
+carrot,original foods carrot cake goofy bar,EXCLUDE hit: ['cake']
+carrot,original foods carrot cake walnuts topped,EXCLUDE hit: ['cake']
+carrot,woolworths carrot cake ,EXCLUDE hit: ['cake']
+carrot,"mccain frozen mixed vegetables peas, corn & carrots",EXCLUDE hit: ['frozen']
+carrot,"wattie's frozen mixed vegetables green beans, broccoli, carrots",EXCLUDE hit: ['frozen']
+carrot,"wattie's frozen mixed vegetables carrots, peas, beans & corn",EXCLUDE hit: ['frozen']
+carrot,"wattie's steam fresh frozen mixed vegetables carrots, broccoli, cauliflower",EXCLUDE hit: ['frozen']
+garlic,gourmet garden fresh vegetable garlic paste,EXCLUDE hit: ['paste']
+garlic,gourmet garden fresh vegetable garlic paste,EXCLUDE hit: ['paste']
+garlic,masterfoods garlic salt ,EXCLUDE hit: ['salt']
+garlic,masterfoods garlic & herb salt blend,EXCLUDE hit: ['salt']
+garlic,masterfoods garlic herb salt blend,EXCLUDE hit: ['salt']
+garlic,masterfoods garlic salt ,EXCLUDE hit: ['salt']
+garlic,masterfoods garlic finely crushed,EXCLUDE hit: ['crush']
+garlic,just garlic fresh vegetable garlic crushed,EXCLUDE hit: ['crush']
+garlic,woolworths garlic powder,EXCLUDE hit: ['powder']
+garlic,just garlic fresh vegetable garlic crushed,EXCLUDE hit: ['crush']
+garlic,just garlic fresh vegetable garlic crushed,EXCLUDE hit: ['crush']
+garlic,just foods garlic & ginger mix crushed,EXCLUDE hit: ['crush']
+garlic,just foods garlic & ginger mix crushed,EXCLUDE hit: ['crush']
+garlic,mrs rogers eco organic garlic powder ,EXCLUDE hit: ['powder']
+mixed herbs,gourmet garden fresh vegetable basil lightly dried,INCLUDE ['herb'] missing
+mixed herbs,gourmet garden fresh vegetable parsley lightly dried,INCLUDE ['herb'] missing
+mixed herbs,gourmet garden fresh vegetable coriander lightly dried,INCLUDE ['herb'] missing
+mixed herbs,gourmet garden fresh vegetable chilli lightly dried,INCLUDE ['herb'] missing
+mixed herbs,woolworths oregano flaked leaves,INCLUDE ['herb'] missing
+mixed herbs,woolworths rosemary flaked leaves,INCLUDE ['herb'] missing
+mixed herbs,woolworths thyme flaked leaves,INCLUDE ['herb'] missing
+mixed herbs,woolworths parsley flakes,INCLUDE ['herb'] missing
+mixed herbs,woolworths basil flaked leaves,INCLUDE ['herb'] missing
+mixed herbs,masterfoods onion salt blend,INCLUDE ['herb'] missing
+mixed herbs,masterfoods all purpose seasoning blend,INCLUDE ['herb'] missing
+beef mince,woolworths beef smash burgers,EXCLUDE hit: ['burger']
+beef mince,woolworths beef stacker burgers,EXCLUDE hit: ['burger']
+beef mince,woolworths nz beef meatballs ,EXCLUDE hit: ['meatball']
+beef mince,woolworths nz beef burgers mini sliders,EXCLUDE hit: ['burger']
+beef mince,woolworths nz beef burgers classic,EXCLUDE hit: ['burger']
+beef mince,silver fern farms honest beef burgers with smoky caramelized onion,EXCLUDE hit: ['burger']
+beef mince,woolworths beef meatballs angus,EXCLUDE hit: ['meatball']
+beef mince,woolworths beef & pork meatballs ,EXCLUDE hit: ['meatball']
+beef mince,silver fern farms honest beef & lamb burgers with manuka smoked salt,EXCLUDE hit: ['burger']
+beef mince,first light meatballs wagyu beef,EXCLUDE hit: ['meatball']
+beef mince,silver fern farms burgers beef & venison chilli & lime,EXCLUDE hit: ['burger']
+spaghetti pasta,san remo pasta elbow italian no. 35,INCLUDE ['spaghetti'] missing
+spaghetti pasta,san remo pasta trivelle,INCLUDE ['spaghetti'] missing
+spaghetti pasta,san remo pasta large spirals no. 53,INCLUDE ['spaghetti'] missing
+spaghetti pasta,san remo pasta penne no. 18,INCLUDE ['spaghetti'] missing
+spaghetti pasta,san remo pasta curly fettuccine no. 80,INCLUDE ['spaghetti'] missing
+canned tomatoes,watties chopped tomatoes in juice,EXCLUDE hit: ['juice']
+canned tomatoes,delmaine crushed tomatoes italian in juice,EXCLUDE hit: ['juice']
+canned tomatoes,delmaine whole peeled tomatoes italian in juice,EXCLUDE hit: ['juice']
+onion,woolworths onion powder ,EXCLUDE hit: ['powder']
+onion,griffin's onion rings sour cream & chives,EXCLUDE hit: ['chips']
+onion,mrs rogers eco organic onion powder ,EXCLUDE hit: ['powder']
+carrot,original foods carrot cake goofy bar,EXCLUDE hit: ['cake']
+carrot,original foods carrot cake walnuts topped,EXCLUDE hit: ['cake']
+carrot,woolworths carrot cake ,EXCLUDE hit: ['cake']
+carrot,woolworths frozen baby carrots ,EXCLUDE hit: ['frozen']
+carrot,"fresh vegetable snack pot carrot, celery sticks & hummus",EXCLUDE hit: ['snack']
+carrot,"mccain frozen mixed vegetables peas, corn & carrots",EXCLUDE hit: ['frozen']
+carrot,"wattie's frozen mixed vegetables green beans, broccoli, carrots",EXCLUDE hit: ['frozen']
+garlic,gourmet garden fresh vegetable garlic paste,EXCLUDE hit: ['paste']
+garlic,gourmet garden fresh vegetable garlic paste,EXCLUDE hit: ['paste']
+garlic,masterfoods garlic salt ,EXCLUDE hit: ['salt']
+garlic,masterfoods garlic & herb salt blend,EXCLUDE hit: ['salt']
+garlic,masterfoods garlic herb salt blend,EXCLUDE hit: ['salt']
+garlic,masterfoods garlic salt ,EXCLUDE hit: ['salt']
+garlic,masterfoods garlic finely crushed,EXCLUDE hit: ['crush']
+garlic,just garlic fresh vegetable garlic crushed,EXCLUDE hit: ['crush']
+garlic,woolworths garlic powder,EXCLUDE hit: ['powder']
+garlic,just garlic fresh vegetable garlic crushed,EXCLUDE hit: ['crush']
+garlic,just garlic fresh vegetable garlic crushed,EXCLUDE hit: ['crush']
+garlic,just foods garlic & ginger mix crushed,EXCLUDE hit: ['crush']
+garlic,just foods garlic & ginger mix crushed,EXCLUDE hit: ['crush']
+garlic,mrs rogers eco organic garlic powder ,EXCLUDE hit: ['powder']
+mixed herbs,gourmet garden fresh vegetable basil lightly dried,INCLUDE ['herb'] missing
+mixed herbs,gourmet garden fresh vegetable parsley lightly dried,INCLUDE ['herb'] missing
+mixed herbs,gourmet garden fresh vegetable coriander lightly dried,INCLUDE ['herb'] missing
+mixed herbs,gourmet garden fresh vegetable chilli lightly dried,INCLUDE ['herb'] missing
+mixed herbs,woolworths oregano flaked leaves,INCLUDE ['herb'] missing
+mixed herbs,woolworths rosemary flaked leaves,INCLUDE ['herb'] missing
+mixed herbs,woolworths thyme flaked leaves,INCLUDE ['herb'] missing
+mixed herbs,woolworths parsley flakes,INCLUDE ['herb'] missing
+mixed herbs,woolworths basil flaked leaves,INCLUDE ['herb'] missing
+mixed herbs,masterfoods onion salt blend,INCLUDE ['herb'] missing
+mixed herbs,masterfoods all purpose seasoning blend,INCLUDE ['herb'] missing
+beef mince,woolworths beef smash burgers,EXCLUDE hit: ['burger']
+beef mince,woolworths beef stacker burgers,EXCLUDE hit: ['burger']
+beef mince,woolworths nz beef meatballs ,EXCLUDE hit: ['meatball']
+beef mince,woolworths nz beef burgers mini sliders,EXCLUDE hit: ['burger']
+beef mince,woolworths nz beef burgers classic,EXCLUDE hit: ['burger']
+beef mince,silver fern farms honest beef burgers with smoky caramelized onion,EXCLUDE hit: ['burger']
+beef mince,woolworths beef meatballs angus,EXCLUDE hit: ['meatball']
+beef mince,woolworths beef & pork meatballs ,EXCLUDE hit: ['meatball']
+beef mince,silver fern farms honest beef & lamb burgers with manuka smoked salt,EXCLUDE hit: ['burger']
+beef mince,first light meatballs wagyu beef,EXCLUDE hit: ['meatball']
+spaghetti pasta,san remo pasta elbow italian no. 35,INCLUDE ['spaghetti'] missing
+spaghetti pasta,san remo pasta trivelle,INCLUDE ['spaghetti'] missing
+spaghetti pasta,san remo pasta large spirals no. 53,INCLUDE ['spaghetti'] missing
+spaghetti pasta,san remo pasta penne no. 18,INCLUDE ['spaghetti'] missing
+spaghetti pasta,san remo pasta curly fettuccine no. 80,INCLUDE ['spaghetti'] missing
+canned tomatoes,watties chopped tomatoes in juice,EXCLUDE hit: ['juice']
+canned tomatoes,delmaine crushed tomatoes italian in juice,EXCLUDE hit: ['juice']
+canned tomatoes,delmaine whole peeled tomatoes italian in juice,EXCLUDE hit: ['juice']
+onion,woolworths onion powder ,EXCLUDE hit: ['powder']
+onion,griffin's onion rings sour cream & chives,EXCLUDE hit: ['chips']
+onion,mrs rogers eco organic onion powder ,EXCLUDE hit: ['powder']
+carrot,original foods carrot cake goofy bar,EXCLUDE hit: ['cake']
+carrot,original foods carrot cake walnuts topped,EXCLUDE hit: ['cake']
+carrot,woolworths carrot cake ,EXCLUDE hit: ['cake']
+carrot,woolworths frozen baby carrots ,EXCLUDE hit: ['frozen']
+carrot,"fresh vegetable snack pot carrot, celery sticks & hummus",EXCLUDE hit: ['snack']
+carrot,"mccain frozen mixed vegetables peas, corn & carrots",EXCLUDE hit: ['frozen']
+carrot,"wattie's frozen mixed vegetables green beans, broccoli, carrots",EXCLUDE hit: ['frozen']
+garlic,gourmet garden fresh vegetable garlic paste,EXCLUDE hit: ['paste']
+garlic,gourmet garden fresh vegetable garlic paste,EXCLUDE hit: ['paste']
+garlic,masterfoods garlic salt ,EXCLUDE hit: ['salt']
+garlic,masterfoods garlic & herb salt blend,EXCLUDE hit: ['salt']
+garlic,masterfoods garlic herb salt blend,EXCLUDE hit: ['salt']
+garlic,masterfoods garlic salt ,EXCLUDE hit: ['salt']
+garlic,masterfoods garlic finely crushed,EXCLUDE hit: ['crush']
+garlic,just garlic fresh vegetable garlic crushed,EXCLUDE hit: ['crush']
+garlic,woolworths garlic powder,EXCLUDE hit: ['powder']
+garlic,just garlic fresh vegetable garlic crushed,EXCLUDE hit: ['crush']
+garlic,just garlic fresh vegetable garlic crushed,EXCLUDE hit: ['crush']
+garlic,just foods garlic & ginger mix crushed,EXCLUDE hit: ['crush']
+garlic,just foods garlic & ginger mix crushed,EXCLUDE hit: ['crush']
+garlic,mrs rogers eco organic garlic powder ,EXCLUDE hit: ['powder']
+mixed herbs,gourmet garden fresh vegetable basil lightly dried,INCLUDE ['herb'] missing
+mixed herbs,gourmet garden fresh vegetable parsley lightly dried,INCLUDE ['herb'] missing
+mixed herbs,gourmet garden fresh vegetable coriander lightly dried,INCLUDE ['herb'] missing
+mixed herbs,gourmet garden fresh vegetable chilli lightly dried,INCLUDE ['herb'] missing
+mixed herbs,woolworths oregano flaked leaves,INCLUDE ['herb'] missing
+mixed herbs,woolworths rosemary flaked leaves,INCLUDE ['herb'] missing
+mixed herbs,woolworths thyme flaked leaves,INCLUDE ['herb'] missing
+mixed herbs,woolworths parsley flakes,INCLUDE ['herb'] missing
+mixed herbs,woolworths basil flaked leaves,INCLUDE ['herb'] missing
+mixed herbs,masterfoods onion salt blend,INCLUDE ['herb'] missing
+mixed herbs,masterfoods all purpose seasoning blend,INCLUDE ['herb'] missing
+beef mince,woolworths beef smash burgers,EXCLUDE hit: ['burger']
+beef mince,woolworths beef stacker burgers,EXCLUDE hit: ['burger']
+beef mince,woolworths value beef burgers,EXCLUDE hit: ['burger']
+beef mince,woolworths nz beef meatballs ,EXCLUDE hit: ['meatball']
+beef mince,woolworths nz beef burgers mini sliders,EXCLUDE hit: ['burger']
+beef mince,woolworths nz beef burgers classic,EXCLUDE hit: ['burger']
+beef mince,silver fern farms honest beef burgers with smoky caramelized onion,EXCLUDE hit: ['burger']
+beef mince,woolworths beef & pork meatballs ,EXCLUDE hit: ['meatball']
+beef mince,silver fern farms honest beef & lamb burgers with manuka smoked salt,EXCLUDE hit: ['burger']
+beef mince,first light meatballs wagyu beef,EXCLUDE hit: ['meatball']
+spaghetti pasta,san remo pasta elbow italian no. 35,INCLUDE ['spaghetti'] missing
+spaghetti pasta,san remo pasta trivelle,INCLUDE ['spaghetti'] missing
+spaghetti pasta,san remo pasta large spirals no. 53,INCLUDE ['spaghetti'] missing
+spaghetti pasta,san remo pasta penne no. 18,INCLUDE ['spaghetti'] missing
+canned tomatoes,watties chopped tomatoes in juice,EXCLUDE hit: ['juice']
+canned tomatoes,delmaine crushed tomatoes italian in juice,EXCLUDE hit: ['juice']
+canned tomatoes,delmaine whole peeled tomatoes italian in juice,EXCLUDE hit: ['juice']
+onion,woolworths onion powder ,EXCLUDE hit: ['powder']
+onion,griffin's onion rings sour cream & chives,EXCLUDE hit: ['chips']
+onion,mrs rogers eco organic onion powder ,EXCLUDE hit: ['powder']
+carrot,original foods carrot cake goofy bar,EXCLUDE hit: ['cake']
+carrot,original foods carrot cake walnuts topped,EXCLUDE hit: ['cake']
+carrot,woolworths frozen baby carrots ,EXCLUDE hit: ['frozen']
+carrot,"fresh vegetable snack pot carrot, celery sticks & hummus",EXCLUDE hit: ['snack']
+carrot,"mccain frozen mixed vegetables peas, corn & carrots",EXCLUDE hit: ['frozen']
+carrot,"wattie's frozen mixed vegetables green beans, broccoli, carrots",EXCLUDE hit: ['frozen']
+carrot,"wattie's frozen mixed vegetables carrots, peas, beans & corn",EXCLUDE hit: ['frozen']
+carrot,"wattie's steam fresh frozen mixed vegetables carrots, broccoli, cauliflower",EXCLUDE hit: ['frozen']
+carrot,tasti fruit + vege wholefood snack balls mango & carrot,EXCLUDE hit: ['snack']
+garlic,gourmet garden fresh vegetable garlic paste,EXCLUDE hit: ['paste']
+garlic,gourmet garden fresh vegetable garlic paste,EXCLUDE hit: ['paste']
+garlic,masterfoods garlic salt ,EXCLUDE hit: ['salt']
+garlic,masterfoods garlic & herb salt blend,EXCLUDE hit: ['salt']
+garlic,masterfoods garlic herb salt blend,EXCLUDE hit: ['salt']
+garlic,masterfoods garlic salt ,EXCLUDE hit: ['salt']
+garlic,masterfoods garlic finely crushed,EXCLUDE hit: ['crush']
+garlic,just garlic fresh vegetable garlic crushed,EXCLUDE hit: ['crush']
+garlic,woolworths garlic powder,EXCLUDE hit: ['powder']
+garlic,just garlic fresh vegetable garlic crushed,EXCLUDE hit: ['crush']
+garlic,just garlic fresh vegetable garlic crushed,EXCLUDE hit: ['crush']
+garlic,just foods garlic & ginger mix crushed,EXCLUDE hit: ['crush']
+garlic,mrs rogers eco organic garlic powder ,EXCLUDE hit: ['powder']
+garlic,just foods crushed garlic & ginger mixed jar,EXCLUDE hit: ['crush']
+mixed herbs,gourmet garden fresh vegetable basil lightly dried,INCLUDE ['herb'] missing
+mixed herbs,gourmet garden fresh vegetable parsley lightly dried,INCLUDE ['herb'] missing
+mixed herbs,gourmet garden fresh vegetable coriander lightly dried,INCLUDE ['herb'] missing
+mixed herbs,gourmet garden fresh vegetable chilli lightly dried,INCLUDE ['herb'] missing
+mixed herbs,woolworths oregano flaked leaves,INCLUDE ['herb'] missing
+mixed herbs,woolworths rosemary flaked leaves,INCLUDE ['herb'] missing
+mixed herbs,woolworths thyme flaked leaves,INCLUDE ['herb'] missing
+mixed herbs,woolworths parsley flakes,INCLUDE ['herb'] missing
+mixed herbs,woolworths basil flaked leaves,INCLUDE ['herb'] missing
+mixed herbs,masterfoods onion salt blend,INCLUDE ['herb'] missing
+mixed herbs,masterfoods all purpose seasoning blend,INCLUDE ['herb'] missing

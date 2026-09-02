@@ -228,7 +228,7 @@ PASS 2 (Pricing): POST /search/paginated/products with filters
 - Promotional pricing included
 - Categories endpoint available for navigation
 
-See `exploration/newworld/` (`explore_edge_api*.py`, `check_milk_metro_relevance.py`, `demo_edge_full_test.py`, `demo_edge_optimiser.py`) for working implementations.
+See `exploration/newworld/` (`explore_edge_api*.py`, `check_two_pass_milk_metro.py`, `demo_geographic_price_compare.py`, `demo_full_optimiser_single_pass.py`) for working implementations.
 
 ## 28. New World store-finder page `__NEXT_DATA__` for URL slugs only
 
@@ -439,3 +439,111 @@ exploration/                 # Exploration scripts per brand
 `pip install -e ".[dev]"`) and run CLIs via `python -m tools.<brand>.<module>`.
 `tools/` is the CLI layer distinct from the `src/NZMealOptimiser/` library —
 optimisers/setup/validation scripts thin-wrap the shared library helpers.
+
+## 41. FastAPI app-shell consolidation (2026-08)
+
+During the FastAPI app-shell build-out (the rewrite that introduced `/` + `/test` Vue trees + job-based `POST /optimise/jobs`), the following were deliberately removed from `main.py`:
+
+- `workers/` folder — queueing system for serialized processing (sessions are now isolated naturally via fresh `requests.Session()` per call).
+- `services/supabase_client.py` — Supabase write client (persistence is optional, can be re-added later).
+- `seed_phase1.py`, `schema_phase1.sql` — database seeding files (we start with local storage).
+- `models/` folder — Pydantic models (consolidated into `main.py`).
+- `routes/` folder — separate route files (consolidated to single `main.py`).
+- Custom price extraction — replaced with `build_edge_row` / `build_woolworths_row` to reuse the existing row format.
+- "Best price per ingredient" logic — removed; the API now returns ALL product results, with quantity-scaled "used cost" computed via `parse_optimiser_columns`.
+
+Context: the original docs (pre-rewrite) had been describing these as active modules. After consolidation, the listed items should not appear in any current `src/` or `tools/` tree — this entry exists so future readers don't try to re-add them.
+
+## 42. Live-adjustable search thread pool (Settings slider, 2026-09)
+
+The search thread pool was previously sized once at import time from `WEB_MAX_WORKERS` and required a server restart to change. Decision #42 replaces that with a live-adjustable slider exposed in the Settings → Advanced card.
+
+**Architecture — `_ResizableThreadPool` wrapper:** `ThreadPoolExecutor` cannot be resized in place, so the underlying executor is wrapped in a small class that holds a `threading.Lock` and a single mutable reference. `set_max_workers(n)` builds a new executor under the lock, swaps the reference, drains the old one with `shutdown(wait=False)` outside the lock, and rebinds the asyncio default executor if a loop is running. Reads (`executor`, `max_workers`) take a snapshot of the current reference so callers never see a half-built replacement.
+
+**Size configuration — hardcoded only, no `.env` override:**
+
+| Setting | Source | Range | Edit |
+|---|---|---|---|
+| Slider bounds | `WORKER_POOL_MIN` / `MAX` / `STEP` (module constants in `main.py`) | 20 / 40 / 5 | Edit + restart |
+| Live size | Slider value via `POST /system/thread-pool` | min..max in step multiples | Live |
+
+The bounds are intentionally **not** exposed via `.env`. An earlier design wired `WEB_MAX_WORKERS` as a `.env` ceiling and clamped the slider to `[WORKER_POOL_MIN, min(WORKER_POOL_MAX, WEB_MAX_WORKERS)]`. The Pydantic default for `WEB_MAX_WORKERS` was 20 — the same as the slider min — so an unset `.env` silently clamped the slider to a single point (`min == max == 20`) and made it impossible to drag. The `.env` ceiling was removed so the slider is always 20–40 step 5 out of the box. If you ever need a different range, edit the constants in `main.py` and restart.
+
+**Running-jobs gate (409 path):** The swap is refused with HTTP 409 if any `JobState.status == "running"` exists in `JOBS`. Rationale: an in-flight executor swap *can* strand a future on a draining executor (we use `shutdown(wait=False)` by design so the swap is fast). With the gate, the drain is a no-op guarantee rather than a race. The Settings page polls `GET /system/running-jobs` every 2 s so the Apply button auto-disables while a job is running and auto-re-enables when it finishes.
+
+**UX choices:**
+- Slider value is a `v-model` local preview, **not** auto-applied on `change`. The user has to hit an explicit "Apply N workers" button so dragging doesn't thrash the pool.
+- Success state shows a green ✓ chip that auto-fades after 4 s.
+- Failure (400/409) shows a red `mode-note` and resets the slider to the live pool size.
+- One pool, three brands — no per-brand knob. Past 40 the supermarkets' own rate limits become the bottleneck, which is why the slider tops out at 40.
+
+**Why not a per-job concurrency cap instead:** a single shared pool is simpler, doesn't require threading a knob through every `optimise/jobs` payload, and is the right knob for "this server feels slow" — the actual symptom.
+
+## 43. Photon for address autocomplete + reverse-geocode (2026-09)
+
+The dashboard's address field was a plain `<input>` with a `<datalist>` fed by the user's last 5 typed addresses; rural addresses got the wrong first hit, long queries needed full keystrokes, and there was no way to pick a location from the map.
+
+**Why Photon over Nominatim for browser-facing geocoding:**
+- **Nominatim's [usage policy](https://operations.osmfoundation.org/policies/nominatim/) explicitly bans browser autocomplete** and rate-limits to 1 req/sec. We respect this on the forward-lookup path (`/geocode` — 1.1s sleep in `optimiser_utils.geocode()`), but a per-keystroke dropdown would violate TOS and likely get the server IP blocked.
+- **Photon** (`photon.komoot.io`) is the only free, no-API-key, no-credit-card, OSM-based geocoder built for search-as-you-type. Same OSM planet data, autocomplete-first indexing, "fair use" throttling on the public demo.
+- All commercial options (Mapbox, Google Places, HERE, Geoapify, OpenCage production, geocode.maps.co) require either a credit-card signup or restrictive attribution. **The user explicitly doesn't want to pay** so those are off the table.
+- Self-hosting Photon/Pelias with the LINZ NZ address dump is the long-term fallback if Photon's demo throttles us (it'd take ~5-10 GB RAM, ~20 GB disk, and ~2M LINZ address points). Not worth the ops cost at current user base.
+
+**Architecture:**
+- New endpoints in `main.py`: `GET /geocode/autocomplete` (Photon forward, LRU 200, key = `country|limit|q`) and `GET /geocode/reverse?provider=auto|photon|nominatim` (Photon default, Nominatim opt-in). All three LRUs are independent so cache pollution can't cross them.
+- `provider=auto` defaults to Photon because its cache is 4-decimal (~11 m) and the 1.1s sleep isn't needed. The Nominatim path is kept for precision (5-decimal cache, ~1 m) and rural NZ where Photon's labels are sparser.
+- New `AddressAutocomplete.vue` (debounced 300 ms, keyboard nav, click-outside dismiss, ✕ clear, ODbL attribution) replaces the `<datalist>`. Photon's selected suggestion's coords are used directly — no second Nominatim round-trip.
+- `MapPanel.vue` gains a `pick-origin` event (map background click + origin-pin dragend) and a draggable origin pin with `cursor: grab`. The dashboard's `onPickOrigin()` sets `origin = {lat, lon, source: "picked"}` (third source alongside `'gps'` / `'geocoded'`), then debounce-reverses the coords so the address field gets a real label. A `_suppressAddressReset` counter incremented inside `onPickOrigin` and `onAddressSelect` keeps the address-input watch from wiping the just-set origin.
+
+**Scope:** /test tree only (sandbox). Promotion to prod requires copying `AddressAutocomplete.vue` + the updated `MapPanel.vue` + `DashboardView.vue` from `src/test/components/` to `src/`, then `tools/frontend/promote_test_to_app.ps1` and rebuild.
+
+**License:** Photon's data is ODbL — the dropdown footer must keep the `photon.komoot.io` + `openstreetmap.org/copyright` links.
+
+**Open followup — `/geocode` still on Nominatim (deliberate, not a constraint):** Photon could obviously proxy the same forward-lookup, so why keep `/geocode` on Nominatim? Three reasons, in order of weight:
+
+1. **LRU makes the 1.1 s sleep a one-time cost.** The cache is 200 entries keyed on lowercased address. The first cold-cache submit for a given address pays the 1.1 s, every subsequent submit hits the cache and is instant. Photon's "no sleep" only matters on the *first* submit per address per session — a one-shot cost, not per-keystroke.
+2. **The "Resolve setup" submit is the authoritative one.** The autocomplete dropdown has already validated the address when the user picked a suggestion (Photon-sourced coords are in hand). The fallback case (user types a full address, doesn't pick a suggestion, clicks submit) is the one that actually calls `/geocode` — and for that case we want the most precise single-result label we can get. Nominatim's `display_name` strings are marginally fuller than Photon's, and its search index is tuned for exact-match rather than prefix-match.
+3. **Separation of concerns as a feature.** Photon = "exploration" (keystroke search, map-pin reverse), Nominatim = "submission" (one deliberate click). If Photon's demo ever throttles or goes down, `/geocode` is unaffected and the user can still resolve an address by typing the full string. The reverse is also true: if Nominatim has an outage, autocomplete and map-pick still work.
+
+**Migration path if the trade-off ever flips** (e.g. Nominatim uptime degrades, or we want to drop the 1.1 s entirely for UX):
+- Swap `/geocode` to proxy Photon (drop the `time.sleep(1.1)` in the call path; LRU + NZ bbox guard stay). Single endpoint, two lines of code.
+- Nominatim stays available as `provider=nominatim` on `/geocode/reverse` for the precision case.
+- Watch the first-submit UX change: cold-cache addresses go from ~1.1 s to ~0.2 s, which on slow rural connections is the difference between a perceptible pause and a snappy form.
+
+## 44. AI instruction → keyword-filter compiler (/test only, 2026-09)
+
+The `FilterTunerPanel` had a disabled `AI instruction` textarea ("planned, not functional yet"). The need: after a run, a user wants to type one sentence like `"only red onions, no cheese powder"` and have every cached product re-marked `passed/filtered` without sending the 1000s of rows to the LLM (rate limits, hallucination, Cloud Run cost).
+
+**Why not embeddings or full-row LLM filtering:**
+- Sending the table to the LLM is ~20k+ tokens and nondeterministic.
+- A light embedder would be opaque (no `filter_reason` to show in the `matched/filtered` pill) and needs threshold tuning per ingredient (e.g. `trim milk` vs `flavoured milk` are semantically close but should be opposite outcomes). Embeddings could add a second pass later but not as the primary.
+
+**Decision — deductive compiling with a deduped vocabulary:**
+- A fast Python pass builds `[{Ingredient, Terms: [sorted unique lowercased words from every returned_ingredient], Brands: [sorted unique brands]}]` per `search_term` from the completed job's cached rows. No cap on word counts (user request) — deduped only, so nuances like `red` vs `brown` for `onion` are never lost. Typical dish ≈ 1000-2000 tokens total, well within 128k context.
+- One call to the configured **filter model** (`data/llm_settings.json`, same model as pre-run filter seeding; default `gemini-3.1-flash-lite`) compiles the universal sentence + that vocab into `{search_term: {includes, excludes, brand_includes, brand_excludes}}` via `llm/ai_filter_compiler.py`. Prompt wraps the raw sentence between `<< >>` markers and instructs the model to treat anything inside as DATA (injection guard). Empty/vague sentences return `{}`.
+- Local filtering then stamps `valid_ingredient` over every cached row via the existing `matches_ingredient_filters` / `matches_brand_filters` (Levenshtein ≤0.35). The table is never sent to the LLM.
+
+**UX — ask-and-confirm before mutation:**
+- The `/test` tuner enables the textarea only when a run is complete, adds `Generate filters` → `POST /optimise/{id}/ai_filter_preview` which returns `compiled_filters` + a dry-run `matched/total` preview (same counts/products shape as `filter_preview`). The user sees the suggested chip diff and per-ingredient preview and must click **Apply** to merge the rules into `filterStore[scope]` (capped 15/list, 40 chars, merged additively so hand-tuned rules are not clobbered). Preview is non-mutating — `job.result`/`pipeline_cache` are untouched until the existing `POST /optimise/{id}/reapply` is called.
+
+**Scope:** `/test` sandbox only. Prod `src/components/FilterTunerPanel.vue` keeps the disabled stub. Promote via `tools/frontend/promote_test_to_app.ps1` when approved. Endpoints are live on the shared backend but only `/test` calls them. No local LLM — fully online on Cloud Run, deduping is pure Python `set()` logic.
+
+## 45. Auto refine — dish-wide irrelevant-term cull (/test only)
+
+**Motivation:** after the instruction → filters layer shipped (#44), users wanted a one-click "cull the junk" that doesn't require composing a sentence — e.g. for `spaghetti bolognese` auto-suggest up to 15 most irrelevant `excludes` per ingredient from the actual vocab.
+
+**Decision — reuse the same deduped summary + filter model:**
+
+- Same `build_deduped_summary(search_terms, rows) → [{Ingredient, Terms, Brands}]` (no word cap, `set()` dedup, ~1000-2000 tokens) is sent, plus `current_filters` as context so the model avoids duplicates. Dish name comes from `pipeline_cache.dish_name` (fallback `job.result.dish` → `"this dish"`), wrapped `<<dish>>` with the same `<< >>` injection guard as #44.
+- New compiler `compile_auto_cull_filters(dish, search_terms, rows, current_filters)` → `AUTO_CULL_PROMPT_TEMPLATE` asks only for `excludes` + `brand_excludes` ( `includes` intentionally omitted), up to **15 per list per ingredient**, most irrelevant first, grounded strictly to `Terms`/`Brands` (extra vocab-clipping after `_coerce_ai_filters`, capped 15, warnings for dropped unknowns). Uses the configured filter model via `call_filter_model` (default `gemini-3.1-flash-lite`), no rows sent.
+- New endpoint `POST /optimise/{job_id}/auto_cull_preview {current_filters}` ( /test only) mirrors `ai_filter_preview`: LLM compile → `_clean_ingredient_filters` → additive dry-run preview (`current ∪ suggestions`, case-insensitive dedup, capped 15/list) via `_merge_request_filters` + `_apply_ingredient_validity` → `{dish, compiled_filters, warnings, summary, preview: {terms, products}}`. No mutation of `job.result`/`pipeline_cache`; Apply is the existing `reapply` with the merged store.
+
+**UX — dish-wide, both pages, additive, capped 15:**
+
+- Two entry points on `/test`: **Filter tuner** (`FilterTunerPanel.vue` — new `Auto refine` block below the AI instruction, with `+N · matched/total` + chip diff per ingredient) and **Summary** (`SummaryPanel.vue` — same block at top of the summary panel, wired via `ResultsTabs.vue` `:job-id/:filters` + `@update-filters`). Both are gated on `jobId`/`result` (disabled until a run exists), share `filterStore[scope]`, and call the same endpoint with `{current_filters}`.
+- Suggestions show per-ingredient `excludes` (red) + `brand_excludes` (red-brand) chips + `N new · matched/total`; Apply merges additively (`Set` dedup, `MAX_KW=15`, 40 chars) so hand-tuned rules survive. Second click is idempotent (no net new → no extra preview filter).
+
+**Why not embeddings/heuristic:** LLM sees dish semantics + actual vocab and can rank irrelevance (e.g. `powder` for `cheese` in bolognese); heuristic frequency would be arbitrary and vocab-only. Cost stays one LLM call per click.
+
+**Scope:** `/test` only, additive, never hides existing Terms/Brand inputs.
+
