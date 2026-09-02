@@ -10,33 +10,34 @@ same flow look like in the dashboard?" or vice versa, this table is the answer.
 | Run a full optimisation | `python -m tools.<brand>.<brand>_optimiser_edge "<addr>" "<dish>"` (or `_mobile` for legacy) | Optimiser dashboard → preset mode → "Compare prices" | `POST /optimise/jobs` → poll `GET /optimise/{id}` |
 | Run all 3 brands in one go | `python -m tools.llm.llm_interactive --dish "..." --address "..."` | Optimiser dashboard (no brand filter = all 3) | `POST /optimise/jobs` with no `companies` filter |
 | Generate a custom dish from a name | (none — only available via web) | "Generate custom ingredients" button in custom-recipe mode | `POST /dishes/generate` |
-| Generate a custom dish from pasted recipe text | (none) | `/test` only — LLM Recipe Builder page | `POST /dishes/import_text` |
+| Generate a custom dish from pasted recipe text | (none) | LLM Recipe Builder page | `POST /dishes/import_text` |
 | Save a custom recipe as a preset | (none) | My Dishes → "Save as preset" | `POST /dishes/save` |
 | Edit / delete a saved dish | (edit `data/dishes.json` by hand) | My Dishes card grid | `GET /dishes`, `DELETE /dishes/{key}` |
 | Refresh / seed store list (Pak'nSave) | `python -m tools.paknsave.paknsave_setup` (default: edge; `--source mobile` for legacy; `--source store_finder` for the website parser) | (none) | — |
 | Refresh / seed store list (New World) | `python -m tools.newworld.newworld_setup` (default: edge; `--source mobile` for legacy) | (none) | — |
 | Refresh / seed store list (Woolworths) | `python -m tools.woolworths.woolworths_setup` | (none) | — |
-| Adjust per-ingredient product filters (incl/excl keywords) | Edit `data/dish_filters.json` by hand, OR use LLM-generated filters (write `seedPresetRules` in `/test` only) | Filter tuner (filter tab in tabbed results card) — `POST /optimise/{id}/filter_preview` + `reapply` | `POST /optimise/{id}/reapply`, `POST /optimise/{id}/filter_preview` |
+| Adjust per-ingredient product filters (incl/excl keywords) | Edit `data/dish_filters.json` by hand, OR use LLM-generated filters via the Recipe Builder's "Open in dish builder" handoff | Filter tuner (filter tab in tabbed results card) — `POST /optimise/{id}/filter_preview` + `reapply` | `POST /optimise/{id}/reapply`, `POST /optimise/{id}/filter_preview` |
 | Edit a single ingredient's quantity / unit / search term mid-run | (none) | "Update ingredient prices" in the tuner | `POST /optimise/{id}/update_ingredients` |
 | Validate cached results (`is_valid` column) | `python -m tools.llm.llm_validate --max-rows N --batch-size N` | (none — validation runs as part of `llm_interactive`) | — |
-| Validate a dish's results in a one-shot | `python -m tools.llm.llm_interactive --validate` | (implicitly enabled in `/test` tuner) | — |
-| Choose LLM model | `tools/llm/llm_interactive --model {small\|medium\|large}` | Settings → Models (`/test` only) | `PUT /llm/settings` |
-| Browse the LLM model catalog | (none) | Settings → Models → "Refresh model list" (`/test` only) | `GET /llm/models`, `POST /llm/models/refresh` |
+| Validate a dish's results in a one-shot | `python -m tools.llm.llm_interactive --validate` | (implicitly available in the tuner) | — |
+| Choose LLM model | `tools/llm/llm_interactive --model {small\|medium\|large}` | Settings → Models | `PUT /llm/settings` |
+| Browse the LLM model catalog | (none) | Settings → Models → "Refresh model list" | `GET /llm/models`, `POST /llm/models/refresh` |
 | Geocode an address | (used implicitly by optimisers via `optimiser_utils.geocode`) | Dashboard "Resolve setup" | `GET /geocode?address=...` (Nominatim, LRU-cached) |
-| Search-as-you-type address suggestions | (none) | `/test` only — Dashboard address field (debounced 300 ms) | `GET /geocode/autocomplete?q=&countrycode=NZ&limit=8` (Photon proxy, LRU-cached) |
-| Pick a location by clicking/dragging the map | (none) | `/test` only — Dashboard map card (click anywhere; drag the dark origin pin) | `GET /geocode/reverse?lat&lon&provider=auto` (Photon default; Nominatim opt-in) |
+| Search-as-you-type address suggestions | (none) | Dashboard address field (debounced 300 ms) | `GET /geocode/autocomplete?q=&countrycode=NZ&limit=8` (Photon proxy, LRU-cached) |
+| Pick a location by clicking/dragging the map | (none) | Dashboard map card (click anywhere; drag the dark origin pin) | `GET /geocode/reverse?lat&lon&provider=auto` (Photon default; Nominatim opt-in) |
 | Preview which stores would be searched | (none) | Map panel updates as the user types distance / changes settings | `GET /stores/nearby` |
-| Read the in-tree technical docs | Open `.md` files in editor | `/test` Documentation page | `GET /tech-docs`, `GET /tech-docs/{name}` |
+| Read the in-tree technical docs | Open `.md` files in editor | Documentation page (available in both trees) | `GET /tech-docs`, `GET /tech-docs/{name}` |
 | Export the current result to CSV | (none — the per-run `<brand>_latest_results.csv` files are written by the optimisers) | "Download CSV ↓" on the all-results heading (Dashboard) | (client-side only; no backend endpoint) |
 | Run the test suite | `python -m pytest` | (none) | — |
 | Replay / sanity-check live API behaviour | `python -m exploration.paknsave.check_foodstuffs_parser_parity` (Foodstuffs parser idempotence)<br>`python -m exploration.newworld.newworld_highlight_permutations` (NW Edge `_highlightResult` / dead indices) | (none) | — |
 | Run the FastAPI server | `.venv\Scripts\uvicorn NZMealOptimiser.web.main:app --host 0.0.0.0 --port 8000` | — | (the server itself) |
-| Read this documentation | Open `.md` files | `/test` Documentation page | `GET /tech-docs` |
+| Read this documentation | Open `.md` files | Documentation page | `GET /tech-docs` |
 
 ## Notes
 
-- The "CLI" column for `/test`-only features (Settings → Models, Recipe Builder, Documentation page, address autocomplete, map-pick origin) is deliberately empty — those are web-only.
-- **Photon-backed autocomplete + reverse-geocode (decision #68)**: the address field and map-pick origin in `/test` use the public Photon demo (`photon.komoot.io`) — no API key, no credit card, autocomplete-friendly. The forward `/geocode` endpoint stays on Nominatim (1.1s sleep) so explicit "Resolve setup" submissions are not blocked on Photon's fair-use throttling. See `FastAPI.md` §Geocoding providers.
+- The "CLI" column for web-only features (Settings → Models, Recipe Builder, Documentation page, address autocomplete, map-pick origin) is deliberately empty — those are web-only.
+- **Photon-backed autocomplete + reverse-geocode (decision #68)**: the dashboard's address field and map-pick origin use the public Photon demo (`photon.komoot.io`) — no API key, no credit card, autocomplete-friendly. The forward `/geocode` endpoint stays on Nominatim (1.1s sleep) so explicit "Resolve setup" submissions are not blocked on Photon's fair-use throttling. See `FastAPI.md` §Geocoding providers.
 - The "FastAPI endpoint" column is the *backend* behind the Vue dashboard. Some Vue buttons call multiple endpoints in sequence (e.g. "Save as preset" → `POST /dishes/save` + `GET /dishes` for refetch).
 - The CSV export row is a notable case: the CSV is **client-side** in the Vue app (per `Vue_Dashboard.md` "Behaviour Notes" → "CSV export" — `Blob` → `<a download>`). No backend endpoint involved.
 - The store-setup CLIs are deliberately not surfaced in the dashboard. They're a developer / ops task, not a user task.
+- `/test` is a sandbox UI copy of the prod app at `/` — most pages render identically. The sandbox exists for QAing in-progress features against a live server without disturbing the prod shell. See `Vue_Dashboard.md` → "How `/test` and `/` diverge today".

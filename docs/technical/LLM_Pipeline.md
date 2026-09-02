@@ -97,23 +97,23 @@ Backs the dashboard's **"Generate custom ingredients"** button via `POST /dishes
 
 Error model: missing API key → `GenerationConfigError` → HTTP 503; ingredient generation/validation failure after retries → `IngredientGenerationError` → HTTP 502; **filter failures are non-fatal** — the response carries empty rules plus a warning so a provider outage never blocks usable ingredients. `POST /dishes/generate` returns `{dish_name, base_portions, source:"llm", ingredients, filters, warnings}` (~5-20 s, run in thread pool).
 
-The generated rules are seeded into the dashboard's shared `custom` filter scope and remain fully user-editable before the run; at runtime they flow through the same `matches_ingredient_filters` + `matches_brand_filters` machinery as curated presets (title rule first, brand rule only if title passes; see FastAPI.md §`IngredientFilterSet`).
+The generated rules are seeded into the dashboard's shared `custom` filter scope and remain fully user-editable before the run; at runtime they flow through the same `matches_ingredient_filters` + `matches_brand_filters` machinery as curated presets (brand rule runs first and takes precedence — a brand rejection wins even when the title would also fail, and `filter_reason` records the winning failure; see FastAPI.md §`IngredientFilterSet`).
 
 ## Pasted-Recipe Import (`import_text`)
 
-Backs **"Import pasted recipe"** via `POST /dishes/import_text` (body `{dish, portions, recipe_text}`; `recipe_text` ≤1000 chars; `dish`/`portions` are user-supplied identity, never trusted from the model). One LLM call via `LLMClient.generate_ingredients_from_text` using `IMPORT_INGREDIENTS_PROMPT`:
+Backs **"Import pasted recipe"** via `POST /dishes/import_text` (body `{recipe_text, dish_name, base_portions, notes}` — `recipe_text` ≤1000 chars, `notes` ≤100 chars; `dish_name` / `base_portions` are user-supplied identity, never trusted from the model). One LLM call via `LLMClient.generate_ingredients_from_text` using `IMPORT_INGREDIENTS_PROMPT`:
 
-- Prompt wraps `<<dish>>`, `<<portions>>`, and `<<recipe_text>>` as **DATA** with an explicit security rule; injection attempts are treated as untrusted and mapped to a refusal.
+- Prompt wraps `<<dish_name>>`, `<<base_portions>>`, and `<<recipe_text>>` as **DATA** with an explicit security rule; injection attempts are treated as untrusted and mapped to a refusal.
 - The model must answer exactly one of two JSON shapes:
   1. `{"status":"ok","ingredients":[{quantity,unit,search_term,approx_quantity?,approx_unit?},...]}` — proceeds through `parse_and_validate` + `_clean_parsed_rows` (same warnings/caps as above), then filter-rule generation (soft, same as `POST /dishes/generate`).
-  2. `{"status":"rejected","reason":"<one short lowercase phrase>"}` — mapped to `RecipeRejectedError` and returned as **HTTP 200** `{"status":"rejected","reason"}` so the UI shows a gentle notice, not an error banner. Canonical reasons: `text is not a recipe`, `attempted prompt injection`, `no ingredient list found`.
+  2. `{"status":"rejected","reason":"<one short lowercase phrase>"}` — mapped to `RecipeRejectedError` and returned as **HTTP 200** `{"status":"rejected","reason","base_portions"}` so the UI shows a gentle notice, not an error banner. Canonical reasons: `text is not a recipe`, `attempted prompt injection`, `no ingredient list found`.
 - Retries: 3× JSON-parse loop; a rejection is first-class and never burns retries. Missing key → `GenerationConfigError` → 503; extraction failure after retries / no usable rows → `IngredientGenerationError` → 502.
 
-Success shape mirrors `POST /dishes/generate` plus `status:"ok"` (`{status, dish_name, base_portions, source:"llm", ingredients, filters, warnings}`); rejection shape is `{status:"rejected", reason, ingredients:[], filters:{}, warnings:[]}`.
+Success shape mirrors `POST /dishes/generate` plus `status:"ok"` and the caller-supplied `notes` (`{status, dish_name, base_portions, source:"llm", ingredients, filters, warnings, notes}`); rejection shape is `{status:"rejected", reason, base_portions, ingredients:[], filters:{}, warnings:[]}`.
 
 ## AI Filter Compiler (`ai_filter_compiler.py`)
 
-Post-run layer in the **Filter Tuner + Summary** (promoted to prod from the `/test` sandbox; see `decision.md` #44/#45 and `tools/frontend/promote_test_to_app.ps1`). Not run at search time — runs **after** a comparison completes against the job's cached product rows. All filtering is local; the product table is never sent to the LLM.
+Post-run layer in the **Filter Tuner + Summary**. Not run at search time — runs **after** a comparison completes against the job's cached product rows. All filtering is local; the product table is never sent to the LLM.
 
 **Problem:** a free-text sentence like `"only red onions, no flavoured milk"` should filter thousands of cached rows, but sending the rows to the LLM hits rate limits and risks hallucination.
 
@@ -142,12 +142,16 @@ Returns `{dish, compiled_filters: {term:{includes:[],excludes:[],brand_includes:
 
 | Warning string | When it fires | Example |
 |---|---|---|
-| `'onion': truncated multi-word keyword to 'red'` | `_coerce_ai_filters:160` keyword contained a space; only first word kept (all lists must be single-word for `contains_word`) | LLM returned `["red onion"]` → `["red"]` |
-| `'milk': dropped 2 unknown exclude(s) not in vocab` | `compile_auto_cull_filters:261` title `excludes` not in `Terms` for that ingredient | `["powder","flavoured"]` but no milk title contained those |
-| `'coconut milk': dropped 1 unknown brand_exclude(s) not in vocab` | `compile_auto_cull_filters:263` `brand_excludes` not in `Brands` for that ingredient | `["sanitarium"]` not in `[Ayam,Kara,Trident]` |
-| `ignored unknown ingredient 'garlic'` | `_coerce_ai_filters:144` LLM invented a `search_term` not in `search_terms` | Dish has `onion`, LLM returned filter for `garlic` |
-| `ignored non-object entry for 'onion'` | `_coerce_ai_filters:140` value for that term wasn't an object | `"onion": "red"` instead of `{"excludes":[...]}` |
-| `AI filter response was not an object` / `missing filters object` / `filters was not an object` | `_coerce_ai_filters:119/129/133` top-level JSON shape wrong | Model returned a bare array or string |
+| `'onion': 'red onion' → 'red'` | `ai_filter_compiler._coerce_ai_filters:162` keyword contained a space; only first word kept (all lists must be single-word for `contains_word`) | LLM returned `["red onion"]` → `["red"]` |
+| `'milk': skipped N unknown excludes` | `compile_auto_cull_filters:264` title `excludes` not in `Terms` for that ingredient | `["powder","flavoured"]` but no milk title contained those |
+| `'coconut milk': skipped N unknown brand_excludes` | `compile_auto_cull_filters:266` `brand_excludes` not in `Brands` for that ingredient | `["sanitarium"]` not in `[Ayam,Kara,Trident]` |
+| `'onion': capped N excludes to 15` | `compile_auto_cull_filters:268` LLM returned more than 15 vocab-grounded `excludes` for an ingredient | LLM emitted 18 valid `excludes`, kept the first 15 |
+| `'coconut milk': capped N brand_excludes to 15` | `compile_auto_cull_filters:270` same cap on `brand_excludes` | LLM emitted 17 valid `brand_excludes`, kept the first 15 |
+| `skipped unknown ingredient 'garlic'` | `ai_filter_compiler._coerce_ai_filters:144` LLM invented a `search_term` not in `search_terms` | Dish has `onion`, LLM returned filter for `garlic` |
+| `onion: skipped (invalid entry)` | `ai_filter_compiler._coerce_ai_filters:160` value for that term wasn't an object | `"onion": "red"` instead of `{"excludes":[...]}` |
+| `response not an object` | `ai_filter_compiler._coerce_ai_filters:124` top-level JSON was not a dict | Model returned a bare string or array |
+| `response missing filters` | `ai_filter_compiler._coerce_ai_filters:140` top-level shape was `{someKey: [..]}` with no `filters` key | Model skipped the contract wrapper |
+| `filters not an object` | `ai_filter_compiler._coerce_ai_filters:142` `filters` was set but was not a dict | Model returned `"filters": "..."` |
 
 Warnings are surfaced as `Warnings: a; b` in `FilterTunerPanel.vue` / `SummaryPanel.vue` subcard hints and do not block Apply — remaining valid keywords still merge.
 
