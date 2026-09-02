@@ -6,7 +6,7 @@
     "multi_word_includes": "All words must fuzzy-match (e.g. 'butter chicken' requires both 'butter' and 'chicken')"
   },
 
-  "spaghetti bolognese": {
+  "Spaghetti Bolognese": {
     "beef mince": {
       "includes": ["mince"],
       "excludes": ["pork", "chicken", "lamb", "plant-based", "turkey"]
@@ -37,7 +37,7 @@
     }
   },
 
-  "chicken stir fry": {
+  "Chicken Stir Fry": {
     "chicken breast": {
       "includes": ["chicken"],
       "excludes": ["thigh", "drumstick", "wing", "mince", "nugget"]
@@ -56,7 +56,7 @@
     }
   },
 
-  "beef stir fry": {
+  "Beef Stir Fry": {
     "beef strips": {
       "includes": ["beef"],
       "excludes": ["chicken", "pork", "lamb", "plant-based", "jerky"]
@@ -75,7 +75,7 @@
     }
   },
 
-  "roast lamb": {
+  "Roast Lamb": {
     "lamb roast": {
       "includes": ["lamb"],
       "excludes": ["beef", "chicken", "pork", "chops", "ground"]
@@ -98,7 +98,7 @@
     }
   },
 
-  "chicken curry": {
+  "Chicken Curry": {
     "chicken thigh": {
       "includes": ["thigh"],
       "excludes": ["breast", "drumstick", "wing", "mince", "nugget"]
@@ -121,7 +121,7 @@
     }
   },
 
-  "beef curry": {
+  "Beef Curry": {
     "diced beef": {
       "includes": ["beef"],
       "excludes": ["chicken", "pork", "lamb", "plant-based", "jerky"]
@@ -144,7 +144,7 @@
     }
   },
 
-  "fish and chips": {
+  "Fish and Chips": {
     "fish fillet": {
       "includes": ["fish"],
       "excludes": ["breaded", "battered", "crumbed", "coated", "prepared"]
@@ -159,7 +159,7 @@
     }
   },
 
-  "nachos": {
+  "Nachos": {
     "beef mince": {
       "includes": ["mince"],
       "excludes": ["pork", "chicken", "lamb", "plant-based", "turkey"]
@@ -182,7 +182,7 @@
     }
   },
 
-  "pumpkin soup": {
+  "Pumpkin Soup": {
     "pumpkin": {
       "includes": ["pumpkin"],
       "excludes": ["squash", "butternut", "pie", "dessert", "seeds"]
@@ -205,7 +205,7 @@
     }
   },
 
-  "tacos": {
+  "Tacos": {
     "beef mince": {
       "includes": ["mince"],
       "excludes": ["pork", "chicken", "lamb", "plant-based", "turkey"]
@@ -232,8 +232,8 @@
     }
   },
 
-  "lamb chops": {
-    "lamb chops": {
+  "Lamb Chops": {
+    "Lamb Chops": {
       "includes": ["lamb"],
       "excludes": ["beef", "chicken", "pork", "ground", "kebab"]
     },
@@ -247,7 +247,7 @@
     }
   },
 
-  "butter chicken": {
+  "Butter Chicken": {
     "chicken thigh": {
       "includes": ["thigh"],
       "excludes": ["breast", "drumstick", "wing", "mince", "nugget"]
@@ -266,7 +266,7 @@
     }
   },
 
-  "lasagne": {
+  "Lasagne": {
     "beef mince": {
       "includes": ["mince"],
       "excludes": ["pork", "chicken", "lamb", "plant-based", "turkey"]
@@ -297,7 +297,7 @@
     }
   },
 
-  "shepherd's pie": {
+  "Shepherd's Pie": {
     "beef mince": {
       "includes": ["mince"],
       "excludes": ["pork", "chicken", "lamb", "plant-based", "turkey"]
@@ -320,7 +320,7 @@
     }
   },
 
-  "pizza": {
+  "Pizza": {
     "pizza base": {
       "includes": ["pizza"],
       "excludes": ["sauce", "topping", "seasoning", "frozen", "kit"]
@@ -339,7 +339,7 @@
     }
   },
 
-  "veggie stir fry": {
+  "Veggie Stir Fry": {
     "stir fry vegetables": {
       "includes": ["vegetable"],
       "excludes": ["sauce", "seasoning", "kit", "soup", "snack"]
@@ -362,7 +362,7 @@
     }
   },
 
-  "frittata": {
+  "Frittata": {
     "eggs": {
       "includes": ["egg"],
       "excludes": ["whites", "substitute", "powder", "liquid", "quail"]
@@ -385,7 +385,7 @@
     }
   },
 
-  "pancakes": {
+  "Pancakes": {
     "flour": {
       "includes": ["flour"],
       "excludes": ["self-raising", "cornflour", "rice", "coconut", "batter"]
@@ -408,7 +408,7 @@
     }
   },
 
-  "chicken soup": {
+  "Chicken Soup": {
     "chicken breast": {
       "includes": ["chicken"],
       "excludes": ["thigh", "drumstick", "wing", "mince", "nugget"]
@@ -435,7 +435,7 @@
     }
   },
 
-  "tomato pasta": {
+  "Tomato Pasta": {
     "pasta": {
       "includes": ["pasta"],
       "excludes": ["noodles", "spaghetti", "lasagne", "penne", "udon"]
@@ -462,7 +462,7 @@
     }
   },
 
-  "chicken katsu": {
+  "Chicken Katsu": {
     "chicken breast": {
       "includes": ["chicken"],
       "excludes": ["thigh", "drumstick", "wing", "mince", "nugget"]

@@ -85,8 +85,7 @@ class TestDishResolution:
         onion, carrot, garlic, mixed herbs).
         """
         dish_name, ingredients = _resolve_dish_terms("spaghetti bolognese")
-        # Dish name normalized (lowercased in dishes.json)
-        assert dish_name == "spaghetti bolognese"
+        assert dish_name == "Spaghetti Bolognese"
         # 7 ingredients per the fixture
         assert len(ingredients) == 7
         # First three ingredients from the fixture
@@ -124,7 +123,7 @@ class TestDishResolution:
         Uses real "chicken stir fry" from data/dishes.json — 4 ingredients:
         chicken breast, stir fry vegetables, soy sauce, rice noodles.
         """
-        ingredients = get_ingredients("chicken stir fry")
+        ingredients = get_ingredients("Chicken Stir Fry")
         assert len(ingredients) == 4
         assert ingredients[0] == "chicken breast"
         assert ingredients[1] == "stir fry vegetables"
@@ -137,7 +136,7 @@ class TestDishResolution:
         Uses real "roast lamb" from data/dishes.json — 5 ingredients with quantities
         like "1.2 kg", "4 medium", etc.
         """
-        dish = "roast lamb"
+        dish = "Roast Lamb"
         qty_map = _build_quantity_map(dish)
         assert len(qty_map) == 5
         # Verify specific quantity strings from the fixture
@@ -149,8 +148,8 @@ class TestDishResolution:
 
     def test_resolve_dish_data_from_registry(self):
         """Verify _resolve_dish_data returns the full dish dict from DISHES."""
-        dish_dict: dict[str, Any] = cast(dict[str, Any], _resolve_dish_data("beef curry"))
-        assert dish_dict["dish_name"] == "beef curry"
+        dish_dict: dict[str, Any] = cast(dict[str, Any], _resolve_dish_data("Beef Curry"))
+        assert dish_dict["dish_name"] == "Beef Curry"
         assert dish_dict["portion"] == 4
         ingredients: list[dict[str, Any]] = dish_dict["ingredients"]  # type: ignore
         assert len(ingredients) == 5

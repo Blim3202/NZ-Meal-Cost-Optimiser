@@ -96,7 +96,8 @@ def get_ingredients(dish_name):
     Returns a list of search_term strings for the dish, or [dish_name]
     if the dish is not in the curated DISHES set.
     """
-    dish_dict = DISHES.get(dish_name.lower().strip())
+    key = dish_name.lower().strip()
+    dish_dict = next((v for k, v in DISHES.items() if k.lower() == key), None)
     if dish_dict:
         return [ing["search_term"] for ing in dish_dict["ingredients"]]
     return [dish_name]
@@ -144,8 +145,9 @@ def _resolve_dish_data(dish):
     if isinstance(dish, dict):
         return dish
     dish_key = dish.lower().strip() if isinstance(dish, str) else ""
-    if dish_key in DISHES:
-        return DISHES[dish_key]
+    hit = next((v for k, v in DISHES.items() if k.lower() == dish_key), None)
+    if hit is not None:
+        return hit
     return {"dish_name": dish, "portion": 4, "ingredients": []}
 
 
@@ -161,10 +163,10 @@ def _resolve_dish_terms(dish):
         ValueError: if dish input format is invalid.
     """
     if isinstance(dish, str):
-        # Lookup string in curated dishes
         dish_key = dish.lower().strip()
-        if dish_key in DISHES:
-            return DISHES[dish_key]["dish_name"], get_ingredients(dish)
+        hit = next((v for k, v in DISHES.items() if k.lower() == dish_key), None)
+        if hit is not None:
+            return hit["dish_name"], get_ingredients(dish)
         raise ValueError(f"Dish string '{dish}' not found in registry.")
 
     if isinstance(dish, dict):

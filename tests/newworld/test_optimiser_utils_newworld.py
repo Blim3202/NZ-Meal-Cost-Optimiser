@@ -83,8 +83,8 @@ class TestDishResolution:
         self.dishes = _load_dishes()
 
     def test_resolve_dish_from_string(self):
-        dish_name, ingredients = _resolve_dish_terms("spaghetti bolognese")
-        assert dish_name == "spaghetti bolognese"
+        dish_name, ingredients = _resolve_dish_terms("Spaghetti Bolognese")
+        assert dish_name == "Spaghetti Bolognese"
         assert len(ingredients) == 7
         assert ingredients[0] == "beef mince"
         assert ingredients[1] == "spaghetti pasta"
@@ -108,7 +108,7 @@ class TestDishResolution:
             _resolve_dish_terms("nonexistent dish")
 
     def test_get_ingredients(self):
-        ingredients = get_ingredients("chicken stir fry")
+        ingredients = get_ingredients("Chicken Stir Fry")
         assert len(ingredients) == 4
         assert ingredients[0] == "chicken breast"
         assert ingredients[1] == "stir fry vegetables"
@@ -116,7 +116,7 @@ class TestDishResolution:
         assert ingredients[3] == "rice noodles"
 
     def test_build_quantity_map(self):
-        dish = "roast lamb"
+        dish = "Roast Lamb"
         qty_map = _build_quantity_map(dish)
         assert len(qty_map) == 5
         assert qty_map["lamb roast"] == "1.2 kg"
@@ -126,8 +126,8 @@ class TestDishResolution:
         assert qty_map["stock"] == "2 cups"
 
     def test_resolve_dish_data_from_registry(self):
-        dish_dict: dict[str, Any] = cast(dict[str, Any], _resolve_dish_data("beef curry"))
-        assert dish_dict["dish_name"] == "beef curry"
+        dish_dict: dict[str, Any] = cast(dict[str, Any], _resolve_dish_data("Beef Curry"))
+        assert dish_dict["dish_name"] == "Beef Curry"
         assert dish_dict["portion"] == 4
         ingredients: list[dict[str, Any]] = dish_dict["ingredients"]
         assert len(ingredients) == 5

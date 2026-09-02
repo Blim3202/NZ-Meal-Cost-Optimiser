@@ -22,13 +22,14 @@ export function useJobRunner() {
   const error = ref('');
   const feed = ref([]);
   let feedSeq = 0;
+  let globalSeq = 0;
   let cursor = -1;
   let pollTimer = null;
   let tickTimer = null;
   let pollRun = 0;
 
   function logLine(kind, co, text) {
-    feed.value.push({ key: `feed-${++feedSeq}`, boot: true, time: clockNow(), kind, co, text });
+    feed.value.push({ key: `feed-${++feedSeq}`, boot: true, time: clockNow(), kind, co, text, _seq: ++globalSeq });
   }
 
   const jobVisible = computed(() => job.status !== 'idle');
@@ -36,7 +37,7 @@ export function useJobRunner() {
   const overallPct = computed(() => (job.total_tasks ? Math.round((job.done_tasks / job.total_tasks) * 100) : 0));
   const elapsedDisplay = computed(() => formatElapsed(job.elapsed));
   const terminalTitle = computed(() => (job.events.length ? `${job.events.length} events` : 'standby'));
-  const consoleLines = computed(() => [...feed.value, ...job.events.map((event) => ({ ...event, key: `ev-${event.i}` }))]);
+  const consoleLines = computed(() => [...feed.value, ...job.events.map((event) => ({ ...event, key: `ev-${event.i}` }))].sort((a, b) => (a._seq || 0) - (b._seq || 0)));
 
   function stopTimers() {
     clearTimeout(pollTimer);
@@ -92,7 +93,11 @@ export function useJobRunner() {
     job.products_found = d.products_found;
     job.elapsed = Math.max(job.elapsed, d.elapsed_seconds || 0);
     if (d.companies.length) job.companies = d.companies;
-    if (d.events && d.events.length) { job.events.push(...d.events); cursor = d.next_cursor; }
+    if (d.events && d.events.length) {
+      for (const e of d.events) e._seq = ++globalSeq;
+      job.events.push(...d.events);
+      cursor = d.next_cursor;
+    }
     if (d.status === 'error') job.error_detail = d.error_detail || '';
     if (d.result) result.value = d.result;
   }

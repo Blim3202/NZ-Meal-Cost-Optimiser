@@ -234,8 +234,8 @@ def resolve_ingredients(dish: str, portions: int = 4, regenerate: bool = False,
         try:
             with open(DISHES_JSON, "r", encoding="utf-8") as f:
                 curated = json.load(f)
-            if dish_key in curated:
-                entry = curated[dish_key]
+            entry = next((v for k, v in curated.items() if k.lower() == dish_key), None)
+            if entry is not None:
                 dish_name = entry.get("dish_name", dish)
                 portion = entry.get("portion", portions)
                 try:

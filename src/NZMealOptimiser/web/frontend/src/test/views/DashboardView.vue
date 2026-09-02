@@ -82,7 +82,7 @@
 
     <ProgressStrip :job="job" :running="jobRunning" :pct="overallPct" :elapsed="elapsedDisplay" />
 
-    <ResultsTabs ref="resultsSection" :result="result" :companies="companies" :terms="runTerms" :tuner-ingredients="tunerIngredients" :filters="scopeFilters" :job-id="job.id || ''" :preview-active="previewActive" :can-reapply="canReapply" :applying="reaplying" @apply="reapplyFilters" @update-filters="onUpdateFilters" />
+    <ResultsTabs ref="resultsSection" :result="result" :companies="companies" :terms="runTerms" :tuner-ingredients="tunerIngredients" :filters="scopeFilters" :job-id="job.id || ''" :preview-active="previewActive" :can-reapply="canReapply" :applying="reaplying" @apply="reapplyFilters" @update-filters="onUpdateFilters" @pipeline-log="onPipelineLog" />
 
     <transition name="toast-slide">
       <aside v-if="applyToast" class="apply-toast" role="status">
@@ -373,6 +373,10 @@ export default {
       logLine('ok', 'DISH', `loaded ${n} product-filter rule${n === 1 ? '' : 's'} for "${selectedPreset.value?.label || form.dish}"`);
     }
     watch(activeScopeKey, seedIfUnseen);
+
+    function onPipelineLog({ kind, co, text }) {
+      logLine(kind || 'warn', co || 'AUTO', text);
+    }
 
     function onUpdateFilters(term, next) {
       const scope = { ...(filterStore.value[activeScopeKey.value] || {}) };
@@ -952,7 +956,7 @@ export default {
       addIngredient, removeIngredient, patchIngredient, clearBuilder, customiseFromPreset,
       generateIngredients, generating, canGenerate,
       savePreset, savingPreset, canSavePreset, recipeHint, scaleDisplay,
-      scopeFilters, onUpdateFilters, canResetFilters, resetFiltersToPreset,
+      scopeFilters, onUpdateFilters, onPipelineLog, canResetFilters, resetFiltersToPreset,
       canReapply, reaplying, reapplyFilters,
       updatingPrices, showUpdateButton, canUpdatePrices, priceDiff, updateIngredientPrices,
       runTerms, tunerIngredients, filterCounts, previewActive, openInTuner,

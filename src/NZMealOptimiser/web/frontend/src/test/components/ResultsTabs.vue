@@ -12,9 +12,9 @@
         <button v-if="canReapply" type="button" class="primary-button apply-btn" :disabled="applying" title="Recalculate ingredient validity, store costs and the winner from the cached products — no new supermarket queries" @click="$emit('apply')"><span v-if="applying" class="spinner"></span>{{ applying ? 'Applying…' : 'Apply filters' }}</button>
       </div>
 
-      <SummaryPanel v-if="result" v-show="activeTab === 'summary'" ref="summaryPanel" :result="result" :companies="companies" :terms="terms" :job-id="jobId" :filters="filters" @update-filters="(term, next) => $emit('update-filters', term, next)" />
+      <SummaryPanel v-if="result" v-show="activeTab === 'summary'" ref="summaryPanel" :result="result" :companies="companies" :terms="terms" :job-id="jobId" :filters="filters" @update-filters="(term, next) => $emit('update-filters', term, next)" @pipeline-log="(e) => $emit('pipeline-log', e)" />
       <div v-else-if="activeTab === 'summary'" class="tab-empty">Compare prices to view this table.</div>
-      <FilterTunerPanel v-if="activeTab === 'tuner'" :job-id="jobId" :active="previewActive" :ingredients="tunerIngredients" :filters="filters" :stores="result ? result.store_costs || [] : []" :companies="companies" :selected-term="tunerTerm" @update-filters="(term, next) => $emit('update-filters', term, next)" @select-term="tunerTerm = $event" />
+      <FilterTunerPanel v-if="activeTab === 'tuner'" :job-id="jobId" :active="previewActive" :ingredients="tunerIngredients" :filters="filters" :stores="result ? result.store_costs || [] : []" :companies="companies" :selected-term="tunerTerm" :dish="result?.dish || ''" @update-filters="(term, next) => $emit('update-filters', term, next)" @select-term="tunerTerm = $event" @pipeline-log="(e) => $emit('pipeline-log', e)" />
       <AllResultsPanel v-if="result" v-show="activeTab === 'results'" ref="allResults" :result="result" :companies="companies" />
       <div v-else-if="activeTab === 'results'" class="tab-empty">Compare prices to view this table.</div>
     </section>
@@ -46,7 +46,7 @@ export default {
     canReapply: { type: Boolean, default: false },
     applying: { type: Boolean, default: false },
   },
-  emits: ['apply', 'update-filters'],
+  emits: ['apply', 'update-filters', 'pipeline-log'],
   setup(props, { expose }) {
     const activeTab = ref('tuner');
     const tunerTerm = ref('');

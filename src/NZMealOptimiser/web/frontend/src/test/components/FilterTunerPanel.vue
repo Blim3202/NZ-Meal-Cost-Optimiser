@@ -55,7 +55,6 @@
               <span class="match-chip" :class="row.delta < 0 ? 'm-zero' : row.delta > 0 ? 'm-full' : 'm-part'" :title="`${row.kwCount} keyword(s) · ${row.cur.matched}/${row.cur.total} → ${row.ai.matched}/${row.ai.total}`">{{ row.deltaText }} · {{ row.ai.matched }}/{{ row.ai.total }}</span>
             </li>
           </ul>
-          <p v-if="aiSuggestion.warnings?.length" class="subcard-hint">Warnings: {{ aiSuggestion.warnings.join('; ') }}</p>
           <div class="ai-suggestion-actions">
             <button type="button" class="primary-button" @click="applyAi">Apply these filters</button>
             <button type="button" class="ghost-button ghost-small" @click="dismissAi">Dismiss</button>
@@ -65,31 +64,27 @@
       </div>
 
       <div class="ai-block auto-refine-block">
-        <div class="ai-block-head">
-          <span class="rule-label">Auto refine</span>
-          <span class="subcard-hint ai-block-hint">Dish-wide — cull up to 15 most irrelevant terms per ingredient for this dish</span>
-        </div>
         <div class="ai-actions">
           <button type="button" class="ghost-button ghost-small" :disabled="!canAutoCull" @click="autoCull">
             <span v-if="autoBusy" class="spinner spinner-inline"></span>
             {{ autoBusy ? 'Refining…' : 'Auto refine filters' }}
           </button>
-          <span class="subcard-hint ai-hint">{{ autoHint }}</span>
+          <span v-if="autoHint" class="subcard-hint ai-hint">{{ autoHint }}</span>
+          <span v-else class="subcard-hint ai-block-hint">About 5–8 filters per ingredient — strongest irrelevant terms first</span>
         </div>
         <p v-if="autoError" class="error-banner" role="alert">{{ autoError }}</p>
         <div v-if="autoSuggestion" class="ai-suggestion">
-          <p class="subcard-hint">Review auto-cull suggestions — additive, capped at 15 per keyword list.</p>
+          <p class="subcard-hint">Click on a chip to adjust suggested filters</p>
           <ul class="ai-suggestion-list ai-suggestion-compact">
             <li v-for="row in autoCompactDiffs" :key="`auto-${row.term}`" class="ai-suggestion-row ai-row-compact">
               <div class="ai-diff-main">
                 <strong class="ai-diff-term">{{ row.term }}</strong>
-                <span v-for="(w,i) in row.entry.excludes" :key="`auto-exc-${row.term}-${i}`" class="kw-chip kw-exclude">{{ w }}</span>
-                <span v-for="(w,i) in row.entry.brand_excludes" :key="`auto-bexc-${row.term}-${i}`" class="kw-chip kw-brand-exclude">{{ w }}</span>
+                <button v-for="(w,i) in row.entry.excludes" :key="`auto-exc-${row.term}-${i}`" type="button" class="kw-chip kw-exclude is-toggle" :class="{ 'is-rejected': isAutoRejected(row.term,'excludes',w) }" :title="isAutoRejected(row.term,'excludes',w) ? 'Click to re-include' : 'Click to exclude'" :aria-pressed="!isAutoRejected(row.term,'excludes',w)" @click="toggleAutoChip(row.term,'excludes',w)">{{ w }}</button>
+                <button v-for="(w,i) in row.entry.brand_excludes" :key="`auto-bexc-${row.term}-${i}`" type="button" class="kw-chip kw-brand-exclude is-toggle" :class="{ 'is-rejected': isAutoRejected(row.term,'brand_excludes',w) }" :title="isAutoRejected(row.term,'brand_excludes',w) ? 'Click to re-include' : 'Click to exclude'" :aria-pressed="!isAutoRejected(row.term,'brand_excludes',w)" @click="toggleAutoChip(row.term,'brand_excludes',w)">{{ w }}</button>
               </div>
-              <span class="match-chip" :class="row.delta < 0 ? 'm-zero' : row.delta > 0 ? 'm-full' : 'm-part'" :title="`${row.kwCount} keyword(s) · ${row.cur.matched}/${row.cur.total} → ${row.ai.matched}/${row.ai.total}`">{{ row.deltaText }} · {{ row.ai.matched }}/{{ row.ai.total }}</span>
+              <span class="match-chip" :class="row.delta < 0 ? 'm-zero' : row.delta > 0 ? 'm-full' : 'm-part'" :title="`${row.effKwCount}/${row.kwCount} active · ${row.cur.matched}/${row.cur.total} → ${row.effMatched}/${row.effTotal}`">{{ row.deltaText }} · {{ row.effMatched }}/{{ row.effTotal }}</span>
             </li>
           </ul>
-          <p v-if="autoSuggestion.warnings?.length" class="subcard-hint">Warnings: {{ autoSuggestion.warnings.join('; ') }}</p>
           <div class="ai-suggestion-actions">
             <button type="button" class="primary-button" @click="applyAuto">Apply these filters</button>
             <button type="button" class="ghost-button ghost-small" @click="dismissAuto">Dismiss</button>
@@ -151,7 +146,13 @@
           />
         </div>
       </div>
-      <p class="subcard-hint filter-legend">Every Include Term must appear in the product name and no Exclude Term may appear (fuzzy singular/plural, e.g. carrot matches carrots). Brand filters are user-set only and match the product brand (Pams, Watties, Pak'nSave, etc.) — Include Brand passes when any brand matches, Exclude Brand hides on any match. Brand filters are checked first and override name filters, so a brand decision wins even when the name would also pass or fail. Filtered products stay visible as ‘filtered’ but are excluded from store costs.</p>
+      <div class="subcard-hint filter-legend">
+        <ul style="margin:0; padding-left:1.25em; list-style:disc; display:grid; gap:2px;">
+          <li><strong>Include Term</strong>: all must appear. <strong>Exclude Term</strong>: any match hides. Fuzzy (<em>carrot</em> = <em>carrots</em>).</li>
+          <li><strong>Include Brand</strong> (OR) / <strong>Exclude Brand</strong> — any match decides; checks brand field only.</li>
+          <li>Brand checked first — overrides name filter. Filtered = visible but not considered.</li>
+        </ul>
+      </div>
     </section>
 
     <!-- ── Card 3: every store's products with matched/filtered pills ────── -->
@@ -217,8 +218,9 @@ export default {
     stores: { type: Array, default: () => [] },
     companies: { type: Array, required: true },
     selectedTerm: { type: String, default: '' },
+    dish: { type: String, default: '' },
   },
-  emits: ['update-filters', 'select-term'],
+  emits: ['update-filters', 'select-term', 'pipeline-log'],
   setup(props, { emit }) {
     const incDraft = ref('');
     const excDraft = ref('');
@@ -367,7 +369,7 @@ export default {
     const canAutoCull = computed(() => props.active && !!props.jobId && !autoBusy.value && !aiBusy.value);
     const autoHint = computed(() => {
       if (!props.active || !props.jobId) return 'Run a comparison to enable';
-      return 'Auto-generates up to 15 excludes per ingredient for this dish';
+      return '';
     });
     const aiPreviewCounts = computed(() => aiSuggestion.value?.preview?.terms || null);
     const aiCompactDiffs = computed(() => {
@@ -383,17 +385,76 @@ export default {
         return { term, entry, kwCount, cur, ai, delta, deltaText };
       });
     });
+    const autoRejected = ref(new Set());
+    function autoKey(term, kind, word) { return `${term}::${kind}::${String(word).toLowerCase()}`; }
+    function isAutoRejected(term, kind, word) { return autoRejected.value.has(autoKey(term, kind, word)); }
+    function toggleAutoChip(term, kind, word) {
+      const k = autoKey(term, kind, word);
+      const next = new Set(autoRejected.value);
+      if (next.has(k)) next.delete(k); else next.add(k);
+      autoRejected.value = next;
+    }
+    function isWordInText(word, text) {
+      const lw = String(word).toLowerCase().trim();
+      const lt = String(text || '').toLowerCase();
+      if (!lw) return false;
+      if (lt.includes(lw)) return true;
+      if (lw.endsWith('s') && lt.includes(lw.slice(0, -1))) return true;
+      if (!lw.endsWith('s') && lt.includes(`${lw}s`)) return true;
+      return false;
+    }
+    function validForFilters(p, f) {
+      const title = String(p.returned_ingredient || '');
+      const brand = String(p.brand || '');
+      if ((f.brand_includes || []).length && !(f.brand_includes || []).some((w) => isWordInText(w, brand))) return false;
+      if ((f.brand_excludes || []).some((w) => isWordInText(w, brand))) return false;
+      for (const w of f.includes || []) if (!isWordInText(w, title)) return false;
+      for (const w of f.excludes || []) if (isWordInText(w, title)) return false;
+      return true;
+    }
+    const autoEffectiveCounts = computed(() => {
+      if (!autoSuggestion.value) return {};
+      const products = autoSuggestion.value.preview?.products || preview.value?.products || [];
+      const compiled = autoSuggestion.value.compiled_filters || {};
+      const counts = {};
+      const totals = {};
+      for (const p of products) {
+        const term = p.search_ingredient;
+        totals[term] = (totals[term] || 0) + 1;
+      }
+      for (const [term, entry] of Object.entries(compiled)) {
+        const cur = props.filters[term] || { includes: [], excludes: [], brand_includes: [], brand_excludes: [] };
+        const effEx = (entry.excludes || []).filter((w) => !isAutoRejected(term, 'excludes', w));
+        const effBe = (entry.brand_excludes || []).filter((w) => !isAutoRejected(term, 'brand_excludes', w));
+        const eff = {
+          includes: cur.includes || [],
+          excludes: [...(cur.excludes || []), ...effEx],
+          brand_includes: cur.brand_includes || [],
+          brand_excludes: [...(cur.brand_excludes || []), ...effBe],
+        };
+        let matched = 0;
+        for (const p of products) {
+          if (p.search_ingredient !== term) continue;
+          if (validForFilters(p, eff)) matched += 1;
+        }
+        counts[term] = { matched, total: totals[term] || 0 };
+      }
+      return counts;
+    });
     const autoCompactDiffs = computed(() => {
       const compiled = autoSuggestion.value?.compiled_filters || {};
-      const aiTerms = autoSuggestion.value?.preview?.terms || {};
       const curTerms = preview.value?.terms || {};
+      const effTerms = autoEffectiveCounts.value;
       return Object.entries(compiled).map(([term, entry]) => {
         const kwCount = (entry.excludes?.length || 0) + (entry.brand_excludes?.length || 0);
+        const effEx = (entry.excludes || []).filter((w) => !isAutoRejected(term, 'excludes', w)).length;
+        const effBe = (entry.brand_excludes || []).filter((w) => !isAutoRejected(term, 'brand_excludes', w)).length;
+        const effKwCount = effEx + effBe;
         const cur = curTerms[term] || { matched: 0, total: 0 };
-        const ai = aiTerms[term] || { matched: cur.matched, total: cur.total };
-        const delta = ai.matched - cur.matched;
+        const eff = effTerms[term] || cur;
+        const delta = eff.matched - cur.matched;
         const deltaText = delta > 0 ? `+${delta}` : `${delta}`;
-        return { term, entry, kwCount, cur, ai, delta, deltaText };
+        return { term, entry, kwCount, effKwCount, cur, effMatched: eff.matched, effTotal: eff.total, ai: eff, delta, deltaText };
       });
     });
 
@@ -411,6 +472,7 @@ export default {
       aiBusy.value = true;
       aiError.value = '';
       aiSuggestion.value = null;
+      emit('pipeline-log', { kind: 'phase', co: 'FILTERS', text: `compiling instruction "${aiText.value.trim().slice(0, 80)}"…` });
       try {
         const response = await fetch(`/optimise/${props.jobId}/ai_filter_preview`, {
           method: 'POST',
@@ -418,8 +480,15 @@ export default {
           body: JSON.stringify({ instruction: aiText.value.trim() }),
         });
         aiSuggestion.value = await parseJsonResponse(response);
+        if (aiSuggestion.value?.warnings?.length) {
+          for (const w of aiSuggestion.value.warnings) emit('pipeline-log', { kind: 'warn', co: 'FILTERS', text: w });
+        } else {
+          const n = Object.keys(aiSuggestion.value?.compiled_filters || {}).length;
+          emit('pipeline-log', { kind: 'ok', co: 'FILTERS', text: n ? `compiled ${n} term(s) — no warnings` : 'no filters suggested — no warnings' });
+        }
       } catch (err) {
         aiError.value = err.message;
+        emit('pipeline-log', { kind: 'err', co: 'FILTERS', text: err.message });
       } finally {
         aiBusy.value = false;
       }
@@ -454,6 +523,9 @@ export default {
       autoBusy.value = true;
       autoError.value = '';
       autoSuggestion.value = null;
+      autoRejected.value = new Set();
+      const dishLabel = (props.dish || '').trim() || 'this dish';
+      emit('pipeline-log', { kind: 'phase', co: 'AUTO', text: `auto-refining filters for "${dishLabel}"…` });
       try {
         const response = await fetch(`/optimise/${props.jobId}/auto_cull_preview`, {
           method: 'POST',
@@ -461,8 +533,18 @@ export default {
           body: JSON.stringify({ current_filters: props.filters }),
         });
         autoSuggestion.value = await parseJsonResponse(response);
+        const cf = autoSuggestion.value?.compiled_filters || {};
+        const total = Object.values(cf).reduce((n, e) => n + (e.excludes?.length || 0) + (e.brand_excludes?.length || 0), 0);
+        const terms = Object.keys(cf).length;
+        if (autoSuggestion.value?.warnings?.length) {
+          for (const w of autoSuggestion.value.warnings) emit('pipeline-log', { kind: 'warn', co: 'AUTO', text: w });
+          emit('pipeline-log', { kind: 'info', co: 'AUTO', text: `${total} filter(s) across ${terms} term(s) — ${autoSuggestion.value.warnings.length} warning(s)` });
+        } else {
+          emit('pipeline-log', { kind: 'ok', co: 'AUTO', text: total ? `refined — ${total} filter(s) across ${terms} term(s) — no warnings` : 'no irrelevant terms found — no warnings' });
+        }
       } catch (err) {
         autoError.value = err.message;
+        emit('pipeline-log', { kind: 'err', co: 'AUTO', text: err.message });
       } finally {
         autoBusy.value = false;
       }
@@ -470,13 +552,16 @@ export default {
     function applyAuto() {
       const filters = autoSuggestion.value?.compiled_filters || {};
       for (const [term, entry] of Object.entries(filters)) {
+        const effEx = (entry.excludes || []).filter((w) => !isAutoRejected(term, 'excludes', w));
+        const effBe = (entry.brand_excludes || []).filter((w) => !isAutoRejected(term, 'brand_excludes', w));
+        if (!effEx.length && !effBe.length) continue;
         const existing = props.filters[term] || { includes: [], excludes: [], brand_includes: [], brand_excludes: [] };
         const lowerEx = new Set((existing.excludes || []).map((w) => String(w).toLowerCase()));
         const lowerBe = new Set((existing.brand_excludes || []).map((w) => String(w).toLowerCase()));
         const newEx = [...(existing.excludes || [])];
         const newBe = [...(existing.brand_excludes || [])];
-        for (const w of entry.excludes || []) if (!lowerEx.has(String(w).toLowerCase()) && newEx.length < MAX_KW) { newEx.push(w); lowerEx.add(String(w).toLowerCase()); }
-        for (const w of entry.brand_excludes || []) if (!lowerBe.has(String(w).toLowerCase()) && newBe.length < MAX_KW) { newBe.push(w); lowerBe.add(String(w).toLowerCase()); }
+        for (const w of effEx) if (!lowerEx.has(String(w).toLowerCase()) && newEx.length < MAX_KW) { newEx.push(w); lowerEx.add(String(w).toLowerCase()); }
+        for (const w of effBe) if (!lowerBe.has(String(w).toLowerCase()) && newBe.length < MAX_KW) { newBe.push(w); lowerBe.add(String(w).toLowerCase()); }
         const clean = {
           includes: existing.includes || [],
           excludes: newEx.slice(0, MAX_KW),
@@ -486,10 +571,12 @@ export default {
         emit('update-filters', term, clean);
       }
       autoSuggestion.value = null;
+      autoRejected.value = new Set();
     }
     function dismissAuto() {
       autoSuggestion.value = null;
       autoError.value = '';
+      autoRejected.value = new Set();
     }
 
     function storeCountClass(group) {
@@ -524,8 +611,8 @@ export default {
       storeGroups, companyLabel, badgeClass, money,
       aiText, aiBusy, aiError, aiSuggestion, canAiGenerate, aiHint, aiPreviewCounts, aiCompactDiffs,
       generateAi, applyAi, dismissAi,
-      autoBusy, autoError, autoSuggestion, canAutoCull, autoHint, autoCompactDiffs,
-      autoCull, applyAuto, dismissAuto,
+      autoBusy, autoError, autoSuggestion, canAutoCull, autoHint, autoCompactDiffs, autoRejected, autoEffectiveCounts,
+      isAutoRejected, toggleAutoChip, autoCull, applyAuto, dismissAuto,
     };
   },
 };
