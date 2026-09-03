@@ -97,10 +97,26 @@
         <span class="rule-label must-include">Include Term</span>
         <div class="rule-chips">
           <span v-for="(word, i) in current.includes" :key="`inc-${i}`" class="kw-chip kw-include">{{ word }}<button type="button" class="kw-x" :title="`Remove '${word}'`" @click="drop('includes', i)">✕</button></span>
-          <div class="kw-input-wrap" :class="{ 'is-filled': !!incDraft, 'is-duplicate': incDuplicate }">
-            <span class="kw-input-icon" aria-hidden="true">+</span>
-            <input v-model="incDraft" class="kw-add kw-add-line" placeholder="add term ↵" :aria-label="`Add include term for ${selectedTerm}`" @keydown.enter.prevent="push('includes')">
-          </div>
+          <form class="kw-form" @submit.prevent="push('includes')">
+            <div class="kw-input-wrap" :class="{ 'is-filled': !!incDraft, 'is-duplicate': incDuplicate }">
+              <span class="kw-input-icon" aria-hidden="true">+</span>
+              <input
+                v-model="incDraft"
+                class="kw-add kw-add-line"
+                type="search"
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+                enterkeyhint="done"
+                placeholder="add term"
+                :aria-label="`Add include term for ${selectedTerm}`"
+                @keydown.enter.prevent="push('includes')"
+                @keyup.enter="push('includes')"
+              >
+              <button v-if="incDraft.trim()" type="submit" class="kw-add-btn" :title="`Add '${incDraft.trim()}'`" aria-label="Add include term">+</button>
+            </div>
+          </form>
         </div>
       </div>
 
@@ -108,10 +124,26 @@
         <span class="rule-label must-exclude">Exclude Term</span>
         <div class="rule-chips">
           <span v-for="(word, i) in current.excludes" :key="`exc-${i}`" class="kw-chip kw-exclude">{{ word }}<button type="button" class="kw-x" :title="`Remove '${word}'`" @click="drop('excludes', i)">✕</button></span>
-          <div class="kw-input-wrap" :class="{ 'is-filled': !!excDraft, 'is-duplicate': excDuplicate }">
-            <span class="kw-input-icon" aria-hidden="true">+</span>
-            <input v-model="excDraft" class="kw-add kw-add-line" placeholder="add term ↵" :aria-label="`Add exclude term for ${selectedTerm}`" @keydown.enter.prevent="push('excludes')">
-          </div>
+          <form class="kw-form" @submit.prevent="push('excludes')">
+            <div class="kw-input-wrap" :class="{ 'is-filled': !!excDraft, 'is-duplicate': excDuplicate }">
+              <span class="kw-input-icon" aria-hidden="true">+</span>
+              <input
+                v-model="excDraft"
+                class="kw-add kw-add-line"
+                type="search"
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+                enterkeyhint="done"
+                placeholder="add term"
+                :aria-label="`Add exclude term for ${selectedTerm}`"
+                @keydown.enter.prevent="push('excludes')"
+                @keyup.enter="push('excludes')"
+              >
+              <button v-if="excDraft.trim()" type="submit" class="kw-add-btn" :title="`Add '${excDraft.trim()}'`" aria-label="Add exclude term">+</button>
+            </div>
+          </form>
         </div>
       </div>
 

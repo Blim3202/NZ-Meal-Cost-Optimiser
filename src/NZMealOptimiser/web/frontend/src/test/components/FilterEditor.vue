@@ -8,18 +8,50 @@
       <div class="filter-group">
         <span class="fg-label">Include Term</span>
         <span v-for="(word, i) in current.includes" :key="`inc-${i}`" class="kw-chip kw-include">{{ word }}<button type="button" class="kw-x" :title="`Remove '${word}'`" @click="drop('includes', i)">✕</button></span>
-        <div class="kw-input-wrap" :class="{ 'is-filled': !!draftInc, 'is-duplicate': incDuplicate }">
-          <span class="kw-input-icon" aria-hidden="true">+</span>
-          <input v-model="draftInc" class="kw-add" placeholder="add term ↵" :aria-label="`Add include term for ${term}`" @keydown.enter.prevent="push('includes')">
-        </div>
+        <form class="kw-form" @submit.prevent="push('includes')">
+          <div class="kw-input-wrap" :class="{ 'is-filled': !!draftInc, 'is-duplicate': incDuplicate }">
+            <span class="kw-input-icon" aria-hidden="true">+</span>
+            <input
+              v-model="draftInc"
+              class="kw-add"
+              type="search"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck="false"
+              enterkeyhint="done"
+              placeholder="add term"
+              :aria-label="`Add include term for ${term}`"
+              @keydown.enter.prevent="push('includes')"
+              @keyup.enter="push('includes')"
+            >
+            <button v-if="draftInc.trim()" type="submit" class="kw-add-btn" :title="`Add '${draftInc.trim()}'`" aria-label="Add include term">+</button>
+          </div>
+        </form>
       </div>
       <div class="filter-group">
         <span class="fg-label">Exclude Term</span>
         <span v-for="(word, i) in current.excludes" :key="`exc-${i}`" class="kw-chip kw-exclude">{{ word }}<button type="button" class="kw-x" :title="`Remove '${word}'`" @click="drop('excludes', i)">✕</button></span>
-        <div class="kw-input-wrap" :class="{ 'is-filled': !!draftExc, 'is-duplicate': excDuplicate }">
-          <span class="kw-input-icon" aria-hidden="true">+</span>
-          <input v-model="draftExc" class="kw-add" placeholder="add term ↵" :aria-label="`Add exclude term for ${term}`" @keydown.enter.prevent="push('excludes')">
-        </div>
+        <form class="kw-form" @submit.prevent="push('excludes')">
+          <div class="kw-input-wrap" :class="{ 'is-filled': !!draftExc, 'is-duplicate': excDuplicate }">
+            <span class="kw-input-icon" aria-hidden="true">+</span>
+            <input
+              v-model="draftExc"
+              class="kw-add"
+              type="search"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck="false"
+              enterkeyhint="done"
+              placeholder="add term"
+              :aria-label="`Add exclude term for ${term}`"
+              @keydown.enter.prevent="push('excludes')"
+              @keyup.enter="push('excludes')"
+            >
+            <button v-if="draftExc.trim()" type="submit" class="kw-add-btn" :title="`Add '${draftExc.trim()}'`" aria-label="Add exclude term">+</button>
+          </div>
+        </form>
       </div>
       <p class="fg-hint">Every include term must appear in the product name (fuzzy singular/plural, e.g. carrot matches carrots) and no exclude term may appear. Brand filters in the Optimiser tuner are checked first and override these name filters when set. Filtered products remain visible but are excluded from store costs.</p>
     </div>

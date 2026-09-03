@@ -401,6 +401,20 @@ code { background: var(--code-bg); border: 1px solid var(--line); border-radius:
 .kw-input-wrap.is-duplicate input.kw-add,
 .kw-input-wrap.is-duplicate input.kw-add-line { border-color: var(--err-line); background: var(--err-bg); box-shadow: 0 0 0 3px var(--err-bg); }
 
+/* Inline micro-form around the keyword input so the parent page <form>'s
+   submit (e.g. "Run comparison") doesn't fire when the mobile soft keyboard's
+   "Done" key is pressed. Renders inline so the pill layout is unchanged. */
+.kw-form { display: inline-flex; align-items: center; margin: 0; padding: 0; }
+.kw-add-btn {
+  margin-left: 4px; padding: 0 10px; height: 26px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface-soft); color: var(--ink);
+  font-weight: 800; font-size: var(--fs-label); line-height: 1; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background .12s ease, border-color .12s ease;
+}
+.kw-add-btn:hover { background: var(--focus-ring); border-color: var(--ink); }
+.kw-add-btn:focus-visible { outline: 2px solid var(--orange); outline-offset: 1px; }
+
 /* Post-run filter reapply bar + filtered-out result rows */
 .reapply-bar { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3); flex-wrap: wrap; margin-top: 22px; padding: 12px 18px; background: var(--amber-bg); border: 1px solid var(--amber-line); border-radius: 12px; font-size: var(--fs-emphasis); font-weight: 600; }
 tr.row-invalid td { opacity: .55; }
