@@ -1,6 +1,6 @@
 # NZ Meal Cost Optimiser
 
-Finds the cheapest nearby supermarket for any dish. Type an address and a meal and the app searches every Pak'nSave, New World and Woolworths within reach, prices each ingredient to the gram (or ml, or fillet), and ranks the stores by total basket cost.
+Finds the cheapest nearby supermarket for any dish. Type an address and a meal and the app searches every Pak'nSave, New World and Woolworths within reach, prices each ingredient to the gram (or ml, or other units), and ranks the stores by total basket cost.
 
 The web dashboard is the primary surface. A CLI ships alongside it for batch use, and the whole thing is a single Docker image ready for Google Cloud Run.
 

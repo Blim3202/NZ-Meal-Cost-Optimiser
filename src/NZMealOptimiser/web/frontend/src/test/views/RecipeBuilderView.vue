@@ -16,14 +16,15 @@
             <textarea v-model="form.text" rows="7" maxlength="1000" placeholder="e.g.&#10;500g beef mince&#10;400g spaghetti pasta&#10;1 can chopped tomatoes (400g)&#10;1 brown onion, finely diced&#10;2 cloves garlic" :disabled="importing"></textarea>
           </label>
           <p class="hint paste-instructions field-wide">Add the ingredient list for your recipe above, then fill in the recipe name, portion size and optional notes below. Skip any ads, stories or cooking steps.</p>
-          <label class="field field-name"><span>Recipe name</span><input v-model.trim.lazy="form.name" maxlength="80" placeholder="e.g. spaghetti bolognese" required></label>
+          <label class="field field-name"><span>Recipe name</span><input v-model.trim="form.name" maxlength="80" placeholder="e.g. spaghetti bolognese" required></label>
           <label class="field field-base"><span>Base portions</span><input v-model.number="form.basePortions" type="number" min="1" max="24" required></label>
           <label class="field field-wide"><span>Notes (optional)</span><input v-model.trim="form.notes" maxlength="100" placeholder="Chocolate chip cookies — bbcgoodfood.com"></label>
         </div>
         <div class="char-row"><span class="char-counter" :class="{ 'counter-limit': form.text.length >= TEXT_LIMIT }">{{ form.text.length }}/{{ TEXT_LIMIT }}</span></div>
         <div class="form-actions builder-actions">
-          <button class="primary-button" type="submit" :disabled="importing || !canBuild"><span v-if="importing" class="spinner"></span>{{ importing ? 'Building…' : 'Build dish breakdown' }}</button>
+          <button class="primary-button" :class="{ 'is-ready': canBuild && !importing }" type="submit" :disabled="importing || !canBuild"><span v-if="importing" class="spinner"></span>{{ importing ? 'Building…' : 'Build dish breakdown' }}</button>
           <span v-if="importing" class="hint">Mistral or Gemini extracts ingredients and seeds product-filter rules. This can take 10–20 s.</span>
+          <span v-else-if="buildHint" class="hint build-hint">{{ buildHint }}</span>
           <button type="button" class="ghost-button ghost-small builder-clear" title="Wipe the pasted text, recipe details and the extracted breakdown" :disabled="importing || !hasContent" @click="clearAll">Clear all</button>
         </div>
       </form>
@@ -83,6 +84,13 @@ export default {
     const savedNotice = ref('');
 
     const canBuild = computed(() => !!form.text.trim() && !!String(form.name || '').trim());
+    const buildHint = computed(() => {
+      const needText = !form.text.trim();
+      const needName = !String(form.name || '').trim();
+      if (!needText && !needName) return '';
+      if (needText && needName) return 'Please add to your recipe ingredient list and give your recipe a name';
+      return needText ? 'Please add to your recipe ingredient list' : 'Give your recipe a name';
+    });
     const rulesCount = computed(() => Object.keys(result.value?.filters || {}).length);
     const hasContent = computed(() => !!(String(form.text || '').trim()
       || String(form.name || '').trim() || String(form.notes || '').trim()
@@ -189,7 +197,7 @@ export default {
 
     return {
       TEXT_LIMIT, form, importing, error, rejected, result, savingPreset, savedNotice,
-      canBuild, rulesCount, hasContent, displayQty, buildBreakdown, openInBuilder,
+      canBuild, buildHint, rulesCount, hasContent, displayQty, buildBreakdown, openInBuilder,
       saveAsPreset, clearAll,
     };
   },

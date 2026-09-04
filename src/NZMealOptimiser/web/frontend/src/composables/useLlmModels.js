@@ -1,7 +1,7 @@
 import { computed, reactive } from 'vue';
 
 const DEFAULTS = {
-  ingredient_model: { provider: 'mistral', model_id: 'mistral-medium-latest' },
+  ingredient_model: { provider: 'mistral', model_id: 'codestral-2508' },
   filter_model: { provider: 'google', model_id: 'gemini-3.1-flash-lite' },
 };
 

@@ -20,6 +20,7 @@ from NZMealOptimiser import DATA_DIR
 from .llm_client import (
     GOOGLE_FILTER_MODEL_DEFAULT,
     LLMConfigError,
+    MISTRAL_INGREDIENT_MODEL_DEFAULT,
     PROVIDER_GOOGLE,
     PROVIDER_MISTRAL,
     PROVIDERS,
@@ -27,7 +28,7 @@ from .llm_client import (
 
 SETTINGS_PATH = DATA_DIR / "llm_settings.json"
 
-DEFAULT_INGREDIENT_MODEL = {"provider": PROVIDER_MISTRAL, "model_id": "mistral-medium-3-5"}
+DEFAULT_INGREDIENT_MODEL = {"provider": PROVIDER_MISTRAL, "model_id": MISTRAL_INGREDIENT_MODEL_DEFAULT}
 DEFAULT_FILTER_MODEL = {"provider": PROVIDER_GOOGLE, "model_id": GOOGLE_FILTER_MODEL_DEFAULT}
 
 

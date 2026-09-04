@@ -14,7 +14,7 @@ Usage:
     from NZMealOptimiser.llm.llm_client import LLMClient, LLMGenerationError
 
     # New explicit form (preferred).
-    client = LLMClient(provider="mistral", model_id="mistral-medium-latest")
+    client = LLMClient(provider="mistral", model_id="codestral-2508")
     result = client.generate_ingredients("spaghetti bolognese", portion=4)
 
     # Backward-compat shim — kept so existing callers and tests still work.
@@ -56,6 +56,7 @@ MISTRAL_API_KEY_ENV = "MISTRAL_API_KEY"
 GOOGLE_API_KEY_ENVS = ("GOOGLE_API_KEY",)
 GOOGLE_OPENAI_COMPAT_BASE = "https://generativelanguage.googleapis.com/v1beta/openai/"
 GOOGLE_FILTER_MODEL_DEFAULT = "gemini-3.1-flash-lite"
+MISTRAL_INGREDIENT_MODEL_DEFAULT = "codestral-2508"
 
 # Per-provider rate-limit env vars (requests-per-second).
 MISTRAL_RATE_LIMIT_ENV_PREFIX = "MISTRAL_RATE_LIMIT_"
@@ -69,7 +70,7 @@ MISTRAL_MODEL_ENV_PREFIX = "MISTRAL_MODEL_"
 
 DEFAULT_MODELS = {
     "small": "ministral-3b-2512",
-    "medium": "mistral-medium-latest",
+    "medium": MISTRAL_INGREDIENT_MODEL_DEFAULT,
     "large": "mistral-large-2512",
 }
 
