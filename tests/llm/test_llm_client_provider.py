@@ -12,6 +12,7 @@ from NZMealOptimiser.llm.llm_client import (
     LLMClient,
     LLMConfigError,
     LLMGenerationError,
+    MISTRAL_INGREDIENT_MODEL_DEFAULT,
     PROVIDER_GOOGLE,
     PROVIDER_MISTRAL,
 )
@@ -34,7 +35,7 @@ def test_missing_both_provider_and_alias_raises_config_error(monkeypatch):
 def test_missing_mistral_key_raises_config_error(monkeypatch):
     monkeypatch.delenv("MISTRAL_API_KEY", raising=False)
     with pytest.raises(LLMConfigError, match="MISTRAL_API_KEY"):
-        LLMClient(provider="mistral", model_id="mistral-medium-latest")
+        LLMClient(provider="mistral", model_id=MISTRAL_INGREDIENT_MODEL_DEFAULT)
 
 
 def test_missing_google_key_raises_config_error(monkeypatch):
@@ -52,17 +53,21 @@ def test_mistral_provider_calls_mistral_sdk(monkeypatch):
         choices=[MagicMock(message=MagicMock(content='{"dish_name": "x", "portion": 2, "ingredients": []}'))],
     )
     with patch("NZMealOptimiser.llm.llm_client.Mistral", return_value=fake_mistral):
-        client = LLMClient(provider="mistral", model_id="mistral-medium-latest")
+        client = LLMClient(provider="mistral", model_id=MISTRAL_INGREDIENT_MODEL_DEFAULT)
         out = client.generate_ingredients("x", portion=2)
 
     assert out["dish_name"] == "x"
     assert out["portion"] == 2
     assert out["ingredients"] == []
-    assert fake_mistral.chat.complete.call_args.kwargs["model"] == "mistral-medium-latest"
+    assert fake_mistral.chat.complete.call_args.kwargs["model"] == MISTRAL_INGREDIENT_MODEL_DEFAULT
     assert fake_mistral.chat.complete.call_args.kwargs["response_format"] == {"type": "json_object"}
 
 
 def test_legacy_model_alias_still_works(monkeypatch):
+    """`medium` alias should resolve to whatever MISTRAL_INGREDIENT_MODEL_DEFAULT
+    currently points at — the legacy name (`mistral-medium-latest`) was retired
+    by Mistral, so the test must follow the current default rather than a
+    hardcoded model string."""
     monkeypatch.setenv("MISTRAL_API_KEY", "k")
     fake_mistral = MagicMock()
     fake_mistral.chat.complete.return_value = MagicMock(
@@ -71,13 +76,25 @@ def test_legacy_model_alias_still_works(monkeypatch):
     with patch("NZMealOptimiser.llm.llm_client.Mistral", return_value=fake_mistral):
         client = LLMClient(model_alias="medium")
     assert client.provider == "mistral"
-    assert client.model_id == "mistral-medium-latest"
+    assert client.model_id == MISTRAL_INGREDIENT_MODEL_DEFAULT
+
+
+def test_model_alias_ignores_legacy_env_override(monkeypatch):
+    """Regression: MISTRAL_MODEL_* env vars no longer override aliases."""
+    monkeypatch.setenv("MISTRAL_API_KEY", "k")
+    monkeypatch.setenv("MISTRAL_MODEL_MEDIUM", "mistral-medium-latest")
+    monkeypatch.setenv("MISTRAL_MODEL_SMALL", "some-other-model")
+    with patch("NZMealOptimiser.llm.llm_client.Mistral", return_value=MagicMock()):
+        assert LLMClient(model_alias="medium").model_id == MISTRAL_INGREDIENT_MODEL_DEFAULT
+        assert LLMClient(model_alias="small").model_id == "ministral-3b-2512"
 
 
 def test_legacy_unknown_alias_raises(monkeypatch):
     monkeypatch.setenv("MISTRAL_API_KEY", "k")
+    # `large` was removed from DEFAULT_MODELS after `mistral-large-2512` was
+    # retired — verify the dropped alias raises like any other unknown.
     with pytest.raises(LLMConfigError, match="Unknown model_alias"):
-        LLMClient(model_alias="ultra")
+        LLMClient(model_alias="large")
 
 
 # ── Google path ──────────────────────────────────────────────────────────────
@@ -126,7 +143,7 @@ def test_retry_on_json_parse_failure_then_succeeds(monkeypatch):
     ]
     with patch("NZMealOptimiser.llm.llm_client.Mistral", return_value=fake_mistral), \
          patch("NZMealOptimiser.llm.llm_client.time.sleep"):
-        client = LLMClient(provider="mistral", model_id="mistral-medium-latest")
+        client = LLMClient(provider="mistral", model_id=MISTRAL_INGREDIENT_MODEL_DEFAULT)
         out = client.generate_ingredients("x")
 
     assert out == {"ingredients": []}
@@ -141,7 +158,7 @@ def test_retry_exhausts_and_raises(monkeypatch):
     )
     with patch("NZMealOptimiser.llm.llm_client.Mistral", return_value=fake_mistral), \
          patch("NZMealOptimiser.llm.llm_client.time.sleep"):
-        client = LLMClient(provider="mistral", model_id="mistral-medium-latest")
+        client = LLMClient(provider="mistral", model_id=MISTRAL_INGREDIENT_MODEL_DEFAULT)
         with pytest.raises(LLMGenerationError, match="Failed to get valid JSON"):
             client.generate_ingredients("x")
     assert fake_mistral.chat.complete.call_count == 3
@@ -168,7 +185,7 @@ def test_retry_on_rate_limit_succeeds_after_two_429s(monkeypatch):
     sleeps = []
     with patch("NZMealOptimiser.llm.llm_client.Mistral", return_value=fake_mistral), \
          patch("NZMealOptimiser.llm.llm_client.time.sleep", side_effect=lambda s: sleeps.append(s)):
-        client = LLMClient(provider="mistral", model_id="mistral-medium-latest")
+        client = LLMClient(provider="mistral", model_id=MISTRAL_INGREDIENT_MODEL_DEFAULT)
         out = client.generate_ingredients("x")
 
     assert out == {"ingredients": []}

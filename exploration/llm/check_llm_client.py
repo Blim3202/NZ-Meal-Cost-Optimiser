@@ -24,20 +24,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "src"))
 from dotenv import load_dotenv
 from mistralai.client import Mistral
 
+from NZMealOptimiser.llm.llm_client import DEFAULT_MODELS as _DEFAULT_MODELS
+
 load_dotenv()
 
 API_KEY = os.getenv("MISTRAL_API_KEY", "")
 
 MODEL_ALIASES = {
-    "small": os.getenv("MISTRAL_MODEL_SMALL", "ministral-3b-2512"),
-    "medium": os.getenv("MISTRAL_MODEL_MEDIUM", "mistral-medium-latest"),
-    "large": os.getenv("MISTRAL_MODEL_LARGE", "mistral-large-2512"),
+    "small": _DEFAULT_MODELS["small"],
+    "medium": _DEFAULT_MODELS["medium"],
 }
 
 RATE_LIMITS = {
     "small": float(os.getenv("MISTRAL_RATE_LIMIT_SMALL", "10")),
     "medium": float(os.getenv("MISTRAL_RATE_LIMIT_MEDIUM", "0.5")),
-    "large": float(os.getenv("MISTRAL_RATE_LIMIT_LARGE", "0.067")),
 }
 
 
@@ -137,7 +137,7 @@ def main():
     parser = argparse.ArgumentParser(description="Phase 1: Mistral API smoke test")
     parser.add_argument("--dish", default="spaghetti bolognese", help="Dish name")
     parser.add_argument("--portions", type=int, default=4, help="Number of portions (integer)")
-    parser.add_argument("--model", default="medium", choices=["small", "medium", "large"], help="Model size alias")
+    parser.add_argument("--model", default="medium", choices=["small", "medium"], help="Model size alias")
     parser.add_argument("--skip-models", action="store_true", help="Skip model listing (faster)")
     args = parser.parse_args()
 

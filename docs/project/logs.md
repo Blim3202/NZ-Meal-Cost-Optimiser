@@ -1132,4 +1132,31 @@ would put the dashboard in violation of the OSM data license.
 to `FastAPI.md` + `Vue_Dashboard.md` (already done), run
 `tools/frontend/promote_test_to_app.ps1` and rebuild.
 
+## 69. Retired Mistral model masked by stale `MISTRAL_MODEL_MEDIUM` override; `MISTRAL_MODEL_*` env removed (2026-09-20)
+
+**Symptom**: `tests/llm/test_llm_client_provider.py::test_legacy_model_alias_still_works` passed locally but failed on GitHub Actions:
+
+```
+assert client.model_id == "mistral-medium-latest"
+E  AssertionError: assert 'codestral-2508' == 'mistral-medium-latest'
+```
+
+1 failed, 541 passed on CI; local suite green.
+
+**Cause**: two layers. (1) Mistral retired `mistral-medium-latest` / `mistral-large-2512`; `DEFAULT_MODELS["medium"]` had already moved to `MISTRAL_INGREDIENT_MODEL_DEFAULT` (`codestral-2508`), but the test still hardcoded the old string. (2) The alias path resolved via `os.getenv("MISTRAL_MODEL_MEDIUM", DEFAULT_MODELS["medium"])` (`llm_client.py:217`), and the local `.env`/shell still exported `MISTRAL_MODEL_MEDIUM=mistral-medium-latest`. The stale override made local code return the old string, so the stale assertion passed. CI has a clean env, fell through to `codestral-2508`, and failed.
+
+**Resolution**: removed the `MISTRAL_MODEL_*` env mechanism entirely (rate-limit envs kept):
+
+- `llm_client.py`: deleted `MISTRAL_MODEL_ENV_PREFIX`; alias is now `DEFAULT_MODELS[alias]` hardcoded (`small` → `ministral-3b-2512`, `medium` → `codestral-2508`); dropped `large` from `DEFAULT_MODELS`/`DEFAULT_RATE_LIMITS`.
+- `tests/llm/test_llm_client_provider.py`: assertions use `MISTRAL_INGREDIENT_MODEL_DEFAULT` instead of hardcoded strings; `large` now asserts `Unknown model_alias`; added `test_model_alias_ignores_legacy_env_override` regression (sets the old env vars, proves they are ignored).
+- `tools/llm/llm_interactive.py`: `--model` choices `["small","medium","large"]` → `["small","medium"]` (large previously passed argparse then raised at runtime).
+- `exploration/llm/check_llm_client.py`: `MODEL_ALIASES` imports `DEFAULT_MODELS`, removed `large` from aliases + `RATE_LIMITS`; `explore_filter_explorer.py`: filter default `mistral-medium-latest` → `codestral-2508`.
+- `.env.example`: removed `MISTRAL_MODEL_*` block + stale `MISTRAL_RATE_LIMIT_LARGE`; added commented MODEL + RATE-LIMIT flow diagram (explicit `LLMClient(provider, model_id)` via `data/llm_settings.json` vs legacy `model_alias`; per-path RPS fallback chain).
+- `docs/technical/LLM_Pipeline.md`: env table collapsed to a removed-note row; `small/medium/large` → `small/medium` (3 spots); line ref `70-80` → `58-79`. `AGENTS.md` research row updated to `codestral-2508` + shim note.
+- Docstrings in `llm_utils.py` / `llm_validate.py` updated (`small`/`medium`). `UNIT_ALIASES["large"]` in `llm_utils.py:315` is a food-size token, unrelated — left alone.
+
+**Companion diagnosis this session** (no code change, recorded for clarity): `GOOGLE_API_KEY_ENVS = ("GOOGLE_API_KEY",)` is a 1-tuple (trailing comma), plural by design for future fallback candidates vs Mistral's singular string; `MISTRAL_RATE_LIMIT_CUSTOM` never appears literally — built as `MISTRAL_RATE_LIMIT_ENV_PREFIX + "CUSTOM"`. Rate limits: alias path `MISTRAL_RATE_LIMIT_<ALIAS>` else `DEFAULT_RATE_LIMITS`; explicit path `MISTRAL_RATE_LIMIT_CUSTOM` (Mistral) / `GOOGLE_RATE_LIMIT` (Google), all converging on `sleep = 1/RPS` per `_sleep_for_rate_limit` on every `_call_with_retry` attempt.
+
+**Tests**: `tests/llm` 73 passed; full suite 543 passed `-m "not network"`. `data/llm_models_cache.json` refresh (`mistral-medium-3-5`, `antigravity-preview-09-2026`) is live-cache noise, unrelated — commit separately or revert.
+
 

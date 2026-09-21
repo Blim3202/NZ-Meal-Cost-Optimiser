@@ -219,7 +219,7 @@ def resolve_ingredients(dish: str, portions: int = 4, regenerate: bool = False,
         dish: dish name string
         portions: number of servings (int, default 4)
         regenerate: if True, skip curated set and go straight to LLM
-        model_alias: model alias for LLM generation ("small"/"medium"/"large")
+        model_alias: model alias for LLM generation ("small"/"medium")
 
     Returns:
         (dish_dict, source) where:

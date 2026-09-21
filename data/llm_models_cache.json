@@ -1,5 +1,5 @@
 {
-  "fetched_at": "2026-09-04T09:54:52Z",
+  "fetched_at": "2026-09-20T14:39:21Z",
   "providers": {
     "mistral": {
       "available": true,
@@ -35,6 +35,12 @@
           "owned_by": "mistralai"
         },
         {
+          "id": "mistral-medium-3-5",
+          "display_name": "mistral-medium-3-5",
+          "max_context_length": 262144,
+          "owned_by": "mistralai"
+        },
+        {
           "id": "mistral-small-2603",
           "display_name": "mistral-small-2603",
           "max_context_length": 262144,
@@ -55,7 +61,17 @@
         {
           "id": "antigravity-preview-05-2026",
           "display_name": "Antigravity Agent Preview",
-          "input_token_limit": 131072,
+          "input_token_limit": 1048576,
+          "output_token_limit": 65536,
+          "supported_methods": [
+            "generateContent",
+            "countTokens"
+          ]
+        },
+        {
+          "id": "antigravity-preview-09-2026",
+          "display_name": "Antigravity Agent Preview",
+          "input_token_limit": 1048576,
           "output_token_limit": 65536,
           "supported_methods": [
             "generateContent",

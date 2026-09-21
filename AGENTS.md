@@ -144,7 +144,7 @@ opencode/
 | 148 vs 150 NW store count | Known delta: Foodie Mart + Te Atatu only in mobile | `NewWorld_API.md` §9, `logs.md` #24 |
 | Woolworths hardcoded exclusions | 9285 (Te Atatu), 9035 (Kaikohe) | `Woolworths_API.md` §10, `logs.md` §63 |
 | Photon-backed address autocomplete + map-pick reverse | ✅ No API key, no credit card, OSM-based; ~300ms perceived latency vs Nominatim's mandated 1.1s sleep. Decision #68. | `FastAPI.md` §Geocoding providers |
-| LLM-backed custom dishes | ✅ `mistral-medium-latest` default; Gemini flash-lite default for filters | `LLM_Pipeline.md` |
+| LLM-backed custom dishes | ✅ `codestral-2508` default (Mistral); Gemini `gemini-3.1-flash-lite` default for filters. Legacy `model_alias` shim covers `small`/`medium`; `large` was dropped after Mistral retired `mistral-large-2512` | `LLM_Pipeline.md` |
 | Post-run validation | ✅ `ministral-3b-2512` via `llm_validate.py` | `LLM_Pipeline.md` |
 | Live job polling | ✅ `POST /optimise/jobs` → `GET /optimise/{id}` with phase + event log | `FastAPI.md` §API Endpoints |
 
