@@ -69,7 +69,7 @@ export default {
     countryCode: { type: String, default: 'NZ' },
     limit: { type: Number, default: DEFAULT_LIMIT },
   },
-  emits: ['update:modelValue', 'select'],
+  emits: ['update:modelValue', 'select', 'focus', 'blur'],
   setup(props, { emit }) {
     const inputEl = ref(null);
     const listEl = ref(null);
@@ -149,6 +149,7 @@ export default {
     }
 
     function onFocus() {
+      emit('focus');
       if (hasMinChars.value) {
         open.value = true;
         if (!suggestions.value.length && !loading.value) fetchSuggestions();
@@ -156,6 +157,7 @@ export default {
     }
 
     function onBlur() {
+      emit('blur');
       // Defer close so mousedown on a suggestion can still fire.
       setTimeout(() => close(), 120);
     }

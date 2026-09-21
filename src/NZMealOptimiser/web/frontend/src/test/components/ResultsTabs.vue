@@ -13,10 +13,10 @@
       </div>
 
       <SummaryPanel v-if="result" v-show="activeTab === 'summary'" ref="summaryPanel" :result="result" :companies="companies" :terms="terms" :job-id="jobId" :filters="filters" @update-filters="(term, next) => $emit('update-filters', term, next)" @pipeline-log="(e) => $emit('pipeline-log', e)" />
-      <div v-else-if="activeTab === 'summary'" class="tab-empty">Compare prices to view this table.</div>
+      <div v-else-if="activeTab === 'summary'" class="tab-empty">Resolve and compare to view this table.</div>
       <FilterTunerPanel v-if="activeTab === 'tuner'" :job-id="jobId" :active="previewActive" :ingredients="tunerIngredients" :filters="filters" :stores="result ? result.store_costs || [] : []" :companies="companies" :selected-term="tunerTerm" :dish="result?.dish || ''" @update-filters="(term, next) => $emit('update-filters', term, next)" @select-term="tunerTerm = $event" @pipeline-log="(e) => $emit('pipeline-log', e)" />
       <AllResultsPanel v-if="result" v-show="activeTab === 'results'" ref="allResults" :result="result" :companies="companies" />
-      <div v-else-if="activeTab === 'results'" class="tab-empty">Compare prices to view this table.</div>
+      <div v-else-if="activeTab === 'results'" class="tab-empty">Resolve and compare to view this table.</div>
     </section>
   </section>
 </template>

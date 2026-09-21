@@ -30,9 +30,9 @@
                 <span v-if="generating" class="hint">Building your ingredient list and filters. This usually takes a few seconds.</span>
               </div>
             </template>
-            <label class="field field-wide"><span>NZ address</span><AddressAutocomplete v-model="form.address" placeholder="Auckland CBD" :disabled="gpsActive || originSource === 'picked'" @select="onAddressSelect" /></label>
+            <label class="field field-wide"><span>NZ address</span><AddressAutocomplete v-model="form.address" placeholder="Auckland CBD" :disabled="gpsActive || originSource === 'picked'" @select="onAddressSelect" @focus="addressFocused = true" @blur="addressFocused = false" /></label>
             <label class="field field-sm"><span>Distance</span><NumberPopover v-model="form.distance_km" :options="distanceOptions" :placeholder="form.distance_km" suffix="km" aria-label="Distance in kilometres" @update:modelValue="clampOverrides" /></label>
-            <label v-if="recipeMode !== 'shopping'" class="field field-sm"><span>Portions</span><input v-model.number="form.portions" type="number" min="2" max="12" required></label>
+            <label v-if="recipeMode !== 'shopping'" class="field field-sm"><span>Portions</span><input v-model.number="form.portions" type="number" min="1" max="12" required></label>
             <label class="field field-sm"><span>Max stores per company</span><NumberPopover v-model="form.max_stores_per_company" :options="storeOptions" :placeholder="form.max_stores_per_company" aria-label="Max stores per company" @update:modelValue="clampOverrides" /></label>
           </div>
           <p v-if="recipeMode === 'custom'" class="mode-note">Quantities above are scaled ×{{ scaleDisplay }} onto the {{ Number(draft.basePortions) || 1 }}-portion base recipe.</p>
@@ -45,11 +45,10 @@
           </div>
           <fieldset class="company-picker"><legend>Compare supermarkets</legend><label v-for="company in companies" :key="company.id" class="company-option" :class="`company-${company.id.toLowerCase()}`"><input v-model="form.companies" type="checkbox" :value="company.id"><span class="checkmark"></span><span>{{ company.label }}</span></label></fieldset>
           <div class="form-actions">
-            <button class="primary-button" :class="{ 'is-ready': readyToCompare && !loading }" type="submit" :disabled="loading || resolving || !form.companies.length || !canResolve"><span v-if="loading || resolving" class="spinner"></span>{{ actionLabel }}</button>
+            <button class="primary-button" :class="{ 'is-ready': canResolve && !loading && !resolving && !addressFocused }" type="submit" :disabled="loading || resolving || !form.companies.length || !canResolve"><span v-if="loading || resolving" class="spinner"></span>{{ actionLabel }}</button>
             <span class="hint">{{ actionHint }}</span>
           </div>
         </form>
-        <p v-if="staleNotice && !loading" class="notice-banner">⚙ Parameters changed. Check to resolve settings.</p>
         <p v-if="error" class="error-banner" role="alert">{{ error }}</p>
       </section>
 
@@ -80,7 +79,7 @@
       </section>
     </div>
 
-    <ProgressStrip :job="job" :running="jobRunning" :pct="overallPct" :elapsed="elapsedDisplay" />
+    <ProgressStrip ref="progressStrip" :job="job" :running="jobRunning" :pct="overallPct" :elapsed="elapsedDisplay" />
 
     <ResultsTabs ref="resultsSection" :result="result" :companies="companies" :terms="runTerms" :tuner-ingredients="tunerIngredients" :filters="scopeFilters" :job-id="job.id || ''" :preview-active="previewActive" :can-reapply="canReapply" :applying="reaplying" @apply="reapplyFilters" @update-filters="onUpdateFilters" @pipeline-log="onPipelineLog" />
 
@@ -134,8 +133,10 @@ export default {
     const origin = ref(null);
     const resolving = ref(false);
     const previewStores = ref([]);
+    const addressFocused = ref(false); // green ready-state waits until the address field is left
     const staleNotice = ref(false);
     const resultsSection = ref(null);
+    const progressStrip = ref(null); // anchor for auto-scroll when a run starts
     const hardLimits = OVERRIDE_CAPS;
 
     // ── Recipe source: preset dropdown vs hand-built dish ──────────────────
@@ -679,8 +680,7 @@ export default {
     const mapStores = computed(() => storesOf(result.value, previewStores.value));
     const winnerKey = computed(() => winnerKeyOf(result.value));
     const resolved = computed(() => !!origin.value);
-    const readyToCompare = computed(() => resolved.value && !staleNotice.value && previewStores.value.length > 0);
-    const actionLabel = computed(() => (loading.value ? 'Comparing prices...' : resolving.value ? 'Resolving…' : readyToCompare.value ? 'Compare prices' : 'Resolve setup'));
+    const actionLabel = computed(() => (loading.value ? 'Comparing prices...' : resolving.value ? 'Resolving…' : 'Resolve and Compare'));
     const actionHint = computed(() => {
       if (!form.companies.length) return 'Select at least one supermarket.';
       if (loading.value) return 'Results stream into the console below.';
@@ -693,10 +693,8 @@ export default {
         if (!validRows.value.length) return 'Add at least one item with a term and quantity.';
         if (duplicateTerms.value.size) return 'Merge the highlighted duplicate search terms.';
       } else if (!form.dish) return 'Choose a dish first.';
-      if (!resolved.value) return 'Please verify the dish and location first.';
-      if (staleNotice.value) return 'Parameters changed. Resolve again to continue.';
-      if (!previewStores.value.length) return 'No stores in range. Increase the distance or select more supermarkets.';
-      return 'Dish and location verified. Ready to compare.';
+      if (!gpsActive.value && !form.address && originSource.value !== 'picked') return 'Enter an address, use GPS, or pick a point on the map.';
+      return 'Checks the dish and location, then compares prices across nearby stores.';
     });
 
     function useGps() {
@@ -822,16 +820,16 @@ export default {
       else logLine('warn', 'DISH', `recipe unavailable (${key})`);
     });
 
-    // Stale-state trigger: ONLY location/store parameters force a re-resolve.
-    // Ingredient edits stay live — with a completed result they arm the
-    // partial "Update ingredient prices" flow instead of invalidating setup,
-    // and a full "Compare prices" rerun is always one click away anyway.
+    // Stale-state trigger: location/store edits mark the last run stale so the
+    // partial "Update ingredient prices" button hides until a fresh run. The
+    // single "Resolve and Compare" button always re-resolves anyway, so this
+    // never blocks a rerun — ingredient edits stay live as before.
     const locationSettingsSignature = computed(() => [
       recipeMode.value === 'preset' ? `preset:${form.dish}` : recipeMode.value,
       origin.value ? `${origin.value.lat},${origin.value.lon},${origin.value.source}` : '',
       form.portions, form.max_stores_per_company, form.distance_km, form.companies.join(),
     ].join('|'));
-    watch(locationSettingsSignature, () => { if (origin.value) { staleNotice.value = true; logLine('warn', 'SYS', 'Location or store settings changed. Resolve again to continue.'); } });
+    watch(locationSettingsSignature, () => { if (origin.value) { staleNotice.value = true; logLine('warn', 'SYS', 'Location or store settings changed. The next compare will re-resolve them.'); } });
 
     const previewSignature = computed(() => [origin.value ? `${origin.value.lat},${origin.value.lon}` : '', form.distance_km, form.companies.join(), form.max_stores_per_company].join('|'));
     watch(previewSignature, () => { fetchPreview(); });
@@ -852,39 +850,49 @@ export default {
       } catch { previewStores.value = []; return false; }
     }
 
+    // Single-button flow: returns true when the dish + location verify and at
+    // least one store is in range, false on any intermediary failure. A false
+    // return aborts before any optimisation job starts — the error banner and
+    // console line stay visible, and the previous result/map are untouched.
     async function resolveSetup() {
       error.value = '';
       if (!canResolveBase.value) {
         if (recipeMode.value === 'custom') error.value = duplicateTerms.value.size ? 'Merge the highlighted duplicate search terms.' : 'Give the dish a name and at least one ingredient.';
         else if (recipeMode.value === 'shopping') error.value = duplicateTerms.value.size ? 'Merge the highlighted duplicate search terms.' : 'Add at least one item to your shopping list.';
         else error.value = 'Choose a dish first.';
-        return;
+        return false;
       }
+      resolving.value = true;
       if (gpsActive.value) { origin.value = { lat: gps.value.lat, lon: gps.value.lon, source: 'gps' }; }
       else if (origin.value?.source === 'picked') {
         // already resolved from the map — just re-run the preview against current settings
       }
       else {
-        if (!form.address) { error.value = 'Enter an address, use device GPS, or pick a point on the map.'; return; }
-        resolving.value = true;
+        if (!form.address) { error.value = 'Enter an address, use device GPS, or pick a point on the map.'; resolving.value = false; return false; }
         try {
           const response = await fetch(`/geocode?address=${encodeURIComponent(form.address)}`);
           const data = await response.json();
           if (!response.ok) throw new Error(data.detail || 'Could not resolve that address');
           origin.value = { lat: data.lat, lon: data.lon, source: 'geocoded' };
           logLine('ok', 'LOC', `geocoded "${form.address}" → ${data.lat.toFixed(4)}, ${data.lon.toFixed(4)}`);
-        } catch (err) { error.value = err.message; return; } finally { resolving.value = false; }
+        } catch (err) { error.value = err.message; resolving.value = false; return false; }
       }
       const previewOk = await fetchPreview();
+      resolving.value = false;
       if (!previewOk || !previewStores.value.length) {
         error.value = `No stores found within ${form.distance_km} km. Try increasing the distance or selecting more supermarkets.`;
         logLine('warn', 'LOC', `No stores within ${form.distance_km} km. Increase the distance or select more supermarkets.`);
-        return;
+        return false;
       }
       staleNotice.value = false;
-      logLine('ok', 'SYS', 'Settings resolved. Ready to compare.');
+      logLine('ok', 'SYS', 'Settings resolved. Comparing prices.');
+      return true;
     }
-    function primaryAction() { readyToCompare.value ? runOptimise() : resolveSetup(); }
+    async function primaryAction() {
+      if (loading.value || resolving.value) return;
+      if (!await resolveSetup()) return; // graceful abort — banner + console explain why
+      await runOptimise();
+    }
 
     async function runOptimise() {
       error.value = '';
@@ -927,6 +935,9 @@ export default {
         : recipeMode.value === 'shopping'
           ? `submitting shopping list · ${payload.custom_dish.ingredients.length} searches · single portion`
           : `submitting preset "${form.dish}"`);
+      // Bring the live-progress strip into view as the run starts. Resolve
+      // failures return before this point, so the form + error banner stay put.
+      progressStrip.value?.$el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       await start(payload);
     }
 
@@ -949,7 +960,7 @@ export default {
     return {
       companies, dishes, form, addressHistory, gps, gpsBusy, gpsActive, gpsDisplay,
       useGps, clearGps, originSource, pickedCoordsLabel, onPickOrigin, onAddressSelect, clearPicked, originLabel, mapOrigin, mapStores, winnerKey, focusStore,
-      resolved, readyToCompare, canResolve, actionLabel, actionHint, primaryAction,
+      resolved, canResolve, actionLabel, actionHint, primaryAction, addressFocused,
       staleNotice, error, loading, resolving,
       recipeMode, setMode, draft, builderIngredients, builderBasePortions,
       builderRequestedPortions, duplicateTerms, validRows,
@@ -962,7 +973,7 @@ export default {
       runTerms, tunerIngredients, filterCounts, previewActive, openInTuner,
       applyToast, dismissApplyToast, openToastSummary,
       job, jobRunning, overallPct, elapsedDisplay, terminalTitle, consoleLines, result,
-      resultsSection,
+      resultsSection, progressStrip,
       settings, hardLimits, clampOverrides,
       distanceOptions, storeOptions,
     };
