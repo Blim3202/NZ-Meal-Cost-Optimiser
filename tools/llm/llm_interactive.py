@@ -22,7 +22,7 @@ Flow:
     --regenerate            # force LLM even if dish is in curated set
     --requery false         # skip API calls, use existing CSV
     --non-interactive       # accept LLM output without review step
-    --model medium          # model alias for LLM generation (small/medium/large)
+    --model medium          # model alias for LLM generation (small/medium)
 
 Supermarket choices (numbers and/or names, comma-separated):
     1. Pak'nSave (Edge)                    2. New World (Edge)
@@ -709,7 +709,7 @@ def main():
     parser.add_argument("--no-validate", dest="validate", action="store_false",
                         help="Skip validation — use all query results regardless of is_valid")
     parser.add_argument("--non-interactive", action="store_true", help="Skip review step")
-    parser.add_argument("--model", default="medium", choices=["small", "medium", "large"], help="LLM model alias (default: medium)")
+    parser.add_argument("--model", default="medium", choices=["small", "medium"], help="LLM model alias (default: medium)")
     args = parser.parse_args()
 
     print("=" * 60)

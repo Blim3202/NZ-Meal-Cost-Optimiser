@@ -16,7 +16,7 @@
     </section>
 
     <!-- ── Card 2: rule editor for the selected ingredient ───────────────── -->
-    <section v-if="current" class="subcard">
+    <section v-if="current" ref="rulesSection" class="subcard rules-section">
       <h4>Edit rules <span class="chip-mini">{{ selectedTerm }}</span></h4>
       <p class="subcard-hint">Tune name and brand keywords for this ingredient. Brand filters take precedence over name filters.</p>
 
@@ -253,7 +253,7 @@ export default {
     dish: { type: String, default: '' },
   },
   emits: ['update-filters', 'select-term', 'pipeline-log'],
-  setup(props, { emit }) {
+  setup(props, { emit, expose }) {
     const incDraft = ref('');
     const excDraft = ref('');
     const brandIncDraft = ref('');
@@ -268,6 +268,16 @@ export default {
     const autoBusy = ref(false);
     const autoError = ref('');
     const autoSuggestion = ref(null);
+    const rulesSection = ref(null); // anchor for the ingredient-preview chip deep-link
+
+    // Smooth-scroll the Edit-rules card into view. Called via the exposed
+    // handle after the parent switches to the tuner tab (nextTick), so the
+    // v-if'd section is mounted before scrolling. Scroll only — no focus
+    // steal, so keyboard users aren't yanked into the editor.
+    function scrollToRules() {
+      rulesSection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    expose({ scrollToRules });
 
     // Normalise the entry shape so every field is always an array. Seeded
     // entries from data/dish_filters.json only carry includes/excludes —
@@ -638,7 +648,7 @@ export default {
     return {
       incDraft, excDraft, brandIncDraft, brandExcDraft,
       incDuplicate, excDuplicate, brandIncDuplicate, brandExcDuplicate,
-      previewBusy, openStore, current, availableBrands,
+      previewBusy, openStore, current, availableBrands, rulesSection, scrollToRules,
       push, commitBrand, drop, countText, countClass, countTitle, storeCountClass,
       storeGroups, companyLabel, badgeClass, money,
       aiText, aiBusy, aiError, aiSuggestion, canAiGenerate, aiHint, aiPreviewCounts, aiCompactDiffs,

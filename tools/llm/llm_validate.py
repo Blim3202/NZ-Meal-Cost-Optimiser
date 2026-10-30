@@ -160,7 +160,7 @@ def validate_rows(df: pd.DataFrame, df_work: pd.DataFrame, unvalidated_full_indi
             rows in df_work, used to map batch results back to the full df.
         data_file: Path to the CSV file for incremental saving.
         batch_size: number of rows to send to the LLM per API call
-        model_alias: model alias for the LLM client ("small", "medium", "large")
+        model_alias: model alias for the LLM client ("small", "medium")
 
     Returns:
         list[bool]: one boolean per row in df_work, in order

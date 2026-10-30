@@ -65,19 +65,17 @@ DEFAULT_MISTRAL_RPS = 0.5  # 1 req / 2s — matches the "medium" default.
 GOOGLE_RATE_LIMIT_ENV = "GOOGLE_RATE_LIMIT"
 DEFAULT_GOOGLE_RPS = 0.5  # 1 req / 2s — safe for tier-1 free tier.
 
-# Mistral model alias env-var prefix (preserved for the model_alias shim).
-MISTRAL_MODEL_ENV_PREFIX = "MISTRAL_MODEL_"
-
+# Model aliases are hardcoded — no env override.
 DEFAULT_MODELS = {
     "small": "ministral-3b-2512",
     "medium": MISTRAL_INGREDIENT_MODEL_DEFAULT,
-    "large": "mistral-large-2512",
+    # `large` was dropped: Mistral retired `mistral-large-2512`.
+    # For a larger model, pass it explicitly: LLMClient(provider, model_id).
 }
 
 DEFAULT_RATE_LIMITS = {
     "small": 10.0,
     "medium": 0.5,
-    "large": 0.067,
 }
 
 # Used when the client is built from a model_alias and we need a default
@@ -212,9 +210,8 @@ class LLMClient:
                     f"Unknown model_alias '{model_alias}'. "
                     f"Valid: {list(DEFAULT_MODELS.keys())}"
                 )
-            model_env_var = f"{MISTRAL_MODEL_ENV_PREFIX}{alias_lower.upper()}"
             rate_limit_env_var = f"{MISTRAL_RATE_LIMIT_ENV_PREFIX}{alias_lower.upper()}"
-            self.model_id = os.getenv(model_env_var, DEFAULT_MODELS[alias_lower])
+            self.model_id = DEFAULT_MODELS[alias_lower]
             rps = float(os.getenv(rate_limit_env_var, DEFAULT_RATE_LIMITS[alias_lower]))
             self.rate_limit_sleep = 1.0 / rps if rps > 0 else 0.0
         else:

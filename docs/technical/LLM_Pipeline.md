@@ -74,7 +74,7 @@ Shared LLM layer (used by generation + compiler):
 
 | Script | Role |
 |--------|------|
-| `src/NZMealOptimiser/llm/llm_client.py` | Dual-provider client — Mistral (`mistralai` SDK, `MISTRAL_API_KEY`) + Google Gemini via OpenAI-compat (`https://generativelanguage.googleapis.com/v1beta/openai/`, `GOOGLE_API_KEY`). `LLMClient(provider, model_id)` is canonical; legacy `model_alias` shim (`small/medium/large` → `DEFAULT_MODELS`) kept for `llm_interactive` + tests. Handles per-provider rate-limit sleep, 3-retry with linear `20s*attempt` backoff on `429`/`RateLimitError`, and `response_format: json_object`. Prompts: `INGREDIENT_PROMPT` (name→ingredients), `IMPORT_INGREDIENTS_PROMPT` (pasted text → dual-status ok/rejected). |
+| `src/NZMealOptimiser/llm/llm_client.py` | Dual-provider client — Mistral (`mistralai` SDK, `MISTRAL_API_KEY`) + Google Gemini via OpenAI-compat (`https://generativelanguage.googleapis.com/v1beta/openai/`, `GOOGLE_API_KEY`). `LLMClient(provider, model_id)` is canonical; legacy `model_alias` shim (`small`/`medium` → `DEFAULT_MODELS`) kept for `llm_interactive` + tests. Handles per-provider rate-limit sleep, 3-retry with linear `20s*attempt` backoff on `429`/`RateLimitError`, and `response_format: json_object`. Prompts: `INGREDIENT_PROMPT` (name→ingredients), `IMPORT_INGREDIENTS_PROMPT` (pasted text → dual-status ok/rejected). |
 | `src/NZMealOptimiser/llm/llm_utils.py` | Ingredient parsing/validation (`parse_and_validate` → `ParsedDish`, `LLMParseError` on hard failures, printed warnings on soft issues), resolution order (`resolve_ingredients`), and quantity scaling (`parse_optimiser_columns`, `UNIT_ALIASES` + `normalise_unit`, `compound x 375ml` expander, 1ml≈1g approximation). |
 | `src/NZMealOptimiser/llm/llm_models.py` | Live model catalog + file cache (`data/llm_models_cache.json`). `list_mistral_models` filters `capabilities.completion_chat==true && type!="fine-tuned" && !archived && deprecation is None && billing_model_name==id` (drops `-latest` aliases), `list_google_models` filters `supportedGenerationMethods contains generateContent` and strips `models/` prefix. Both sort by `id`. `fetch_all_providers` isolates per-provider failures; `ensure_cache_seeded()` seeds on first `GET /llm/models`. |
 | `src/NZMealOptimiser/llm/llm_settings.py` | Selection store (`data/llm_settings.json`). Defaults `ingredient_model: {mistral, mistral-medium-3-5}` + `filter_model: {google, gemini-3.1-flash-lite}` + `exclude_non_food: true`. `load_llm_settings()` is tolerant (`_coerce_model` fallback to defaults); `save_llm_settings()` validates `provider∈{mistral,google}` + non-empty `model_id` and writes atomically via `tmp → os.replace` with cleanup on failure. `get_active_models()` is the per-request accessor used by `generation.py` + `ai_filter_compiler.py`. |
@@ -200,7 +200,7 @@ The Settings page reads `/llm/models` on mount and uses "Refresh model list" for
 
 ## Ingredient Resolution
 
-`resolve_ingredients(dish, portions, regenerate)` resolves a dish name to a list of ingredient dicts. The LLM model is **not** hardcoded — it comes from `data/llm_settings.json` (`get_active_models()["ingredient_model"]` → `LLMClient(provider, model_id)`); the legacy `model_alias` shim (`small/medium/large`) is retained only for `tools/llm/llm_interactive.py` and tests.
+`resolve_ingredients(dish, portions, regenerate)` resolves a dish name to a list of ingredient dicts. The LLM model is **not** hardcoded — it comes from `data/llm_settings.json` (`get_active_models()["ingredient_model"]` → `LLMClient(provider, model_id)`); the legacy `model_alias` shim (`small`/`medium`) is retained only for `tools/llm/llm_interactive.py` and tests.
 
 1. **Curated JSON** — `data/dishes.json` lookup (21 dishes). If the dish key exists and `regenerate` is False, returns the structured ingredients directly (with `quantity`, `unit`, `search_term`, and optional `approx_quantity`/`approx_unit` for non-standard units; units are folded through `normalise_unit` at pipeline time).
 2. **LLM Generation** — If not curated or `regenerate=True`, calls the configured ingredient model via `LLMClient.generate_ingredients(dish, portion)` (3-retry JSON-parse loop, rate-limit backoff), then validates through `parse_and_validate` (`LLMParseError` on hard failures: missing `dish_name`/`portion`/`ingredients`/`quantity`/`unit`/`search_term`; printed warnings on empty `search_term` / non-string `approx_unit`).
@@ -387,17 +387,43 @@ Environment variables (`.env`):
 |----------|---------|-------------|
 | `MISTRAL_API_KEY` | — | Mistral API key (required for ingredient generation, validation, and when `ingredient_model`/`filter_model` points at Mistral) |
 | `GOOGLE_API_KEY` | — | Google API key (required when either model points at `google`; `llm_client.GOOGLE_API_KEY_ENVS[0]`) |
-| `MISTRAL_MODEL_SMALL` | `ministral-3b-2512` | Override for `small` alias (`MISTRAL_MODEL_ENV_PREFIX`) |
-| `MISTRAL_MODEL_MEDIUM` | `mistral-medium-latest` | Override for `medium` alias |
-| `MISTRAL_MODEL_LARGE` | `mistral-large-2512` | Override for `large` alias |
+| `MISTRAL_MODEL_SMALL` / `MISTRAL_MODEL_MEDIUM` / `MISTRAL_MODEL_LARGE` | — | Removed — aliases are hardcoded in `DEFAULT_MODELS`; use explicit `(provider, model_id)` instead |
 | `GOOGLE_FILTER_MODEL` | `gemini-3.1-flash-lite` | Legacy env for filter model (now via `llm_settings.json`; kept for fallback) |
 | `MISTRAL_RATE_LIMIT_SMALL` | `10.0` | RPS for `small` alias |
 | `MISTRAL_RATE_LIMIT_MEDIUM` | `0.5` | RPS for `medium` alias |
-| `MISTRAL_RATE_LIMIT_LARGE` | `0.067` | RPS for `large` alias |
+| `MISTRAL_RATE_LIMIT_LARGE` | _(removed)_ | `large` alias dropped |
 | `MISTRAL_RATE_LIMIT_CUSTOM` | `0.5` | RPS for explicit `LLMClient(provider=mistral, model_id=...)` |
 | `GOOGLE_RATE_LIMIT` | `0.5` | RPS for explicit `LLMClient(provider=google, ...)` |
 
-Defaults are in `llm_client.py:70-80` (`DEFAULT_MODELS`, `DEFAULT_RATE_LIMITS`, `DEFAULT_MISTRAL_RPS`/`DEFAULT_GOOGLE_RPS`). `get_active_models()` reads `data/llm_settings.json` per request — no restart needed after a model swap.
+Defaults are in `llm_client.py:58-79` (`MISTRAL_INGREDIENT_MODEL_DEFAULT` / `GOOGLE_FILTER_MODEL_DEFAULT`, `DEFAULT_MODELS`, `DEFAULT_RATE_LIMITS`, `DEFAULT_MISTRAL_RPS`/`DEFAULT_GOOGLE_RPS`). `get_active_models()` reads `data/llm_settings.json` per request — no restart needed after a model swap.
+
+### Which default wins?
+
+Model selection involves no env vars:
+
+- **A) Web app / `generation.py` (explicit form)** — `LLMClient(provider, model_id)` with `spec = model override or get_active_models()[...]` from `data/llm_settings.json` (`{ingredient_model: {provider, model_id}, filter_model: {provider, model_id}}`). Missing file / bad JSON / bad keys falls back to ingredient `mistral` / `codestral-2508` (`MISTRAL_INGREDIENT_MODEL_DEFAULT`) and filter `google` / `gemini-3.1-flash-lite` (`GOOGLE_FILTER_MODEL_DEFAULT`); a valid file uses whatever the Settings page saved (via `PUT /llm/settings`, read per request, no restart).
+- **B) CLI tools / tests (legacy alias form)** — `LLMClient(model_alias="small" / "medium")`: `small` → `ministral-3b-2512`, `medium` → `codestral-2508`, both hardcoded with env ignored; anything else (including `large` — `mistral-large-2512` was retired) raises `LLMConfigError`. Used by `tools/llm/llm_validate.py`, `tools/llm/llm_interactive.py`, `src/NZMealOptimiser/llm/llm_utils.py`, tests. No `MISTRAL_MODEL_*` env exists anymore.
+
+Rate limits (pause before each LLM call: `sleep = 1 / RPS`):
+
+```text
+Alias path (model_alias=...):
+  MISTRAL_RATE_LIMIT_SMALL set?  --yes--> use it
+    |no
+  MISTRAL_RATE_LIMIT_MEDIUM set? --yes--> use it
+    |no
+  DEFAULT_RATE_LIMITS: small=10.0, medium=0.5
+
+Explicit path (provider + model_id):
+  provider == mistral?
+    yes: MISTRAL_RATE_LIMIT_CUSTOM set? --yes--> use it
+                                          |no
+                                    DEFAULT_MISTRAL_RPS = 0.5
+    no (google):
+         GOOGLE_RATE_LIMIT set? --yes--> use it
+                                   |no
+                             DEFAULT_GOOGLE_RPS = 0.5
+```
 
 ## Usage
 
@@ -444,7 +470,7 @@ python -m tools.llm.llm_interactive \
   --model medium
 ```
 
-Options: `--dish`, `--portions`, `--address`, `--supermarkets` (1-7 or comma-separated names), `--distance`, `--requery` (true/false), `--regenerate` (force LLM even if curated), `--non-interactive`, `--model` (small/medium/large alias for `llm_interactive` only; web uses `llm_settings.json`).
+Options: `--dish`, `--portions`, `--address`, `--supermarkets` (1-7 or comma-separated names), `--distance`, `--requery` (true/false), `--regenerate` (force LLM even if curated), `--non-interactive`, `--model` (small/medium alias for `llm_interactive` only; web uses `llm_settings.json`).
 
 ### Validation (post-run)
 

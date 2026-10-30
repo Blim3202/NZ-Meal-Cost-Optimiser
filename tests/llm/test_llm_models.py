@@ -28,9 +28,9 @@ def isolated_cache_path(tmp_path: Path, monkeypatch):
 def test_list_mistral_models_filters_to_chat_capable():
     payload = {
         "data": [
-            {"id": "mistral-medium-latest",
+            {"id": "codestral-2508",
              "capabilities": {"completion_chat": True}, "type": "base", "archived": False,
-             "max_context_length": 32768},
+             "max_context_length": 256000},
             {"id": "mistral-embed",
              "capabilities": {"completion_chat": False}, "type": "base", "archived": False,
              "max_context_length": 8192},
@@ -49,8 +49,8 @@ def test_list_mistral_models_filters_to_chat_capable():
     assert result["available"] is True
     assert result["error"] is None
     ids = [m["id"] for m in result["models"]]
-    assert ids == ["mistral-medium-latest"]
-    assert result["models"][0]["max_context_length"] == 32768
+    assert ids == ["codestral-2508"]
+    assert result["models"][0]["max_context_length"] == 256000
 
 
 def test_list_mistral_models_missing_key_returns_error(monkeypatch):

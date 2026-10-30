@@ -2,7 +2,7 @@
   <section class="results-area">
     <div v-if="result" class="result-heading"><div><p class="eyebrow">Comparison complete</p><h2>{{ result.dish }} <span v-if="result.dish_source === 'custom'" class="chip chip-custom">Custom recipe</span><span v-else-if="result.dish_source === 'shopping_list'" class="chip chip-shopping">Shopping list</span><span v-else-if="result.dish_source === 'curated'" class="chip">Preset</span></h2><p class="summary">{{ result.rows.length }} products across {{ result.store_costs.length }} stores · {{ result.companies_checked.join(', ') }}</p></div><time>{{ formatDate(result.timestamp) }}</time></div>
 
-    <section class="panel results-tabs-panel">
+    <section ref="tabsPanel" class="panel results-tabs-panel">
       <div class="tabs-bar" role="tablist" aria-label="Results views">
         <button id="tab-summary" type="button" class="tab-btn" :class="{ active: activeTab === 'summary' }" role="tab" :aria-selected="activeTab === 'summary'" @click="activeTab = 'summary'">Summary</button>
         <button id="tab-tuner" type="button" class="tab-btn" :class="{ active: activeTab === 'tuner' }" role="tab" :aria-selected="activeTab === 'tuner'" @click="showTuner()">Filter tuner<span v-if="filterKeywordCount" class="chip-mini">{{ filterKeywordCount }}</span></button>
@@ -13,16 +13,16 @@
       </div>
 
       <SummaryPanel v-if="result" v-show="activeTab === 'summary'" ref="summaryPanel" :result="result" :companies="companies" :terms="terms" :job-id="jobId" :filters="filters" @update-filters="(term, next) => $emit('update-filters', term, next)" @pipeline-log="(e) => $emit('pipeline-log', e)" />
-      <div v-else-if="activeTab === 'summary'" class="tab-empty">Compare prices to view this table.</div>
-      <FilterTunerPanel v-if="activeTab === 'tuner'" :job-id="jobId" :active="previewActive" :ingredients="tunerIngredients" :filters="filters" :stores="result ? result.store_costs || [] : []" :companies="companies" :selected-term="tunerTerm" :dish="result?.dish || ''" @update-filters="(term, next) => $emit('update-filters', term, next)" @select-term="tunerTerm = $event" @pipeline-log="(e) => $emit('pipeline-log', e)" />
+      <div v-else-if="activeTab === 'summary'" class="tab-empty">Resolve and compare to view this table.</div>
+      <FilterTunerPanel v-if="activeTab === 'tuner'" ref="tunerPanel" :job-id="jobId" :active="previewActive" :ingredients="tunerIngredients" :filters="filters" :stores="result ? result.store_costs || [] : []" :companies="companies" :selected-term="tunerTerm" :dish="result?.dish || ''" @update-filters="(term, next) => $emit('update-filters', term, next)" @select-term="tunerTerm = $event" @pipeline-log="(e) => $emit('pipeline-log', e)" />
       <AllResultsPanel v-if="result" v-show="activeTab === 'results'" ref="allResults" :result="result" :companies="companies" />
-      <div v-else-if="activeTab === 'results'" class="tab-empty">Compare prices to view this table.</div>
+      <div v-else-if="activeTab === 'results'" class="tab-empty">Resolve and compare to view this table.</div>
     </section>
   </section>
 </template>
 
 <script>
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import SummaryPanel from './SummaryPanel.vue';
 import FilterTunerPanel from './FilterTunerPanel.vue';
 import AllResultsPanel from './AllResultsPanel.vue';
@@ -52,6 +52,8 @@ export default {
     const tunerTerm = ref('');
     const summaryPanel = ref(null);
     const allResults = ref(null);
+    const tunerPanel = ref(null); // FilterTunerPanel handle (exposes scrollToRules)
+    const tabsPanel = ref(null); // fallback scroll target when the tuner ref is absent
     let suppressJump = false;
 
     const filterKeywordCount = computed(() => Object.values(props.filters)
@@ -67,6 +69,13 @@ export default {
       else if (!tunerTerm.value || !props.tunerIngredients.some((i) => i.term === tunerTerm.value)) {
         tunerTerm.value = props.tunerIngredients[0]?.term || '';
       }
+      // The ingredient-preview "N rules" chip deep-links here: wait a tick so
+      // the v-if'd tuner mounts, then land on the Edit-rules card. Falls back
+      // to the tabs panel if the tuner handle isn't ready.
+      nextTick(() => {
+        if (tunerPanel.value?.scrollToRules) tunerPanel.value.scrollToRules();
+        else tabsPanel.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     }
     // A new result invalidates the selected tuner ingredient. Fresh results
     // (a completed run) jump to Summary; one produced by reapply is suppressed
@@ -93,7 +102,7 @@ export default {
     expose({ focusStore, resetFilters, openTuner: showTuner, openSummary, suppressJumpOnce: () => { suppressJump = true; } });
 
     function formatDate(value) { return value ? new Date(value).toLocaleString() : ''; }
-    return { activeTab, tunerTerm, summaryPanel, allResults, filterKeywordCount, showTuner, formatDate };
+    return { activeTab, tunerTerm, summaryPanel, allResults, tunerPanel, tabsPanel, filterKeywordCount, showTuner, formatDate };
   },
 };
 </script>
