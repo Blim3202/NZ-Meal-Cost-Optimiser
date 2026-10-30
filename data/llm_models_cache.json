@@ -1,5 +1,5 @@
 {
-  "fetched_at": "2026-09-21T05:42:21Z",
+  "fetched_at": "2026-10-30T13:10:53Z",
   "providers": {
     "mistral": {
       "available": true,
@@ -79,6 +79,16 @@
           ]
         },
         {
+          "id": "antigravity-preview-latest",
+          "display_name": "Antigravity Agent Preview Latest",
+          "input_token_limit": 1048576,
+          "output_token_limit": 65536,
+          "supported_methods": [
+            "generateContent",
+            "countTokens"
+          ]
+        },
+        {
           "id": "deep-research-max-preview-04-2026",
           "display_name": "Deep Research Max Preview (Apr-21-2026)",
           "input_token_limit": 131072,
@@ -100,7 +110,7 @@
         },
         {
           "id": "deep-research-pro-preview-12-2025",
-          "display_name": "Deep Research Pro Preview (Dec-12-2025)",
+          "display_name": "Deep Research Pro Preview (Dec-12-2025) [Rerouted]",
           "input_token_limit": 131072,
           "output_token_limit": 65536,
           "supported_methods": [
@@ -383,6 +393,39 @@
           ]
         },
         {
+          "id": "gemini-3.8-flash-lite-tts",
+          "display_name": "Gemini 3.8 Flash Lite TTS",
+          "input_token_limit": 8192,
+          "output_token_limit": 16384,
+          "supported_methods": [
+            "generateContent",
+            "countTokens",
+            "batchGenerateContent"
+          ]
+        },
+        {
+          "id": "gemini-3.8-flash-tts",
+          "display_name": "Gemini 3.8 Flash TTS",
+          "input_token_limit": 8192,
+          "output_token_limit": 16384,
+          "supported_methods": [
+            "generateContent",
+            "countTokens",
+            "batchGenerateContent"
+          ]
+        },
+        {
+          "id": "gemini-4-argon",
+          "display_name": "Gemini 4 Argon",
+          "input_token_limit": 1048576,
+          "output_token_limit": 32768,
+          "supported_methods": [
+            "generateContent",
+            "countTokens",
+            "batchGenerateContent"
+          ]
+        },
+        {
           "id": "gemini-flash-latest",
           "display_name": "Gemini Flash Latest",
           "input_token_limit": 1048576,
@@ -403,6 +446,17 @@
             "generateContent",
             "countTokens",
             "createCachedContent",
+            "batchGenerateContent"
+          ]
+        },
+        {
+          "id": "gemini-nano-banana-2.1",
+          "display_name": "Nano Banana 2.1",
+          "input_token_limit": 65536,
+          "output_token_limit": 65536,
+          "supported_methods": [
+            "generateContent",
+            "countTokens",
             "batchGenerateContent"
           ]
         },

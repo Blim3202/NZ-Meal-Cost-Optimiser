@@ -465,6 +465,7 @@ tr.row-invalid td { opacity: .55; }
 .subcard-hint { margin: 0 0 10px; color: var(--muted); font-size: var(--fs-small); }
 .subcard:nth-of-type(1) { grid-area: ingredients; }
 .subcard:nth-of-type(2) { grid-area: rules; }
+.rules-section { scroll-margin-top: 16px; }
 .subcard-wide { grid-area: products; align-self: stretch; }
 .tuning-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .tuning-list li { min-width: 0; }
